@@ -1,0 +1,330 @@
+// ONE 워크스페이스 — Prisma schema
+// 데이터 모델 출처: docs/백엔드-설계.md (Phase 1)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────────
+
+enum Role {
+  admin
+  lead
+  member
+  guest
+}
+
+enum UserStatus {
+  online
+  away
+  offline
+}
+
+enum ChannelKind {
+  channel
+  dm
+}
+
+enum IssueStatus {
+  backlog
+  doing
+  review
+  done
+}
+
+enum IssuePriority {
+  low
+  mid
+  high
+}
+
+enum IssueSource {
+  native
+  redmine
+}
+
+// 근태: 정상/지각/근무중/예정
+enum AttendanceStatus {
+  normal // 정상
+  late // 지각
+  working // 근무중
+  scheduled // 예정
+}
+
+// ──────────────────────────────────────────────
+// Users
+// ──────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  name         String
+  initial      String?
+  color        String?
+  team         String?
+  title        String?
+  role         Role       @default(member)
+  status       UserStatus @default(offline)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  // relations
+  channelMemberships ChannelMember[]
+  messages           Message[]
+  uploadedFiles      File[]
+  assignedIssues     Issue[]         @relation("IssueAssignee")
+  issueComments      IssueComment[]
+  worklogs           Worklog[]
+  attendances        Attendance[]
+  notices            Notice[]
+  notifications      Notification[]
+
+  @@map("users")
+}
+
+// ──────────────────────────────────────────────
+// Channels
+// ──────────────────────────────────────────────
+
+model Channel {
+  id                String      @id @default(uuid())
+  key               String      @unique
+  name              String
+  kind              ChannelKind @default(channel)
+  initial           String?
+  color             String?
+  isReadonlyDefault Boolean     @default(false) @map("is_readonly_default")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  // relations
+  members     ChannelMember[]
+  permissions ChannelPermission[]
+  messages    Message[]
+  files       File[]
+
+  @@map("channels")
+}
+
+model ChannelMember {
+  channelId  String    @map("channel_id")
+  userId     String    @map("user_id")
+  lastReadAt DateTime? @map("last_read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([channelId, userId])
+  @@map("channel_members")
+}
+
+model ChannelPermission {
+  channelId String  @map("channel_id")
+  role      Role
+  canView   Boolean @default(true) @map("can_view")
+  canSend   Boolean @default(true) @map("can_send")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@id([channelId, role])
+  @@map("channel_permissions")
+}
+
+// ──────────────────────────────────────────────
+// Messages
+// ──────────────────────────────────────────────
+
+model Message {
+  id        String    @id @default(uuid())
+  channelId String    @map("channel_id")
+  authorId  String    @map("author_id")
+  body      String
+  editedAt  DateTime? @map("edited_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  channel Channel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  author  User          @relation(fields: [authorId], references: [id])
+  edits   MessageEdit[]
+  files   File[]
+
+  @@index([channelId, createdAt])
+  @@map("messages")
+}
+
+model MessageEdit {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  prevBody  String   @map("prev_body")
+  editedAt  DateTime @default(now()) @map("edited_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("message_edits")
+}
+
+// ──────────────────────────────────────────────
+// Files (영구 보관 — 만료 없음)
+// ──────────────────────────────────────────────
+
+model File {
+  id         String   @id @default(uuid())
+  channelId  String   @map("channel_id")
+  messageId  String?  @map("message_id")
+  uploaderId String   @map("uploader_id")
+  name       String
+  ext        String?
+  sizeBytes  BigInt   @map("size_bytes")
+  storageKey String   @map("storage_key")
+  retained   Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  channel  Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  message  Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  uploader User     @relation(fields: [uploaderId], references: [id])
+
+  @@index([channelId])
+  @@map("files")
+}
+
+// ──────────────────────────────────────────────
+// Issues (자체 이슈 보드)
+// ──────────────────────────────────────────────
+
+model Issue {
+  id          String        @id @default(uuid())
+  key         String        @unique
+  title       String
+  description String?
+  status      IssueStatus   @default(backlog)
+  priority    IssuePriority @default(mid)
+  label       String?
+  assigneeId  String?       @map("assignee_id")
+  source      IssueSource   @default(native)
+  externalId  String?       @map("external_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  assignee User?          @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  comments IssueComment[]
+
+  @@index([status])
+  @@map("issues")
+}
+
+model IssueComment {
+  id        String   @id @default(uuid())
+  issueId   String   @map("issue_id")
+  authorId  String   @map("author_id")
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  issue  Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id])
+
+  @@index([issueId])
+  @@map("issue_comments")
+}
+
+// ──────────────────────────────────────────────
+// Worklogs (업무일지)
+// ──────────────────────────────────────────────
+
+model Worklog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  date      DateTime @db.Date
+  tag       String?
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("worklogs")
+}
+
+// ──────────────────────────────────────────────
+// Attendance (근태)
+// ──────────────────────────────────────────────
+
+model Attendance {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  date        DateTime         @db.Date
+  checkInAt   DateTime?        @map("check_in_at")
+  checkOutAt  DateTime?        @map("check_out_at")
+  status      AttendanceStatus @default(scheduled)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("attendance")
+}
+
+// ──────────────────────────────────────────────
+// Notices (공지)
+// ──────────────────────────────────────────────
+
+model Notice {
+  id        String   @id @default(uuid())
+  authorId  String   @map("author_id")
+  title     String
+  team      String?
+  pinned    Boolean  @default(false)
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  author User @relation(fields: [authorId], references: [id])
+
+  @@map("notices")
+}
+
+// ──────────────────────────────────────────────
+// Notifications (알림 + 실시간 푸시)
+// ──────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String
+  payload   Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+// ──────────────────────────────────────────────
+// GitLab repos (읽기 전용 동기화 캐시)
+// ──────────────────────────────────────────────
+
+model GitlabRepo {
+  id              String   @id @default(uuid())
+  gitlabProjectId String   @unique @map("gitlab_project_id")
+  name            String
+  path            String
+  defaultBranch   String?  @map("default_branch")
+  lastCommitMsg   String?  @map("last_commit_msg")
+  syncedAt        DateTime @default(now()) @map("synced_at")
+  kind            String? // app / fw
+
+  @@map("gitlab_repos")
+}

@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ONE 워크스페이스 — 사내 메신저 통합 솔루션</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#2563EB">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  #root { height: 100%; }
+  body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; color: #15181B; }
+  button { font-family: inherit; }
+  input, textarea { font-family: inherit; }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-thumb { background: #D4D9DF; border-radius: 8px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: #BFC6CE; background-clip: content-box; border: 3px solid transparent; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes drawerIn { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* Replicates the DC runtime's style-hover / style-focus / style-focus-within pseudo styles */
+  .hb97:hover { filter: brightness(0.97); }
+  .hb95:hover { filter: brightness(0.95); }
+  .hbg-f4:hover { background: #F4F6F8 !important; }
+  .hbg-f7:hover { background: #F7F9FB !important; }
+  .hbd-d4:hover { border-color: #D4DEF5 !important; }
+  .hbd-c9:hover { border-color: #C9D6F2 !important; }
+  .hcard:hover { border-color: #C9D6F2 !important; box-shadow: 0 4px 14px rgba(30,50,90,0.07); }
+  .hc-blue:hover { color: #2563EB !important; }
+  .hc-dark:hover { color: #15181B !important; }
+  .hchip:hover { border-color: #2563EB !important; color: #2563EB !important; }
+  .ffocus:focus { border-color: #2563EB !important; }
+  .fwithin:focus-within { border-color: #2563EB !important; }
+</style>
+<script src="./vendor/react.production.min.js"></script>
+<script src="./vendor/react-dom.production.min.js"></script>
+<script src="./vendor/babel.min.js"></script>
+<script src="./vendor/socket.io.min.js"></script>
+<script src="./api.js"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { Fragment } = React;
+
+// Parse a CSS declaration string into a React style object so the design's
+// inline style strings can be used verbatim (max fidelity, min transcription error).
+function css(s) {
+  const o = {};
+  if (s == null) return o;
+  String(s).split(';').forEach((decl) => {
+    const i = decl.indexOf(':');
+    if (i < 0) return;
+    const prop = decl.slice(0, i).trim();
+    if (!prop) return;
+    const val = decl.slice(i + 1).trim();
+    o[prop.startsWith('--') ? prop : prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = val;
+  });
+  return o;
+}
+
+class App extends React.Component {
+  state = {
+    // ---- auth / bootstrap ----
+    authed: false,
+    booting: true,
+    currentUser: null,
+    loginEmail: '',
+    loginPassword: '',
+    loginError: '',
+    loggingIn: false,
+
+    // ---- UI state (unchanged) ----
+    view: 'home',
+    platform: 'desktop',
+    mobileView: 'home',
+    channelId: null,
+    checkedIn: false,
+    checkInTime: '09:01',
+    draft: '',
+    editingId: null,
+    editDraft: '',
+    logDraft: '',
+    showNotif: false,
+    selectedKey: null,
+    showRoleMenu: false,
+    aiRepo: null,
+    aiDraft: '',
+    aiThinking: false,
+    aiMsgs: {},
+
+    // ---- live data (from API) ----
+    rawChannels: [],     // [{id,key,name,kind,initial,color,isReadonlyDefault,members}]
+    usersById: {},       // id -> user
+    rawIssues: { backlog: [], doing: [], review: [], done: [] },
+    rawWorklogs: [],
+    rawAttendance: [],
+    rawNotices: [],
+    rawNotifications: [],
+    unread: 0,
+    rawRepos: [],
+    rawPerms: [],        // admin only
+    selDetail: null,     // issue detail (with comments) for the open drawer
+    commentDraft: '',    // issue drawer comment input
+    commentSubmitting: false,
+    msgs: {},            // channelId -> mapped message array
+    msgsLoading: {},     // channelId -> bool
+    filesByChannel: {},  // channelId -> File[] (raw API rows) for 파일 보관함
+    imageUrls: {},       // fileId -> object URL (blob) for inline image preview
+    uploading: false,    // file upload in-progress flag
+
+    // ---- issue create form (Feature 2) ----
+    showIssueForm: false,
+    issueForm: { title: '', label: '기능', priority: 'mid', assigneeId: '', status: 'backlog' },
+    creatingIssue: false,
+
+    // ---- local-only frontend state ----
+    tasks: [
+      { id: 't1', text: 'v2.3 릴리스 노트 검토', tag: '개발', done: true, time: '10:00' },
+      { id: 't2', text: '고객사 A 온보딩 미팅', tag: '운영', done: false, time: '13:30' },
+      { id: 't3', text: '결제 모듈 QA 피드백 정리', tag: '개발', done: false, time: '15:00' },
+      { id: 't4', text: '주간 업무일지 작성', tag: '공통', done: false, time: '18:00' },
+    ],
+  };
+
+  // ===================== AUTH / BOOTSTRAP =====================
+  componentDidMount() {
+    if (window.API && API.isAuthed()) {
+      this.setState({ authed: true, booting: true }, () => this.bootstrap());
+    } else {
+      this.setState({ booting: false });
+    }
+  }
+
+  async doLogin(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const email = (this.state.loginEmail || '').trim();
+    const password = this.state.loginPassword || '';
+    if (!email || !password) { this.setState({ loginError: '이메일과 비밀번호를 입력해주세요.' }); return; }
+    this.setState({ loggingIn: true, loginError: '' });
+    try {
+      const user = await API.login(email, password);
+      this.setState({ authed: true, currentUser: user, booting: true, loggingIn: false, loginPassword: '' }, () => this.bootstrap());
+    } catch (err) {
+      this.setState({ loggingIn: false, loginError: (err && err.message) || '로그인에 실패했습니다.' });
+    }
+  }
+
+  logout() {
+    try { if (this._socket) this._socket.disconnect(); } catch (e) {}
+    API.logout();
+    window.location.reload();
+  }
+
+  async bootstrap() {
+    try {
+      const [me, channels, issues, worklogs, attendance, notices, notifications, unread, repos, users] = await Promise.all([
+        API.me().catch(() => API.getUser()),
+        API.channels().catch(() => []),
+        API.issues().catch(() => ({ backlog: [], doing: [], review: [], done: [] })),
+        API.worklogs().catch(() => []),
+        API.attendance().catch(() => []),
+        API.notices().catch(() => []),
+        API.notifications().catch(() => ({ items: [], nextCursor: null })),
+        API.unreadCount().catch(() => ({ count: 0 })),
+        API.gitlabRepos().catch(() => []),
+        API.users().catch(() => []),
+      ]);
+
+      const usersById = {};
+      (users || []).forEach(u => { usersById[u.id] = u; });
+      if (me && me.id && !usersById[me.id]) usersById[me.id] = me;
+
+      // derive check-in card from today's attendance row
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayAtt = (attendance || []).find(a => (a.date || '').slice(0, 10) === todayStr);
+      const checkedIn = !!(todayAtt && todayAtt.checkInAt && !todayAtt.checkOutAt);
+
+      // pick a default channel: first 'channel' kind
+      const firstChannel = (channels || []).find(c => c.kind === 'channel') || (channels || [])[0];
+      const firstRepo = (repos || [])[0];
+
+      this.setState({
+        currentUser: me || this.state.currentUser,
+        rawChannels: channels || [],
+        usersById,
+        rawIssues: issues || { backlog: [], doing: [], review: [], done: [] },
+        rawWorklogs: worklogs || [],
+        rawAttendance: attendance || [],
+        rawNotices: notices || [],
+        rawNotifications: (notifications && notifications.items) || [],
+        unread: (unread && unread.count) || 0,
+        rawRepos: repos || [],
+        channelId: this.state.channelId || (firstChannel ? firstChannel.id : null),
+        aiRepo: this.state.aiRepo || (firstRepo ? firstRepo.id : null),
+        checkedIn,
+        checkInTime: todayAtt && todayAtt.checkInAt ? this.fmtTime(todayAtt.checkInAt) : this.state.checkInTime,
+        booting: false,
+      }, () => {
+        if (this.state.channelId) { this.loadMessages(this.state.channelId); this.loadChannelFiles(this.state.channelId); }
+        if (me && me.role === 'admin') this.loadPerms();
+        this.connectSocket();
+      });
+    } catch (err) {
+      console.error('[bootstrap]', err);
+      this.setState({ booting: false });
+    }
+  }
+
+  async loadPerms() {
+    try { const perms = await API.permissions(); this.setState({ rawPerms: perms || [] }); }
+    catch (e) { /* non-admin / 403 — ignore */ }
+  }
+
+  // ===================== SOCKET =====================
+  // The Socket.IO handshake authenticates with the access token read at creation
+  // time. That token can be EXPIRED in localStorage (REST calls auto-refresh on a
+  // 401, but the socket has no such retry), so the gateway verifies it, fails, and
+  // server-disconnects immediately ("io server disconnect"). We therefore refresh
+  // the token via an authed REST call (API.me triggers api.js's transparent refresh)
+  // BEFORE creating the socket, and re-refresh+reconnect if the server drops us.
+  async connectSocket() {
+    if (this._socketInit) return; // guard double boot-invoke
+    this._socketInit = true;
+    await this._freshConnect();
+  }
+  async _freshConnect() {
+    try { await API.me(); } catch (e) { /* refresh attempted; proceed regardless */ }
+    if (this._socket) { try { this._socket.removeAllListeners(); this._socket.disconnect(); } catch (e) {} this._socket = null; }
+    try {
+      const sock = API.connectSocket((event, payload) => this.onSocket(event, payload));
+      this._socket = sock;
+      if (sock && typeof sock.on === 'function') {
+        sock.on('connect', () => { this._socketRetries = 0; });
+        sock.on('disconnect', (reason) => {
+          // Server-initiated drop ⇒ likely a stale token; refresh + recreate. Bounded.
+          if (reason === 'io server disconnect' && (this._socketRetries || 0) < 4) {
+            this._socketRetries = (this._socketRetries || 0) + 1;
+            setTimeout(() => this._freshConnect(), 600);
+          }
+        });
+        try { if (sock.io) sock.io.skipReconnect = false; if (!sock.connected) sock.connect(); } catch (e) {}
+      }
+    } catch (e) { console.warn('[socket]', e); }
+  }
+  onSocket(event, payload) {
+    if (!payload) return;
+    const cid = payload.channelId;
+    if ((event === 'message:new' || event === 'message:edited') && cid) {
+      // only update if we already have that channel loaded (or it's the open one)
+      const open = this.state.channelId === cid && this.state.view === 'chat';
+      if (!this.state.msgs[cid] && !open) return;
+      const mapped = this.mapMessage(payload);
+      const cur = (this.state.msgs[cid] || []).slice();
+      const idx = cur.findIndex(m => m.id === mapped.id);
+      if (event === 'message:edited' || idx >= 0) {
+        if (idx >= 0) cur[idx] = mapped; else cur.push(mapped);
+      } else {
+        cur.push(mapped);
+      }
+      this.setState({ msgs: { ...this.state.msgs, [cid]: cur } }, () => { if (open) this.scrollBottom(); this.ensureImageUrls(cid); });
+    } else if (event === 'notification:new') {
+      // Backend emits the FULL notification row {id,type,read,createdAt,payload:{...}}.
+      // Be defensive: if only a bare payload object arrives, wrap it.
+      const notif = (payload && payload.payload) ? payload
+        : { id: 'rt-' + Date.now(), type: 'message', read: false, createdAt: new Date().toISOString(), payload: payload };
+      const merged = { ...notif, read: false };
+      const exists = this.state.rawNotifications.some(n => n.id === merged.id);
+      if (exists) return;
+      this.setState({ unread: this.state.unread + 1, rawNotifications: [merged, ...this.state.rawNotifications].slice(0, 30) });
+    }
+  }
+
+  // ===================== HELPERS / FORMATTERS =====================
+  fmtTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  fmtDayDate(iso) {
+    const d = new Date(iso);
+    const wd = ['일','월','화','수','목','금','토'][d.getDay()];
+    return { day: wd, date: (d.getMonth() + 1) + '/' + d.getDate(), full: (d.getMonth() + 1) + '/' + d.getDate() + ' (' + wd + ')' };
+  }
+  relTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso); if (isNaN(d)) return '';
+    const diff = Date.now() - d.getTime();
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return '방금';
+    if (min < 60) return min + '분 전';
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return hr + '시간 전';
+    const day = Math.floor(hr / 24);
+    if (day === 1) return '어제';
+    if (day < 7) return day + '일 전';
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+  userById(id) { return this.state.usersById[id] || null; }
+
+  mapMessage(m) {
+    const author = m.author || this.userById(m.authorId) || {};
+    const rawFiles = m.files || [];
+    const isImg = (f) => /^(png|jpg|jpeg|gif|webp|bmp|svg)$/i.test(f.ext || ((f.name || '').split('.').pop() || ''));
+    const images = rawFiles.filter(isImg).map(f => ({ id: f.id, name: f.name }));
+    const docs = rawFiles.filter(f => !isImg(f)).map(f => ({ id: f.id, name: f.name, ext: (f.ext || (f.name || '').split('.').pop() || '').toUpperCase().slice(0, 4) }));
+    // Hide the "[이미지]/[파일] name" marker text when a real attachment is present.
+    const rawBody = m.body || '';
+    const text = (rawFiles.length > 0 && /^\[(이미지|파일)\]\s/.test(rawBody)) ? '' : rawBody;
+    return {
+      id: m.id,
+      authorId: m.authorId,
+      author: author.name || '알 수 없음',
+      initial: author.initial || (author.name ? author.name[0] : '?'),
+      color: author.color || '#A2AAB2',
+      time: this.fmtTime(m.createdAt),
+      text,
+      editedAt: m.editedAt ? this.fmtTime(m.editedAt) : null,
+      images,
+      docs,
+    };
+  }
+
+  // ===================== DATA LOADERS =====================
+  async loadMessages(channelId) {
+    if (!channelId) return;
+    this.setState({ msgsLoading: { ...this.state.msgsLoading, [channelId]: true } });
+    try {
+      const res = await API.messages(channelId);
+      const items = (res && res.items) || [];
+      // API is NEWEST-FIRST → reverse to oldest-first
+      const mapped = items.slice().reverse().map(m => this.mapMessage(m));
+      this.setState({ msgs: { ...this.state.msgs, [channelId]: mapped }, msgsLoading: { ...this.state.msgsLoading, [channelId]: false } },
+        () => { if (this.state.channelId === channelId) this.scrollBottom(); this.ensureImageUrls(channelId); });
+    } catch (err) {
+      this.setState({ msgs: { ...this.state.msgs, [channelId]: [] }, msgsLoading: { ...this.state.msgsLoading, [channelId]: false } });
+    }
+  }
+  async refetchWorklogs() { try { const w = await API.worklogs(); this.setState({ rawWorklogs: w || [] }); } catch (e) {} }
+  async refetchAttendance() {
+    try {
+      const a = await API.attendance(); const todayStr = new Date().toISOString().slice(0, 10);
+      const todayAtt = (a || []).find(r => (r.date || '').slice(0, 10) === todayStr);
+      this.setState({ rawAttendance: a || [], checkedIn: !!(todayAtt && todayAtt.checkInAt && !todayAtt.checkOutAt), checkInTime: todayAtt && todayAtt.checkInAt ? this.fmtTime(todayAtt.checkInAt) : this.state.checkInTime });
+    } catch (e) {}
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (!prevState) return;
+    if (prevState.channelId !== this.state.channelId || prevState.msgs !== this.state.msgs) this.scrollBottom();
+    if (prevState.aiMsgs !== this.state.aiMsgs || prevState.aiThinking !== this.state.aiThinking || prevState.aiRepo !== this.state.aiRepo) this.scrollAiBottom();
+  }
+  scrollBottom() {
+    const el = this._scrollEl;
+    if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  }
+
+  nowHHMM() {
+    const d = new Date();
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
+  navStyleFor(id) {
+    const a = this.state.view === id;
+    return 'display:flex;align-items:center;gap:11px;width:100%;padding:9px 12px;border:none;border-radius:9px;cursor:pointer;font-size:14px;text-align:left;transition:background .12s;'
+      + (a ? 'background:#EAF1FF;color:#2563EB;font-weight:600;' : 'background:transparent;color:#3D454D;font-weight:500;');
+  }
+  channelStyleFor(id) {
+    const a = this.state.view === 'chat' && this.state.channelId === id;
+    return 'display:flex;align-items:center;gap:9px;width:100%;padding:7px 10px;border:none;border-radius:8px;cursor:pointer;font-size:13.5px;text-align:left;'
+      + (a ? 'background:#EAF1FF;color:#15181B;font-weight:600;' : 'background:transparent;color:#3D454D;font-weight:500;');
+  }
+  mTabStyleFor(id) {
+    const a = this.state.mobileView === id;
+    return 'flex:1;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding-top:8px;color:' + (a ? '#2563EB' : '#A2AAB2') + ';';
+  }
+
+  // Server enforces channel-list visibility; the list is already filtered.
+  // canView is only used as a fallback when switching channels client-side.
+  canView(id) { return !!this.state.rawChannels.find(c => c.id === id); }
+  // For the composer: optimistically allow sending; a 403 surfaces the read-only notice.
+  canSend(id) {
+    const c = this.state.rawChannels.find(ch => ch.id === id);
+    if (!c) return false;
+    return !c.isReadonlyDefault || (this.state.readonlyDenied || {})[id] !== true;
+  }
+
+  async togglePerm(channelId, role, kind) {
+    const perms = JSON.parse(JSON.stringify(this.state.rawPerms));
+    const row = perms.find(p => p.channelId === channelId); if (!row) return;
+    const cell = row.roles.find(r => r.role === role); if (!cell) return;
+    if (kind === 'view') { cell.canView = !cell.canView; if (!cell.canView) cell.canSend = false; }
+    else { cell.canSend = !cell.canSend; if (cell.canSend) cell.canView = true; }
+    this.setState({ rawPerms: perms }); // optimistic
+    try {
+      await API.setPermission(channelId, role, { canView: cell.canView, canSend: cell.canSend });
+      this.loadPerms();
+    } catch (e) { this.loadPerms(); }
+  }
+  startEdit(id, text) { this.setState({ editingId: id, editDraft: text }); }
+  cancelEdit() { this.setState({ editingId: null, editDraft: '' }); }
+  async saveEdit() {
+    const id = this.state.editingId; if (!id) return;
+    const text = (this.state.editDraft || '').trim(); if (!text) return;
+    const cid = this.state.channelId;
+    // optimistic
+    const arr = (this.state.msgs[cid] || []).map(m => (m.id === id && m.text !== text) ? { ...m, text, editedAt: this.nowHHMM() } : m);
+    this.setState({ msgs: { ...this.state.msgs, [cid]: arr }, editingId: null, editDraft: '' });
+    try { await API.editMessage(id, text); this.loadMessages(cid); }
+    catch (e) { this.loadMessages(cid); }
+  }
+
+  // GitLab repos come from the API (currently empty — no token configured).
+  repoMeta() {
+    return (this.state.rawRepos || []).map(r => ({
+      id: r.id, name: r.name, path: r.path || r.fullPath || r.namespace || '',
+      branch: r.branch || r.defaultBranch || 'main',
+      commit: r.lastCommit || r.commit || '', sync: r.syncedAt ? this.relTime(r.syncedAt) : '미동기화',
+      kind: r.kind || 'app',
+    }));
+  }
+  async aiSend(forceText) {
+    const q = ((typeof forceText === 'string' ? forceText : this.state.aiDraft) || '').trim();
+    if (!q || this.state.aiThinking) return;
+    const repo = this.state.aiRepo || '_';
+    const arr = (this.state.aiMsgs[repo] || []).concat([{ type: 'user', text: q }]);
+    this.setState({ aiMsgs: { ...this.state.aiMsgs, [repo]: arr }, aiDraft: '', aiThinking: true });
+    let res;
+    try {
+      // aiAnalyze returns 501 (준비 중) — degrade gracefully to a "준비 중" bubble.
+      const data = await API.aiAnalyze({ repoId: this.state.aiRepo, query: q });
+      res = data && (data.summary || data.findings) ? data : { summary: 'AI 분석 결과를 받았어요.' };
+    } catch (err) {
+      res = { summary: 'AI 코드 분석은 아직 준비 중입니다. GitLab 연동과 분석 엔진이 연결되면 로그·코드 분석 결과를 여기에서 보여드릴게요.', findings: [], logs: [], verdict: null };
+    }
+    const arr2 = (this.state.aiMsgs[repo] || []).concat([{ type: 'ai', query: q, ...res }]);
+    this.setState({ aiMsgs: { ...this.state.aiMsgs, [repo]: arr2 }, aiThinking: false });
+  }
+  aiEscalate(repoId, q) { /* no-op: 운영요청 이슈 자동 생성은 백엔드 미연동 */ }
+  scrollAiBottom() { const el = this._aiScrollEl; if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; }); }
+
+  // Channels/DMs come straight from the (already permission-filtered) API list.
+  // No member counts / unread badges are returned, so we omit them.
+  channelMeta() {
+    return this.state.rawChannels.filter(c => c.kind === 'channel')
+      .map(c => ({ id: c.id, key: c.key, name: c.name, initial: c.initial, color: c.color, isReadonlyDefault: c.isReadonlyDefault }));
+  }
+  dmMeta() {
+    return this.state.rawChannels.filter(c => c.kind === 'dm')
+      .map(c => ({ id: c.id, key: c.key, name: c.name, initial: c.initial, color: c.color }));
+  }
+
+  openChannel(id) {
+    this.setState({ view: 'chat', channelId: id, showNotif: false }, () => {
+      if (!this.state.msgs[id]) this.loadMessages(id);
+      this.loadChannelFiles(id);
+    });
+  }
+
+  // ===================== NOTIFICATIONS (Feature 1) =====================
+  async openNotificationTarget(n) {
+    const id = n.id;
+    const wasUnread = !n.read;
+    // optimistic: mark read locally + decrement badge
+    const list = this.state.rawNotifications.map(x => x.id === id ? { ...x, read: true } : x);
+    this.setState({
+      rawNotifications: list,
+      unread: wasUnread ? Math.max(0, this.state.unread - 1) : this.state.unread,
+      showNotif: false,
+    });
+    if (id && String(id).indexOf('rt-') !== 0) {
+      try { await API.readNotification(id); } catch (e) { /* ignore — already optimistic */ }
+    }
+    const cid = n.payload && n.payload.channelId;
+    if (cid && this.canView(cid)) this.openChannel(cid);
+  }
+
+  // ===================== FILES (Feature 3) =====================
+  async loadChannelFiles(channelId) {
+    if (!channelId) return;
+    try {
+      const rows = await API.channelFiles(channelId);
+      this.setState({ filesByChannel: { ...this.state.filesByChannel, [channelId]: rows || [] } });
+    } catch (e) {
+      this.setState({ filesByChannel: { ...this.state.filesByChannel, [channelId]: [] } });
+    }
+  }
+  triggerFilePick() { if (this._fileInput) this._fileInput.click(); }
+  onFilePicked(e) {
+    const file = e && e.target && e.target.files && e.target.files[0];
+    if (e && e.target) e.target.value = ''; // allow re-picking same file
+    this.uploadFileObj(file);
+  }
+  // Paste an image from the clipboard (e.g. a screenshot via Ctrl+V) into the chat composer.
+  onPasteComposer(e) {
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.kind === 'file' && it.type && it.type.indexOf('image/') === 0) {
+        const blob = it.getAsFile();
+        if (blob) {
+          e.preventDefault();
+          const ext = (it.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+          const named = (blob.name && /\.[a-z0-9]+$/i.test(blob.name))
+            ? blob
+            : new File([blob], '스크린샷-' + this.nowHHMM().replace(':', '') + '.' + ext, { type: it.type });
+          this.uploadFileObj(named);
+        }
+        return;
+      }
+    }
+  }
+  // Upload a file linked to a message (so it can render inline in the chat).
+  uploadLinked(cid, file, messageId) {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (messageId) fd.append('messageId', messageId);
+    return fetch(API.base + '/channels/' + cid + '/files', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + API.getToken() },
+      body: fd,
+    }).then(r => (r.ok ? r.json() : Promise.reject(Object.assign(new Error('HTTP ' + r.status), { status: r.status }))));
+  }
+  // Fetch (with JWT) and cache object URLs for any image attachments not yet loaded.
+  async ensureImageUrls(channelId) {
+    this._imgLoading = this._imgLoading || {};
+    const msgs = this.state.msgs[channelId] || [];
+    const todo = [];
+    msgs.forEach(m => (m.images || []).forEach(im => {
+      if (im.id && !this.state.imageUrls[im.id] && !this._imgLoading[im.id]) todo.push(im);
+    }));
+    for (const im of todo) {
+      this._imgLoading[im.id] = true;
+      try {
+        const res = await fetch(API.fileUrl(im.id), { headers: { Authorization: 'Bearer ' + API.getToken() }, cache: 'no-store' });
+        if (res.ok) {
+          const url = URL.createObjectURL(await res.blob());
+          this.setState({ imageUrls: { ...this.state.imageUrls, [im.id]: url } });
+        }
+      } catch (e) { /* leave as loading placeholder */ }
+    }
+  }
+  // Shared upload path for both the file picker and clipboard paste.
+  async uploadFileObj(file) {
+    const cid = this.state.channelId;
+    if (!file || !cid) return;
+    const isImage = !!(file.type && file.type.indexOf('image/') === 0);
+    this.setState({ uploading: true });
+    try {
+      // Create the message first, then attach the file to it so it renders inline.
+      const created = await API.sendMessage(cid, (isImage ? '[이미지] ' : '[파일] ') + (file.name || '첨부'));
+      let fileRow = null;
+      try { fileRow = await this.uploadLinked(cid, file, created.id); } catch (e2) { /* keep the text message if link fails */ }
+      await this.loadChannelFiles(cid);
+      const mapped = this.mapMessage({ ...created, files: fileRow ? [fileRow] : [] });
+      const cur = (this.state.msgs[cid] || []).slice();
+      const idx = cur.findIndex(m => m.id === mapped.id);
+      if (idx >= 0) cur[idx] = mapped; else cur.push(mapped);
+      this.setState({ msgs: { ...this.state.msgs, [cid]: cur }, uploading: false }, () => { this.scrollBottom(); this.ensureImageUrls(cid); });
+    } catch (err) {
+      this.setState({ uploading: false, uploadError: (err && err.status === 403) ? '이 채널에 업로드할 권한이 없습니다.' : '파일 업로드에 실패했습니다.' });
+      setTimeout(() => this.setState({ uploadError: '' }), 4000);
+    }
+  }
+  fmtSize(bytes) {
+    const n = Number(bytes) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1024 / 1024).toFixed(1) + ' MB';
+  }
+  // Download a file through the authenticated API. The endpoint needs the JWT, so a
+  // plain <a href> would 401 — fetch as a blob (with the bearer token) then save it.
+  async downloadFile(id, name) {
+    if (!id) return;
+    const doFetch = () => fetch(API.fileUrl(id), { headers: { Authorization: 'Bearer ' + API.getToken() }, cache: 'no-store' });
+    try {
+      let res = await doFetch();
+      if (res.status === 401) { try { await API.me(); } catch (e) {} res = await doFetch(); }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name || 'download';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) {
+      this.setState({ uploadError: '파일을 내려받지 못했습니다.' });
+      setTimeout(() => this.setState({ uploadError: '' }), 4000);
+    }
+  }
+
+  // ===================== ISSUES (Feature 2) =====================
+  openIssueForm() {
+    const cu = this.state.currentUser || {};
+    this.setState({ showIssueForm: true, issueForm: { title: '', label: '기능', priority: 'mid', assigneeId: cu.id || '', status: 'backlog' } });
+  }
+  closeIssueForm() { this.setState({ showIssueForm: false }); }
+  setIssueField(k, v) { this.setState({ issueForm: { ...this.state.issueForm, [k]: v } }); }
+  async submitIssueForm() {
+    const f = this.state.issueForm;
+    const title = (f.title || '').trim();
+    if (!title || this.state.creatingIssue) return;
+    this.setState({ creatingIssue: true });
+    const data = { title, label: f.label, priority: f.priority, status: f.status || 'backlog' };
+    if (f.assigneeId) data.assigneeId = f.assigneeId;
+    try {
+      await API.createIssue(data);
+      await this.refetchIssues();
+      this.setState({ creatingIssue: false, showIssueForm: false });
+    } catch (e) {
+      this.setState({ creatingIssue: false, issueFormError: (e && e.message) || '이슈 생성에 실패했습니다.' });
+      setTimeout(() => this.setState({ issueFormError: '' }), 4000);
+    }
+  }
+  async refetchIssues() {
+    try { const issues = await API.issues(); this.setState({ rawIssues: issues || { backlog: [], doing: [], review: [], done: [] } }); }
+    catch (e) {}
+  }
+  async changeIssueStatus(status) {
+    const id = this.state.selectedKey;
+    if (!id) return;
+    try {
+      await API.updateIssue(id, { status });
+      await this.refetchIssues();
+      try { const d = await API.issue(id); this.setState({ selDetail: d }); } catch (e2) {}
+    } catch (e) { /* ignore */ }
+  }
+  async submitComment() {
+    const id = (this.state.selDetail && this.state.selDetail.id) || this.state.selectedKey;
+    const body = (this.state.commentDraft || '').trim();
+    if (!id || !body || this.state.commentSubmitting) return;
+    this.setState({ commentSubmitting: true });
+    try {
+      await API.addIssueComment(id, body);
+      const d = await API.issue(id); // reload detail so the new comment renders
+      this.setState({ selDetail: d, commentDraft: '', commentSubmitting: false });
+    } catch (e) {
+      this.setState({ commentSubmitting: false });
+    }
+  }
+
+  async sendMessage() {
+    const text = (this.state.draft || '').trim();
+    if (!text) return;
+    const cid = this.state.channelId; if (!cid) return;
+    this.setState({ draft: '' });
+    try {
+      const created = await API.sendMessage(cid, text);
+      // append (socket may also deliver it; mapMessage de-dups by id)
+      const mapped = this.mapMessage(created);
+      const cur = (this.state.msgs[cid] || []).slice();
+      if (!cur.find(m => m.id === mapped.id)) cur.push(mapped);
+      const rd = { ...(this.state.readonlyDenied || {}) }; delete rd[cid];
+      this.setState({ msgs: { ...this.state.msgs, [cid]: cur }, readonlyDenied: rd }, () => this.scrollBottom());
+    } catch (err) {
+      if (err && err.status === 403) {
+        // surface the existing read-only notice
+        this.setState({ readonlyDenied: { ...(this.state.readonlyDenied || {}), [cid]: true } });
+      } else {
+        this.setState({ draft: text }); // restore on transient failure
+      }
+    }
+  }
+
+  toggleTask(id) {
+    this.setState({ tasks: this.state.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t) });
+  }
+
+  async saveLog() {
+    const text = (this.state.logDraft || '').trim();
+    if (!text) return;
+    this.setState({ logDraft: '' });
+    try { await API.createWorklog({ tag: '개발', body: text }); this.refetchWorklogs(); }
+    catch (e) { this.setState({ logDraft: text }); }
+  }
+
+  async doCheck() {
+    const wasIn = this.state.checkedIn;
+    // optimistic update of the card
+    this.setState({ checkedIn: !wasIn, checkInTime: wasIn ? this.state.checkInTime : this.nowHHMM() });
+    try {
+      if (wasIn) await API.checkOut(); else await API.checkIn();
+      this.refetchAttendance();
+    } catch (e) { this.refetchAttendance(); }
+  }
+
+  async openIssue(id, key) {
+    this.setState({ selectedKey: id || key, selDetail: null });
+    if (!id) return;
+    try { const d = await API.issue(id); this.setState({ selDetail: d }); }
+    catch (e) { /* show description-only */ }
+  }
+
+  allIssues() {
+    const i = this.state.rawIssues;
+    return [...(i.backlog || []), ...(i.doing || []), ...(i.review || []), ...(i.done || [])];
+  }
+  statusLabel(s) {
+    return { backlog: '백로그', doing: '진행 중', review: '리뷰', done: '완료' }[s] || s;
+  }
+
+  // Map a raw API issue to the exact shape the existing card/drawer JSX expects.
+  mapIssue(it) {
+    const prMap = { low: { priority: '낮음', prColor: '#A2AAB2' }, mid: { priority: '중간', prColor: '#E08A00' }, high: { priority: '높음', prColor: '#E5484D' } };
+    const labelMap = {
+      '기능': { labelColor: '#2563EB', labelBg: '#EAF1FF' },
+      '버그': { labelColor: '#E5484D', labelBg: '#FCEBEC' },
+      '디자인': { labelColor: '#7C5CFC', labelBg: '#F0ECFE' },
+      '개선': { labelColor: '#15A66A', labelBg: '#E6F6EF' },
+      '운영': { labelColor: '#15A66A', labelBg: '#E6F6EF' },
+    };
+    const pr = prMap[it.priority] || { priority: it.priority || '중간', prColor: '#E08A00' };
+    const lb = labelMap[it.label] || { labelColor: '#5B636B', labelBg: '#EEF1F4' };
+    const u = this.userById(it.assigneeId) || {};
+    return {
+      id: it.id, key: it.key, title: it.title, status: it.status,
+      description: it.description || '',
+      assigneeId: it.assigneeId,
+      assignee: u.name || '미지정',
+      initial: u.initial || (u.name ? u.name[0] : '·'),
+      color: u.color || '#A2AAB2',
+      ...pr, label: it.label || '', ...lb,
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const hour = new Date().getHours();
+    const greeting = hour < 11 ? '좋은 아침이에요' : hour < 18 ? '안녕하세요' : '오늘도 고생하셨어요';
+
+    const tasks = s.tasks.map(t => ({
+      ...t,
+      onToggle: () => this.toggleTask(t.id),
+      boxStyle: 'width:20px;height:20px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;'
+        + (t.done ? 'background:#2563EB;border:1px solid #2563EB;' : 'background:#fff;border:1.5px solid #CDD3DA;'),
+      textStyle: 'flex:1;font-size:13.5px;font-weight:500;' + (t.done ? 'color:#A2AAB2;text-decoration:line-through;' : 'color:#2B3138;'),
+      tagColor: t.tag === '개발' ? '#2563EB' : t.tag === '운영' ? '#15A66A' : '#5B636B',
+      tagBg: t.tag === '개발' ? '#EAF1FF' : t.tag === '운영' ? '#E6F6EF' : '#EEF1F4',
+    }));
+    const tasksLeft = s.tasks.filter(t => !t.done).length;
+    const doneCount = s.tasks.filter(t => t.done).length;
+
+    const channels = this.channelMeta().map(c => ({ ...c, unread: 0, onClick: () => this.openChannel(c.id), style: this.channelStyleFor(c.id) }));
+    const dms = this.dmMeta().map(d => ({ ...d, onClick: () => this.openChannel(d.id), style: this.channelStyleFor(d.id) }));
+
+    const chMap = {};
+    [...this.channelMeta(), ...this.dmMeta()].forEach(c => { chMap[c.id] = c; });
+    const cc = chMap[s.channelId] || { name: '채팅', initial: '#', color: '#2563EB' };
+    // Member count is not provided by the API — blank it out (do not invent a number).
+    const currentChannel = { name: cc.name, initial: cc.initial, color: cc.color, members: '' };
+
+    const rawMsgs = s.msgs[s.channelId] || [];
+    const cu = s.currentUser || {};
+    const messages = rawMsgs.map(m => {
+      const mine = m.authorId && cu.id && m.authorId === cu.id;
+      const editing = s.editingId === m.id;
+      const images = (m.images || []).map(im => ({ ...im, url: s.imageUrls[im.id] || null, onDownload: () => this.downloadFile(im.id, im.name) }));
+      const docs = (m.docs || []).map(d => ({ ...d, onDownload: () => this.downloadFile(d.id, d.name) }));
+      return { ...m,
+        canEdit: mine && !!m.text && !editing,
+        isEditing: editing,
+        showText: !editing && !!m.text,
+        editedFlag: false, // list API does not return previous text — drop the "수정 전" block
+        editedSuffix: m.editedAt ? '(수정됨 ' + m.editedAt + ')' : '',
+        onEdit: () => this.startEdit(m.id, m.text),
+        images, docs, hasImages: images.length > 0, hasDocs: docs.length > 0,
+      };
+    });
+
+    // 파일 보관함: real File rows for the open channel (newest-first from API).
+    const fileColors = { PDF: '#E5484D', DOC: '#2563EB', DOCX: '#2563EB', XLS: '#15A66A', XLSX: '#15A66A', PPT: '#E08A00', PPTX: '#E08A00', PNG: '#7C5CFC', JPG: '#7C5CFC', JPEG: '#7C5CFC', GIF: '#7C5CFC', ZIP: '#5B636B', TXT: '#5B636B' };
+    const channelFiles = (s.filesByChannel[s.channelId] || []).map(f => {
+      const ext = (f.ext || (f.name && f.name.indexOf('.') >= 0 ? f.name.split('.').pop() : '') || 'FILE').toUpperCase();
+      return { id: f.id, name: f.name, size: this.fmtSize(f.sizeBytes), ext: ext.slice(0, 4), age: this.relTime(f.createdAt), color: fileColors[ext] || '#5B636B', onDownload: () => this.downloadFile(f.id, f.name) };
+    });
+
+    const cols = [
+      { id: 'backlog', title: '백로그', accent: '#A2AAB2', items: (s.rawIssues.backlog || []).map(it => this.mapIssue(it)) },
+      { id: 'doing', title: '진행 중', accent: '#2563EB', items: (s.rawIssues.doing || []).map(it => this.mapIssue(it)) },
+      { id: 'review', title: '리뷰', accent: '#7C5CFC', items: (s.rawIssues.review || []).map(it => this.mapIssue(it)) },
+      { id: 'done', title: '완료', accent: '#15A66A', items: (s.rawIssues.done || []).map(it => this.mapIssue(it)) },
+    ];
+    const columns = cols.map(col => ({
+      title: col.title, accent: col.accent, count: col.items.length,
+      items: col.items.map(it => ({ ...it, onClick: () => this.openIssue(it.id, it.key) })),
+    }));
+
+    const selRaw = this.allIssues().find(i => i.id === s.selectedKey || i.key === s.selectedKey);
+    const detail = s.selDetail;
+    const sel = selRaw ? (() => {
+      const m = this.mapIssue(selRaw);
+      const comments = (detail && detail.comments ? detail.comments : []).map(c => {
+        const u = this.userById(c.authorId) || {};
+        return { who: u.name || '알 수 없음', initial: u.initial || '?', color: u.color || '#A2AAB2', time: this.relTime(c.createdAt), text: c.body };
+      });
+      return { ...m, statusLabel: this.statusLabel(m.status), desc: (detail && detail.description) || m.description || '설명이 없습니다.', comments };
+    })() : null;
+
+    const allMapped = this.allIssues().map(it => this.mapIssue(it));
+    const myIssues = allMapped.filter(i => i.assigneeId && cu.id && i.assigneeId === cu.id && (i.status === 'doing' || i.status === 'review')).slice(0, 2)
+      .map(it => ({ ...it, onClick: () => this.setState({ view: 'dev' }, () => this.openIssue(it.id, it.key)) }));
+
+    const notices = (s.rawNotices || []).map(n => ({
+      id: n.id, title: n.title, team: n.team, pinned: !!n.pinned, time: this.relTime(n.createdAt),
+    }));
+    // No backend endpoint for the team activity feed — keep it as a small local feed.
+    const activity = [];
+    const notifColors = ['#2563EB', '#15A66A', '#E08A00', '#7C5CFC', '#E5484D', '#0EA5A8'];
+    const notifs = (s.rawNotifications || []).map((n, i) => {
+      const p = n.payload || {};
+      const author = p.authorName || '알 수 없음';
+      const channel = p.channelName || '채널';
+      const initial = author && author !== '알 수 없음' ? author[0] : '알';
+      return {
+        id: n.id,
+        read: !!n.read,
+        initial,
+        color: notifColors[(author.charCodeAt(0) || i) % notifColors.length],
+        text: author + '님이 ' + channel + '에 메시지를 보냈습니다',
+        preview: p.preview || '',
+        time: this.relTime(n.createdAt),
+        onClick: () => this.openNotificationTarget(n),
+      };
+    });
+    const hasUnread = (s.unread || 0) > 0;
+
+    const stEnum = { normal: '정상', late: '지각', working: '근무중', scheduled: '예정' };
+    const stColor = { '정상': '#15A66A', '지각': '#E08A00', '근무중': '#2563EB', '예정': '#A2AAB2' };
+    const stBg = { '정상': '#E6F6EF', '지각': '#FCF1DF', '근무중': '#EAF1FF', '예정': '#F1F3F6' };
+    const attendance = (s.rawAttendance || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date)).map(a => {
+      const dd = this.fmtDayDate(a.date);
+      const status = stEnum[a.status] || a.status;
+      return {
+        day: dd.day, date: dd.date,
+        in: a.checkInAt ? this.fmtTime(a.checkInAt) : '—',
+        out: a.checkOutAt ? this.fmtTime(a.checkOutAt) : '—',
+        status,
+        cardStyle: 'border:1px solid ' + (status === '근무중' ? '#C9D6F2' : '#EFF1F4') + ';border-radius:12px;padding:13px 14px;background:' + (status === '근무중' ? '#FBFCFF' : '#FBFCFD') + ';',
+        statusColor: stColor[status], statusBg: stBg[status],
+      };
+    });
+
+    const worklogs = (s.rawWorklogs || []).map(w => ({
+      date: this.fmtDayDate(w.date).full, tag: w.tag, text: w.body,
+      tagColor: w.tag === '개발' ? '#2563EB' : '#15A66A',
+      tagBg: w.tag === '개발' ? '#EAF1FF' : '#E6F6EF',
+    }));
+
+    const mobileIssues = [...(s.rawIssues.doing || []), ...(s.rawIssues.review || []), ...(s.rawIssues.backlog || [])].map(it => { const m = this.mapIssue(it); return { ...m, statusLabel: this.statusLabel(m.status) }; });
+
+    const roleOrder = ['admin', 'lead', 'member', 'guest'];
+    const roleName = { admin: '관리자', lead: '팀장', member: '팀원', guest: '게스트' };
+    const roleColor = { admin: '#E5484D', lead: '#2563EB', member: '#15A66A', guest: '#8A929B' };
+    const roleDesc = { admin: '전체 채널 보기·쓰기 및 권한 관리', lead: '전사 공지 작성, 모든 팀 채널 참여', member: '소속·공개 채널 참여', guest: '현장 지원 등 협력 채널만' };
+    // Count members per role from the loaded users list.
+    const roleCount = { admin: 0, lead: 0, member: 0, guest: 0 };
+    Object.keys(s.usersById).forEach(id => { const r = s.usersById[id].role; if (roleCount[r] != null) roleCount[r]++; });
+    const roleDefs = roleOrder.map(r => ({ id: r, name: roleName[r], color: roleColor[r], count: roleCount[r], desc: roleDesc[r] }));
+    // Permission matrix is admin-only data (rawPerms). Only channels (not DMs) are shown.
+    const permRows = (s.rawPerms || []).filter(p => p.kind === 'channel').map(p => {
+      const ch = (s.rawChannels || []).find(c => c.id === p.channelId) || {};
+      return {
+        name: p.name, initial: ch.initial || (p.name ? p.name[0] : '#'), color: ch.color || '#5B636B',
+        cells: roleOrder.map(r => {
+          const cell = (p.roles || []).find(x => x.role === r) || {};
+          const v = !!cell.canView; const se = !!cell.canSend;
+          return {
+            onView: () => this.togglePerm(p.channelId, r, 'view'),
+            onSend: () => this.togglePerm(p.channelId, r, 'send'),
+            viewStyle: 'width:30px;height:26px;border-radius:7px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:' + (v ? '#fff' : '#B6BDC5') + ';background:' + (v ? '#2563EB' : '#EEF1F4') + ';',
+            sendStyle: 'width:30px;height:26px;border-radius:7px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:' + (se ? '#fff' : '#B6BDC5') + ';background:' + (se ? '#15A66A' : '#EEF1F4') + ';',
+          };
+        }),
+      };
+    });
+
+    // GitLab repos are empty (no token) → graceful "미연동" state.
+    const repoList = this.repoMeta();
+    const hasRepos = repoList.length > 0;
+    const currentRepo = repoList.find(r => r.id === s.aiRepo) || repoList[0] || { id: '_', name: 'GitLab 미연동', path: '저장소 없음', branch: '—', kind: 'app' };
+    const aiRepos = repoList.map(r => ({
+      ...r, active: r.id === s.aiRepo, onClick: () => this.setState({ aiRepo: r.id }),
+      style: 'text-align:left;width:100%;border:1px solid ' + (r.id === s.aiRepo ? '#C9D6F2' : '#EFF1F4') + ';background:' + (r.id === s.aiRepo ? '#F4F8FF' : '#fff') + ';border-radius:11px;padding:11px 12px;cursor:pointer;',
+      chipStyle: 'flex:none;border:1px solid ' + (r.id === s.aiRepo ? '#2563EB' : '#DDE1E6') + ';background:' + (r.id === s.aiRepo ? '#2563EB' : '#fff') + ';color:' + (r.id === s.aiRepo ? '#fff' : '#5B636B') + ';font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;',
+    }));
+    const storedAi = s.aiMsgs[s.aiRepo || '_'] || [];
+    const aiGreeting = { type: 'ai', summary: hasRepos
+      ? '안녕하세요, ' + currentRepo.name + ' 저장소에 연결된 코드 분석 AI예요. 로그 분석이나 기능 동작 위치를 물어보세요 — 개발팀에 문의하기 전 1차 확인을 도와드릴게요.'
+      : 'GitLab 미연동 · AI 분석 준비 중입니다. 연동 토큰이 설정되면 저장소가 여기에 표시되고, 로그·코드 분석을 사용할 수 있어요.', findings: [], logs: [], verdict: null };
+    const aiMessages = [aiGreeting, ...storedAi].map(m => {
+      if (m.type === 'user') return { isUser: true, isAI: false, text: m.text, hasLogs: false, hasFindings: false, hasVerdict: false, findings: [] };
+      const tone = m.verdict ? m.verdict.tone : '';
+      const vc = tone === 'ok' ? { c: '#157A52', bg: '#E6F6EF', bd: '#C7EAD7' } : tone === 'warn' ? { c: '#9A6400', bg: '#FCF1DF', bd: '#F2DEB0' } : { c: '#5B636B', bg: '#EEF1F4', bd: '#E3E7EC' };
+      return {
+        isUser: false, isAI: true, summary: m.summary,
+        hasLogs: !!(m.logs && m.logs.length), logsText: (m.logs || []).join('\n'),
+        hasFindings: !!(m.findings && m.findings.length),
+        findings: (m.findings || []).map(f => ({ file: f.file, note: f.note, line: f.line, hasLine: !!f.line })),
+        hasVerdict: !!m.verdict, verdictLabel: m.verdict ? m.verdict.label : '', verdictText: m.verdict ? m.verdict.text : '',
+        verdictStyle: 'margin-top:12px;border:1px solid ' + vc.bd + ';background:' + vc.bg + ';border-radius:11px;padding:11px 13px;',
+        verdictBadgeStyle: 'font-size:11.5px;font-weight:700;color:#fff;background:' + vc.c + ';padding:2px 9px;border-radius:6px;',
+        showActions: tone === 'warn',
+        onEscalate: () => this.aiEscalate(s.aiRepo, m.query || m.summary),
+      };
+    });
+    const aiChipTexts = currentRepo.kind === 'fw'
+      ? ['최근 경고·에러 로그 분석', '배출 동작은 어디서 처리되나요?', 'BLE 페어링 실패 원인']
+      : ['최근 에러 로그 분석', '결제·환불 실패 원인 찾기', '예약 기능은 어디서 처리되나요?'];
+    const aiChipsList = aiChipTexts.map(t => ({ text: t, onClick: () => this.aiSend(t) }));
+
+    const pageTitle = { home: '홈', chat: currentChannel.name, dev: '개발 · 이슈', worklog: '업무일지 · 근태', perms: '권한 관리', ai: '코드 분석 AI' }[s.view];
+    // member count is not available — show channel name as subtitle for chat instead of "N명"
+    const pageSub = { home: '오늘 할 일과 공지를 한눈에', chat: '채널 대화', dev: '레드마인 통합 보드', worklog: '근태 기록과 일일 업무 보고', perms: '역할별 채널 접근 권한 설정', ai: 'GitLab 연동 · 로그 및 기능 분석' }[s.view];
+
+    const cuRole = (cu.role) || 'guest';
+
+    return {
+      isDesktop: s.platform === 'desktop',
+      isMobile: s.platform === 'mobile',
+      showDesktop: () => this.setState({ platform: 'desktop' }),
+      showMobile: () => this.setState({ platform: 'mobile' }),
+
+      navStyle: { home: this.navStyleFor('home'), chat: this.navStyleFor('chat'), dev: this.navStyleFor('dev'), worklog: this.navStyleFor('worklog'), perms: this.navStyleFor('perms'), ai: this.navStyleFor('ai') },
+      goHome: () => this.setState({ view: 'home', showNotif: false }),
+      goPerms: () => this.setState({ view: 'perms', showNotif: false }),
+      goChat: () => { const cid = s.channelId; this.setState({ view: 'chat', showNotif: false }, () => { if (cid && !this.state.msgs[cid]) this.loadMessages(cid); if (cid) this.loadChannelFiles(cid); }); },
+      goDev: () => this.setState({ view: 'dev', showNotif: false }),
+      goWork: () => this.setState({ view: 'worklog', showNotif: false }),
+
+      pageTitle, pageSub,
+      isHome: s.view === 'home', isChat: s.view === 'chat', isDev: s.view === 'dev', isWork: s.view === 'worklog',
+
+      channels, dms, currentChannel, messages, channelFiles,
+      draft: s.draft,
+      onDraft: (e) => this.setState({ draft: e.target.value }),
+      onDraftKey: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); } },
+      sendMessage: () => this.sendMessage(),
+      sendBtnStyle: 'border:none;cursor:pointer;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:' + ((s.draft || '').trim() ? '#2563EB' : '#E3E7EC') + ';color:#fff;',
+      scrollRef: (el) => { this._scrollEl = el; },
+
+      greeting, todayDate: (() => { const d = new Date(); const wd = ['일','월','화','수','목','금','토'][d.getDay()]; return d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + wd + '요일'; })(),
+      checkedIn: s.checkedIn,
+      checkInLabel: s.checkedIn ? '근무 중' : '출근 전',
+      checkColor: s.checkedIn ? '#15A66A' : '#2563EB',
+      workedText: s.checkedIn ? s.checkInTime + ' 출근' : '아직 출근 전이에요',
+      checkBtnLabel: s.checkedIn ? '퇴근하기' : '출근하기',
+      checkBtnStyle: 'border:none;cursor:pointer;font-size:14px;font-weight:700;padding:11px 20px;border-radius:11px;color:#fff;background:' + (s.checkedIn ? '#E5484D' : '#2563EB') + ';',
+      onCheckIn: () => this.doCheck(),
+
+      tasks, tasksLeft,
+      taskDoneText: doneCount + ' / ' + s.tasks.length + ' 완료',
+      myIssues, notices, activity, notifs, hasUnread,
+      showNotif: s.showNotif, toggleNotif: () => this.setState({ showNotif: !s.showNotif }),
+
+      // file upload (Feature 3)
+      uploading: s.uploading, uploadError: s.uploadError || '',
+      onPickFile: () => this.triggerFilePick(),
+      fileInputRef: (el) => { this._fileInput = el; },
+      onFilePicked: (e) => this.onFilePicked(e),
+      onPasteFile: (e) => this.onPasteComposer(e),
+
+      columns,
+      isIssueOpen: !!sel, sel, closeIssue: () => this.setState({ selectedKey: null }),
+      changeIssueStatus: (st) => this.changeIssueStatus(st),
+      commentDraft: s.commentDraft || '', commentSubmitting: !!s.commentSubmitting,
+      onCommentChange: (e) => this.setState({ commentDraft: e.target.value }),
+      onCommentKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.submitComment(); } },
+      submitComment: () => this.submitComment(),
+
+      // issue create form (Feature 2)
+      showIssueForm: s.showIssueForm,
+      openIssueForm: () => this.openIssueForm(),
+      closeIssueForm: () => this.closeIssueForm(),
+      issueForm: s.issueForm,
+      creatingIssue: s.creatingIssue,
+      issueFormError: s.issueFormError || '',
+      setIssueField: (k, v) => this.setIssueField(k, v),
+      submitIssueForm: () => this.submitIssueForm(),
+      assignableUsers: Object.keys(s.usersById).map(id => s.usersById[id]).filter(u => u && u.name),
+
+      attendance, worklogs,
+      logDraft: s.logDraft, onLogDraft: (e) => this.setState({ logDraft: e.target.value }), saveLog: () => this.saveLog(),
+
+      mIsHome: s.mobileView === 'home', mIsChat: s.mobileView === 'chat', mIsIssues: s.mobileView === 'issues', mIsWork: s.mobileView === 'work',
+      mTab: { home: this.mTabStyleFor('home'), chat: this.mTabStyleFor('chat'), issues: this.mTabStyleFor('issues'), work: this.mTabStyleFor('work'), ai: this.mTabStyleFor('ai') },
+      mIsAi: s.mobileView === 'ai',
+      mTabAi: () => this.setState({ mobileView: 'ai' }),
+      canAI: cuRole !== 'guest',
+      isAi: s.view === 'ai',
+      goAi: () => this.setState({ view: 'ai', showNotif: false }),
+      aiRepos, currentRepo, aiMessages, aiThinking: s.aiThinking,
+      showChips: storedAi.length === 0 && hasRepos,
+      aiChipsList,
+      aiDraft: s.aiDraft,
+      onAiDraft: (e) => this.setState({ aiDraft: e.target.value }),
+      onAiKey: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.aiSend(); } },
+      aiSend: () => this.aiSend(),
+      aiSendStyle: 'border:none;cursor:pointer;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:' + ((s.aiDraft || '').trim() ? '#2563EB' : '#E3E7EC') + ';color:#fff;',
+      aiScrollRef: (el) => { this._aiScrollEl = el; },
+      mTabHome: () => this.setState({ mobileView: 'home' }),
+      mTabChat: () => { const cid = s.channelId; this.setState({ mobileView: 'chat' }, () => { if (cid && !this.state.msgs[cid]) this.loadMessages(cid); if (cid) this.loadChannelFiles(cid); }); },
+      mTabIssues: () => this.setState({ mobileView: 'issues' }),
+      mTabWork: () => this.setState({ mobileView: 'work' }),
+      mobileIssues,
+      // ---- real logged-in user (replaces the role preview switcher) ----
+      currentUser: cu,
+      currentUserName: cu.name || '',
+      currentUserTeam: cu.team || '',
+      currentUserTitle: cu.title || '',
+      currentUserInitial: cu.initial || (cu.name ? cu.name[0] : '?'),
+      currentUserColor: cu.color || '#15181B',
+      currentRole: cuRole,
+      currentRoleName: roleName[cuRole] || cuRole,
+      isAdmin: cuRole === 'admin',
+      currentRoleColor: roleColor[cuRole] || '#8A929B',
+      onLogout: () => this.logout(),
+      showRoleMenu: s.showRoleMenu,
+      toggleRoleMenu: () => this.setState({ showRoleMenu: !s.showRoleMenu }),
+      roleOptions: [],
+      roleDefs, permRows,
+      isPerms: s.view === 'perms',
+      isDM: (() => { const c = (s.rawChannels || []).find(ch => ch.id === s.channelId); return !!(c && c.kind === 'dm'); })(),
+      canSendCurrent: this.canSend(s.channelId),
+      readOnlyCurrent: !this.canSend(s.channelId),
+      editDraft: s.editDraft,
+      onEditChange: (e) => this.setState({ editDraft: e.target.value }),
+      onEditKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.saveEdit(); } if (e.key === 'Escape') this.cancelEdit(); },
+      saveEdit: () => this.saveEdit(),
+      cancelEdit: () => this.cancelEdit(),
+      hasRepos,
+    };
+  }
+
+  render() {
+    const {
+      isDesktop, isMobile, showDesktop, showMobile,
+      navStyle, goHome, goPerms, goChat, goDev, goWork,
+      pageTitle, pageSub, isHome, isChat, isDev, isWork,
+      channels, dms, currentChannel, messages, channelFiles,
+      draft, onDraft, onDraftKey, sendMessage, sendBtnStyle, scrollRef,
+      greeting, todayDate, checkInLabel, checkColor, workedText, checkBtnLabel, checkBtnStyle, onCheckIn,
+      tasks, tasksLeft, taskDoneText, myIssues, notices, activity, notifs, hasUnread,
+      showNotif, toggleNotif,
+      uploading, uploadError, onPickFile, fileInputRef, onFilePicked, onPasteFile,
+      changeIssueStatus, commentDraft, commentSubmitting, onCommentChange, onCommentKey, submitComment,
+      showIssueForm, openIssueForm, closeIssueForm, issueForm, creatingIssue, issueFormError, setIssueField, submitIssueForm, assignableUsers,
+      columns, isIssueOpen, sel, closeIssue,
+      attendance, worklogs, logDraft, onLogDraft, saveLog,
+      mIsHome, mIsChat, mIsIssues, mIsWork, mTab,
+      canAI, isAi, goAi, aiRepos, currentRepo, aiMessages, aiThinking, showChips, aiChipsList,
+      aiDraft, onAiDraft, onAiKey, aiSend, aiSendStyle, aiScrollRef,
+      mTabHome, mTabChat, mTabIssues, mTabWork, mobileIssues,
+      currentRoleName, isAdmin, currentRoleColor, showRoleMenu, toggleRoleMenu, roleOptions, roleDefs, permRows, isPerms,
+      canSendCurrent, readOnlyCurrent,
+      editDraft, onEditChange, onEditKey, saveEdit, cancelEdit,
+      currentUserName, currentUserTeam, currentUserTitle, currentUserInitial, currentUserColor, onLogout, hasRepos,
+    } = this.renderVals();
+
+    // ===================== LOGIN GATE =====================
+    if (!this.state.authed) {
+      if (this.state.booting) {
+        return (
+          <div style={css(`height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; background: #F4F6F8;`)}>
+            <div style={css(`color: #8A929B; font-size: 14px;`)}>불러오는 중…</div>
+          </div>
+        );
+      }
+      return (
+        <div style={css(`height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; background: #F4F6F8; color: #15181B;`)}>
+          <form onSubmit={(e) => this.doLogin(e)} style={css(`width: 380px; max-width: 92vw; background: #fff; border: 1px solid #E8EAEE; border-radius: 18px; box-shadow: 0 18px 50px rgba(20,30,50,0.10); padding: 34px 32px;`)}>
+            <div style={css(`display: flex; align-items: center; gap: 11px; margin-bottom: 22px;`)}>
+              <div style={css(`width: 38px; height: 38px; border-radius: 11px; background: #2563EB; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 19px; letter-spacing: -0.5px;`)}>O</div>
+              <div style={css(`font-size: 19px; font-weight: 700; letter-spacing: -0.4px;`)}>ONE <span style={css(`color: #8A929B; font-weight: 600;`)}>워크스페이스</span></div>
+            </div>
+            <div style={css(`font-size: 14px; font-weight: 700; margin-bottom: 4px;`)}>로그인</div>
+            <div style={css(`font-size: 12.5px; color: #8A929B; margin-bottom: 20px;`)}>사내 메신저 통합 솔루션에 접속합니다.</div>
+
+            <label style={css(`display: block; font-size: 12px; font-weight: 600; color: #5B636B; margin-bottom: 6px;`)}>이메일</label>
+            <input type="email" value={this.state.loginEmail} onChange={(e) => this.setState({ loginEmail: e.target.value })} placeholder="name@onework.local" autoFocus className="ffocus" style={css(`width: 100%; border: 1px solid #DDE1E6; border-radius: 10px; padding: 11px 13px; font-size: 14px; outline: none; margin-bottom: 14px;`)} />
+
+            <label style={css(`display: block; font-size: 12px; font-weight: 600; color: #5B636B; margin-bottom: 6px;`)}>비밀번호</label>
+            <input type="password" value={this.state.loginPassword} onChange={(e) => this.setState({ loginPassword: e.target.value })} placeholder="비밀번호" className="ffocus" style={css(`width: 100%; border: 1px solid #DDE1E6; border-radius: 10px; padding: 11px 13px; font-size: 14px; outline: none; margin-bottom: 14px;`)} />
+
+            {this.state.loginError && (
+              <div style={css(`font-size: 12.5px; color: #E5484D; background: #FCEBEC; border: 1px solid #F6D2D6; border-radius: 9px; padding: 9px 12px; margin-bottom: 14px; line-height: 1.4;`)}>{this.state.loginError}</div>
+            )}
+
+            <button type="submit" disabled={this.state.loggingIn} className="hb95" style={css(`width: 100%; border: none; cursor: pointer; font-size: 14px; font-weight: 700; padding: 12px 0; border-radius: 11px; color: #fff; background: #2563EB; opacity: ` + (this.state.loggingIn ? '0.7' : '1') + `;`)}>{this.state.loggingIn ? '로그인 중…' : '로그인'}</button>
+
+            <div style={css(`margin-top: 16px; font-size: 11.5px; color: #A2AAB2; text-align: center; line-height: 1.5;`)}>데모 계정 <span style={css(`color: #5B636B; font-weight: 600;`)}>dohyun.kim@onework.local</span> / <span style={css(`color: #5B636B; font-weight: 600;`)}>onework123!</span></div>
+          </form>
+        </div>
+      );
+    }
+
+    return (
+      <div style={css(`height: 100vh; width: 100vw; overflow: hidden; background: #F4F6F8; color: #15181B;`)}>
+
+        {/* ============ DESKTOP ============ */}
+        {isDesktop && (
+        <div style={css(`display: flex; height: 100vh; width: 100vw;`)}>
+
+          {/* Sidebar */}
+          <aside style={css(`width: 256px; flex: none; background: #FFFFFF; border-right: 1px solid #E8EAEE; display: flex; flex-direction: column; height: 100vh;`)}>
+            <div style={css(`padding: 18px 18px 14px; display: flex; align-items: center; gap: 10px;`)}>
+              <div style={css(`width: 30px; height: 30px; border-radius: 9px; background: #2563EB; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 15px; letter-spacing: -0.5px;`)}>O</div>
+              <div style={css(`font-size: 16px; font-weight: 700; letter-spacing: -0.4px;`)}>ONE <span style={css(`color: #8A929B; font-weight: 600;`)}>워크스페이스</span></div>
+            </div>
+
+            <div style={css(`padding: 4px 12px 10px; display: flex; flex-direction: column; gap: 2px;`)}>
+              <button onClick={goHome} className="hb97" style={css(navStyle.home)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                <span style={css(`flex: 1;`)}>홈</span>
+              </button>
+              <button onClick={goChat} className="hb97" style={css(navStyle.chat)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span style={css(`flex: 1;`)}>채팅</span>
+                <span style={css(`background: #E5484D; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;`)}>3</span>
+              </button>
+              <button onClick={goDev} className="hb97" style={css(navStyle.dev)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7"/><path d="M12 7v4"/><path d="M16 7v9"/></svg>
+                <span style={css(`flex: 1;`)}>개발 · 이슈</span>
+                <span style={css(`background: #EEF1F4; color: #5B636B; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;`)}>2</span>
+              </button>
+              {canAI && (
+              <button onClick={goAi} className="hb97" style={css(navStyle.ai)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.94 14.34 12 20l2.06-5.66L20 12l-5.94-2.34L12 4l-2.06 5.66L4 12z"/><path d="M19 3v4"/><path d="M21 5h-4"/></svg>
+                <span style={css(`flex: 1;`)}>AI 코드 분석</span>
+                <span style={css(`font-size: 10px; font-weight: 700; color: #2563EB; background: #EAF1FF; padding: 1px 7px; border-radius: 999px;`)}>GitLab</span>
+              </button>
+              )}
+              <button onClick={goWork} className="hb97" style={css(navStyle.worklog)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>
+                <span style={css(`flex: 1;`)}>업무일지 · 근태</span>
+              </button>
+              {isAdmin && (
+              <button onClick={goPerms} className="hb97" style={css(navStyle.perms)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+                <span style={css(`flex: 1;`)}>권한 관리</span>
+              </button>
+              )}
+            </div>
+
+            <div style={css(`padding: 8px 22px 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; color: #A2AAB2;`)}>팀 채널</div>
+            <div style={css(`flex: 1; overflow-y: auto; padding: 0 12px 12px; display: flex; flex-direction: column; gap: 1px;`)}>
+              {channels.map((ch) => (
+                <button key={ch.id} onClick={ch.onClick} className="hbg-f4" style={css(ch.style)}>
+                  <span style={css(`width: 22px; height: 22px; border-radius: 6px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; background: ${ch.color};`)}>{ch.initial}</span>
+                  <span style={css(`flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`)}>{ch.name}</span>
+                  {ch.unread ? (
+                    <span style={css(`background: #E5484D; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;`)}>{ch.unread}</span>
+                  ) : null}
+                </button>
+              ))}
+
+              <div style={css(`padding: 14px 10px 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; color: #A2AAB2;`)}>다이렉트 메시지</div>
+              {dms.map((d) => (
+                <button key={d.id} onClick={d.onClick} className="hbg-f4" style={css(d.style)}>
+                  <span style={css(`position: relative; width: 22px; height: 22px; flex: none;`)}>
+                    <span style={css(`width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; background: ${d.color};`)}>{d.initial}</span>
+                    <span style={css(`position: absolute; right: -1px; bottom: -1px; width: 8px; height: 8px; border-radius: 50%; background: #15A66A; border: 2px solid #fff;`)}></span>
+                  </span>
+                  <span style={css(`flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`)}>{d.name}</span>
+                </button>
+              ))}
+            </div>
+
+            <div style={css(`border-top: 1px solid #EFF1F4; padding: 12px 16px; display: flex; align-items: center; gap: 10px;`)}>
+              <span style={css(`width: 32px; height: 32px; border-radius: 50%; background: ${currentUserColor}; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;`)}>{currentUserInitial}</span>
+              <div style={css(`flex: 1; min-width: 0;`)}>
+                <div style={css(`font-size: 13px; font-weight: 600; line-height: 1.2;`)}>{currentUserName}</div>
+                <div style={css(`font-size: 11.5px; color: #8A929B;`)}>{currentUserTeam}{currentUserTitle ? ' · ' + currentUserTitle : ''}</div>
+              </div>
+              <span style={css(`width: 9px; height: 9px; border-radius: 50%; background: #15A66A;`)}></span>
+            </div>
+          </aside>
+
+          {/* Main */}
+          <main style={css(`flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh;`)}>
+            {/* Topbar */}
+            <header style={css(`height: 60px; flex: none; background: #FFFFFF; border-bottom: 1px solid #E8EAEE; display: flex; align-items: center; padding: 0 22px; gap: 16px;`)}>
+              <div style={css(`min-width: 0;`)}>
+                <div style={css(`font-size: 16px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.1;`)}>{pageTitle}</div>
+                <div style={css(`font-size: 12px; color: #8A929B; margin-top: 1px;`)}>{pageSub}</div>
+              </div>
+              <div style={css(`flex: 1;`)}></div>
+              <div style={css(`display: flex; align-items: center; gap: 8px; background: #F4F6F8; border-radius: 9px; padding: 7px 12px; width: 240px; color: #8A929B;`)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input placeholder="메시지, 이슈, 파일 검색" style={css(`border: none; background: transparent; outline: none; font-size: 13px; color: #15181B; width: 100%;`)} />
+              </div>
+              <div style={css(`display: flex; align-items: center; gap: 9px; position: relative;`)}>
+                <span style={css(`display: flex; align-items: center; gap: 7px; border: 1px solid #E8EAEE; border-radius: 9px; padding: 6px 11px; font-size: 12.5px; font-weight: 600; color: #15181B; background: #fff;`)}>
+                  <span style={css(`width: 22px; height: 22px; border-radius: 50%; background: ${currentUserColor}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;`)}>{currentUserInitial}</span>
+                  {currentUserName}
+                  <span style={css(`width: 7px; height: 7px; border-radius: 50%; background: ${currentRoleColor};`)}></span>
+                  <span style={css(`font-size: 11.5px; color: #8A929B; font-weight: 600;`)}>{currentRoleName}</span>
+                </span>
+                <button onClick={onLogout} className="hbg-f7" style={css(`display: flex; align-items: center; gap: 6px; border: 1px solid #E8EAEE; border-radius: 9px; padding: 7px 11px; font-size: 12.5px; font-weight: 600; color: #5B636B; background: #fff; cursor: pointer;`)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+                  로그아웃
+                </button>
+              </div>
+              <div style={css(`display: flex; background: #F4F6F8; border-radius: 9px; padding: 3px;`)}>
+                <button onClick={showDesktop} style={css(`border: none; cursor: pointer; font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 7px; background: #FFFFFF; color: #15181B; box-shadow: 0 1px 2px rgba(0,0,0,0.06);`)}>데스크톱</button>
+                <button onClick={showMobile} style={css(`border: none; cursor: pointer; font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 7px; background: transparent; color: #8A929B;`)}>모바일</button>
+              </div>
+              <div style={css(`position: relative;`)}>
+                <button onClick={toggleNotif} className="hbg-f4" style={css(`border: 1px solid #E8EAEE; background: #fff; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #5B636B; position: relative;`)}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                  {hasUnread && (
+                    <span style={css(`position: absolute; top: 7px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: #E5484D; border: 1.5px solid #fff;`)}></span>
+                  )}
+                </button>
+                {showNotif && (
+                  <div style={css(`position: absolute; top: 46px; right: 0; width: 340px; background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; box-shadow: 0 14px 40px rgba(20,30,50,0.14); z-index: 40; overflow: hidden; animation: fadeUp .16s ease;`)}>
+                    <div style={css(`padding: 13px 16px; border-bottom: 1px solid #EFF1F4; font-size: 13px; font-weight: 700;`)}>알림</div>
+                    <div style={css(`max-height: 380px; overflow-y: auto;`)}>
+                      {notifs.length === 0 && (
+                        <div style={css(`padding: 32px 16px; text-align: center; font-size: 12.5px; color: #A2AAB2;`)}>새 알림이 없습니다</div>
+                      )}
+                      {notifs.map((nf, i) => (
+                        <button key={nf.id || i} onClick={nf.onClick} className="hbg-f7" style={css(`width: 100%; text-align: left; border: none; cursor: pointer; padding: 11px 16px; display: flex; gap: 11px; border-bottom: 1px solid #F4F6F8; background: ${nf.read ? '#fff' : '#F7FAFF'};`)}>
+                          <span style={css(`width: 30px; height: 30px; flex: none; border-radius: 50%; background: ${nf.color}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;`)}>{nf.initial}</span>
+                          <div style={css(`min-width: 0; flex: 1;`)}>
+                            <div style={css(`font-size: 12.5px; line-height: 1.4; color: #2B3138;`)}>{nf.text}</div>
+                            {nf.preview ? (<div style={css(`font-size: 11.5px; color: #8A929B; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`)}>{nf.preview}</div>) : null}
+                            <div style={css(`font-size: 11px; color: #A2AAB2; margin-top: 2px;`)}>{nf.time}</div>
+                          </div>
+                          {!nf.read && (<span style={css(`width: 7px; height: 7px; flex: none; border-radius: 50%; background: #2563EB; margin-top: 5px;`)}></span>)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </header>
+
+            {/* Content */}
+            <section style={css(`flex: 1; min-height: 0; overflow: hidden; position: relative;`)}>
+
+              {/* HOME */}
+              {isHome && (
+              <div style={css(`height: 100%; overflow-y: auto; padding: 26px 30px 40px;`)}>
+                <div style={css(`max-width: 1180px; margin: 0 auto;`)}>
+                  {/* greeting + checkin */}
+                  <div style={css(`display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 22px;`)}>
+                    <div style={css(`flex: 1; min-width: 260px;`)}>
+                      <div style={css(`font-size: 13px; color: #8A929B; font-weight: 500;`)}>{todayDate}</div>
+                      <div style={css(`font-size: 25px; font-weight: 700; letter-spacing: -0.6px; margin-top: 3px;`)}>{greeting}, {currentUserName}님</div>
+                    </div>
+                    <div style={css(`background: #FFFFFF; border: 1px solid #E8EAEE; border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; gap: 18px; min-width: 300px;`)}>
+                      <div>
+                        <div style={css(`font-size: 12px; color: #8A929B; font-weight: 500;`)}>{workedText}</div>
+                        <div style={css(`font-size: 19px; font-weight: 700; letter-spacing: -0.3px; margin-top: 2px; color: ${checkColor};`)}>{checkInLabel}</div>
+                      </div>
+                      <button onClick={onCheckIn} className="hb95" style={css(checkBtnStyle)}>{checkBtnLabel}</button>
+                    </div>
+                  </div>
+
+                  {/* stats */}
+                  <div style={css(`display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px;`)}>
+                    <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 16px 18px;`)}>
+                      <div style={css(`font-size: 12.5px; color: #8A929B;`)}>안 읽은 메시지</div>
+                      <div style={css(`font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-top: 4px;`)}>3</div>
+                    </div>
+                    <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 16px 18px;`)}>
+                      <div style={css(`font-size: 12.5px; color: #8A929B;`)}>남은 할 일</div>
+                      <div style={css(`font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-top: 4px;`)}>{tasksLeft}</div>
+                    </div>
+                    <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 16px 18px;`)}>
+                      <div style={css(`font-size: 12.5px; color: #8A929B;`)}>진행 중 이슈</div>
+                      <div style={css(`font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-top: 4px;`)}>2</div>
+                    </div>
+                    <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 16px 18px;`)}>
+                      <div style={css(`font-size: 12.5px; color: #8A929B;`)}>이번 주 근무</div>
+                      <div style={css(`font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-top: 4px;`)}>32.5<span style={css(`font-size: 15px; color: #A2AAB2; font-weight: 600;`)}>h</span></div>
+                    </div>
+                  </div>
+
+                  <div style={css(`display: grid; grid-template-columns: 1.25fr 1fr; gap: 18px; align-items: start;`)}>
+                    {/* left col */}
+                    <div style={css(`display: flex; flex-direction: column; gap: 18px;`)}>
+                      <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 18px 20px;`)}>
+                        <div style={css(`display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;`)}>
+                          <div style={css(`font-size: 14.5px; font-weight: 700;`)}>오늘 할 일</div>
+                          <div style={css(`font-size: 12px; color: #8A929B;`)}>{taskDoneText}</div>
+                        </div>
+                        <div style={css(`display: flex; flex-direction: column; gap: 2px;`)}>
+                          {tasks.map((t) => (
+                            <button key={t.id} onClick={t.onToggle} className="hbg-f7" style={css(`display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: transparent; border: none; cursor: pointer; padding: 9px 8px; border-radius: 9px;`)}>
+                              <span style={css(t.boxStyle)}>
+                                {t.done && (
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                )}
+                              </span>
+                              <span style={css(t.textStyle)}>{t.text}</span>
+                              <span style={css(`font-size: 11px; font-weight: 600; color: ${t.tagColor}; background: ${t.tagBg}; padding: 2px 8px; border-radius: 6px;`)}>{t.tag}</span>
+                              <span style={css(`font-size: 12px; color: #A2AAB2; width: 42px; text-align: right;`)}>{t.time}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 18px 20px;`)}>
+                        <div style={css(`display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;`)}>
+                          <div style={css(`font-size: 14.5px; font-weight: 700;`)}>나에게 할당된 이슈</div>
+                          <button onClick={goDev} style={css(`border: none; background: transparent; color: #2563EB; font-size: 12.5px; font-weight: 600; cursor: pointer;`)}>보드 열기 →</button>
+                        </div>
+                        <div style={css(`display: flex; flex-direction: column; gap: 8px;`)}>
+                          {myIssues.map((iss) => (
+                            <button key={iss.key} onClick={iss.onClick} className="hbd-d4" style={css(`display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: #F7F9FB; border: 1px solid #EFF1F4; cursor: pointer; padding: 12px 14px; border-radius: 11px;`)}>
+                              <span style={css(`width: 7px; height: 7px; border-radius: 50%; flex: none; background: ${iss.prColor};`)}></span>
+                              <span style={css(`font-size: 12px; font-weight: 700; color: #8A929B; font-variant-numeric: tabular-nums;`)}>{iss.key}</span>
+                              <span style={css(`flex: 1; font-size: 13.5px; font-weight: 500;`)}>{iss.title}</span>
+                              <span style={css(`font-size: 11px; font-weight: 600; color: ${iss.labelColor}; border: 1px solid; border-color: ${iss.labelColor}; padding: 1px 8px; border-radius: 6px; opacity: 0.9;`)}>{iss.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* right col */}
+                    <div style={css(`display: flex; flex-direction: column; gap: 18px;`)}>
+                      <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 18px 20px;`)}>
+                        <div style={css(`display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;`)}>
+                          <div style={css(`font-size: 14.5px; font-weight: 700;`)}>공지사항</div>
+                          <span style={css(`font-size: 11px; color: #8A929B;`)}>아지트 통합</span>
+                        </div>
+                        <div style={css(`display: flex; flex-direction: column;`)}>
+                          {notices.map((n) => (
+                            <div key={n.id} style={css(`display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #F4F6F8;`)}>
+                              {n.pinned && (
+                                <span style={css(`color: #2563EB; flex: none; margin-top: 1px;`)}><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 4v6l-2 4h10l-2-4V4z" opacity="0.25"/><path d="M12 14v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 4h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 4v6l-2 4h10l-2-4V4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+                              )}
+                              <div style={css(`min-width: 0;`)}>
+                                <div style={css(`font-size: 13px; font-weight: 500; line-height: 1.4; color: #2B3138;`)}>{n.title}</div>
+                                <div style={css(`font-size: 11.5px; color: #A2AAB2; margin-top: 3px;`)}>{n.team} · {n.time}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 18px 20px;`)}>
+                        <div style={css(`font-size: 14.5px; font-weight: 700; margin-bottom: 12px;`)}>팀 활동</div>
+                        <div style={css(`display: flex; flex-direction: column; gap: 14px;`)}>
+                          {activity.map((a, i) => (
+                            <div key={i} style={css(`display: flex; gap: 11px;`)}>
+                              <span style={css(`width: 28px; height: 28px; flex: none; border-radius: 50%; background: ${a.color}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700;`)}>{a.initial}</span>
+                              <div style={css(`font-size: 12.5px; line-height: 1.45; color: #4B535B;`)}><span style={css(`font-weight: 700; color: #15181B;`)}>{a.who}</span>님이 {a.action} <span style={css(`color: #A2AAB2;`)}>· {a.time}</span></div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* CHAT */}
+              {isChat && (
+              <div style={css(`height: 100%; display: flex;`)}>
+                <div style={css(`flex: 1; min-width: 0; display: flex; flex-direction: column; background: #fff;`)}>
+                  <div style={css(`flex: none; padding: 13px 24px; border-bottom: 1px solid #EFF1F4; display: flex; align-items: center; gap: 11px;`)}>
+                    <span style={css(`width: 28px; height: 28px; border-radius: 8px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; background: ${currentChannel.color};`)}>{currentChannel.initial}</span>
+                    <div style={css(`flex: 1;`)}>
+                      <div style={css(`font-size: 14.5px; font-weight: 700;`)}>{currentChannel.name}</div>
+                      <div style={css(`font-size: 11.5px; color: #8A929B;`)}>{currentChannel.members ? currentChannel.members + '명' : '채널 대화'}</div>
+                    </div>
+                    {readOnlyCurrent && (
+                      <span style={css(`display: flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; color: #8A929B; background: #F1F3F6; border: 1px solid #E3E7EC; padding: 4px 10px; border-radius: 8px;`)}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>읽기 전용</span>
+                    )}
+                  </div>
+                  <div ref={scrollRef} style={css(`flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px;`)}>
+                    <div style={css(`display: flex; flex-direction: column; gap: 16px; max-width: 760px;`)}>
+                      {messages.map((m) => (
+                        <div key={m.id} style={css(`display: flex; gap: 11px;`)}>
+                          <span style={css(`width: 36px; height: 36px; flex: none; border-radius: 10px; background: ${m.color}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;`)}>{m.initial}</span>
+                          <div style={css(`min-width: 0; flex: 1;`)}>
+                            <div style={css(`display: flex; align-items: baseline; gap: 8px;`)}>
+                              <span style={css(`font-size: 13.5px; font-weight: 700;`)}>{m.author}</span>
+                              <span style={css(`font-size: 11.5px; color: #A2AAB2;`)}>{m.time}</span>
+                              {m.canEdit && (
+                                <button onClick={m.onEdit} className="hc-blue" style={css(`border: none; background: transparent; cursor: pointer; font-size: 11.5px; color: #B6BDC5; padding: 0;`)}>수정</button>
+                              )}
+                            </div>
+                            {m.isEditing && (
+                              <div style={css(`margin-top: 5px; display: flex; flex-direction: column; gap: 7px; max-width: 520px;`)}>
+                                <input value={editDraft} onChange={onEditChange} onKeyDown={onEditKey} style={css(`border: 1px solid #2563EB; border-radius: 9px; padding: 8px 11px; font-size: 14px; outline: none;`)} />
+                                <div style={css(`display: flex; align-items: center; gap: 8px;`)}>
+                                  <button onClick={saveEdit} style={css(`border: none; background: #2563EB; color: #fff; font-size: 12px; font-weight: 600; padding: 6px 13px; border-radius: 8px; cursor: pointer;`)}>저장</button>
+                                  <button onClick={cancelEdit} style={css(`border: 1px solid #DDE1E6; background: #fff; color: #5B636B; font-size: 12px; font-weight: 600; padding: 6px 13px; border-radius: 8px; cursor: pointer;`)}>취소</button>
+                                  <span style={css(`font-size: 11px; color: #A2AAB2;`)}>Enter 저장 · Esc 취소</span>
+                                </div>
+                              </div>
+                            )}
+                            {m.showText && (
+                              <Fragment>
+                                <div style={css(`font-size: 14px; line-height: 1.55; color: #2B3138; margin-top: 3px;`)}>{m.text}<span style={css(`font-size: 11.5px; color: #A2AAB2; margin-left: 6px;`)}>{m.editedSuffix}</span></div>
+                                {m.editedFlag && (
+                                  <div style={css(`margin-top: 5px; font-size: 12.5px; color: #9098A0; background: #F4F6F8; border-radius: 8px; padding: 7px 11px; border-left: 2px solid #D4D9DF; line-height: 1.5;`)}><span style={css(`font-weight: 700; color: #8A929B;`)}>수정 전</span> · {m.prevText}</div>
+                                )}
+                              </Fragment>
+                            )}
+                            {m.hasImages && m.images.map((im, ii) => (
+                              <div key={'img' + ii} style={css(`margin-top: 8px;`)}>
+                                {im.url ? (
+                                  <img src={im.url} alt={im.name} onClick={im.onDownload} title="클릭하여 다운로드"
+                                    style={css(`max-width: 320px; max-height: 280px; border-radius: 12px; border: 1px solid #E8EAEE; cursor: pointer; display: block;`)} />
+                                ) : (
+                                  <div style={css(`width: 240px; height: 150px; border-radius: 12px; border: 1px solid #E8EAEE; background: #F4F6F8; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #A2AAB2;`)}>이미지 불러오는 중…</div>
+                                )}
+                              </div>
+                            ))}
+                            {m.hasDocs && m.docs.map((d, di) => (
+                              <button key={'doc' + di} onClick={d.onDownload} title="다운로드" className="hbd-d4"
+                                style={css(`margin-top: 8px; width: 100%; max-width: 320px; display: flex; align-items: center; gap: 12px; border: 1px solid #E8EAEE; border-radius: 11px; padding: 11px 13px; background: #FBFCFD; cursor: pointer; text-align: left;`)}>
+                                <span style={css(`width: 38px; height: 38px; flex: none; border-radius: 9px; background: #EEF3FF; color: #2563EB; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800;`)}>{d.ext || 'FILE'}</span>
+                                <div style={css(`flex: 1; min-width: 0;`)}>
+                                  <div style={css(`font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`)}>{d.name}</div>
+                                  <div style={css(`font-size: 11.5px; color: #15A66A; font-weight: 700;`)}>영구 보관</div>
+                                </div>
+                                <span style={css(`color: #8A929B; flex: none;`)}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={css(`flex: none; padding: 14px 24px 18px;`)}>
+                    {canSendCurrent && (
+                    <Fragment>
+                    <input type="file" ref={fileInputRef} onChange={onFilePicked} style={css(`display: none;`)} />
+                    {uploadError && (
+                      <div style={css(`font-size: 12px; color: #E5484D; background: #FCEBEC; border: 1px solid #F6D2D6; border-radius: 9px; padding: 8px 12px; margin-bottom: 8px;`)}>{uploadError}</div>
+                    )}
+                    <div className="fwithin" style={css(`border: 1px solid #DDE1E6; border-radius: 13px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; background: #fff;`)}>
+                      <button onClick={onPickFile} disabled={uploading} className="hc-blue" title="파일 첨부" style={css(`border: none; background: transparent; cursor: ${uploading ? 'default' : 'pointer'}; color: ${uploading ? '#C2C8D0' : '#8A929B'}; display: flex;`)}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+                      <input value={draft} onChange={onDraft} onKeyDown={onDraftKey} onPaste={onPasteFile} placeholder={uploading ? '파일 업로드 중…' : `${currentChannel.name}에 메시지 보내기 (이미지 Ctrl+V)`} style={css(`flex: 1; border: none; outline: none; font-size: 14px; background: transparent;`)} />
+                      <button onClick={sendMessage} style={css(sendBtnStyle)}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+                    </div>
+                    </Fragment>
+                    )}
+                    {readOnlyCurrent && (
+                    <div style={css(`border: 1px solid #E8EAEE; border-radius: 13px; padding: 13px 16px; display: flex; align-items: center; gap: 11px; background: #F7F9FB; color: #8A929B;`)}>
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <span style={css(`font-size: 13px; line-height: 1.4;`)}>이 채널은 읽기 전용입니다. <b style={css(`color: #5B636B;`)}>{currentRoleName}</b> 권한으로는 메시지를 보낼 수 없어요.</span>
+                    </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* files panel */}
+                <aside style={css(`width: 300px; flex: none; border-left: 1px solid #E8EAEE; background: #FBFCFD; display: flex; flex-direction: column;`)}>
+                  <div style={css(`padding: 16px 18px 12px;`)}>
+                    <div style={css(`font-size: 13.5px; font-weight: 700;`)}>파일 보관함</div>
+                    <div style={css(`margin-top: 8px; background: #E6F6EF; border: 1px solid #C7EAD7; border-radius: 10px; padding: 9px 11px; display: flex; gap: 8px;`)}>
+                      <span style={css(`color: #15A66A; flex: none; margin-top: 1px;`)}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                      <div style={css(`font-size: 11.5px; line-height: 1.45; color: #157A52;`)}>이 채널의 파일은 <b>만료 없이 영구 보관</b>됩니다. 몇 달 전 파일도 그대로 다운로드돼요.</div>
+                    </div>
+                  </div>
+                  <div style={css(`flex: 1; overflow-y: auto; padding: 0 14px 16px; display: flex; flex-direction: column; gap: 7px;`)}>
+                    {channelFiles.length === 0 && (
+                      <div style={css(`padding: 28px 12px; text-align: center; font-size: 12px; color: #A2AAB2; line-height: 1.5;`)}>아직 업로드된 파일이 없습니다.<br/>클립 버튼으로 파일을 첨부해 보세요.</div>
+                    )}
+                    {channelFiles.map((f, i) => (
+                      <button key={f.id || i} onClick={f.onDownload} title="다운로드" className="hbd-d4" style={css(`display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 10px; background: #fff; border: 1px solid #EFF1F4; cursor: pointer; width: 100%; text-align: left;`)}>
+                        <span style={css(`width: 34px; height: 34px; flex: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; background: ${f.color}; font-size: 10px; font-weight: 800;`)}>{f.ext}</span>
+                        <div style={css(`flex: 1; min-width: 0;`)}>
+                          <div style={css(`font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`)}>{f.name}</div>
+                          <div style={css(`font-size: 11px; color: #A2AAB2;`)}>{f.size} · {f.age}</div>
+                        </div>
+                        <span style={css(`color: #8A929B; flex: none;`)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></span>
+                      </button>
+                    ))}
+                  </div>
+                </aside>
+              </div>
+              )}
+
+              {/* DEV / ISSUES */}
+              {isDev && (
+              <div style={css(`height: 100%; overflow: hidden; display: flex; flex-direction: column;`)}>
+                <div style={css(`flex: none; padding: 16px 26px 12px; display: flex; align-items: center; gap: 10px;`)}>
+                  <div style={css(`display: flex; gap: 4px; background: #EEF1F4; padding: 3px; border-radius: 9px;`)}>
+                    <span style={css(`font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 7px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.06);`)}>보드</span>
+                    <span style={css(`font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 7px; color: #8A929B;`)}>목록</span>
+                    <span style={css(`font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 7px; color: #8A929B;`)}>간트</span>
+                  </div>
+                  <div style={css(`flex: 1;`)}></div>
+                  <button onClick={openIssueForm} className="hb95" style={css(`border: 1px solid #2563EB; background: #2563EB; color: #fff; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 9px; cursor: pointer; display: flex; align-items: center; gap: 6px;`)}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>새 이슈</button>
+                </div>
+                <div style={css(`flex: 1; min-height: 0; overflow-x: auto; padding: 4px 26px 24px;`)}>
+                  <div style={css(`display: flex; gap: 16px; height: 100%; min-width: max-content;`)}>
+                    {columns.map((col) => (
+                      <div key={col.title} style={css(`width: 290px; flex: none; display: flex; flex-direction: column; min-height: 0;`)}>
+                        <div style={css(`display: flex; align-items: center; gap: 8px; padding: 6px 4px 10px;`)}>
+                          <span style={css(`width: 9px; height: 9px; border-radius: 3px; background: ${col.accent};`)}></span>
+                          <span style={css(`font-size: 13px; font-weight: 700;`)}>{col.title}</span>
+                          <span style={css(`font-size: 12px; color: #A2AAB2; font-weight: 600;`)}>{col.count}</span>
+                        </div>
+                        <div style={css(`flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px;`)}>
+                          {col.items.map((card) => (
+                            <button key={card.key} onClick={card.onClick} className="hcard" style={css(`text-align: left; width: 100%; background: #fff; border: 1px solid #E8EAEE; border-radius: 12px; padding: 13px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 9px;`)}>
+                              <div style={css(`display: flex; align-items: center; gap: 7px;`)}>
+                                <span style={css(`font-size: 11px; font-weight: 600; color: ${card.labelColor}; background: ${card.labelBg}; padding: 2px 8px; border-radius: 6px;`)}>{card.label}</span>
+                                <span style={css(`width: 6px; height: 6px; border-radius: 50%; background: ${card.prColor};`)}></span>
+                                <span style={css(`font-size: 11px; color: #A2AAB2;`)}>{card.priority}</span>
+                              </div>
+                              <div style={css(`font-size: 13.5px; font-weight: 600; line-height: 1.4;`)}>{card.title}</div>
+                              <div style={css(`display: flex; align-items: center; gap: 7px;`)}>
+                                <span style={css(`font-size: 11px; font-weight: 700; color: #8A929B; font-variant-numeric: tabular-nums;`)}>{card.key}</span>
+                                <div style={css(`flex: 1;`)}></div>
+                                <span style={css(`width: 22px; height: 22px; border-radius: 50%; background: ${card.color}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 700;`)}>{card.initial}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* new issue create modal */}
+                {showIssueForm && (
+                <Fragment>
+                <div onClick={closeIssueForm} style={css(`position: absolute; inset: 0; background: rgba(20,28,40,0.28); z-index: 32;`)}></div>
+                <div style={css(`position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 440px; max-width: 92%; background: #fff; border: 1px solid #E8EAEE; border-radius: 16px; box-shadow: 0 18px 50px rgba(20,30,50,0.18); z-index: 33; animation: fadeUp .16s ease; overflow: hidden;`)}>
+                  <div style={css(`padding: 18px 22px; border-bottom: 1px solid #EFF1F4; display: flex; align-items: center;`)}>
+                    <div style={css(`font-size: 15px; font-weight: 700;`)}>새 이슈 만들기</div>
+                    <div style={css(`flex: 1;`)}></div>
+                    <button onClick={closeIssueForm} className="hc-dark" style={css(`border: none; background: transparent; cursor: pointer; color: #8A929B; display: flex;`)}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+                  </div>
+                  <div style={css(`padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;`)}>
+                    {issueFormError && (
+                      <div style={css(`font-size: 12.5px; color: #E5484D; background: #FCEBEC; border: 1px solid #F6D2D6; border-radius: 9px; padding: 9px 12px;`)}>{issueFormError}</div>
+                    )}
+                    <div>
+                      <label style={css(`display: block; font-size: 12px; font-weight: 600; color: #5B636B; margin-bottom: 6px;`)}>제목 <span style={css(`color: #E5484D;`)}>*</span></label>
+                      <input value={issueForm.title} onChange={(e) => setIssueField('title', e.target.value)} placeholder="이슈 제목을 입력하세요" autoFocus className="ffocus" style={css(`width: 100%; border: 1px solid #DDE1E6; border-radius: 10px; padding: 10px 12px; font-size: 14px; outline: none;`)} />
+                    </div>
+                    <div style={css(`display: grid; grid-template-columns: 1fr 1fr; gap: 12px;`)}>
+                      <div>
+                        <label style={css(`display: block; font-size: 12px; font-weight: 600; color: #5B636B; margin-bottom: 6px;`)}>라벨</label>
+                        <select value={issueForm.label} onChange={(e) => setIssueField('label', e.target.value)} className="ffocus" style={css(`width: 100%; border: 1px solid #DDE1E6; border-radius: 10px; padding: 10px 12px; font-size: 14px; outline: none; background: #fff;`)}>
+                          <option value="기능">기능</option>
+                          <option value="버그">버그</option>
+                          <option value="디자인">디자인</option>
+                          <option value="개선">개선</option>
+                          <option value="운영">운영</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={css(`display: block; font-size: 12px; font-weight: 600; color: #5B636B; margin-bottom: 6px;`)}>우선순위</label>
+                        <select value={issueForm.priority} onChange={(e) => setIssueField('priority', e.target.value)} className="ffocus" style={css(`width: 100%; border: 1px solid #DDE1E6; border-radius: 10px; padding: 10px 12px; font-size: 14px; outline: none; background: #fff;`)}>
+                          <option value="low">낮음</option>
+                          <option value="mid">중간</option>
+                          <option value="high">높음</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={css(`display: block; font-size: 12px; font-weight: 600; color: #5B636B; margin-bottom: 6px;`)}>담당자</label>
+                      <select value={issueForm.assigneeId} onChange={(e) => setIssueField('assigneeId', e.target.value)} className="ffocus" style={css(`width: 100%; border: 1px solid #DDE1E6; border-radius: 10px; padding: 10px 12px; font-size: 14px; outline: none; background: #fff;`)}>
+                        <option value="">미지정</option>
+                        {assignableUsers.map((u) => (<option key={u.id} value={u.id}>{u.name}{u.team ? ' · ' + u.team : ''}</option>))}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={css(`padding: 14px 22px; border-top: 1px solid #EFF1F4; display: flex; justify-content: flex-end; gap: 9px;`)}>
+                    <button onClick={closeIssueForm} style={css(`border: 1px solid #DDE1E6; background: #fff; color: #5B636B; font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 9px; cursor: pointer;`)}>취소</button>
+                    <button onClick={submitIssueForm} disabled={creatingIssue || !(issueForm.title || '').trim()} className="hb95" style={css(`border: none; background: #2563EB; color: #fff; font-size: 13px; font-weight: 600; padding: 9px 18px; border-radius: 9px; cursor: pointer; opacity: ${(creatingIssue || !(issueForm.title || '').trim()) ? '0.6' : '1'};`)}>{creatingIssue ? '생성 중…' : '이슈 생성'}</button>
+                  </div>
+                </div>
+                </Fragment>
+                )}
+
+                {/* issue drawer */}
+                {isIssueOpen && (
+                <Fragment>
+                <div onClick={closeIssue} style={css(`position: absolute; inset: 0; background: rgba(20,28,40,0.28); z-index: 30;`)}></div>
+                <div style={css(`position: absolute; top: 0; right: 0; bottom: 0; width: 440px; background: #fff; box-shadow: -10px 0 40px rgba(20,30,50,0.16); z-index: 31; display: flex; flex-direction: column; animation: drawerIn .2s ease;`)}>
+                  <div style={css(`padding: 18px 24px; border-bottom: 1px solid #EFF1F4; display: flex; align-items: center; gap: 10px;`)}>
+                    <span style={css(`font-size: 12.5px; font-weight: 700; color: #8A929B;`)}>{sel.key}</span>
+                    <span style={css(`font-size: 11px; font-weight: 600; color: ${sel.labelColor}; background: ${sel.labelBg}; padding: 2px 8px; border-radius: 6px;`)}>{sel.label}</span>
+                    <div style={css(`flex: 1;`)}></div>
+                    <button onClick={closeIssue} className="hc-dark" style={css(`border: none; background: transparent; cursor: pointer; color: #8A929B; display: flex;`)}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+                  </div>
+                  <div style={css(`flex: 1; overflow-y: auto; padding: 22px 24px;`)}>
+                    <div style={css(`font-size: 19px; font-weight: 700; letter-spacing: -0.4px; line-height: 1.35;`)}>{sel.title}</div>
+                    <div style={css(`display: grid; grid-template-columns: auto 1fr; gap: 12px 18px; margin: 20px 0; font-size: 13px;`)}>
+                      <span style={css(`color: #8A929B;`)}>담당자</span>
+                      <span style={css(`display: flex; align-items: center; gap: 8px;`)}><span style={css(`width: 22px; height: 22px; border-radius: 50%; background: ${sel.color}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 700;`)}>{sel.initial}</span><b>{sel.assignee}</b></span>
+                      <span style={css(`color: #8A929B; padding-top: 5px;`)}>상태</span>
+                      <span style={css(`display: flex; flex-wrap: wrap; gap: 6px;`)}>
+                        {[{ s: 'backlog', l: '백로그' }, { s: 'doing', l: '진행 중' }, { s: 'review', l: '리뷰' }, { s: 'done', l: '완료' }].map((st) => {
+                          const active = sel.status === st.s;
+                          return (
+                            <button key={st.s} onClick={() => changeIssueStatus(st.s)} className="hchip" style={css(`border: 1px solid ${active ? '#2563EB' : '#DDE1E6'}; background: ${active ? '#EAF1FF' : '#fff'}; color: ${active ? '#2563EB' : '#5B636B'}; font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 8px; cursor: pointer;`)}>{st.l}</button>
+                          );
+                        })}
+                      </span>
+                      <span style={css(`color: #8A929B;`)}>우선순위</span>
+                      <span style={css(`display: flex; align-items: center; gap: 7px;`)}><span style={css(`width: 7px; height: 7px; border-radius: 50%; background: ${sel.prColor};`)}></span><b>{sel.priority}</b></span>
+                    </div>
+                    <div style={css(`font-size: 12px; font-weight: 700; color: #8A929B; margin-bottom: 6px;`)}>설명</div>
+                    <div style={css(`font-size: 13.5px; line-height: 1.6; color: #2B3138; background: #F7F9FB; border: 1px solid #EFF1F4; border-radius: 11px; padding: 14px 16px;`)}>{sel.desc}</div>
+                    <div style={css(`font-size: 12px; font-weight: 700; color: #8A929B; margin: 20px 0 10px;`)}>활동</div>
+                    <div style={css(`display: flex; flex-direction: column; gap: 12px;`)}>
+                      {sel.comments.map((c, i) => (
+                        <div key={i} style={css(`display: flex; gap: 10px;`)}>
+                          <span style={css(`width: 26px; height: 26px; flex: none; border-radius: 50%; background: ${c.color}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;`)}>{c.initial}</span>
+                          <div><div style={css(`font-size: 12.5px;`)}><b>{c.who}</b> <span style={css(`color: #A2AAB2;`)}>· {c.time}</span></div><div style={css(`font-size: 13px; color: #4B535B; margin-top: 2px; line-height: 1.5;`)}>{c.text}</div></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={css(`flex: none; padding: 14px 24px; border-top: 1px solid #EFF1F4; display: flex; gap: 9px;`)}>
+                    <input value={commentDraft} onChange={onCommentChange} onKeyDown={onCommentKey} placeholder="댓글 남기기" style={css(`flex: 1; border: 1px solid #DDE1E6; border-radius: 9px; padding: 9px 12px; font-size: 13px; outline: none;`)} />
+                    <button onClick={submitComment} disabled={commentSubmitting} style={css(`border: none; background: #2563EB; color: #fff; font-size: 13px; font-weight: 600; padding: 0 16px; border-radius: 9px; cursor: ${commentSubmitting ? 'default' : 'pointer'}; opacity: ${commentSubmitting ? 0.6 : 1};`)}>등록</button>
+                  </div>
+                </div>
+                </Fragment>
+                )}
+              </div>
+              )}
+
+              {/* WORKLOG */}
+              {isWork && (
+              <div style={css(`height: 100%; overflow-y: auto; padding: 26px 30px 40px;`)}>
+                <div style={css(`max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px;`)}>
+                  <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 20px 22px;`)}>
+                    <div style={css(`display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;`)}>
+                      <div style={css(`font-size: 15px; font-weight: 700;`)}>이번 주 근태</div>
+                      <div style={css(`font-size: 12.5px; color: #8A929B;`)}>6/15 – 6/19</div>
+                    </div>
+                    <div style={css(`display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;`)}>
+                      {attendance.map((d) => (
+                        <div key={d.date} style={css(d.cardStyle)}>
+                          <div style={css(`font-size: 12px; color: #8A929B; font-weight: 600;`)}>{d.day} <span style={css(`color: #C2C8D0;`)}>{d.date}</span></div>
+                          <div style={css(`margin-top: 10px; font-size: 13px; display: flex; flex-direction: column; gap: 4px;`)}>
+                            <div style={css(`display: flex; justify-content: space-between;`)}><span style={css(`color: #A2AAB2;`)}>출근</span><b style={css(`font-variant-numeric: tabular-nums;`)}>{d.in}</b></div>
+                            <div style={css(`display: flex; justify-content: space-between;`)}><span style={css(`color: #A2AAB2;`)}>퇴근</span><b style={css(`font-variant-numeric: tabular-nums;`)}>{d.out}</b></div>
+                          </div>
+                          <div style={css(`margin-top: 10px; font-size: 11px; font-weight: 700; color: ${d.statusColor}; background: ${d.statusBg}; padding: 2px 0; border-radius: 6px; text-align: center;`)}>{d.status}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={css(`display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start;`)}>
+                    <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 20px 22px;`)}>
+                      <div style={css(`font-size: 15px; font-weight: 700; margin-bottom: 4px;`)}>오늘의 업무일지</div>
+                      <div style={css(`font-size: 12.5px; color: #8A929B; margin-bottom: 12px;`)}>{todayDate}</div>
+                      <textarea value={logDraft} onChange={onLogDraft} placeholder="오늘 진행한 업무, 이슈, 내일 계획을 기록하세요." className="ffocus" style={css(`width: 100%; height: 150px; border: 1px solid #DDE1E6; border-radius: 11px; padding: 13px 14px; font-size: 13.5px; line-height: 1.6; outline: none; resize: none;`)}></textarea>
+                      <div style={css(`display: flex; justify-content: flex-end; margin-top: 12px;`)}>
+                        <button onClick={saveLog} className="hb95" style={css(`border: none; background: #2563EB; color: #fff; font-size: 13px; font-weight: 600; padding: 9px 18px; border-radius: 9px; cursor: pointer;`)}>일지 저장</button>
+                      </div>
+                    </div>
+
+                    <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 20px 22px;`)}>
+                      <div style={css(`font-size: 15px; font-weight: 700; margin-bottom: 14px;`)}>지난 일지</div>
+                      <div style={css(`display: flex; flex-direction: column; gap: 14px;`)}>
+                        {worklogs.map((w, i) => (
+                          <div key={i} style={css(`border-left: 2px solid #E3E7EC; padding-left: 14px;`)}>
+                            <div style={css(`display: flex; align-items: center; gap: 8px; margin-bottom: 4px;`)}>
+                              <span style={css(`font-size: 13px; font-weight: 700;`)}>{w.date}</span>
+                              <span style={css(`font-size: 11px; font-weight: 600; color: ${w.tagColor}; background: ${w.tagBg}; padding: 1px 8px; border-radius: 6px;`)}>{w.tag}</span>
+                            </div>
+                            <div style={css(`font-size: 13px; line-height: 1.6; color: #4B535B;`)}>{w.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* AI CODE ANALYSIS */}
+              {isAi && (
+              <div style={css(`height: 100%; display: flex;`)}>
+                {/* repo rail */}
+                <aside style={css(`width: 248px; flex: none; border-right: 1px solid #E8EAEE; background: #FBFCFD; display: flex; flex-direction: column;`)}>
+                  <div style={css(`padding: 15px 16px 10px; display: flex; align-items: center; gap: 7px;`)}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B636B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 9.5 12 16l10-6.5z"/><path d="m2 14.5 10 6.5 10-6.5"/></svg>
+                    <span style={css(`font-size: 12px; font-weight: 700; color: #5B636B;`)}>GitLab 연동 저장소</span>
+                  </div>
+                  <div style={css(`flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px 14px; display: flex; flex-direction: column; gap: 8px;`)}>
+                    {!hasRepos && (
+                      <div style={css(`border: 1px dashed #DDE1E6; border-radius: 11px; padding: 16px 14px; background: #fff; text-align: center;`)}>
+                        <div style={css(`font-size: 12.5px; font-weight: 700; color: #5B636B;`)}>GitLab 미연동</div>
+                        <div style={css(`font-size: 11.5px; color: #A2AAB2; margin-top: 6px; line-height: 1.5;`)}>연동 토큰이 설정되면 저장소 목록이 여기에 표시됩니다.</div>
+                      </div>
+                    )}
+                    {aiRepos.map((r) => (
+                      <button key={r.id} onClick={r.onClick} className="hbd-c9" style={css(r.style)}>
+                        <div style={css(`display: flex; align-items: center; gap: 8px;`)}>
+                          <span style={css(`width: 8px; height: 8px; border-radius: 2px; flex: none; background: #2563EB;`)}></span>
+                          <span style={css(`font-size: 13px; font-weight: 700; color: #15181B;`)}>{r.name}</span>
+                        </div>
+                        <div style={css(`font-size: 11px; color: #8A929B; margin-top: 5px; font-family: 'SFMono-Regular', ui-monospace, monospace;`)}>{r.path}</div>
+                        <div style={css(`display: flex; align-items: center; gap: 6px; margin-top: 7px;`)}>
+                          <span style={css(`font-size: 10.5px; font-weight: 700; color: #2563EB; background: #EAF1FF; padding: 1px 7px; border-radius: 5px;`)}>{r.branch}</span>
+                          <span style={css(`font-size: 11px; color: #A2AAB2;`)}>· {r.sync} 동기화</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </aside>
+
+                {/* conversation */}
+                <div style={css(`flex: 1; min-width: 0; display: flex; flex-direction: column; background: #fff;`)}>
+                  <div style={css(`flex: none; padding: 11px 24px; border-bottom: 1px solid #EFF1F4; display: flex; align-items: center; gap: 11px;`)}>
+                    <span style={css(`width: 32px; height: 32px; flex: none; border-radius: 9px; background: #2563EB; color: #fff; display: flex; align-items: center; justify-content: center;`)}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.94 14.34 12 20l2.06-5.66L20 12l-5.94-2.34L12 4l-2.06 5.66L4 12z"/></svg></span>
+                    <div style={css(`flex: 1; min-width: 0;`)}>
+                      <div style={css(`font-size: 14.5px; font-weight: 700;`)}>{currentRepo.name} · 코드 분석 AI</div>
+                      <div style={css(`font-size: 11.5px; color: #8A929B; font-family: 'SFMono-Regular', ui-monospace, monospace;`)}>{currentRepo.path} @ {currentRepo.branch}</div>
+                    </div>
+                    <span style={css(`display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: #157A52; background: #E6F6EF; border: 1px solid #C7EAD7; padding: 4px 10px; border-radius: 8px;`)}><span style={css(`width: 7px; height: 7px; border-radius: 50%; background: #15A66A;`)}></span>연결됨</span>
+                  </div>
+
+                  <div ref={aiScrollRef} style={css(`flex: 1; min-height: 0; overflow-y: auto; padding: 22px 24px;`)}>
+                    <div style={css(`display: flex; flex-direction: column; gap: 18px; max-width: 720px; margin: 0 auto;`)}>
+                      {aiMessages.map((m, i) => (
+                        <Fragment key={i}>
+                          {m.isUser && (
+                            <div style={css(`align-self: flex-end; max-width: 80%; background: #2563EB; color: #fff; border-radius: 14px 14px 4px 14px; padding: 10px 15px; font-size: 14px; line-height: 1.5;`)}>{m.text}</div>
+                          )}
+                          {m.isAI && (
+                            <div style={css(`display: flex; gap: 12px;`)}>
+                              <span style={css(`width: 32px; height: 32px; flex: none; border-radius: 9px; background: #EEF3FF; color: #2563EB; display: flex; align-items: center; justify-content: center;`)}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.94 14.34 12 20l2.06-5.66L20 12l-5.94-2.34L12 4l-2.06 5.66L4 12z"/></svg></span>
+                              <div style={css(`flex: 1; min-width: 0;`)}>
+                                <div style={css(`font-size: 14px; line-height: 1.6; color: #2B3138;`)}>{m.summary}</div>
+
+                                {m.hasLogs && (
+                                  <pre style={css(`margin: 11px 0 0; background: #0F172A; color: #CBD5E1; border-radius: 11px; padding: 13px 15px; font-size: 12px; line-height: 1.65; overflow-x: auto; font-family: 'SFMono-Regular', ui-monospace, monospace; white-space: pre-wrap; word-break: break-word;`)}>{m.logsText}</pre>
+                                )}
+
+                                {m.hasFindings && (
+                                  <div style={css(`margin-top: 11px; display: flex; flex-direction: column; gap: 8px;`)}>
+                                    {m.findings.map((f, j) => (
+                                      <div key={j} style={css(`border: 1px solid #E8EAEE; border-radius: 11px; padding: 11px 13px; background: #FBFCFD;`)}>
+                                        <div style={css(`display: flex; align-items: center; gap: 8px; flex-wrap: wrap;`)}>
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A929B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
+                                          <span style={css(`font-family: 'SFMono-Regular', ui-monospace, monospace; font-size: 12.5px; font-weight: 600; color: #2563EB; word-break: break-all;`)}>{f.file}</span>
+                                          {f.hasLine && (
+                                            <span style={css(`font-size: 11px; font-weight: 700; color: #5B636B; background: #EEF1F4; padding: 1px 7px; border-radius: 5px; font-family: 'SFMono-Regular', ui-monospace, monospace;`)}>{f.line}</span>
+                                          )}
+                                        </div>
+                                        <div style={css(`font-size: 12.5px; color: #5B636B; margin-top: 6px; line-height: 1.5;`)}>{f.note}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {m.hasVerdict && (
+                                  <div style={css(m.verdictStyle)}>
+                                    <span style={css(m.verdictBadgeStyle)}>{m.verdictLabel}</span>
+                                    <div style={css(`font-size: 12.5px; line-height: 1.55; color: #3D454D; margin-top: 8px;`)}>{m.verdictText}</div>
+                                    {m.showActions && (
+                                      <button onClick={m.onEscalate} className="hb95" style={css(`margin-top: 11px; display: flex; align-items: center; gap: 7px; border: 1px solid #2563EB; background: #2563EB; color: #fff; font-size: 12.5px; font-weight: 600; padding: 7px 13px; border-radius: 9px; cursor: pointer;`)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>개발팀에 이슈로 전달</button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </Fragment>
+                      ))}
+
+                      {aiThinking && (
+                        <div style={css(`display: flex; gap: 12px; align-items: center;`)}>
+                          <span style={css(`width: 32px; height: 32px; flex: none; border-radius: 9px; background: #EEF3FF; color: #2563EB; display: flex; align-items: center; justify-content: center;`)}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.94 14.34 12 20l2.06-5.66L20 12l-5.94-2.34L12 4l-2.06 5.66L4 12z"/></svg></span>
+                          <span style={css(`font-size: 13.5px; color: #8A929B;`)}>로그와 코드를 분석하고 있어요…</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={css(`flex: none; padding: 12px 24px 18px;`)}>
+                    {showChips && (
+                      <div style={css(`display: flex; gap: 8px; margin-bottom: 11px; flex-wrap: wrap;`)}>
+                        {aiChipsList.map((ch, i) => (
+                          <button key={i} onClick={ch.onClick} className="hchip" style={css(`flex: none; border: 1px solid #DDE1E6; background: #fff; color: #3D454D; font-size: 12.5px; font-weight: 600; padding: 7px 13px; border-radius: 999px; cursor: pointer; white-space: nowrap;`)}>{ch.text}</button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="fwithin" style={css(`border: 1px solid #DDE1E6; border-radius: 13px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; background: #fff;`)}>
+                      <input value={aiDraft} onChange={onAiDraft} onKeyDown={onAiKey} placeholder={`${currentRepo.name} 코드·로그에 대해 물어보세요`} style={css(`flex: 1; border: none; outline: none; font-size: 14px; background: transparent;`)} />
+                      <button onClick={aiSend} style={css(aiSendStyle)}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+                    </div>
+                    <div style={css(`font-size: 11px; color: #A2AAB2; margin-top: 9px; text-align: center;`)}>AI 분석은 참고용이에요. 확실하지 않으면 개발팀에 문의하세요.</div>
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* PERMISSIONS */}
+              {isPerms && (
+              <div style={css(`height: 100%; overflow-y: auto; padding: 26px 30px 40px;`)}>
+                <div style={css(`max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px;`)}>
+                  <div style={css(`display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;`)}>
+                    {roleDefs.map((r) => (
+                      <div key={r.id} style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 13px; padding: 14px 16px;`)}>
+                        <div style={css(`display: flex; align-items: center; gap: 8px;`)}>
+                          <span style={css(`width: 10px; height: 10px; border-radius: 3px; background: ${r.color};`)}></span>
+                          <span style={css(`font-size: 13.5px; font-weight: 700;`)}>{r.name}</span>
+                          <span style={css(`font-size: 11px; color: #A2AAB2; font-weight: 600;`)}>{r.count}명</span>
+                        </div>
+                        <div style={css(`font-size: 11.5px; color: #8A929B; line-height: 1.45; margin-top: 6px;`)}>{r.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={css(`background: #fff; border: 1px solid #E8EAEE; border-radius: 14px; padding: 4px 10px 8px;`)}>
+                    <div style={css(`display: grid; grid-template-columns: 190px repeat(4, 1fr); align-items: center; padding: 14px 12px 12px;`)}>
+                      <span style={css(`font-size: 12px; font-weight: 700; color: #8A929B;`)}>채널</span>
+                      {roleDefs.map((r) => (
+                        <span key={r.id} style={css(`font-size: 12.5px; font-weight: 700; text-align: center;`)}>{r.name}</span>
+                      ))}
+                    </div>
+                    {permRows.map((row) => (
+                      <div key={row.name} style={css(`display: grid; grid-template-columns: 190px repeat(4, 1fr); align-items: center; padding: 9px 12px; border-top: 1px solid #F4F6F8;`)}>
+                        <div style={css(`display: flex; align-items: center; gap: 9px;`)}>
+                          <span style={css(`width: 22px; height: 22px; flex: none; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; background: ${row.color};`)}>{row.initial}</span>
+                          <span style={css(`font-size: 13px; font-weight: 600;`)}>{row.name}</span>
+                        </div>
+                        {row.cells.map((cell, j) => (
+                          <div key={j} style={css(`display: flex; align-items: center; justify-content: center; gap: 6px;`)}>
+                            <button onClick={cell.onView} className="hb95" style={css(cell.viewStyle)} title="보기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                            <button onClick={cell.onSend} className="hb95" style={css(cell.sendStyle)} title="쓰기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={css(`display: flex; gap: 18px; padding: 0 6px; font-size: 12px; color: #8A929B;`)}>
+                    <span style={css(`display: flex; align-items: center; gap: 6px;`)}><span style={css(`width: 24px; height: 20px; border-radius: 6px; background: #2563EB; display: inline-flex; align-items: center; justify-content: center; color: #fff;`)}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></span>채널 보기 권한</span>
+                    <span style={css(`display: flex; align-items: center; gap: 6px;`)}><span style={css(`width: 24px; height: 20px; border-radius: 6px; background: #15A66A; display: inline-flex; align-items: center; justify-content: center; color: #fff;`)}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>메시지 쓰기 권한</span>
+                    <span>· 칸을 눌러 켜고 끄세요</span>
+                  </div>
+                </div>
+              </div>
+              )}
+
+            </section>
+          </main>
+        </div>
+        )}
+
+        {/* ============ MOBILE ============ */}
+        {isMobile && (
+        <div style={css(`height: 100vh; width: 100vw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: #E9ECF0;`)}>
+          <div style={css(`display: flex; background: #fff; border-radius: 9px; padding: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);`)}>
+            <button onClick={showDesktop} style={css(`border: none; cursor: pointer; font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 7px; background: transparent; color: #8A929B;`)}>데스크톱</button>
+            <button onClick={showMobile} style={css(`border: none; cursor: pointer; font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 7px; background: #2563EB; color: #fff;`)}>모바일</button>
+          </div>
+
+          <div style={css(`width: 380px; height: 800px; max-height: 88vh; background: #000; border-radius: 46px; padding: 11px; box-shadow: 0 30px 70px rgba(20,30,50,0.3);`)}>
+            <div style={css(`width: 100%; height: 100%; background: #F4F6F8; border-radius: 36px; overflow: hidden; position: relative; display: flex; flex-direction: column;`)}>
+              {/* status bar */}
+              <div style={css(`height: 44px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; font-size: 13px; font-weight: 700;`)}>
+                <span>9:41</span>
+                <span style={css(`display: flex; gap: 5px; align-items: center;`)}><span style={css(`width: 16px; height: 9px; border: 1.5px solid #15181B; border-radius: 3px; display: inline-block;`)}></span></span>
+              </div>
+
+              <div style={css(`flex: 1; min-height: 0; overflow-y: auto;`)}>
+                {/* mobile home */}
+                {mIsHome && (
+                <div style={css(`padding: 6px 18px 24px;`)}>
+                  <div style={css(`font-size: 12px; color: #8A929B;`)}>{todayDate}</div>
+                  <div style={css(`font-size: 21px; font-weight: 700; letter-spacing: -0.5px; margin: 2px 0 16px;`)}>{greeting},<br/>{currentUserName}님</div>
+                  <div style={css(`background: ${checkColor}; border-radius: 16px; padding: 16px 18px; color: #fff; display: flex; align-items: center; justify-content: space-between;`)}>
+                    <div>
+                      <div style={css(`font-size: 12px; opacity: 0.85;`)}>{workedText}</div>
+                      <div style={css(`font-size: 18px; font-weight: 700; margin-top: 2px;`)}>{checkInLabel}</div>
+                    </div>
+                    <button onClick={onCheckIn} style={css(`border: none; background: rgba(255,255,255,0.22); color: #fff; font-size: 13px; font-weight: 700; padding: 9px 16px; border-radius: 10px; cursor: pointer;`)}>{checkBtnLabel}</button>
+                  </div>
+                  <div style={css(`font-size: 14px; font-weight: 700; margin: 18px 0 10px;`)}>오늘 할 일 {tasksLeft}건</div>
+                  <div style={css(`background: #fff; border-radius: 14px; padding: 6px 8px;`)}>
+                    {tasks.map((t) => (
+                      <button key={t.id} onClick={t.onToggle} style={css(`display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: transparent; border: none; cursor: pointer; padding: 11px 8px;`)}>
+                        <span style={css(t.boxStyle)}>{t.done && (<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>)}</span>
+                        <span style={css(`${t.textStyle} flex: 1; font-size: 14px;`)}>{t.text}</span>
+                        <span style={css(`font-size: 12px; color: #A2AAB2;`)}>{t.time}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={css(`font-size: 14px; font-weight: 700; margin: 18px 0 10px;`)}>공지사항</div>
+                  <div style={css(`background: #fff; border-radius: 14px; padding: 4px 16px;`)}>
+                    {notices.map((n) => (
+                      <div key={n.id} style={css(`padding: 12px 0; border-bottom: 1px solid #F4F6F8;`)}>
+                        <div style={css(`font-size: 13.5px; font-weight: 500; line-height: 1.4;`)}>{n.title}</div>
+                        <div style={css(`font-size: 11.5px; color: #A2AAB2; margin-top: 3px;`)}>{n.team} · {n.time}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                )}
+
+                {/* mobile chat */}
+                {mIsChat && (
+                <div style={css(`display: flex; flex-direction: column; height: 100%;`)}>
+                  <div style={css(`padding: 8px 18px 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #EFF1F4; background: #fff;`)}>
+                    <span style={css(`width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; background: ${currentChannel.color};`)}>{currentChannel.initial}</span>
+                    <div><div style={css(`font-size: 14.5px; font-weight: 700;`)}>{currentChannel.name}</div><div style={css(`font-size: 11px; color: #8A929B;`)}>{currentChannel.members ? currentChannel.members + '명' : '채널 대화'}</div></div>
+                  </div>
+                  <div style={css(`flex: 1; overflow-y: auto; padding: 16px 16px; background: #F4F6F8; display: flex; flex-direction: column; gap: 14px;`)}>
+                    {messages.map((m) => (
+                      <div key={m.id} style={css(`display: flex; gap: 9px;`)}>
+                        <span style={css(`width: 32px; height: 32px; flex: none; border-radius: 9px; background: ${m.color}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;`)}>{m.initial}</span>
+                        <div style={css(`min-width: 0; flex: 1;`)}>
+                          <div style={css(`font-size: 12.5px; font-weight: 700;`)}>{m.author} <span style={css(`font-size: 10.5px; color: #A2AAB2; font-weight: 400;`)}>{m.time}</span>
+                            {m.canEdit && (<button onClick={m.onEdit} className="hc-blue" style={css(`border: none; background: transparent; cursor: pointer; font-size: 10.5px; color: #B6BDC5; padding: 0; font-weight: 600;`)}>수정</button>)}
+                          </div>
+                          {m.isEditing && (
+                            <div style={css(`margin-top: 4px; display: flex; flex-direction: column; gap: 6px;`)}>
+                              <input value={editDraft} onChange={onEditChange} onKeyDown={onEditKey} style={css(`border: 1px solid #2563EB; border-radius: 9px; padding: 7px 10px; font-size: 13.5px; outline: none;`)} />
+                              <div style={css(`display: flex; gap: 6px;`)}><button onClick={saveEdit} style={css(`border: none; background: #2563EB; color: #fff; font-size: 11.5px; font-weight: 600; padding: 5px 12px; border-radius: 7px; cursor: pointer;`)}>저장</button><button onClick={cancelEdit} style={css(`border: 1px solid #DDE1E6; background: #fff; color: #5B636B; font-size: 11.5px; font-weight: 600; padding: 5px 12px; border-radius: 7px; cursor: pointer;`)}>취소</button></div>
+                            </div>
+                          )}
+                          {m.showText && (<Fragment><div style={css(`font-size: 13.5px; line-height: 1.5; color: #2B3138; background: #fff; border-radius: 11px; padding: 9px 12px; margin-top: 4px; display: inline-block;`)}>{m.text}<span style={css(`font-size: 10.5px; color: #A2AAB2; margin-left: 5px;`)}>{m.editedSuffix}</span></div>{m.editedFlag && (<div style={css(`margin-top: 4px; font-size: 11.5px; color: #9098A0; background: #EEF1F4; border-radius: 8px; padding: 6px 10px;`)}><b style={css(`color: #8A929B;`)}>수정 전</b> · {m.prevText}</div>)}</Fragment>)}
+                          {m.hasImages && m.images.map((im, ii) => (<div key={'mi' + ii} style={css(`margin-top: 5px;`)}>{im.url ? (<img src={im.url} alt={im.name} onClick={im.onDownload} title="받기" style={css(`max-width: 200px; max-height: 220px; border-radius: 11px; display: block; cursor: pointer;`)} />) : (<div style={css(`width: 160px; height: 100px; border-radius: 11px; background: #E6EAEF; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #9AA3AC;`)}>불러오는 중…</div>)}</div>))}
+                          {m.hasDocs && m.docs.map((d, di) => (<button key={'md' + di} onClick={d.onDownload} style={css(`margin-top: 5px; display: flex; align-items: center; gap: 9px; background: #fff; border: none; border-radius: 11px; padding: 9px 11px; cursor: pointer; text-align: left; width: 100%; max-width: 240px;`)}><span style={css(`width: 30px; height: 30px; border-radius: 8px; background: #EEF3FF; color: #2563EB; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800;`)}>{d.ext || 'FILE'}</span><div style={css(`flex: 1; min-width: 0;`)}><div style={css(`font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`)}>{d.name}</div><div style={css(`font-size: 10.5px; color: #15A66A; font-weight: 700;`)}>영구 보관 · 받기</div></div></button>))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {canSendCurrent && (
+                  <div style={css(`flex: none; padding: 10px 14px; background: #fff; border-top: 1px solid #EFF1F4; display: flex; gap: 8px; align-items: center;`)}>
+                    <input value={draft} onChange={onDraft} onKeyDown={onDraftKey} placeholder="메시지 입력" style={css(`flex: 1; border: 1px solid #DDE1E6; border-radius: 20px; padding: 10px 14px; font-size: 13.5px; outline: none;`)} />
+                    <button onClick={sendMessage} style={css(`border: none; background: #2563EB; color: #fff; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;`)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+                  </div>
+                  )}
+                  {readOnlyCurrent && (
+                  <div style={css(`flex: none; padding: 13px 16px; background: #fff; border-top: 1px solid #EFF1F4; display: flex; gap: 9px; align-items: center; color: #8A929B;`)}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span style={css(`font-size: 12.5px; line-height: 1.4;`)}>읽기 전용 채널입니다.</span>
+                  </div>
+                  )}
+                </div>
+                )}
+
+                {/* mobile issues */}
+                {mIsIssues && (
+                <div style={css(`padding: 6px 18px 24px;`)}>
+                  <div style={css(`font-size: 18px; font-weight: 700; margin: 6px 0 14px;`)}>내 이슈</div>
+                  <div style={css(`display: flex; flex-direction: column; gap: 10px;`)}>
+                    {mobileIssues.map((card) => (
+                      <div key={card.key} style={css(`background: #fff; border-radius: 13px; padding: 14px 15px;`)}>
+                        <div style={css(`display: flex; align-items: center; gap: 7px; margin-bottom: 8px;`)}>
+                          <span style={css(`font-size: 11px; font-weight: 600; color: ${card.labelColor}; background: ${card.labelBg}; padding: 2px 8px; border-radius: 6px;`)}>{card.label}</span>
+                          <span style={css(`width: 6px; height: 6px; border-radius: 50%; background: ${card.prColor};`)}></span>
+                          <span style={css(`font-size: 11px; color: #A2AAB2;`)}>{card.statusLabel}</span>
+                        </div>
+                        <div style={css(`font-size: 14px; font-weight: 600; line-height: 1.4;`)}>{card.title}</div>
+                        <div style={css(`font-size: 11.5px; font-weight: 700; color: #8A929B; margin-top: 8px;`)}>{card.key} · {card.assignee}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                )}
+
+                {/* mobile work */}
+                {mIsWork && (
+                <div style={css(`padding: 6px 18px 24px;`)}>
+                  <div style={css(`font-size: 18px; font-weight: 700; margin: 6px 0 14px;`)}>근태</div>
+                  <div style={css(`background: ${checkColor}; border-radius: 16px; padding: 18px; color: #fff; text-align: center; margin-bottom: 18px;`)}>
+                    <div style={css(`font-size: 12px; opacity: 0.85;`)}>{workedText}</div>
+                    <div style={css(`font-size: 22px; font-weight: 700; margin: 4px 0 14px;`)}>{checkInLabel}</div>
+                    <button onClick={onCheckIn} style={css(`border: none; background: rgba(255,255,255,0.22); color: #fff; font-size: 15px; font-weight: 700; padding: 12px 0; border-radius: 12px; cursor: pointer; width: 100%;`)}>{checkBtnLabel}</button>
+                  </div>
+                  <div style={css(`font-size: 14px; font-weight: 700; margin-bottom: 10px;`)}>이번 주</div>
+                  <div style={css(`background: #fff; border-radius: 14px; padding: 4px 16px;`)}>
+                    {attendance.map((d) => (
+                      <div key={d.date} style={css(`display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #F4F6F8;`)}>
+                        <span style={css(`font-size: 13px; font-weight: 700; width: 48px;`)}>{d.day} {d.date}</span>
+                        <span style={css(`flex: 1; font-size: 13px; color: #4B535B; font-variant-numeric: tabular-nums;`)}>{d.in} – {d.out}</span>
+                        <span style={css(`font-size: 11px; font-weight: 700; color: ${d.statusColor}; background: ${d.statusBg}; padding: 2px 9px; border-radius: 6px;`)}>{d.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                )}
+              </div>
+
+              {/* bottom tabs */}
+              <div style={css(`flex: none; height: 64px; background: #fff; border-top: 1px solid #EFF1F4; display: flex; padding-bottom: 6px;`)}>
+                <button onClick={mTabHome} style={css(mTab.home)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+                  <span style={css(`font-size: 10px; font-weight: 600;`)}>홈</span>
+                </button>
+                <button onClick={mTabChat} style={css(mTab.chat)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  <span style={css(`font-size: 10px; font-weight: 600;`)}>채팅</span>
+                </button>
+                <button onClick={mTabIssues} style={css(mTab.issues)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 7v7"/><path d="M12 7v4"/><path d="M16 7v9"/></svg>
+                  <span style={css(`font-size: 10px; font-weight: 600;`)}>이슈</span>
+                </button>
+                <button onClick={mTabWork} style={css(mTab.work)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>
+                  <span style={css(`font-size: 10px; font-weight: 600;`)}>근태</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        )}
+
+      </div>
+    );
+  }
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+<script>
+  // Register service worker for offline app-shell caching (no-op under file://).
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>
