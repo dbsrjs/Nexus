@@ -1,63 +1,97 @@
-# ONE 워크스페이스 — 사내 메신저 통합 솔루션
+# Nexus
 
-채팅 · 개발 이슈 보드 · 업무일지/근태 · AI 코드 분석 · 권한 관리를 하나로 통합한 사내 워크스페이스.
-**하나의 공유 웹 UI**를 **웹 · PC(Electron) · 모바일(Capacitor)** 세 플랫폼으로 패키징한다.
+**개발자를 위한 커뮤니케이션 허브.**
+Discord의 가벼움, Slack의 업무 구조, 그리고 개발 워크플로(이슈 · 저장소 · AI)를 한 화면에 합친다.
+
+개인용으로 시작해 서비스화를 목표로 하는 개인 프로젝트.
+
+## 무엇이 다른가
+
+일반 메신저는 개발 맥락을 모르고, 개발 도구는 대화를 담지 못한다. Nexus는 그 사이를 메운다.
+
+- 커밋 · PR/MR · 이슈 이벤트가 **채널 안으로 흘러 들어온다**
+- 대화 중에 **그 자리에서 이슈를 만든다** (원문 링크가 남는다)
+- AI가 **대화와 코드를 같은 맥락으로 읽는다**
 
 ## 아키텍처
 
 ```
-공유 웹 UI (www/)                ← 화면·로직은 여기 한 곳에서만 유지
-   ├─ 웹            : 정적 서버로 그대로 서빙
-   ├─ PC (desktop/) : Electron 으로 감싼 네이티브 창 + 트레이 + 알림
-   └─ 모바일(mobile/): Capacitor 로 감싼 설치형 Android/iOS 앱
+app/     Flutter — 단일 코드베이스로 모바일 · 데스크톱 · 웹
+   │
+   │  REST + Socket.IO
+   ▼
+server/  NestJS + Prisma
+   ├─ PostgreSQL   사용자 · 스페이스 · 채널 · 메시지 · 이슈
+   ├─ Redis        프레즌스 · Socket.IO 어댑터 · AI 작업 큐
+   └─ S3 호환      첨부 파일 (개발: MinIO / 운영: S3 · R2)
 ```
+
+멀티테넌트 구조다. **Space**(Discord의 서버 / Slack의 워크스페이스)가 모든 데이터의 루트이며, 채널 · 메시지 · 이슈 · 저장소는 전부 스페이스에 속한다.
 
 ## 폴더 구조
 
 | 폴더 | 설명 |
 |---|---|
-| `www/` | **공유 웹 앱**. 단일 `index.html`(React 18 + 인브라우저 Babel). `vendor/`에 React·Babel을 로컬 번들(오프라인 동작). `manifest.webmanifest` + `sw.js`로 PWA 설치/오프라인 지원 |
-| `desktop/` | Electron PC 앱 (`main.js`, `preload.js`). `../www`를 로드 |
-| `mobile/` | Capacitor 모바일 앱. `copy-web.js`가 `../www`를 `mobile/www`로 동기화 |
-| `design-source/` | 임포트한 원본 Claude Design 파일(`통합 워크스페이스.dc.html` + `support.js`) — 참고용 |
-| `docs/백엔드-설계.md` | 백엔드(NestJS) 설계서 — 다음 단계 |
+| `app/` | **Flutter 앱.** iOS · Android · Windows · macOS · Linux · Web을 한 코드베이스로 |
+| `server/` | **NestJS 백엔드.** REST API + Socket.IO 게이트웨이 |
+| `docs/` | 기획 · 설계 문서 |
 
-## 실행 / 빌드
+## 문서
 
-### 1) 웹 (가장 빠른 미리보기)
+| 문서 | 내용 |
+|---|---|
+| [제품 기획서](docs/제품-기획.md) | 방향 · 타겟 · 기능 범위 · 로드맵 |
+| [백엔드 설계](docs/백엔드-설계.md) | 멀티테넌시 · 데이터 모델 · API · 실시간 |
+| [앱 설계](docs/앱-설계.md) | Flutter 스택 · 화면 · 상태 관리 · 오프라인 전략 |
+| [전환 계획](docs/전환-계획.md) | 현재 코드에서 새 구조로 가는 작업 목록 |
+
+## 실행
+
+### 백엔드
+
 ```bash
-npm run web          # → http://localhost:5173 (python http.server)
-```
-또는 `www/index.html`을 정적 서버로 서빙(서비스워커 때문에 file:// 보다 http 권장).
-
-### 2) PC 앱 (Electron) — 이 Windows에서 바로 가능
-```bash
-cd desktop
-npm install          # 최초 1회 (Electron 바이너리 다운로드)
-npm start            # 앱 실행
-npm run dist         # NSIS 설치본(.exe) 빌드 → desktop/dist/
-```
-
-### 3) 모바일 앱 (Capacitor)
-```bash
-cd mobile
+cd server
+docker compose up -d          # postgres + redis + minio
+cp .env.example .env          # JWT_SECRET 등 필수 값 설정
 npm install
-npm run sync         # ../www 동기화 + cap sync
-npx cap add android  # Android 네이티브 프로젝트 생성(최초 1회)
-npm run android:open # Android Studio로 열기 → 빌드/실행
+npx prisma migrate dev
+npm run seed
+npm run start:dev             # http://localhost:3000/api
 ```
-- **Android**: APK 빌드에는 **Android Studio + JDK 17** 필요.
-- **iOS**: **macOS + Xcode + CocoaPods** 필수(Windows 빌드 불가). Mac에서 `npx cap add ios` 후 `npm run ios:open`.
 
-## UI 한 번 고치면 3곳 반영
+### 앱
 
-1. `www/`의 코드를 수정한다(예: `www/index.html`).
-2. **웹/PC**: Electron은 `../www`를 직접 로드하므로 재시작/새로고침이면 끝.
-3. **모바일**: `cd mobile && npm run sync` 로 `www`를 다시 복사한 뒤 앱을 다시 빌드.
+```bash
+cd app
+flutter pub get
+flutter run --dart-define=API_BASE=http://localhost:3000/api
+```
 
-## 현재 상태 / 다음 단계
+API 주소는 빌드 타임에 주입한다. Android 에뮬레이터에서 호스트를 가리키려면 `http://10.0.2.2:3000/api`를 쓴다.
 
-- ✅ 디자인 임포트 → 독립 React 웹앱 구현 (목업 데이터 기반, 동작 검증 완료)
-- ✅ PC(Electron) · 모바일(Capacitor) 패키징 스캐폴딩
-- ⬜ **백엔드(NestJS + 온프렘 + PostgreSQL/Redis/MinIO)** — `docs/백엔드-설계.md` 참조. 인증·채팅 실시간·파일 영구보관·이슈·근태·권한·GitLab 연동. (AI 분석·Redmine·SSO는 보류)
-- ⬜ `www`의 목업 데이터를 실제 백엔드 API로 교체
+플랫폼별 빌드:
+
+```bash
+flutter build apk    --dart-define=API_BASE=https://api.example.com
+flutter build web    --dart-define=API_BASE=https://api.example.com
+flutter build windows --dart-define=API_BASE=https://api.example.com
+```
+
+## 현재 상태
+
+이 프로젝트는 **방향 전환 직후**다. 기존 구현(사내 메신저 통합 솔루션)에서 개인 프로젝트로 재기획했고, 코드는 아직 전환 전 상태다.
+
+- ✅ 재기획 완료 — 제품 · 백엔드 · 앱 · 전환 계획 문서
+- 🔄 서버 개편 — 멀티테넌시 도입, 근태 · 업무일지 · 공지 제거, 스레드 · 리액션 · 멘션 추가
+- ⬜ Flutter 앱 신규 구축 — 기존 `www/`(React) · `desktop/`(Electron) · `mobile/`(Capacitor) 대체
+- ⬜ 저장소 웹훅 연동 · AI 기능
+
+진행 순서는 [전환 계획 §6](docs/전환-계획.md)을 따른다.
+
+## 로드맵
+
+| 단계 | 목표 |
+|---|---|
+| **Phase 0** | 나 혼자 쓰는 개발 허브. 내 프로젝트를 채널로 나누고 할 일 · 저장소를 붙인다 |
+| **Phase 1** | 2~10인 소규모 팀. 초대 · 온보딩 · 푸시 알림 |
+| **Phase 2** | 공개 서비스. 테넌트 격리 · 스토리지 쿼터 · 과금 |
