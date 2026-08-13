@@ -9,6 +9,7 @@ import { randomBytes } from 'crypto';
 import { Prisma, Space, SpaceMember, SpaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSpaceDto } from './dto/create-space.dto';
+import { slugify } from '../common/slug';
 import { UpdateSpaceDto } from './dto/update-space.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { outranks } from './space-role';
@@ -52,13 +53,7 @@ export class SpacesService {
    * 전부 한 트랜잭션이다 — 멤버 없는 스페이스나 채널 없는 스페이스가 남으면 안 된다.
    */
   async create(userId: string, dto: CreateSpaceDto): Promise<Space> {
-    const slug = dto.slug ?? slugify(dto.name);
-
-    if (!slug) {
-      throw new BadRequestException(
-        'slug 를 만들 수 없습니다. slug 를 직접 지정하십시오',
-      );
-    }
+    const slug = dto.slug ?? slugify(dto.name, 'space');
 
     const taken = await this.prisma.space.findUnique({ where: { slug } });
     if (taken) {
@@ -291,16 +286,6 @@ export class SpacesService {
     }
     return member;
   }
-}
-
-/** 이름에서 slug 후보를 만든다. 한글 등 ASCII 밖 문자는 그대로 남길 수 없어 제거한다. */
-function slugify(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40);
 }
 
 /** 초대 코드. 헷갈리는 글자(0/O, 1/l/I)를 뺀 알파벳을 쓴다. */

@@ -14,21 +14,23 @@
 - JWT + argon2 — 리프레시 토큰 회전 · 재사용 탐지
 - S3 호환 스토리지 (개발: MinIO / 운영: Cloudflare R2)
 
-## 현재 상태 — 전환 2단계까지
+## 현재 상태 — 전환 3단계까지
 
-멀티테넌시 골격까지 올라와 있다.
+REST로 대화가 되는 데까지 올라와 있다. 실시간은 아직이다.
 
 | 영역 | 상태 |
 |---|---|
 | 스키마 (전체 26개 모델) | ✅ 재작성 완료 |
 | auth — 가입 · 로그인 · 리프레시 회전 · 로그아웃 | ✅ |
 | spaces — CRUD · 멤버 · 초대 · `SpaceGuard` | ✅ |
-| channels · messages · realtime · attachments · issues · repos · ai | ⬜ 3단계 이후 |
+| categories · channels · messages — 목록 · 전송 · 수정 · 소프트 삭제 · 읽음 마커 | ✅ |
+| realtime (소켓) | ⬜ 4단계 |
+| 스레드 · 리액션 · 멘션 · 핀 · DM · 첨부 · 이슈 · repos · ai | ⬜ 7단계 이후 |
 
-**미이관 모듈은 컴파일 대상에서 빠져 있다.** `src/channels` `src/messages`
-`src/realtime` `src/permissions` `src/notifications` `src/files` `src/issues`
-`src/gitlab` `src/ai` 는 새 스키마를 참조하지 못해 `tsconfig.json` ·
-`tsconfig.build.json` 의 `exclude` 에 들어 있다. 소스는 참고용으로 남겨 두었다.
+**미이관 모듈은 컴파일 대상에서 빠져 있다.** `src/realtime` `src/permissions`
+`src/notifications` `src/files` `src/issues` `src/gitlab` `src/ai` 는 새 스키마를
+참조하지 못해 `tsconfig.json` · `tsconfig.build.json` 의 `exclude` 에 들어 있다.
+소스는 참고용으로 남겨 두었다.
 
 되살리는 절차: 두 tsconfig 의 `exclude` 에서 해당 경로를 지우고 →
 `spaceId` 기준으로 코드를 고친 뒤 → `app.module.ts` 의 `imports` 에 다시 넣는다.
@@ -112,8 +114,11 @@ src/
 ├─ auth/              # 가입 · 로그인 · 리프레시 회전 · 재사용 탐지 · JWT 전략
 ├─ users/             # /api/me (전역 사용자 목록은 두지 않는다 — 테넌트 격리)
 ├─ spaces/            # 스페이스 CRUD · 멤버 · 초대 · SpaceGuard · SpaceRoleGuard
+├─ categories/        # 채널 그룹
+├─ channels/          # 채널 · 가시성 규칙 · 읽음 마커
+├─ messages/          # 메시지 목록 · 전송 · 수정 이력 · 소프트 삭제
 ├─ prisma/            # PrismaModule + PrismaService
-└─ common/            # 예외 필터, 데코레이터, 공통 DTO
+└─ common/            # 예외 필터, 데코레이터, 공통 DTO, slug
 prisma/
 ├─ schema.prisma      # 전체 데이터 모델
 ├─ migrations/        # init (pgvector 확장 · HNSW 인덱스 포함)

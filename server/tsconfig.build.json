@@ -7,18 +7,13 @@
     "**/*spec.ts",
     "prisma/seed.ts",
 
-    // ── 전환 2단계: 아직 spaceId 기준으로 이관하지 않은 모듈 ──────────
+    // ── 아직 spaceId 기준으로 이관하지 않은 모듈 (docs/전환-계획.md §6) ──
     // 새 스키마를 참조하지 못해 컴파일되지 않는다. 소스는 남겨 두고 빌드에서만
     // 뺀다. 이관하는 단계에서 해당 줄을 지우고 app.module.ts 에 다시 등록한다.
-    //   3단계 → channels, messages
-    //   4단계 → realtime
-    //   6단계 → permissions, notifications
-    //   7단계 → files (attachments 로 개명)
-    //   8단계 → issues
-    //   10단계 → gitlab (repos 로 개명)
-    //   13단계 → ai
-    "src/channels/**",
-    "src/messages/**",
+    //   4단계  → realtime
+    //   7단계~ → permissions · notifications (멘션 · 알림)
+    //   7단계~ → files (attachments 로 개명)
+    //   7단계~ → issues, gitlab (repos 로 개명), ai
     "src/realtime/**",
     "src/permissions/**",
     "src/notifications/**",

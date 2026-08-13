@@ -1,48 +1,51 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
   Patch,
-  Post,
+  UseGuards,
 } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { SpaceMember } from '@prisma/client';
 import { MessagesService } from './messages.service';
-import { CreateMessageDto } from './dto/create-message.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
-import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
+import { SpaceGuard } from '../spaces/guards/space.guard';
+import { CurrentSpaceMember } from '../spaces/decorators/current-space-member.decorator';
 
-@Controller()
+/**
+ * 채널을 거치지 않고 메시지 id 로 직접 접근하는 라우트 (docs/백엔드-설계.md §4).
+ * 채널 하위 라우트(목록 · 전송)는 ChannelsController 에 있다.
+ */
+@Controller('spaces/:spaceId/messages')
+@UseGuards(SpaceGuard)
 export class MessagesController {
   constructor(private readonly messages: MessagesService) {}
 
-  /** POST /api/channels/:id/messages — create (can_send guard in service). */
-  @Post('channels/:id/messages')
-  create(
-    @Param('id', new ParseUUIDPipe()) channelId: string,
-    @Body() dto: CreateMessageDto,
-    @CurrentUser() user: AuthUser,
-  ) {
-    return this.messages.create(channelId, user.id, user.role as Role, dto);
-  }
-
-  /** PATCH /api/messages/:id — author-only edit. */
-  @Patch('messages/:id')
+  @Patch(':messageId')
   update(
-    @Param('id', new ParseUUIDPipe()) messageId: string,
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
     @Body() dto: UpdateMessageDto,
-    @CurrentUser() user: AuthUser,
+    @CurrentSpaceMember() member: SpaceMember,
   ) {
-    return this.messages.update(messageId, user.id, dto);
+    return this.messages.update(messageId, member, dto);
   }
 
-  /** GET /api/messages/:id/edits — prior-body history. */
-  @Get('messages/:id/edits')
-  edits(
-    @Param('id', new ParseUUIDPipe()) messageId: string,
-    @CurrentUser() user: AuthUser,
+  /** 소프트 삭제. 본문만 가려지고 첨부는 남는다. */
+  @Delete(':messageId')
+  remove(
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @CurrentSpaceMember() member: SpaceMember,
   ) {
-    return this.messages.listEdits(messageId, user.id, user.role as Role);
+    return this.messages.remove(messageId, member);
+  }
+
+  @Get(':messageId/edits')
+  edits(
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @CurrentSpaceMember() member: SpaceMember,
+  ) {
+    return this.messages.listEdits(messageId, member);
   }
 }

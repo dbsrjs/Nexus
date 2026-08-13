@@ -88,7 +88,8 @@ flutter build windows --dart-define=API_BASE=https://api.example.com
 - ✅ 디자인 시스템 — 토큰 · 컴포넌트 8종 · 검증 화면 2종 (`design-system/`)
 - ✅ 기존 자산 정리 — `www/`(React) · `desktop/`(Electron) · `mobile/`(Capacitor) · 루트 `index.html` 삭제, 구 디자인 소스는 `docs/archive/`로 이관
 - ✅ 멀티테넌시 골격 — 스키마 전면 재작성(26개 모델), 인증 개편(가입 · 리프레시 회전 · 재사용 탐지), `spaces` · `SpaceGuard`
-- 🔄 서버 개편 — 채널 · 메시지 · 실시간 · 첨부 · 이슈를 스페이스 기준으로 이관하는 중
+- ✅ 채팅 API 뼈대 — 카테고리 · 채널 · 메시지(전송 · 수정 이력 · 소프트 삭제 · 읽음 마커)
+- 🔄 실시간(Socket.IO) 개편 — 룸 동기화 · 읽음 저장 · 프레즌스
 - ⬜ Flutter 앱 신규 구축 (`app/`)
 - ⬜ 저장소 웹훅 연동 · AI 기능
 
