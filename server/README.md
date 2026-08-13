@@ -44,6 +44,9 @@ REST로 대화가 되는 데까지 올라와 있다. 실시간은 아직이다.
 ## 실행 방법
 
 ```bash
+# 0. (새 PC에서 1회) WSL 안에 Postgres + pgvector 준비
+npm run db:setup       # Docker 를 쓴다면 건너뛴다
+
 # 1. DB 기동
 npm run db:up          # 루트에서. WSL 안의 Postgres 를 띄우고 유지한다
                        # Docker 를 쓴다면: npm run db:up:docker
@@ -72,15 +75,21 @@ npm run start:dev
 
 ### WSL2 로 Postgres 를 쓸 때 (Docker 없는 환경)
 
+**1회만** 실행하면 된다. 여러 번 돌려도 안전하다.
+
 ```bash
-# WSL 안에서 1회 설치
-sudo apt-get install -y postgresql postgresql-18-pgvector
+npm run db:setup       # 루트에서
 ```
 
-설치 후 `postgresql.conf` 의 `listen_addresses = '*'`, `pg_hba.conf` 에
-`host all all 0.0.0.0/0 scram-sha-256` 을 넣고 `nexus` 역할·DB 를 만든다.
-마이그레이션이 `CREATE EXTENSION vector` 를 실행하므로 개발 DB 에서는
-`ALTER ROLE nexus SUPERUSER` 가 필요하다.
+`server/scripts/db-setup-wsl.sh` 가 WSL 안에서 하는 일:
+설치(`postgresql` + 해당 메이저 버전의 `pgvector`) → `listen_addresses = '*'` ·
+`pg_hba.conf` 설정 → `nexus` 역할·DB 생성 → `ALTER ROLE nexus SUPERUSER`
+(마이그레이션이 `CREATE EXTENSION vector` 를 실행하므로 필요하다).
+
+WSL 이 없다면 먼저:
+```bash
+wsl --install -d Ubuntu
+```
 
 **함정 두 가지** — 둘 다 실제로 걸렸던 것이다.
 

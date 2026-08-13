@@ -37,6 +37,34 @@ server/  NestJS + Prisma
 | `design-system/` | 토큰 · 컴포넌트 · 화면 프리뷰 (자기완결 HTML) |
 | `docs/` | 기획 · 설계 문서 |
 
+## 개발 시작하기
+
+작업 브랜치는 **`feat/pivot-nexus`** 다. `main` 은 아직 전환 이전 코드다.
+
+```bash
+git clone https://github.com/dbsrjs/nexus.git && cd nexus
+git checkout feat/pivot-nexus
+
+npm --prefix server install
+cp server/.env.example server/.env      # JWT_SECRET 을 채워야 부팅된다
+
+npm run db:setup                        # (1회) WSL 안에 Postgres + pgvector
+                                        #  Docker 를 쓴다면 건너뛴다
+npm run db:up                           # Docker: npm run db:up:docker
+npm --prefix server exec prisma migrate deploy
+npm run db:seed
+
+npm run server:dev                      # http://localhost:3000/api
+```
+
+`JWT_SECRET` 생성:
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
+
+> **DB 는 PC 마다 따로다.** 계정 · 메시지는 git 으로 옮겨지지 않는다. 새 PC 에서는
+> 시드로 새로 만들어진다. 자세한 주의사항은 [server/README.md](server/README.md).
+
 ## 문서
 
 | 문서 | 내용 |
