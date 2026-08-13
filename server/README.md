@@ -24,6 +24,7 @@ REST로 대화가 되는 데까지 올라와 있다. 실시간은 아직이다.
 | auth — 가입 · 로그인 · 리프레시 회전 · 로그아웃 | ✅ |
 | spaces — CRUD · 멤버 · 초대 · `SpaceGuard` | ✅ |
 | categories · channels · messages — 목록 · 전송 · 수정 · 소프트 삭제 · 읽음 마커 | ✅ |
+| 마이그레이션 · 시드 · 종단 확인 (실제 Postgres 18 + pgvector 0.8.1) | ✅ 38개 케이스 통과 |
 | realtime (소켓) | ⬜ 4단계 |
 | 스레드 · 리액션 · 멘션 · 핀 · DM · 첨부 · 이슈 · repos · ai | ⬜ 7단계 이후 |
 
@@ -38,13 +39,14 @@ REST로 대화가 되는 데까지 올라와 있다. 실시간은 아직이다.
 ## 사전 준비
 
 - Node.js 18+ 와 npm
-- Docker / Docker Compose (postgres · redis · minio 기동용)
+- **PostgreSQL 16+ with pgvector** — Docker 또는 WSL2 (아래 참조)
 
 ## 실행 방법
 
 ```bash
-# 1. 인프라 기동 (pgvector 포함 postgres + redis + minio)
-docker compose up -d
+# 1. DB 기동
+npm run db:up          # 루트에서. WSL 안의 Postgres 를 띄우고 유지한다
+                       # Docker 를 쓴다면: npm run db:up:docker
 
 # 2. 환경변수 준비 — JWT_SECRET 은 반드시 채워야 한다 (미설정 시 부팅 거부)
 cp .env.example .env
@@ -54,7 +56,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 npm install
 
 # 4. DB 스키마 적용
-npx prisma migrate dev
+npx prisma migrate deploy
 
 # 5. 시드 (내 계정 1개 + 스페이스 1개 + 채널 5개)
 npm run seed
@@ -63,10 +65,32 @@ npm run seed
 npm run start:dev
 ```
 
-서버는 `http://localhost:3000/api`. MinIO 콘솔은 `http://localhost:9001`.
+서버는 `http://localhost:3000/api`.
 
 시드 비밀번호는 `SEED_PASSWORD` 환경변수로 지정한다. 지정하지 않으면 임의로
 생성해 한 번 출력하므로 그때 저장해 두어야 한다.
+
+### WSL2 로 Postgres 를 쓸 때 (Docker 없는 환경)
+
+```bash
+# WSL 안에서 1회 설치
+sudo apt-get install -y postgresql postgresql-18-pgvector
+```
+
+설치 후 `postgresql.conf` 의 `listen_addresses = '*'`, `pg_hba.conf` 에
+`host all all 0.0.0.0/0 scram-sha-256` 을 넣고 `nexus` 역할·DB 를 만든다.
+마이그레이션이 `CREATE EXTENSION vector` 를 실행하므로 개발 DB 에서는
+`ALTER ROLE nexus SUPERUSER` 가 필요하다.
+
+**함정 두 가지** — 둘 다 실제로 걸렸던 것이다.
+
+| 증상 | 원인 · 해결 |
+|---|---|
+| `P1001: Can't reach database server` (Node 로는 붙는데 Prisma 만 실패) | Windows 에서 `localhost` 가 `::1` 로 먼저 해석되는데 WSL 포워딩은 IPv4 만 동작한다. `DATABASE_URL` 에 **`127.0.0.1`** 을 쓴다 |
+| 잘 되다가 갑자기 `ECONNREFUSED` | WSL2 는 배포판의 **마지막 세션이 닫히면 배포판을 정지**시킨다. Postgres 도 함께 죽는다. `npm run db:up` 이 세션을 하나 잡아 둔다 (`.wslconfig` 의 `vmIdleTimeout` 은 VM 만 잡고 배포판은 못 잡는다) |
+
+WSL 배포판에 systemd 가 켜져 있으면(`/etc/wsl.conf` 의 `[boot] systemd=true`)
+배포판이 뜰 때 Postgres 가 자동 기동된다.
 
 ## npm 스크립트
 

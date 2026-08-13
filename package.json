@@ -9,8 +9,10 @@
     "server:build": "npm --prefix server run build",
     "server:test": "npm --prefix server test",
     "server:lint": "npm --prefix server run lint",
-    "db:up": "docker compose -f server/docker-compose.yml up -d",
-    "db:down": "docker compose -f server/docker-compose.yml down",
+    "db:up": "powershell -NoProfile -ExecutionPolicy Bypass -File server/scripts/db-up.ps1",
+    "db:down": "wsl --shutdown",
+    "db:up:docker": "docker compose -f server/docker-compose.yml up -d",
+    "db:down:docker": "docker compose -f server/docker-compose.yml down",
     "db:migrate": "npm --prefix server exec prisma migrate dev",
     "db:studio": "npm --prefix server exec prisma studio",
     "db:seed": "npm --prefix server run seed"

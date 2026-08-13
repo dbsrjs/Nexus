@@ -157,17 +157,20 @@ export class ChannelsService {
     userId: string,
     channelIds: string[],
   ): Promise<Map<string, number>> {
+    // id 컬럼은 uuid 타입이 아니라 **text** 다. Prisma 가 `String @id @default(uuid())`
+    // 를 text 로 만들기 때문이다. 파라미터를 ::uuid 로 캐스팅하면
+    // `operator does not exist: text = uuid` 로 실패한다.
     const rows = await this.prisma.$queryRaw<
       { channel_id: string; unread: bigint }[]
     >`
       SELECT m.channel_id, COUNT(*) AS unread
       FROM messages m
       LEFT JOIN channel_members cm
-        ON cm.channel_id = m.channel_id AND cm.user_id = ${userId}::uuid
-      WHERE m.channel_id IN (${Prisma.join(channelIds.map((id) => Prisma.sql`${id}::uuid`))})
+        ON cm.channel_id = m.channel_id AND cm.user_id = ${userId}
+      WHERE m.channel_id IN (${Prisma.join(channelIds)})
         AND m.deleted_at IS NULL
         AND m.parent_id IS NULL
-        AND m.author_id <> ${userId}::uuid
+        AND m.author_id <> ${userId}
         AND (cm.last_read_at IS NULL OR m.created_at > cm.last_read_at)
       GROUP BY m.channel_id
     `;
