@@ -34,6 +34,7 @@ server/  NestJS + Prisma
 |---|---|
 | `app/` | **Flutter 앱.** iOS · Android · Windows · macOS · Linux · Web을 한 코드베이스로 |
 | `server/` | **NestJS 백엔드.** REST API + Socket.IO 게이트웨이 |
+| `design-system/` | 토큰 · 컴포넌트 · 화면 프리뷰 (자기완결 HTML) |
 | `docs/` | 기획 · 설계 문서 |
 
 ## 문서
@@ -81,11 +82,13 @@ flutter build windows --dart-define=API_BASE=https://api.example.com
 
 ## 현재 상태
 
-이 프로젝트는 **방향 전환 직후**다. 기존 구현(사내 메신저 통합 솔루션)에서 개인 프로젝트로 재기획했고, 코드는 아직 전환 전 상태다.
+이 프로젝트는 **전환 중**이다. 기존 구현(사내 메신저 통합 솔루션)에서 개인 프로젝트로 재기획했고, 구 프론트엔드 자산은 정리를 마쳤다.
 
-- ✅ 재기획 완료 — 제품 · 백엔드 · 앱 · 전환 계획 문서
+- ✅ 재기획 완료 — 제품 · 백엔드 · 앱 · 인프라 · 전환 계획 문서
+- ✅ 디자인 시스템 — 토큰 · 컴포넌트 8종 · 검증 화면 2종 (`design-system/`)
+- ✅ 기존 자산 정리 — `www/`(React) · `desktop/`(Electron) · `mobile/`(Capacitor) · 루트 `index.html` 삭제, 구 디자인 소스는 `docs/archive/`로 이관
 - 🔄 서버 개편 — 멀티테넌시 도입, 근태 · 업무일지 · 공지 제거, 스레드 · 리액션 · 멘션 추가
-- ⬜ Flutter 앱 신규 구축 — 기존 `www/`(React) · `desktop/`(Electron) · `mobile/`(Capacitor) 대체
+- ⬜ Flutter 앱 신규 구축 (`app/`)
 - ⬜ 저장소 웹훅 연동 · AI 기능
 
 진행 순서는 [전환 계획 §6](docs/전환-계획.md)을 따른다.

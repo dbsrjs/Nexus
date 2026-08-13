@@ -5,7 +5,6 @@ node_modules/
 dist/
 build/
 server/dist/
-desktop/dist/
 
 # ---- secrets / environment ----
 .env
@@ -13,10 +12,16 @@ desktop/dist/
 .env.*.local
 # keep .env.example (committed)
 
-# ---- Capacitor generated (synced from www / native projects) ----
-mobile/www/
-mobile/android/
-mobile/ios/
+# ---- Flutter (app/) ----
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/**/Pods/
+app/**/.gradle/
+app/ios/Flutter/Flutter.framework/
+app/ios/Flutter/Flutter.podspec
+*.iml
 
 # ---- logs ----
 *.log
