@@ -87,7 +87,8 @@ flutter build windows --dart-define=API_BASE=https://api.example.com
 - ✅ 재기획 완료 — 제품 · 백엔드 · 앱 · 인프라 · 전환 계획 문서
 - ✅ 디자인 시스템 — 토큰 · 컴포넌트 8종 · 검증 화면 2종 (`design-system/`)
 - ✅ 기존 자산 정리 — `www/`(React) · `desktop/`(Electron) · `mobile/`(Capacitor) · 루트 `index.html` 삭제, 구 디자인 소스는 `docs/archive/`로 이관
-- 🔄 서버 개편 — 멀티테넌시 도입, 근태 · 업무일지 · 공지 제거, 스레드 · 리액션 · 멘션 추가
+- ✅ 멀티테넌시 골격 — 스키마 전면 재작성(26개 모델), 인증 개편(가입 · 리프레시 회전 · 재사용 탐지), `spaces` · `SpaceGuard`
+- 🔄 서버 개편 — 채널 · 메시지 · 실시간 · 첨부 · 이슈를 스페이스 기준으로 이관하는 중
 - ⬜ Flutter 앱 신규 구축 (`app/`)
 - ⬜ 저장소 웹훅 연동 · AI 기능
 

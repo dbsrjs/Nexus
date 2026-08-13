@@ -1,24 +1,36 @@
-// ONE 워크스페이스 — Prisma schema
-// 데이터 모델 출처: docs/백엔드-설계.md (Phase 1)
+// Nexus — Prisma schema
+// 데이터 모델 출처: docs/백엔드-설계.md §3
+//
+// 격리 규칙(설계 §2): 테넌트에 속하는 테이블은 예외 없이 space_id 를 직접 들고 있는다.
+// 부모를 타고 유추할 수 있어도 비정규화한다 — 모든 쿼리의 WHERE 에 강제로 넣기 위함이다.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 // ──────────────────────────────────────────────
 // Enums
 // ──────────────────────────────────────────────
 
-enum Role {
-  admin
-  lead
-  member
+/// 스페이스 안에서의 역할. 서열은 guest < member < admin < owner.
+/// 전역 역할이 아니라 SpaceMember 에 붙는다 (설계 §2).
+enum SpaceRole {
   guest
+  member
+  admin
+  owner
+}
+
+enum SpacePlan {
+  free
+  pro
 }
 
 enum UserStatus {
@@ -27,9 +39,20 @@ enum UserStatus {
   offline
 }
 
+enum OauthProvider {
+  github
+  gitlab
+}
+
 enum ChannelKind {
-  channel
+  text
   dm
+}
+
+enum MentionType {
+  user
+  channel
+  everyone
 }
 
 enum IssueStatus {
@@ -47,91 +70,270 @@ enum IssuePriority {
 
 enum IssueSource {
   native
-  redmine
+  github
+  gitlab
 }
 
-// 근태: 정상/지각/근무중/예정
-enum AttendanceStatus {
-  normal // 정상
-  late // 지각
-  working // 근무중
-  scheduled // 예정
+enum SprintState {
+  planned
+  active
+  closed
+}
+
+enum RepoProvider {
+  github
+  gitlab
+}
+
+enum RepoEventType {
+  push
+  pr
+  issue
+  release
+}
+
+enum PullRequestState {
+  open
+  merged
+  closed
+}
+
+enum PullRequestReviewState {
+  pending
+  approved
+  changes_requested
+}
+
+enum AiRunKind {
+  summarize
+  ask
+  draft_issue
+}
+
+enum AiRunState {
+  queued
+  running
+  done
+  failed
 }
 
 // ──────────────────────────────────────────────
-// Users
+// 계정 (전역 — 스페이스에 속하지 않는 유일한 영역)
 // ──────────────────────────────────────────────
 
 model User {
   id           String     @id @default(uuid())
   email        String     @unique
-  passwordHash String     @map("password_hash")
+  /// OAuth 전용 계정은 비밀번호가 없다.
+  passwordHash String?    @map("password_hash")
   name         String
-  initial      String?
-  color        String?
-  team         String?
-  title        String?
-  role         Role       @default(member)
-  status       UserStatus @default(offline)
+  avatarUrl    String?    @map("avatar_url")
+  globalStatus UserStatus @default(offline) @map("global_status")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  // relations
+  oauthAccounts      OauthAccount[]
+  refreshTokens      RefreshToken[]
+  ownedSpaces        Space[]         @relation("SpaceOwner")
+  spaceMemberships   SpaceMember[]
+  createdInvites     Invite[]        @relation("InviteCreator")
   channelMemberships ChannelMember[]
   messages           Message[]
-  uploadedFiles      File[]
+  reactions          Reaction[]
+  mentions           Mention[]
+  attachments        Attachment[]
   assignedIssues     Issue[]         @relation("IssueAssignee")
   issueComments      IssueComment[]
-  worklogs           Worklog[]
-  attendances        Attendance[]
-  notices            Notice[]
   notifications      Notification[]
+  aiRuns             AiRun[]
 
   @@map("users")
 }
 
+/// 소셜 로그인 연결. 저장소 연동에 쓸 provider 토큰을 여기서 함께 확보한다 (설계 §3).
+model OauthAccount {
+  id             String        @id @default(uuid())
+  userId         String        @map("user_id")
+  provider       OauthProvider
+  providerUserId String        @map("provider_user_id")
+  /// 애플리케이션 레벨에서 암호화해 저장한다. 클라이언트로 절대 내려보내지 않는다 (설계 §7.3).
+  accessToken    String?       @map("access_token")
+  refreshToken   String?       @map("refresh_token")
+  scope          String?
+  expiresAt      DateTime?     @map("expires_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+/// 리프레시 토큰 회전 + 재사용 탐지 (설계 §6).
+///
+/// 한 번의 로그인이 하나의 family 를 만든다. 회전할 때마다 이전 행을 revoke 하고
+/// 같은 family 로 새 행을 만든다. 이미 revoke 된 토큰이 다시 제시되면 탈취로 보고
+/// family 전체를 무효화한다.
+model RefreshToken {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  familyId     String    @map("family_id")
+  /// 원문이 아니라 SHA-256 해시를 저장한다. DB가 유출돼도 토큰이 바로 쓰이지 않는다.
+  tokenHash    String    @unique @map("token_hash")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id")
+  userAgent    String?   @map("user_agent")
+  ip           String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
 // ──────────────────────────────────────────────
-// Channels
+// 테넌트
 // ──────────────────────────────────────────────
+
+model Space {
+  id      String    @id @default(uuid())
+  slug    String    @unique
+  name    String
+  iconUrl String?   @map("icon_url")
+  ownerId String    @map("owner_id")
+  plan    SpacePlan @default(free)
+  /// 첨부 업로드·삭제와 같은 트랜잭션에서 증감시킨다 (설계 §3).
+  storageUsedBytes  BigInt  @default(0) @map("storage_used_bytes")
+  /// null 이면 무제한. Phase 0·1의 기본값이며, null 인 동안 쿼터 검사 경로를 타지 않는다.
+  storageQuotaBytes BigInt? @map("storage_quota_bytes")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner       User             @relation("SpaceOwner", fields: [ownerId], references: [id])
+  members     SpaceMember[]
+  invites     Invite[]
+  categories  Category[]
+  channels    Channel[]
+  messages    Message[]
+  attachments Attachment[]
+  sprints     Sprint[]
+  labels      IssueLabel[]
+  issues      Issue[]
+  repos       Repo[]
+  repoEvents  RepoEvent[]
+  pullRequests PullRequest[]
+  indexChunks RepoIndexChunk[]
+  notifications Notification[]
+  aiRuns      AiRun[]
+
+  @@map("spaces")
+}
+
+model SpaceMember {
+  spaceId  String    @map("space_id")
+  userId   String    @map("user_id")
+  role     SpaceRole @default(member)
+  nickname String?
+  joinedAt DateTime  @default(now()) @map("joined_at")
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([spaceId, userId])
+  @@index([userId])
+  @@map("space_members")
+}
+
+model Invite {
+  spaceId     String    @map("space_id")
+  id          String    @id @default(uuid())
+  code        String    @unique
+  createdById String    @map("created_by")
+  /// 이 코드로 가입한 사용자에게 부여할 역할.
+  role        SpaceRole @default(member)
+  expiresAt   DateTime? @map("expires_at")
+  maxUses     Int?      @map("max_uses")
+  useCount    Int       @default(0) @map("use_count")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  space     Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  createdBy User  @relation("InviteCreator", fields: [createdById], references: [id])
+
+  @@index([spaceId])
+  @@map("invites")
+}
+
+// ──────────────────────────────────────────────
+// 채널 · 메시지
+// ──────────────────────────────────────────────
+
+model Category {
+  id        String   @id @default(uuid())
+  spaceId   String   @map("space_id")
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  space    Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  channels Channel[]
+
+  @@index([spaceId, position])
+  @@map("categories")
+}
 
 model Channel {
-  id                String      @id @default(uuid())
-  key               String      @unique
-  name              String
-  kind              ChannelKind @default(channel)
-  initial           String?
-  color             String?
-  isReadonlyDefault Boolean     @default(false) @map("is_readonly_default")
-  createdAt         DateTime    @default(now()) @map("created_at")
-  updatedAt         DateTime    @updatedAt @map("updated_at")
+  id         String      @id @default(uuid())
+  spaceId    String      @map("space_id")
+  categoryId String?     @map("category_id")
+  key        String
+  name       String
+  topic      String?
+  kind       ChannelKind @default(text)
+  isPrivate  Boolean     @default(false) @map("is_private")
+  position   Int         @default(0)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
 
-  // relations
+  space       Space               @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  category    Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   members     ChannelMember[]
   permissions ChannelPermission[]
   messages    Message[]
-  files       File[]
+  attachments Attachment[]
+  linkedRepos Repo[]
 
+  @@unique([spaceId, key])
+  @@index([spaceId, position])
   @@map("channels")
 }
 
 model ChannelMember {
-  channelId  String    @map("channel_id")
-  userId     String    @map("user_id")
-  lastReadAt DateTime? @map("last_read_at")
-  createdAt  DateTime  @default(now()) @map("created_at")
+  channelId         String    @map("channel_id")
+  userId            String    @map("user_id")
+  lastReadAt        DateTime? @map("last_read_at")
+  lastReadMessageId String?   @map("last_read_message_id")
+  muted             Boolean   @default(false)
+  createdAt         DateTime  @default(now()) @map("created_at")
 
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([channelId, userId])
+  @@index([userId])
   @@map("channel_members")
 }
 
 model ChannelPermission {
-  channelId String  @map("channel_id")
-  role      Role
-  canView   Boolean @default(true) @map("can_view")
-  canSend   Boolean @default(true) @map("can_send")
+  channelId String    @map("channel_id")
+  role      SpaceRole
+  canView   Boolean   @default(true) @map("can_view")
+  canSend   Boolean   @default(true) @map("can_send")
 
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
@@ -139,25 +341,39 @@ model ChannelPermission {
   @@map("channel_permissions")
 }
 
-// ──────────────────────────────────────────────
-// Messages
-// ──────────────────────────────────────────────
-
 model Message {
   id        String    @id @default(uuid())
+  spaceId   String    @map("space_id")
   channelId String    @map("channel_id")
   authorId  String    @map("author_id")
   body      String
-  editedAt  DateTime? @map("edited_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  /// null 이면 채널 최상위 메시지, 값이 있으면 그 메시지의 스레드 답글.
+  /// 채널 목록 조회는 parent_id IS NULL 만 본다 (설계 §3).
+  parentId    String?   @map("parent_id")
+  replyCount  Int       @default(0) @map("reply_count")
+  lastReplyAt DateTime? @map("last_reply_at")
+  pinned      Boolean   @default(false)
+  editedAt    DateTime? @map("edited_at")
+  /// 소프트 삭제. 본문만 가려지고 첨부는 남는다 (보관 정책, 설계 §3).
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  channel Channel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  author  User          @relation(fields: [authorId], references: [id])
-  edits   MessageEdit[]
-  files   File[]
+  space       Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  channel     Channel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  author      User          @relation(fields: [authorId], references: [id])
+  parent      Message?      @relation("MessageThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Message[]     @relation("MessageThread")
+  edits       MessageEdit[]
+  reactions   Reaction[]
+  mentions    Mention[]
+  attachments Attachment[]
+  originatedIssues Issue[]  @relation("IssueOriginMessage")
+  repoEvents  RepoEvent[]
 
   @@index([channelId, createdAt])
+  @@index([parentId])
+  @@index([spaceId])
   @@map("messages")
 }
 
@@ -173,52 +389,151 @@ model MessageEdit {
   @@map("message_edits")
 }
 
+model Reaction {
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  emoji     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId, emoji])
+  @@map("reactions")
+}
+
+model Mention {
+  id        String      @id @default(uuid())
+  messageId String      @map("message_id")
+  /// @channel · @everyone 은 대상 사용자가 없다.
+  userId    String?     @map("user_id")
+  type      MentionType @default(user)
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 읽지 않은 멘션 뱃지 계산용 (설계 §3).
+  @@index([userId, messageId])
+  @@map("mentions")
+}
+
 // ──────────────────────────────────────────────
-// Files (영구 보관 — 만료 없음)
+// 첨부 — 무기한 보관 (설계 §3 스토리지 정책)
 // ──────────────────────────────────────────────
 
-model File {
+/// 만료되지 않는다. 오브젝트 스토리지에 수명주기 규칙을 설정하지 않는 것이
+/// "무기한"의 실질적 보장이다. 유일한 자동 삭제는 메시지에 연결되지 못한
+/// 고아 첨부(message_id IS NULL)를 24시간 뒤 정리하는 것뿐이다.
+model Attachment {
   id         String   @id @default(uuid())
+  spaceId    String   @map("space_id")
   channelId  String   @map("channel_id")
   messageId  String?  @map("message_id")
   uploaderId String   @map("uploader_id")
   name       String
   ext        String?
+  mime       String?
   sizeBytes  BigInt   @map("size_bytes")
   storageKey String   @map("storage_key")
-  retained   Boolean  @default(true)
+  width      Int?
+  height     Int?
   createdAt  DateTime @default(now()) @map("created_at")
 
+  space    Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   channel  Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
   message  Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
   uploader User     @relation(fields: [uploaderId], references: [id])
 
+  @@index([spaceId, createdAt])
   @@index([channelId])
-  @@map("files")
+  @@map("attachments")
 }
 
 // ──────────────────────────────────────────────
-// Issues (자체 이슈 보드)
+// 이슈 · 애자일 보드
 // ──────────────────────────────────────────────
+
+model Sprint {
+  id        String      @id @default(uuid())
+  spaceId   String      @map("space_id")
+  name      String
+  goal      String?
+  startsAt  DateTime?   @map("starts_at")
+  endsAt    DateTime?   @map("ends_at")
+  /// 스페이스당 active 는 1개로 제한한다 (서비스 레이어에서 강제).
+  state     SprintState @default(planned)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  space  Space   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  issues Issue[]
+
+  @@index([spaceId, state])
+  @@map("sprints")
+}
+
+model IssueLabel {
+  id      String @id @default(uuid())
+  spaceId String @map("space_id")
+  name    String
+  color   String
+
+  space Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  links IssueLabelLink[]
+
+  @@unique([spaceId, name])
+  @@map("issue_labels")
+}
+
+model IssueLabelLink {
+  issueId String @map("issue_id")
+  labelId String @map("label_id")
+
+  issue Issue      @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  label IssueLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([issueId, labelId])
+  @@map("issue_label_links")
+}
 
 model Issue {
   id          String        @id @default(uuid())
-  key         String        @unique
+  spaceId     String        @map("space_id")
+  /// 스페이스 안에서만 유일하다 (예: NEXUS-138).
+  key         String
   title       String
   description String?
   status      IssueStatus   @default(backlog)
   priority    IssuePriority @default(mid)
-  label       String?
   assigneeId  String?       @map("assignee_id")
+  sprintId    String?       @map("sprint_id")
+  /// 에픽 → 스토리 1단계만. 임의 깊이 트리는 만들지 않는다 (설계 §3).
+  parentId    String?       @map("parent_id")
+  storyPoints Int?          @map("story_points")
+  /// 칸반 카드 정렬 키. 두 카드 사이에 넣을 때 중간값을 부여해 재정렬 쓰기를 1건으로 끝낸다.
+  position    Decimal       @default(0)
   source      IssueSource   @default(native)
   externalId  String?       @map("external_id")
+  /// "대화 → 이슈"의 역방향 링크.
+  originMessageId String?   @map("origin_message_id")
+  /// 번다운 차트의 유일한 입력. 상태 전이 이력 테이블은 두지 않는다.
+  closedAt    DateTime?     @map("closed_at")
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
-  assignee User?          @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  comments IssueComment[]
+  space         Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  assignee      User?            @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  sprint        Sprint?          @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  parent        Issue?           @relation("IssueEpic", fields: [parentId], references: [id], onDelete: SetNull)
+  children      Issue[]          @relation("IssueEpic")
+  originMessage Message?         @relation("IssueOriginMessage", fields: [originMessageId], references: [id], onDelete: SetNull)
+  labelLinks    IssueLabelLink[]
+  comments      IssueComment[]
 
-  @@index([status])
+  @@unique([spaceId, key])
+  @@index([spaceId, status, position])
+  @@index([sprintId])
   @@map("issues")
 }
 
@@ -228,6 +543,7 @@ model IssueComment {
   authorId  String   @map("author_id")
   body      String
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   issue  Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
   author User  @relation(fields: [authorId], references: [id])
@@ -237,94 +553,156 @@ model IssueComment {
 }
 
 // ──────────────────────────────────────────────
-// Worklogs (업무일지)
+// 저장소 연동
 // ──────────────────────────────────────────────
 
-model Worklog {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  date      DateTime @db.Date
-  tag       String?
-  body      String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+model Repo {
+  id                String       @id @default(uuid())
+  spaceId           String       @map("space_id")
+  provider          RepoProvider
+  externalProjectId String       @map("external_project_id")
+  name              String
+  fullPath          String       @map("full_path")
+  defaultBranch     String?      @map("default_branch")
+  linkedChannelId   String?      @map("linked_channel_id")
+  webhookSecret     String?      @map("webhook_secret")
+  syncedAt          DateTime?    @map("synced_at")
+  indexedAt         DateTime?    @map("indexed_at")
+  indexedCommitSha  String?      @map("indexed_commit_sha")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  space         Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  linkedChannel Channel?         @relation(fields: [linkedChannelId], references: [id], onDelete: SetNull)
+  events        RepoEvent[]
+  pullRequests  PullRequest[]
+  indexChunks   RepoIndexChunk[]
 
-  @@index([userId, date])
-  @@map("worklogs")
+  @@unique([spaceId, provider, externalProjectId])
+  @@map("repos")
+}
+
+/// 채널 피드로 흘려보낸 이벤트 로그. append-only 이므로 여기서 PR의 현재 상태를
+/// 조회할 수는 없다 — 그 목적의 테이블은 pull_requests 다 (설계 §3).
+model RepoEvent {
+  id         String        @id @default(uuid())
+  spaceId    String        @map("space_id")
+  repoId     String        @map("repo_id")
+  type       RepoEventType
+  payload    Json
+  messageId  String?       @map("message_id")
+  occurredAt DateTime      @map("occurred_at")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  space   Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  repo    Repo     @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([repoId, occurredAt])
+  @@map("repo_events")
+}
+
+/// PR의 현재 상태. 웹훅 수신 시 repo_events 적재와 별도로 upsert 한다.
+/// diff 본문과 리뷰 코멘트는 저장하지 않고 조회 시점에 provider API로 프록시한다 (설계 §7.3).
+model PullRequest {
+  id           String                  @id @default(uuid())
+  spaceId      String                  @map("space_id")
+  repoId       String                  @map("repo_id")
+  number       Int
+  title        String
+  body         String?
+  state        PullRequestState        @default(open)
+  draft        Boolean                 @default(false)
+  authorLogin  String?                 @map("author_login")
+  authorAvatarUrl String?              @map("author_avatar_url")
+  sourceBranch String?                 @map("source_branch")
+  targetBranch String?                 @map("target_branch")
+  additions    Int?
+  deletions    Int?
+  changedFiles Int?                    @map("changed_files")
+  commentCount Int                     @default(0) @map("comment_count")
+  reviewState  PullRequestReviewState? @map("review_state")
+  externalUrl  String?                 @map("external_url")
+  openedAt     DateTime?               @map("opened_at")
+  mergedAt     DateTime?               @map("merged_at")
+  closedAt     DateTime?               @map("closed_at")
+  createdAt    DateTime                @default(now()) @map("created_at")
+  updatedAt    DateTime                @updatedAt @map("updated_at")
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  repo  Repo  @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@unique([repoId, number])
+  @@index([spaceId, state])
+  @@map("pull_requests")
+}
+
+/// AI 코드 질의용 벡터 인덱스 (설계 §8.1의 전제).
+///
+/// embedding 은 pgvector 타입이라 Prisma Client 가 직접 다루지 못한다.
+/// 삽입과 검색은 $queryRaw 로 수행하고, HNSW 인덱스는 마이그레이션 SQL 에서 만든다.
+model RepoIndexChunk {
+  id        String                       @id @default(uuid())
+  spaceId   String                       @map("space_id")
+  repoId    String                       @map("repo_id")
+  path      String
+  lang      String?
+  startLine Int                          @map("start_line")
+  endLine   Int                          @map("end_line")
+  content   String
+  embedding Unsupported("vector(768)")?
+  /// 변경된 파일만 재인덱싱하기 위한 기준 (설계 §7.4).
+  commitSha String                       @map("commit_sha")
+  createdAt DateTime                     @default(now()) @map("created_at")
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  repo  Repo  @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@index([repoId, path])
+  @@map("repo_index_chunks")
 }
 
 // ──────────────────────────────────────────────
-// Attendance (근태)
-// ──────────────────────────────────────────────
-
-model Attendance {
-  id          String           @id @default(uuid())
-  userId      String           @map("user_id")
-  date        DateTime         @db.Date
-  checkInAt   DateTime?        @map("check_in_at")
-  checkOutAt  DateTime?        @map("check_out_at")
-  status      AttendanceStatus @default(scheduled)
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, date])
-  @@map("attendance")
-}
-
-// ──────────────────────────────────────────────
-// Notices (공지)
-// ──────────────────────────────────────────────
-
-model Notice {
-  id        String   @id @default(uuid())
-  authorId  String   @map("author_id")
-  title     String
-  team      String?
-  pinned    Boolean  @default(false)
-  body      String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  author User @relation(fields: [authorId], references: [id])
-
-  @@map("notices")
-}
-
-// ──────────────────────────────────────────────
-// Notifications (알림 + 실시간 푸시)
+// 알림 · AI
 // ──────────────────────────────────────────────
 
 model Notification {
   id        String   @id @default(uuid())
+  spaceId   String   @map("space_id")
   userId    String   @map("user_id")
   type      String
   payload   Json?
   read      Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
   @@map("notifications")
 }
 
-// ──────────────────────────────────────────────
-// GitLab repos (읽기 전용 동기화 캐시)
-// ──────────────────────────────────────────────
+model AiRun {
+  id      String     @id @default(uuid())
+  spaceId String     @map("space_id")
+  userId  String     @map("user_id")
+  kind    AiRunKind
+  state   AiRunState @default(queued)
+  /// 동일 질의 결과를 재사용하기 위한 캐시 키. 무료 LLM 티어를 오래 쓰는 데
+  /// 가장 효과가 큰 한 수다 (설계 §8.2).
+  promptHash       String?   @map("prompt_hash")
+  promptTokens     Int?      @map("prompt_tokens")
+  completionTokens Int?      @map("completion_tokens")
+  model            String?
+  result           Json?
+  error            String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  finishedAt       DateTime? @map("finished_at")
 
-model GitlabRepo {
-  id              String   @id @default(uuid())
-  gitlabProjectId String   @unique @map("gitlab_project_id")
-  name            String
-  path            String
-  defaultBranch   String?  @map("default_branch")
-  lastCommitMsg   String?  @map("last_commit_msg")
-  syncedAt        DateTime @default(now()) @map("synced_at")
-  kind            String? // app / fw
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("gitlab_repos")
+  @@index([spaceId, createdAt])
+  @@index([promptHash])
+  @@map("ai_runs")
 }

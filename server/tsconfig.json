@@ -19,5 +19,21 @@
     "noFallthroughCasesInSwitch": false,
     "esModuleInterop": true,
     "resolveJsonModule": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+
+    // tsconfig.build.json 과 같은 목록. 에디터에서도 미이관 모듈의 오류가
+    // 뜨지 않도록 맞춰 둔다. 이관할 때 두 파일에서 함께 지운다.
+    "src/channels/**",
+    "src/messages/**",
+    "src/realtime/**",
+    "src/permissions/**",
+    "src/notifications/**",
+    "src/files/**",
+    "src/issues/**",
+    "src/gitlab/**",
+    "src/ai/**"
+  ]
 }

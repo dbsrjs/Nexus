@@ -1,27 +1,36 @@
 services:
+  # pgvector 확장이 포함된 Postgres 이미지.
+  # 순정 postgres:16 을 쓰면 repo_index_chunks 의 vector 컬럼을 만들 수 없어
+  # init 마이그레이션이 CREATE EXTENSION 에서 실패한다 (docs/백엔드-설계.md §1).
   postgres:
-    image: postgres:16
-    container_name: onework-postgres
+    image: pgvector/pgvector:pg16
+    container_name: nexus-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: onework
-      POSTGRES_USER: onework
-      POSTGRES_PASSWORD: onework
+      POSTGRES_DB: nexus
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus
     ports:
       - "5432:5432"
     volumes:
-      - onework-postgres-data:/var/lib/postgresql/data
+      - nexus-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7
-    container_name: onework-redis
+    container_name: nexus-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
 
+  # 개발용 S3 호환 스토리지. 운영은 Cloudflare R2 를 쓴다.
   minio:
     image: minio/minio
-    container_name: onework-minio
+    container_name: nexus-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -31,8 +40,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - onework-minio-data:/data
+      - nexus-minio-data:/data
 
 volumes:
-  onework-postgres-data:
-  onework-minio-data:
+  nexus-postgres-data:
+  nexus-minio-data:
