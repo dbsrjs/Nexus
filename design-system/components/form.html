@@ -1,0 +1,117 @@
+<!-- @dsCard group="Controls" -->
+<meta charset="utf-8">
+<title>Nexus — Input & Form</title>
+<style>
+  :root{
+    --bg-base:#121314;--bg-surface:#1C1D1F;--bg-elevated:#282A2C;
+    --divider:rgba(221,230,237,.10);--border-strong:#63676B;--text-secondary:#9DA0A4;--text-primary:#DDE6ED;
+    --accent:#77AECF;--danger:#D47D7D;
+    --font:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    --micro:120ms cubic-bezier(0,0,.2,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font);
+       font-size:14px;line-height:1.5;padding:32px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .lede{color:var(--text-secondary);font-size:13px;margin:0 0 32px;max-width:62ch}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary);
+     margin:32px 0 12px;font-weight:600}
+  h2:first-of-type{margin-top:0}
+  .panel{background:var(--bg-surface);border:1px solid var(--divider);border-radius:6px;padding:20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
+  .field label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px}
+  .inp{width:100%;height:32px;background:var(--bg-elevated);color:var(--text-primary);
+       border:1px solid var(--border-strong);border-radius:4px;padding:0 10px;font-family:var(--font);
+       font-size:13px;transition:border-color var(--micro),box-shadow var(--micro)}
+  .inp::placeholder{color:var(--text-secondary);opacity:.7}
+  .inp:hover{border-color:#7A7E83}
+  .inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(119,174,207,.25)}
+  .inp.focused{border-color:var(--accent);box-shadow:0 0 0 2px rgba(119,174,207,.25)}
+  .inp.err{border-color:var(--danger);box-shadow:0 0 0 2px rgba(212,125,125,.2)}
+  .inp:disabled{opacity:.45;cursor:not-allowed}
+  .hint{font-size:11px;color:var(--text-secondary);margin-top:6px}
+  .hint.err{color:var(--danger)}
+  textarea.inp{height:auto;min-height:76px;padding:8px 10px;line-height:1.5;resize:vertical}
+
+  .search{position:relative}
+  .search .icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);
+                color:var(--text-secondary);pointer-events:none;display:flex}
+  .search .inp{padding-left:30px}
+
+  /* 메시지 입력창 — 채팅 화면의 핵심 컨트롤 */
+  .composer{background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:6px;
+            padding:8px 10px;transition:border-color var(--micro)}
+  .composer:focus-within{border-color:var(--accent)}
+  .composer .ta{width:100%;background:transparent;border:0;outline:none;resize:none;
+                color:var(--text-primary);font-family:var(--font);font-size:14px;line-height:1.5;
+                min-height:22px}
+  .composer .ta::placeholder{color:var(--text-secondary);opacity:.7}
+  .ctools{display:flex;align-items:center;gap:4px;margin-top:6px;padding-top:6px;
+          border-top:1px solid var(--divider)}
+  .tool{width:26px;height:26px;display:grid;place-items:center;border-radius:4px;
+        color:var(--text-secondary);cursor:pointer;transition:background var(--micro),color var(--micro)}
+  .tool:hover{background:rgba(157,178,191,.12);color:var(--text-primary)}
+  .send{margin-left:auto;height:26px;padding:0 12px;border:0;border-radius:4px;
+        background:var(--accent);color:#121314;font-family:var(--font);font-size:12px;
+        font-weight:600;cursor:pointer}
+  .send:disabled{opacity:.35;cursor:not-allowed}
+  .hintbar{font-family:var(--mono);font-size:10px;color:var(--text-secondary);margin-top:8px}
+  .kbd{background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:3px;
+       padding:1px 5px;font-family:var(--mono);font-size:10px}
+  .note{border-left:2px solid var(--accent);padding:10px 0 10px 14px;color:var(--text-secondary);
+        font-size:12px;margin-top:28px;max-width:70ch}
+  .note b{color:var(--text-primary);font-weight:600}
+</style>
+
+<h2 class="sr-only">Nexus 입력 컴포넌트 — 텍스트 입력, 검색, 메시지 작성창의 상태별 스타일</h2>
+
+<h1>Input &amp; Form</h1>
+<p class="lede">입력면은 <code style="font-family:var(--mono);color:var(--accent)">bg-elevated</code>로 한 단계 올라온다. 배경보다 밝아야 "여기에 쓸 수 있다"가 읽힌다.</p>
+
+<h2>텍스트 입력 — 상태</h2>
+<div class="panel">
+  <div class="grid">
+    <div class="field"><label>기본</label>
+      <input class="inp" placeholder="채널 이름"></div>
+    <div class="field"><label>입력됨</label>
+      <input class="inp" value="general"></div>
+    <div class="field"><label>포커스</label>
+      <input class="inp focused" value="feat/pivot-nexus"></div>
+    <div class="field"><label>오류</label>
+      <input class="inp err" value="general">
+      <div class="hint err">이미 사용 중인 채널 이름입니다</div></div>
+    <div class="field"><label>비활성</label>
+      <input class="inp" value="NEXUS-138" disabled></div>
+    <div class="field"><label>검색</label>
+      <div class="search">
+        <span class="icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+        <input class="inp" placeholder="메시지 검색">
+      </div></div>
+  </div>
+</div>
+
+<h2>Textarea</h2>
+<div class="panel">
+  <div class="field"><label>이슈 설명</label>
+    <textarea class="inp">웹훅 수신 시 HMAC 서명을 검증하지 않고 있음. 외부에서 임의 이벤트를 주입할 수 있다.</textarea>
+    <div class="hint">마크다운을 지원합니다</div></div>
+</div>
+
+<h2>메시지 작성창</h2>
+<div class="panel">
+  <div class="composer">
+    <textarea class="ta" rows="1" placeholder="#general 에 메시지 보내기"></textarea>
+    <div class="ctools">
+      <span class="tool" title="첨부"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12l-8.5 8.5a5 5 0 01-7-7L14 5a3.5 3.5 0 015 5l-8.5 8.5a2 2 0 01-3-3L15 8"/></svg></span>
+      <span class="tool" title="코드블록"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-6-6 6-6M15 6l6 6-6 6"/></svg></span>
+      <span class="tool" title="이모지"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 007 0M9 9.5h.01M15 9.5h.01"/></svg></span>
+      <span class="tool" title="멘션"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 006 0v-1a10 10 0 10-4 8"/></svg></span>
+      <button class="send" disabled>보내기</button>
+    </div>
+  </div>
+  <div class="hintbar"><span class="kbd">Enter</span> 전송 · <span class="kbd">Shift</span>+<span class="kbd">Enter</span> 줄바꿈 · <span class="kbd">⌘</span>+<span class="kbd">K</span> 채널 이동</div>
+</div>
+
+<p class="note"><b>포커스를 테두리 색 + 얇은 링으로 처리한 이유.</b> 배경을 바꾸면 입력 중에 면적이 통째로 흔들려 시선이 분산된다. 테두리만 바뀌면 글자에서 눈을 떼지 않아도 상태가 읽힌다. 오류도 같은 원리로 <b>테두리 + 아래 한 줄</b>이며, 배경을 붉게 채우지 않는다.</p>

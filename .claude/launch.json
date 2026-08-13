@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web",
+      "name": "design-system",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "5184", "--directory", "www"],
-      "port": 5184
+      "runtimeArgs": ["-m", "http.server", "5185", "--directory", "design-system"],
+      "port": 5185
     }
   ]
 }

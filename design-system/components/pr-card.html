@@ -1,0 +1,155 @@
+<!-- @dsCard group="Dev" -->
+<meta charset="utf-8">
+<title>Nexus — Pull Request Card</title>
+<style>
+  :root{
+    --bg-base:#121314;--bg-surface:#1C1D1F;--bg-elevated:#282A2C;
+    --divider:rgba(221,230,237,.10);--border-strong:#63676B;--text-secondary:#9DA0A4;--text-primary:#DDE6ED;
+    --accent:#77AECF;--accent-subtle:rgba(119,174,207,.10);
+    --success:#74B48F;--warning:#D3B069;--danger:#D47D7D;--merged:#A18ECC;
+    --font:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    --micro:120ms cubic-bezier(0,0,.2,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font);
+       font-size:14px;line-height:1.5;padding:32px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .lede{color:var(--text-secondary);font-size:13px;margin:0 0 32px;max-width:62ch}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary);
+     margin:32px 0 12px;font-weight:600}
+  h2:first-of-type{margin-top:0}
+  .list{display:flex;flex-direction:column;gap:8px}
+
+  .pr{background:var(--bg-surface);border:1px solid var(--divider);border-radius:6px;
+      padding:12px 14px;display:grid;grid-template-columns:auto 1fr;gap:12px;
+      cursor:pointer;transition:border-color var(--micro)}
+  .pr:hover{border-color:var(--text-secondary)}
+  .ic{width:24px;height:24px;border-radius:9999px;display:grid;place-items:center;flex:none;margin-top:1px}
+  .i-open{color:var(--success);background:rgba(116,180,143,.12)}
+  .i-draft{color:var(--text-secondary);background:rgba(157,178,191,.10)}
+  .i-merged{color:var(--merged);background:rgba(161,142,204,.14)}
+  .i-closed{color:var(--danger);background:rgba(212,125,125,.12)}
+
+  .top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+  .num{font-family:var(--mono);font-size:11px;color:var(--text-secondary)}
+  .ti{font-size:14px;font-weight:600;color:var(--text-primary);line-height:1.35}
+  .meta{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:11px;color:var(--text-secondary)}
+  .br{font-family:var(--mono);font-size:10.5px;display:inline-flex;align-items:center;gap:5px;
+      background:var(--bg-elevated);border:1px solid var(--divider);border-radius:4px;padding:2px 7px}
+  .br .arw{color:var(--border-strong)}
+  .diff{font-family:var(--mono);font-size:10.5px;display:inline-flex;gap:6px}
+  .add{color:var(--success)}
+  .del{color:var(--danger)}
+  .files{font-family:var(--mono);font-size:10.5px}
+  .who{display:inline-flex;align-items:center;gap:5px}
+  .av{width:16px;height:16px;border-radius:9999px;display:grid;place-items:center;
+      font-size:8px;font-weight:600;color:#121314}
+  .rv{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-family:var(--mono);
+      border-radius:4px;padding:2px 6px;border:1px solid}
+  .rv-ok{color:var(--success);border-color:rgba(116,180,143,.4)}
+  .rv-chg{color:var(--warning);border-color:rgba(211,176,105,.4)}
+  .rv-pend{color:var(--text-secondary);border-color:var(--border-strong)}
+  .ts{font-family:var(--mono);font-size:10.5px;margin-left:auto}
+
+  /* 채널에 흘러든 저장소 이벤트 */
+  .ev{display:grid;grid-template-columns:32px 1fr;gap:10px;padding:8px 14px;
+      border-left:2px solid var(--border-strong);background:rgba(221,230,237,.04);border-radius:0 4px 4px 0}
+  .ev .eic{width:24px;height:24px;border-radius:9999px;background:var(--bg-elevated);
+           display:grid;place-items:center;color:var(--text-secondary)}
+  .ev .eh{font-size:12px;color:var(--text-secondary);margin-bottom:3px}
+  .ev .eb{font-size:13px;color:var(--text-primary)}
+  .ev .em{font-family:var(--mono);font-size:10.5px;color:var(--text-secondary);margin-top:4px}
+  .note{border-left:2px solid var(--accent);padding:10px 0 10px 14px;color:var(--text-secondary);
+        font-size:12px;margin-top:28px;max-width:70ch}
+  .note b{color:var(--text-primary);font-weight:600}
+  @media(max-width:560px){.ts{margin-left:0}}
+</style>
+
+<h2 class="sr-only">Nexus PR 카드 컴포넌트 — open, draft, merged, closed 상태와 채널에 흘러든 저장소 이벤트</h2>
+
+<h1>Pull Request Card</h1>
+<p class="lede">상태는 아이콘 · 색 · 텍스트 세 겹으로 전달한다. 색 하나만 빼도 의미가 유지되어야 한다.</p>
+
+<h2>상태</h2>
+<div class="list">
+  <div class="pr">
+    <div class="ic i-open"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><circle cx="18" cy="18" r="3"/><path d="M18 15V9a4 4 0 00-4-4h-2"/></svg></div>
+    <div>
+      <div class="top"><span class="num">#128</span><span class="ti">웹훅 HMAC 서명 검증 추가</span></div>
+      <div class="meta">
+        <span class="br">feat/webhook-hmac<span class="arw">→</span>main</span>
+        <span class="diff"><span class="add">+184</span><span class="del">−22</span></span>
+        <span class="files">7 files</span>
+        <span class="rv rv-ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>approved</span>
+        <span class="who"><span class="av" style="background:#90A8C1">이</span>이윤건</span>
+        <span class="ts">2시간 전</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pr">
+    <div class="ic i-draft"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="8" stroke-dasharray="3.2 3.2"/></svg></div>
+    <div>
+      <div class="top"><span class="num">#131</span><span class="ti">pgvector 인덱싱 워커 (WIP)</span></div>
+      <div class="meta">
+        <span class="br">feat/rag-index<span class="arw">→</span>main</span>
+        <span class="diff"><span class="add">+612</span><span class="del">−8</span></span>
+        <span class="files">14 files</span>
+        <span class="rv rv-pend">draft</span>
+        <span class="who"><span class="av" style="background:#90C1A0">김</span>김서연</span>
+        <span class="ts">18분 전</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pr">
+    <div class="ic i-merged"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><path d="M6 6h6a4 4 0 014 4v2"/><circle cx="18" cy="15" r="3"/></svg></div>
+    <div>
+      <div class="top"><span class="num">#124</span><span class="ti">SpaceGuard 멤버십 검증 도입</span></div>
+      <div class="meta">
+        <span class="br">feat/space-guard<span class="arw">→</span>main</span>
+        <span class="diff"><span class="add">+301</span><span class="del">−147</span></span>
+        <span class="files">22 files</span>
+        <span class="who"><span class="av" style="background:#C1A890">박</span>박도현</span>
+        <span class="ts">어제</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pr">
+    <div class="ic i-closed"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+    <div>
+      <div class="top"><span class="num">#119</span><span class="ti">Capacitor 모바일 셸 개선</span></div>
+      <div class="meta">
+        <span class="br">fix/capacitor-shell<span class="arw">→</span>main</span>
+        <span class="rv rv-chg"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v9M12 18h.01"/></svg>changes requested</span>
+        <span class="who"><span class="av" style="background:#9C90C1">최</span>최지우</span>
+        <span class="ts">3일 전</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>채널로 흘러든 저장소 이벤트</h2>
+<div class="list">
+  <div class="ev">
+    <div class="eic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5"/></svg></div>
+    <div>
+      <div class="eh"><b style="color:var(--text-primary)">nexus/server</b> 에 3개 커밋이 푸시됨</div>
+      <div class="eb">웹훅 서명 검증 + 타이밍 세이프 비교</div>
+      <div class="em">da5a18c · 6d44b55 · 9f2c1a0 &nbsp;→&nbsp; main</div>
+    </div>
+  </div>
+  <div class="ev" style="border-left-color:var(--merged)">
+    <div class="eic" style="color:var(--merged)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><path d="M6 6h6a4 4 0 014 4v2"/><circle cx="18" cy="15" r="3"/></svg></div>
+    <div>
+      <div class="eh"><b style="color:var(--text-primary)">박도현</b>님이 PR을 머지함</div>
+      <div class="eb">#124 SpaceGuard 멤버십 검증 도입</div>
+      <div class="em">feat/space-guard → main · NEXUS-131 닫힘</div>
+    </div>
+  </div>
+</div>
+
+<p class="note"><b>이벤트 카드가 메시지 스트림 안에 사는 이유.</b> 별도 "활동" 탭으로 빼면 아무도 보지 않는다. 대화 흐름에 섞이되 <b>좌측 2px 바와 옅은 배경</b>으로 사람의 말과 구분한다 — 읽을 수는 있지만 대화를 끊지는 않는 정도의 존재감이다.</p>

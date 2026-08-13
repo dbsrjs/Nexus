@@ -1,0 +1,227 @@
+<!-- @dsCard group="Foundations" -->
+<meta charset="utf-8">
+<title>Nexus — Palette Options</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#0C0D0F;color:#E4E6E8;padding:28px;
+       font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+       font-size:14px;line-height:1.5}
+  .mono{font-family:'JetBrains Mono','SFMono-Regular',Consolas,monospace}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .lede{color:#9BA0A5;font-size:13px;margin:0 0 26px;max-width:66ch}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-items:start}
+
+  .opt{border-radius:8px;overflow:hidden;border:1px solid #2A2D31}
+  .ohd{padding:12px 14px;background:#141619;border-bottom:1px solid #2A2D31}
+  .oname{font-size:14px;font-weight:600}
+  .oname .tag{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;
+              border:1px solid #4A4E52;border-radius:9999px;padding:2px 7px;margin-left:7px;color:#9BA0A5}
+  .oname .rec{border-color:#74B48F;color:#74B48F}
+  .odesc{font-size:11.5px;color:#9BA0A5;margin-top:5px;line-height:1.5}
+  .sw{display:flex;height:24px}
+  .sw i{flex:1}
+
+  /* ── 팔레트별 스코프 ────────────────────── */
+  .demo{padding:0}
+  .A{--base:#0F161F;--surf:#18222F;--elev:#27374D;
+     --div:rgba(82,109,130,.26);--bstrong:#526D82;
+     --t2:#9DB2BF;--t1:#DDE6ED;--acc:#8EBBD7;--accs:rgba(142,187,215,.11);
+     --ok:#74B48F;--warn:#D3B069;--mrg:#A18ECC}
+  .B{--base:#131415;--surf:#1B1D1F;--elev:#26292C;
+     --div:rgba(221,230,237,.07);--bstrong:#4A4E52;
+     --t2:#9BA0A5;--t1:#DDE6ED;--acc:#77AECF;--accs:rgba(119,174,207,.13);
+     --ok:#74B48F;--warn:#C4A56B;--mrg:#A18ECC}
+  .C{--base:#0F161F;--surf:#18222F;--elev:#27374D;
+     --div:rgba(82,109,130,.26);--bstrong:#526D82;
+     --t2:#9DB2BF;--t1:#DDE6ED;--acc:#D4A377;--accs:rgba(212,163,119,.12);
+     --ok:#74B48F;--warn:#9DB2BF;--mrg:#A18ECC}
+
+  .ui{background:var(--base);display:grid;grid-template-columns:150px 1fr;min-height:290px}
+  .nav{background:var(--surf);border-right:1px solid var(--div);padding:8px 6px}
+  .cat{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+       color:var(--t2);padding:6px 8px 4px;opacity:.85}
+  .ch{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border-radius:4px;position:relative}
+  .ch .h{color:var(--bstrong);font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1}
+  .ch .n{font-size:12.5px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ch.un .n{color:var(--t1);font-weight:600}
+  .ch.sel{background:var(--accs)}
+  .ch.sel::before{content:"";position:absolute;left:0;top:5px;bottom:5px;width:2px;
+                  background:var(--acc);border-radius:0 2px 2px 0}
+  .ch.sel .n{color:var(--t1);font-weight:600}
+  .ch.sel .h{color:var(--acc)}
+  .bm{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+      background:var(--acc);color:var(--base);border-radius:9999px;min-width:16px;height:16px;
+      display:grid;place-items:center;padding:0 4px}
+  .bc{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;
+      background:var(--bstrong);color:var(--t1);border-radius:9999px;min-width:16px;height:16px;
+      display:grid;place-items:center;padding:0 4px}
+  .rp{display:flex;align-items:center;gap:6px;height:26px;padding:0 8px}
+  .rp .n{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--t2)}
+  .rp .d{margin-left:auto;width:6px;height:6px;border-radius:9999px}
+
+  .main{display:flex;flex-direction:column;min-width:0}
+  .mhd{height:36px;display:flex;align-items:center;gap:7px;padding:0 12px;
+       border-bottom:1px solid var(--div);flex:none}
+  .mhd .h{font-family:'JetBrains Mono',monospace;color:var(--t2);font-size:14px}
+  .mhd .t{font-size:13.5px;font-weight:600;color:var(--t1)}
+  .body{flex:1;padding:6px 0}
+  .msg{display:grid;grid-template-columns:30px 1fr;gap:8px;padding:4px 12px}
+  .msg.men{background:var(--accs);box-shadow:inset 2px 0 0 var(--acc)}
+  .av{width:24px;height:24px;border-radius:9999px;display:grid;place-items:center;
+      font-size:10px;font-weight:600;color:var(--base);margin-top:2px}
+  .hd{display:flex;align-items:baseline;gap:7px}
+  .who{font-size:12.5px;font-weight:600;color:var(--t1)}
+  .ts{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--t2)}
+  .bd{font-size:12.5px;line-height:1.5;color:var(--t1)}
+  .bd code{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--elev);
+           border:1px solid var(--div);border-radius:3px;padding:1px 4px}
+  .at{color:var(--acc);background:var(--accs);border-radius:3px;padding:1px 4px;font-weight:500}
+  .chip{display:inline-flex;align-items:center;gap:4px;height:19px;padding:0 6px;border-radius:9999px;
+        background:var(--elev);border:1px solid var(--div);font-family:'JetBrains Mono',monospace;
+        font-size:10px;color:var(--t2);margin-top:4px}
+  .chip.mine{border-color:var(--acc);color:var(--acc);background:var(--accs)}
+  .card{margin:6px 12px;padding:8px 10px;background:var(--elev);border:1px solid var(--div);
+        border-radius:5px;display:grid;grid-template-columns:auto 1fr;gap:8px}
+  .pic{width:19px;height:19px;border-radius:9999px;display:grid;place-items:center;
+       color:var(--ok);background:rgba(116,180,143,.13)}
+  .pnum{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--t2)}
+  .pti{font-size:12px;font-weight:600;color:var(--t1);line-height:1.3;margin-top:1px}
+  .comp{margin:6px 12px 10px;background:var(--elev);border:1px solid var(--bstrong);
+        border-radius:5px;padding:7px 10px;display:flex;align-items:center;gap:8px}
+  .ph{font-size:12px;color:var(--t2);opacity:.75;flex:1}
+  .send{height:22px;padding:0 10px;border-radius:4px;background:var(--acc);color:var(--base);
+        font-size:11px;font-weight:600;display:grid;place-items:center}
+
+  .facts{padding:11px 14px;background:#141619;border-top:1px solid #2A2D31;
+         font-size:11px;color:#9BA0A5;line-height:1.6}
+  .facts b{color:#E4E6E8;font-weight:600}
+  .note{border-left:2px solid #4A4E52;padding:10px 0 10px 14px;color:#9BA0A5;
+        font-size:12px;margin-top:26px;max-width:72ch}
+  .note b{color:#E4E6E8;font-weight:600}
+</style>
+
+<h2 class="sr-only">Nexus 팔레트 후보 3안 비교 — 같은 채널 화면에 각각의 색 조합을 적용한 결과</h2>
+
+<h1>Palette Options</h1>
+<p class="lede">같은 화면에 세 조합을 입혔다. <b style="color:#E4E6E8">세 안 모두 구분선을 <span class="mono">--divider</span>로 분리</b>해 기존 2.95:1에서 1.4:1 수준으로 낮췄다 — 이건 팔레트 선택과 무관한 공통 수정이다.</p>
+
+<div class="grid">
+
+  <!-- A -->
+  <div class="opt">
+    <div class="ohd">
+      <div class="oname">A · 슬레이트 유지<span class="tag">수정만</span></div>
+      <div class="odesc">지금 팔레트 그대로. 구분선을 낮추고 액센트 명도만 올렸다. 여전히 단색 화면이다.</div>
+    </div>
+    <div class="sw"><i style="background:#0F161F"></i><i style="background:#18222F"></i><i style="background:#27374D"></i><i style="background:#526D82"></i><i style="background:#9DB2BF"></i><i style="background:#DDE6ED"></i><i style="background:#8EBBD7"></i></div>
+    <div class="demo A">
+      <div class="ui">
+        <div class="nav">
+          <div class="cat">NEXUS</div>
+          <div class="ch sel"><span class="h">#</span><span class="n">backend</span><span class="bm">2</span></div>
+          <div class="ch un"><span class="h">#</span><span class="n">general</span><span class="bc">12</span></div>
+          <div class="ch"><span class="h">#</span><span class="n">design</span></div>
+          <div class="cat">저장소</div>
+          <div class="rp"><span class="n">nexus/server</span><span class="d" style="background:var(--ok)"></span></div>
+          <div class="rp"><span class="n">nexus/app</span><span class="d" style="background:var(--warn)"></span></div>
+        </div>
+        <div class="main">
+          <div class="mhd"><span class="h">#</span><span class="t">backend</span></div>
+          <div class="body">
+            <div class="msg"><div class="av" style="background:#90A8C1">이</div>
+              <div><div class="hd"><span class="who">이윤건</span><span class="ts">09:41</span></div>
+                <div class="bd"><code>webhook.controller.ts</code> 확인해줄 수 있어?</div>
+                <span class="chip mine">👀 2</span></div></div>
+            <div class="msg men"><div class="av" style="background:#90C1A0">김</div>
+              <div><div class="hd"><span class="who">김서연</span><span class="ts">09:44</span></div>
+                <div class="bd"><span class="at">@이윤건</span> 확인했어요</div></div></div>
+            <div class="card"><div class="pic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><circle cx="18" cy="18" r="3"/><path d="M18 15V9a4 4 0 00-4-4h-2"/></svg></div>
+              <div><span class="pnum">#128</span><div class="pti">웹훅 HMAC 서명 검증</div></div></div>
+          </div>
+          <div class="comp"><span class="ph">메시지 보내기</span><span class="send">보내기</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="facts"><b>색상 수 1개.</b> 배경·텍스트·액센트가 전부 203~215°. 차분하지만 거의 모든 다크 IDE 테마와 같은 인상이다.</div>
+  </div>
+
+  <!-- B -->
+  <div class="opt">
+    <div class="ohd">
+      <div class="oname">B · 중성 그레이 배경<span class="tag rec">추천</span></div>
+      <div class="odesc">배경에서 색기를 뺀다. 그러면 원본 팔레트의 파랑이 <b style="color:#E4E6E8">화면에서 유일한 색</b>이 되어 훨씬 강하게 읽힌다.</div>
+    </div>
+    <div class="sw"><i style="background:#131415"></i><i style="background:#1B1D1F"></i><i style="background:#26292C"></i><i style="background:#4A4E52"></i><i style="background:#9BA0A5"></i><i style="background:#DDE6ED"></i><i style="background:#77AECF"></i></div>
+    <div class="demo B">
+      <div class="ui">
+        <div class="nav">
+          <div class="cat">NEXUS</div>
+          <div class="ch sel"><span class="h">#</span><span class="n">backend</span><span class="bm">2</span></div>
+          <div class="ch un"><span class="h">#</span><span class="n">general</span><span class="bc">12</span></div>
+          <div class="ch"><span class="h">#</span><span class="n">design</span></div>
+          <div class="cat">저장소</div>
+          <div class="rp"><span class="n">nexus/server</span><span class="d" style="background:var(--ok)"></span></div>
+          <div class="rp"><span class="n">nexus/app</span><span class="d" style="background:var(--warn)"></span></div>
+        </div>
+        <div class="main">
+          <div class="mhd"><span class="h">#</span><span class="t">backend</span></div>
+          <div class="body">
+            <div class="msg"><div class="av" style="background:#90A8C1">이</div>
+              <div><div class="hd"><span class="who">이윤건</span><span class="ts">09:41</span></div>
+                <div class="bd"><code>webhook.controller.ts</code> 확인해줄 수 있어?</div>
+                <span class="chip mine">👀 2</span></div></div>
+            <div class="msg men"><div class="av" style="background:#90C1A0">김</div>
+              <div><div class="hd"><span class="who">김서연</span><span class="ts">09:44</span></div>
+                <div class="bd"><span class="at">@이윤건</span> 확인했어요</div></div></div>
+            <div class="card"><div class="pic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><circle cx="18" cy="18" r="3"/><path d="M18 15V9a4 4 0 00-4-4h-2"/></svg></div>
+              <div><span class="pnum">#128</span><div class="pti">웹훅 HMAC 서명 검증</div></div></div>
+          </div>
+          <div class="comp"><span class="ph">메시지 보내기</span><span class="send">보내기</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="facts"><b>색상 수 2개.</b> 원본 <span class="mono">#DDE6ED</span>는 본문으로, <span class="mono">#77AECF</span>는 액센트로 살아남는다. 배경이 중립이라 아바타·시맨틱 색도 덜 탁해진다.</div>
+  </div>
+
+  <!-- C -->
+  <div class="opt">
+    <div class="ohd">
+      <div class="oname">C · 슬레이트 + 코퍼<span class="tag">대비 최대</span></div>
+      <div class="odesc">배경은 그대로 두고 액센트를 <b style="color:#E4E6E8">보색(28°)</b>으로 보낸다. 차가운 배경 위 따뜻한 강조 — 색 대비가 가장 크다.</div>
+    </div>
+    <div class="sw"><i style="background:#0F161F"></i><i style="background:#18222F"></i><i style="background:#27374D"></i><i style="background:#526D82"></i><i style="background:#9DB2BF"></i><i style="background:#DDE6ED"></i><i style="background:#D4A377"></i></div>
+    <div class="demo C">
+      <div class="ui">
+        <div class="nav">
+          <div class="cat">NEXUS</div>
+          <div class="ch sel"><span class="h">#</span><span class="n">backend</span><span class="bm">2</span></div>
+          <div class="ch un"><span class="h">#</span><span class="n">general</span><span class="bc">12</span></div>
+          <div class="ch"><span class="h">#</span><span class="n">design</span></div>
+          <div class="cat">저장소</div>
+          <div class="rp"><span class="n">nexus/server</span><span class="d" style="background:var(--ok)"></span></div>
+          <div class="rp"><span class="n">nexus/app</span><span class="d" style="background:var(--warn)"></span></div>
+        </div>
+        <div class="main">
+          <div class="mhd"><span class="h">#</span><span class="t">backend</span></div>
+          <div class="body">
+            <div class="msg"><div class="av" style="background:#90A8C1">이</div>
+              <div><div class="hd"><span class="who">이윤건</span><span class="ts">09:41</span></div>
+                <div class="bd"><code>webhook.controller.ts</code> 확인해줄 수 있어?</div>
+                <span class="chip mine">👀 2</span></div></div>
+            <div class="msg men"><div class="av" style="background:#90C1A0">김</div>
+              <div><div class="hd"><span class="who">김서연</span><span class="ts">09:44</span></div>
+                <div class="bd"><span class="at">@이윤건</span> 확인했어요</div></div></div>
+            <div class="card"><div class="pic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><circle cx="18" cy="18" r="3"/><path d="M18 15V9a4 4 0 00-4-4h-2"/></svg></div>
+              <div><span class="pnum">#128</span><div class="pti">웹훅 HMAC 서명 검증</div></div></div>
+          </div>
+          <div class="comp"><span class="ph">메시지 보내기</span><span class="send">보내기</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="facts"><b>색상 수 2개(보색).</b> 원본 4색이 전부 남는다. 대가: 앰버 경고색과 충돌해 <b>warning을 색에서 빼고</b> 아이콘·텍스트로만 표시해야 한다.</div>
+  </div>
+
+</div>
+
+<p class="note"><b>공통 수정 — <span class="mono">--border</span>를 둘로 쪼갠다.</b> 지금은 토큰 하나가 구분선과 아이콘·입력 테두리를 겸하고 있다. 아이콘은 읽혀야 하니 3:1이 필요하고 구분선은 거의 안 보여야 하는데, 한 값으로 묶으니 구분선이 아이콘 밝기까지 끌려 올라갔다. <span class="mono">--divider</span>(≈1.4:1)와 <span class="mono">--border-strong</span>(≈3:1)로 분리하면 "선이 너무 잘 보인다"는 문제는 어느 팔레트를 고르든 사라진다.</p>

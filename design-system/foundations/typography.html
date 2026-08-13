@@ -1,0 +1,87 @@
+<!-- @dsCard group="Foundations" -->
+<meta charset="utf-8">
+<title>Nexus — Typography</title>
+<style>
+  :root{
+    --bg-base:#121314;--bg-surface:#1C1D1F;--bg-elevated:#282A2C;
+    --divider:rgba(221,230,237,.10);--border-strong:#63676B;--text-secondary:#9DA0A4;--text-primary:#DDE6ED;--accent:#77AECF;
+    --font:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font);
+       font-size:14px;line-height:1.5;padding:32px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .lede{color:var(--text-secondary);font-size:13px;margin:0 0 32px;max-width:62ch}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary);
+     margin:32px 0 12px;font-weight:600}
+  h2:first-of-type{margin-top:0}
+  .faces{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+  .face{background:var(--bg-surface);border:1px solid var(--divider);border-radius:6px;padding:16px}
+  .face .label{font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.08em}
+  .face .spec{font-size:18px;margin:8px 0 4px}
+  .face .why{font-size:12px;color:var(--text-secondary);line-height:1.5}
+  .face .stack{font-family:var(--mono);font-size:10px;color:var(--text-secondary);
+               margin-top:10px;padding-top:10px;border-top:1px solid var(--divider);word-break:break-all}
+  .scale{width:100%;border-collapse:collapse;overflow:hidden;
+         border:1px solid var(--divider);border-radius:6px}
+  .scale td{border-top:1px solid var(--divider);padding:12px 16px;background:var(--bg-surface);vertical-align:middle}
+  .scale tr:first-child td{border-top:0}
+  .tok{font-family:var(--mono);font-size:11px;color:var(--accent);white-space:nowrap;width:110px}
+  .px{font-family:var(--mono);font-size:11px;color:var(--text-secondary);width:44px;text-align:right}
+  .use{font-size:11px;color:var(--text-secondary);width:150px}
+  .mono-demo{background:var(--bg-surface);border:1px solid var(--divider);border-radius:6px;padding:18px}
+  .line{display:flex;align-items:baseline;gap:12px;padding:8px 0;border-top:1px solid var(--divider)}
+  .line:first-child{border-top:0}
+  .line .k{font-size:11px;color:var(--text-secondary);width:110px;flex:none}
+  .m{font-family:var(--mono);font-size:12px;color:var(--text-primary)}
+  .note{border-left:2px solid var(--accent);padding:10px 0 10px 14px;color:var(--text-secondary);
+        font-size:12px;margin-top:28px;max-width:70ch}
+  .note b{color:var(--text-primary);font-weight:600}
+  @media(max-width:560px){.use{display:none}}
+</style>
+
+<h2 class="sr-only">Nexus 디자인 시스템의 타이포그래피 — 서체 선택, 밀도 우선 스케일, 모노스페이스 사용 규칙</h2>
+
+<h1>Typography</h1>
+<p class="lede">밀도 우선으로 스케일을 좁게 잡는다. 기본 14px, 행간 본문 1.5 · UI 1.3.</p>
+
+<h2>서체</h2>
+<div class="faces">
+  <div class="face">
+    <div class="label">UI · 본문</div>
+    <div class="spec">Pretendard</div>
+    <div class="why">한글 대응이 핵심이다. Inter 계열 메트릭이라 라틴도 자연스럽고, 무료라 배포 제약이 없다.</div>
+    <div class="stack">'Pretendard', -apple-system, 'Segoe UI', 'Noto Sans KR', sans-serif</div>
+  </div>
+  <div class="face">
+    <div class="label">코드 · 메타</div>
+    <div class="spec" style="font-family:var(--mono)">JetBrains Mono</div>
+    <div class="why">코드블록, 브랜치명, 커밋 해시, PR 번호, 타임스탬프에 쓴다.</div>
+    <div class="stack">'JetBrains Mono', 'SFMono-Regular', Consolas, monospace</div>
+  </div>
+</div>
+
+<h2>스케일</h2>
+<table class="scale">
+  <tr><td class="tok">--text-2xs</td><td class="px">11</td><td style="font-size:11px">안 읽음 3 · 오전 9:42</td><td class="use">뱃지 · 타임스탬프</td></tr>
+  <tr><td class="tok">--text-xs</td><td class="px">12</td><td style="font-size:12px">이윤건님이 이슈를 만들었습니다</td><td class="use">메타데이터 · 캡션</td></tr>
+  <tr><td class="tok">--text-sm</td><td class="px">13</td><td style="font-size:13px"># general</td><td class="use">채널명 · 보조 UI</td></tr>
+  <tr><td class="tok">--text-base</td><td class="px">14</td><td style="font-size:14px">이 스택트레이스 우리 저장소 어디랑 관련 있어?</td><td class="use"><b style="color:var(--text-primary)">본문 · 메시지</b></td></tr>
+  <tr><td class="tok">--text-md</td><td class="px">16</td><td style="font-size:16px">웹훅 서명 검증 추가</td><td class="use">카드 제목</td></tr>
+  <tr><td class="tok">--text-lg</td><td class="px">20</td><td style="font-size:20px">이슈 보드</td><td class="use">화면 제목</td></tr>
+  <tr><td class="tok">--text-xl</td><td class="px">24</td><td style="font-size:24px;letter-spacing:-.01em">아직 메시지가 없습니다</td><td class="use">빈 상태 헤드라인</td></tr>
+</table>
+
+<h2>모노스페이스 — 이 시스템의 시그니처</h2>
+<div class="mono-demo">
+  <div class="line"><span class="k">타임스탬프</span><span class="m">09:42</span></div>
+  <div class="line"><span class="k">브랜치</span><span class="m">feat/pivot-nexus → main</span></div>
+  <div class="line"><span class="k">커밋 해시</span><span class="m">da5a18c</span></div>
+  <div class="line"><span class="k">PR 번호</span><span class="m">#128</span></div>
+  <div class="line"><span class="k">이슈 키</span><span class="m">NEXUS-138</span></div>
+  <div class="line"><span class="k">파일 경로</span><span class="m">server/src/realtime/realtime.gateway.ts:61</span></div>
+</div>
+
+<p class="note"><b>왜 메타데이터에까지 모노스페이스를 쓰는가.</b> "개발자를 위한 도구"라는 제품 주장이 로고나 색이 아니라 활자에서 드러나게 하려는 것이다. 부수 효과도 있다 — 고정폭이라 타임스탬프와 해시가 세로로 정렬되고, 밀도 높은 목록에서 눈이 훨씬 덜 피로하다.</p>

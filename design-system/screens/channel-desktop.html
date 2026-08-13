@@ -1,0 +1,275 @@
+<!-- @dsCard group="Screens" -->
+<meta charset="utf-8">
+<title>Nexus — Channel (Desktop)</title>
+<style>
+  :root{
+    --bg-base:#121314;--bg-surface:#1C1D1F;--bg-elevated:#282A2C;
+    --divider:rgba(221,230,237,.10);--border-strong:#63676B;--text-secondary:#9DA0A4;--text-primary:#DDE6ED;
+    --accent:#77AECF;--accent-subtle:rgba(119,174,207,.10);
+    --success:#74B48F;--warning:#D3B069;--danger:#D47D7D;--merged:#A18ECC;
+    --font:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    --micro:120ms cubic-bezier(0,0,.2,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font);
+       font-size:14px;line-height:1.5;padding:24px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .lede{color:var(--text-secondary);font-size:13px;margin:0 0 20px;max-width:64ch}
+  .frame{border:1px solid var(--divider);border-radius:8px;overflow:hidden;overflow-x:auto}
+  .app{display:grid;grid-template-columns:72px 240px minmax(360px,1fr) 320px;
+       height:600px;min-width:1024px;background:var(--bg-base)}
+
+  /* ── 1. 스페이스 레일 ─────────────── */
+  .rail{background:#0D0E0F;border-right:1px solid var(--divider);
+        display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:8px}
+  .sp{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;
+      font-weight:700;font-size:15px;color:#121314;cursor:pointer;position:relative}
+  .sp.act::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;
+                  background:var(--text-primary);border-radius:0 3px 3px 0}
+  .sp.off{background:var(--bg-elevated);color:var(--text-secondary);border:1px solid var(--divider)}
+  .rail .gap{flex:1}
+  .me{width:32px;height:32px;border-radius:9999px;display:grid;place-items:center;
+      font-size:12px;font-weight:600;color:#121314;position:relative}
+  .me .p{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:9999px;
+         background:var(--success);border:2px solid #0D0E0F}
+
+  /* ── 2. 채널 목록 ────────────────── */
+  .nav{background:var(--bg-surface);border-right:1px solid var(--divider);
+       display:flex;flex-direction:column;overflow:hidden}
+  .navhd{height:48px;display:flex;align-items:center;padding:0 14px;
+         border-bottom:1px solid var(--divider);gap:8px;flex:none}
+  .navhd .t{font-size:14px;font-weight:600}
+  .navhd .c{margin-left:auto;color:var(--text-secondary);display:flex}
+  .navbody{flex:1;overflow-y:auto;padding:8px 6px}
+  .cat{display:flex;align-items:center;gap:5px;padding:8px 8px 4px;font-size:11px;
+       font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary)}
+  .ch{display:flex;align-items:center;gap:7px;height:30px;padding:0 8px;border-radius:4px;
+      cursor:pointer;position:relative}
+  .ch .h{color:var(--border-strong);font-family:var(--mono);font-size:14px;line-height:1}
+  .ch .n{font-size:13px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ch:hover{background:var(--bg-elevated)}
+  .ch.unread .n{color:var(--text-primary);font-weight:600}
+  .ch.sel{background:var(--accent-subtle)}
+  .ch.sel::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--accent);border-radius:0 2px 2px 0}
+  .ch.sel .n{color:var(--text-primary);font-weight:600}
+  .ch.sel .h{color:var(--accent)}
+  .bg{margin-left:auto;font-family:var(--mono);font-size:10px;border-radius:9999px;
+      min-width:17px;height:17px;display:grid;place-items:center;padding:0 5px}
+  .bg.c{background:var(--border-strong);color:var(--text-primary)}
+  .bg.m{background:var(--accent);color:#121314;font-weight:700}
+  .repo{display:flex;align-items:center;gap:7px;height:28px;padding:0 8px;border-radius:4px}
+  .repo .n{font-family:var(--mono);font-size:12px;color:var(--text-secondary)}
+  .repo .st{margin-left:auto;width:7px;height:7px;border-radius:9999px}
+
+  /* ── 3. 메시지 ──────────────────── */
+  .main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg-base)}
+  .mhd{height:48px;display:flex;align-items:center;gap:10px;padding:0 16px;
+       border-bottom:1px solid var(--divider);flex:none}
+  .mhd .h{font-family:var(--mono);color:var(--text-secondary);font-size:16px}
+  .mhd .t{font-size:15px;font-weight:600}
+  .mhd .topic{font-size:12px;color:var(--text-secondary);border-left:1px solid var(--divider);
+               padding-left:10px;margin-left:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mhd .acts{margin-left:auto;display:flex;gap:2px;flex:none}
+  .ib{width:28px;height:28px;display:grid;place-items:center;border-radius:4px;
+      color:var(--text-secondary);cursor:pointer;transition:background var(--micro)}
+  .ib:hover{background:var(--bg-elevated);color:var(--text-primary)}
+  .ib.on{background:var(--accent-subtle);color:var(--accent)}
+  .stream{flex:1;overflow-y:auto;padding:8px 0}
+  .sep{display:flex;align-items:center;gap:12px;padding:8px 16px 4px}
+  .sep .l{flex:1;height:1px;background:var(--border-strong)}
+  .sep .d{font-family:var(--mono);font-size:10px;color:var(--text-secondary)}
+  .msg{display:grid;grid-template-columns:40px 1fr;gap:10px;padding:5px 16px}
+  .msg.cont{padding-top:1px;padding-bottom:1px}
+  .msg.men{background:var(--accent-subtle);box-shadow:inset 2px 0 0 var(--accent)}
+  .av{width:32px;height:32px;border-radius:9999px;display:grid;place-items:center;
+      font-size:12px;font-weight:600;color:#121314;margin-top:2px}
+  .gut{font-family:var(--mono);font-size:10px;color:var(--text-secondary);text-align:right;
+       padding-right:2px;line-height:21px}
+  .hd{display:flex;align-items:baseline;gap:8px}
+  .who{font-size:14px;font-weight:600}
+  .ts{font-family:var(--mono);font-size:10px;color:var(--text-secondary)}
+  .bd{font-size:14px;line-height:1.5;word-break:break-word}
+  .bd code{font-family:var(--mono);font-size:12.5px;background:var(--bg-elevated);
+           border:1px solid var(--divider);border-radius:3px;padding:1px 5px}
+  .at{color:var(--accent);background:var(--accent-subtle);border-radius:3px;padding:1px 4px;font-weight:500}
+  .rx{display:flex;gap:5px;margin-top:5px}
+  .chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 7px;border-radius:9999px;
+        background:var(--bg-elevated);border:1px solid var(--border-strong);font-family:var(--mono);
+        font-size:11px;color:var(--text-secondary)}
+  .chip.mine{border-color:var(--accent);color:var(--accent);background:var(--accent-subtle)}
+  .thr{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--accent)}
+  .thr .n{font-family:var(--mono);font-size:11px}
+  .ev{display:grid;grid-template-columns:32px 1fr;gap:10px;margin:6px 16px;padding:8px 12px;
+      border-left:2px solid var(--merged);background:rgba(221,230,237,.04);border-radius:0 4px 4px 0}
+  .ev .i{width:24px;height:24px;border-radius:9999px;background:var(--bg-elevated);
+         display:grid;place-items:center;color:var(--merged)}
+  .ev .h{font-size:12px;color:var(--text-secondary)}
+  .ev .b{font-size:13px}
+  .ev .m{font-family:var(--mono);font-size:10.5px;color:var(--text-secondary);margin-top:3px}
+  .typing{display:flex;align-items:center;gap:8px;padding:4px 16px;font-size:12px;color:var(--text-secondary)}
+  .dots{display:inline-flex;gap:3px}
+  .dots i{width:5px;height:5px;border-radius:9999px;background:var(--text-secondary);animation:bl 1.3s infinite}
+  .dots i:nth-child(2){animation-delay:.18s}.dots i:nth-child(3){animation-delay:.36s}
+  @keyframes bl{0%,60%,100%{opacity:.28}30%{opacity:1}}
+  @media(prefers-reduced-motion:reduce){.dots i{animation:none;opacity:.6}}
+  .comp{flex:none;padding:10px 16px 14px}
+  .box{background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:6px;padding:8px 10px}
+  .ph{font-size:14px;color:var(--text-secondary);opacity:.7}
+  .tools{display:flex;align-items:center;gap:4px;margin-top:6px;padding-top:6px;
+         border-top:1px solid var(--divider)}
+  .tl{width:26px;height:26px;display:grid;place-items:center;border-radius:4px;color:var(--text-secondary)}
+  .send{margin-left:auto;height:26px;padding:0 12px;border:0;border-radius:4px;background:var(--accent);
+        color:#121314;font-family:var(--font);font-size:12px;font-weight:600;opacity:.35}
+
+  /* ── 4. 우측 패널 ────────────────── */
+  .side{background:var(--bg-surface);border-left:1px solid var(--divider);
+        display:flex;flex-direction:column;overflow:hidden}
+  .shd{height:48px;display:flex;align-items:center;gap:8px;padding:0 14px;
+       border-bottom:1px solid var(--divider);flex:none}
+  .shd .t{font-size:13px;font-weight:600}
+  .sbody{flex:1;overflow-y:auto;padding:12px}
+  .pr{background:var(--bg-elevated);border:1px solid var(--divider);border-radius:6px;
+      padding:10px 12px;display:grid;grid-template-columns:auto 1fr;gap:10px;margin-bottom:8px}
+  .pic{width:22px;height:22px;border-radius:9999px;display:grid;place-items:center;margin-top:1px}
+  .pi-o{color:var(--success);background:rgba(116,180,143,.12)}
+  .pi-d{color:var(--text-secondary);background:rgba(157,178,191,.1)}
+  .pi-m{color:var(--merged);background:rgba(161,142,204,.14)}
+  .pnum{font-family:var(--mono);font-size:10px;color:var(--text-secondary)}
+  .pti{font-size:12.5px;font-weight:600;line-height:1.35;margin:2px 0 5px}
+  .pmeta{display:flex;flex-wrap:wrap;gap:7px;font-family:var(--mono);font-size:10px;color:var(--text-secondary)}
+  .add{color:var(--success)}.del{color:var(--danger)}
+  .stitle{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary);
+          margin:16px 0 8px}
+  .stitle:first-child{margin-top:0}
+  .note{border-left:2px solid var(--accent);padding:10px 0 10px 14px;color:var(--text-secondary);
+        font-size:12px;margin-top:20px;max-width:72ch}
+  .note b{color:var(--text-primary);font-weight:600}
+  .dims{display:flex;gap:16px;font-family:var(--mono);font-size:10.5px;color:var(--text-secondary);
+        margin-top:12px;flex-wrap:wrap}
+</style>
+
+<h2 class="sr-only">Nexus 데스크톱 채널 화면 — 스페이스 레일, 채널 목록, 메시지 스트림, PR 패널의 4단 레이아웃</h2>
+
+<h1>Channel — Desktop</h1>
+<p class="lede">토큰이 실제로 작동하는지 확인하는 검증 화면. 4단 셸에 지금까지 만든 컴포넌트를 전부 올렸다.</p>
+
+<div class="frame"><div class="app">
+
+  <!-- 1. 스페이스 레일 -->
+  <div class="rail">
+    <div class="sp act" style="background:#77AECF">N</div>
+    <div class="sp off">S</div>
+    <div class="sp off">+</div>
+    <div class="gap"></div>
+    <div class="ib"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 007 19.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00-1.1-2.7H3a2 2 0 110-4h.1A1.6 1.6 0 004.6 7l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 002.7-1.1V3a2 2 0 114 0v.1A1.6 1.6 0 0017 4.6l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 001.1 2.7H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg></div>
+    <div class="me" style="background:#90A8C1">이<span class="p"></span></div>
+  </div>
+
+  <!-- 2. 채널 목록 -->
+  <div class="nav">
+    <div class="navhd"><span class="t">Nexus</span>
+      <span class="c"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 7 6-7"/></svg></span></div>
+    <div class="navbody">
+      <div class="cat"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 7 6-7z"/></svg>NEXUS</div>
+      <div class="ch sel"><span class="h">#</span><span class="n">backend</span><span class="bg m">2</span></div>
+      <div class="ch unread"><span class="h">#</span><span class="n">general</span><span class="bg c">12</span></div>
+      <div class="ch"><span class="h">#</span><span class="n">design</span></div>
+      <div class="ch"><span class="h">#</span><span class="n">random</span></div>
+      <div class="cat" style="margin-top:6px"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 7 6-7z"/></svg>저장소</div>
+      <div class="repo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" stroke-width="2"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5"/></svg><span class="n">nexus/server</span><span class="st" style="background:var(--success)"></span></div>
+      <div class="repo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" stroke-width="2"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5"/></svg><span class="n">nexus/app</span><span class="st" style="background:var(--warning)"></span></div>
+      <div class="cat" style="margin-top:6px"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 7 6-7z"/></svg>다이렉트 메시지</div>
+      <div class="ch"><span class="h" style="font-size:11px">●</span><span class="n">김서연</span></div>
+      <div class="ch"><span class="h" style="font-size:11px;color:var(--warning)">●</span><span class="n">박도현</span></div>
+    </div>
+  </div>
+
+  <!-- 3. 메시지 -->
+  <div class="main">
+    <div class="mhd">
+      <span class="h">#</span><span class="t">backend</span>
+      <span class="topic">서버 · Prisma · 실시간</span>
+      <span class="acts">
+        <span class="ib"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5h10M9 12h10M9 19h10M5 5h.01M5 12h.01M5 19h.01"/></svg></span>
+        <span class="ib on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><circle cx="18" cy="18" r="3"/><path d="M18 15V9a4 4 0 00-4-4h-2"/></svg></span>
+        <span class="ib"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+      </span>
+    </div>
+
+    <div class="stream">
+      <div class="sep"><span class="l"></span><span class="d">2026년 8월 13일</span><span class="l"></span></div>
+
+      <div class="msg"><div class="av" style="background:#90A8C1">이</div>
+        <div><div class="hd"><span class="who">이윤건</span><span class="ts">09:41</span></div>
+          <div class="bd">웹훅 서명 검증이 빠져 있는 것 같은데 <code>repos/webhook.controller.ts</code> 확인해줄 수 있어?</div></div></div>
+
+      <div class="msg cont"><div class="gut">09:41</div>
+        <div><div class="bd">외부에서 임의 이벤트를 주입할 수 있는 상태야</div>
+          <div class="rx"><span class="chip mine">👀 2</span><span class="chip">🔥 1</span></div></div></div>
+
+      <div class="msg men"><div class="av" style="background:#90C1A0">김</div>
+        <div><div class="hd"><span class="who">김서연</span><span class="ts">09:44</span></div>
+          <div class="bd"><span class="at">@이윤건</span> 확인했어요. HMAC 비교를 타이밍 세이프하게 바꾸는 것까지 같이 하죠</div>
+          <div class="thr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 01-8 8H7l-4 3V12a8 8 0 018-8h2a8 8 0 018 8z"/></svg><span class="n">답글 4개</span></div></div></div>
+
+      <div class="ev">
+        <div class="i"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><path d="M6 6h6a4 4 0 014 4v2"/><circle cx="18" cy="15" r="3"/></svg></div>
+        <div><div class="h"><b style="color:var(--text-primary)">박도현</b>님이 PR을 머지함</div>
+          <div class="b">#124 SpaceGuard 멤버십 검증 도입</div>
+          <div class="m">feat/space-guard → main · NEXUS-131 닫힘</div></div></div>
+
+      <div class="msg"><div class="av" style="background:#C1A890">박</div>
+        <div><div class="hd"><span class="who">박도현</span><span class="ts">09:52</span></div>
+          <div class="bd">그럼 이슈로 만들어둘게 — <span class="at">NEXUS-141</span></div></div></div>
+
+      <div class="typing"><span class="dots"><i></i><i></i><i></i></span><span>김서연님이 입력 중…</span></div>
+    </div>
+
+    <div class="comp">
+      <div class="box">
+        <div class="ph">#backend 에 메시지 보내기</div>
+        <div class="tools">
+          <span class="tl"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12l-8.5 8.5a5 5 0 01-7-7L14 5a3.5 3.5 0 015 5l-8.5 8.5a2 2 0 01-3-3L15 8"/></svg></span>
+          <span class="tl"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-6-6 6-6M15 6l6 6-6 6"/></svg></span>
+          <span class="tl"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 007 0M9 9.5h.01M15 9.5h.01"/></svg></span>
+          <button class="send">보내기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 우측 패널 -->
+  <div class="side">
+    <div class="shd"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><circle cx="18" cy="18" r="3"/><path d="M18 15V9a4 4 0 00-4-4h-2"/></svg>
+      <span class="t">nexus/server</span>
+      <span class="ib" style="margin-left:auto"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg></span></div>
+    <div class="sbody">
+      <div class="stitle">열린 PR 3</div>
+      <div class="pr"><div class="pic pi-o"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><circle cx="18" cy="18" r="3"/><path d="M18 15V9a4 4 0 00-4-4h-2"/></svg></div>
+        <div><span class="pnum">#128</span><div class="pti">웹훅 HMAC 서명 검증 추가</div>
+          <div class="pmeta"><span class="add">+184</span><span class="del">−22</span><span>7 files</span><span style="color:var(--success)">approved</span></div></div></div>
+      <div class="pr"><div class="pic pi-d"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="8" stroke-dasharray="3.2 3.2"/></svg></div>
+        <div><span class="pnum">#131</span><div class="pti">pgvector 인덱싱 워커 (WIP)</div>
+          <div class="pmeta"><span class="add">+612</span><span class="del">−8</span><span>14 files</span><span>draft</span></div></div></div>
+      <div class="pr"><div class="pic pi-m"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><path d="M6 6h6a4 4 0 014 4v2"/><circle cx="18" cy="15" r="3"/></svg></div>
+        <div><span class="pnum">#124</span><div class="pti">SpaceGuard 멤버십 검증 도입</div>
+          <div class="pmeta"><span class="add">+301</span><span class="del">−147</span><span>어제 머지</span></div></div></div>
+
+      <div class="stitle">최근 커밋</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-secondary);line-height:2">
+        <div><span style="color:var(--accent)">da5a18c</span> docs: 방향 전환</div>
+        <div><span style="color:var(--accent)">6d44b55</span> feat: 초기 커밋</div>
+      </div>
+    </div>
+  </div>
+
+</div></div>
+
+<div class="dims">
+  <span>rail 72</span><span>nav 240</span><span>main flex</span><span>side 320</span>
+  <span>header 48</span><span>channel row 30</span><span>message row 5/16</span>
+</div>
+
+<p class="note"><b>검증 결과.</b> 4단을 동시에 띄워도 채도가 높은 지점은 <b>선택된 채널 · 멘션 뱃지 · 전송 버튼</b> 셋뿐이다. PR 상태색(녹·자주)은 좁은 아이콘 배경에만 갇혀 있어 화면 전체 인상을 흔들지 않는다. "채도를 아낀다"는 원칙이 실제 밀도에서도 유지되는 것을 확인했다.</p>

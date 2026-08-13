@@ -1,0 +1,101 @@
+<!-- @dsCard group="Dev" -->
+<meta charset="utf-8">
+<title>Nexus — Code Block & AI Answer</title>
+<style>
+  :root{
+    --bg-base:#121314;--bg-surface:#1C1D1F;--bg-elevated:#282A2C;
+    --divider:rgba(221,230,237,.10);--border-strong:#63676B;--text-secondary:#9DA0A4;--text-primary:#DDE6ED;
+    --accent:#77AECF;--accent-subtle:rgba(119,174,207,.10);
+    --success:#74B48F;--warning:#D3B069;--danger:#D47D7D;--merged:#A18ECC;
+    --font:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    --micro:120ms cubic-bezier(0,0,.2,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font);
+       font-size:14px;line-height:1.5;padding:32px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .lede{color:var(--text-secondary);font-size:13px;margin:0 0 32px;max-width:62ch}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary);
+     margin:32px 0 12px;font-weight:600}
+  h2:first-of-type{margin-top:0}
+
+  /* ── Code block ─────────────────────── */
+  .cb{background:var(--bg-surface);border:1px solid var(--divider);border-radius:6px;overflow:hidden}
+  .cbhd{display:flex;align-items:center;gap:8px;padding:7px 12px;
+        border-bottom:1px solid var(--divider);background:var(--bg-elevated)}
+  .lang{font-family:var(--mono);font-size:10px;color:var(--text-secondary);
+        text-transform:uppercase;letter-spacing:.06em}
+  .path{font-family:var(--mono);font-size:10.5px;color:var(--text-secondary);
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .copy{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:10.5px;
+        color:var(--text-secondary);cursor:pointer;padding:2px 6px;border-radius:4px;
+        transition:background var(--micro),color var(--micro);flex:none}
+  .copy:hover{background:rgba(157,178,191,.12);color:var(--text-primary)}
+  .code{margin:0;padding:12px 0;overflow-x:auto;font-family:var(--mono);
+        font-size:12.5px;line-height:1.65}
+  .ln{display:grid;grid-template-columns:42px 1fr;min-width:max-content}
+  .ln .n{color:var(--border-strong);text-align:right;padding-right:14px;user-select:none}
+  .ln.hl{background:var(--accent-subtle);box-shadow:inset 2px 0 0 var(--accent)}
+  .ln.hl .n{color:var(--accent)}
+  .kw{color:#8AA9C4}.st{color:#93B8A2}.fn{color:#C4B189}.cm{color:#5E7386;font-style:italic}
+  .nu{color:#B098BB}.pn{color:var(--text-secondary)}
+
+  /* ── AI answer ──────────────────────── */
+  .ai{background:var(--bg-surface);border:1px solid var(--divider);border-radius:6px;padding:14px}
+  .aihd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .aiic{width:22px;height:22px;border-radius:9999px;background:var(--accent-subtle);
+        display:grid;place-items:center;color:var(--accent)}
+  .aity{font-size:12px;font-weight:600;color:var(--text-primary)}
+  .aisub{font-family:var(--mono);font-size:10px;color:var(--text-secondary);margin-left:auto}
+  .aibody{font-size:13.5px;line-height:1.6;color:var(--text-primary)}
+  .aibody code{font-family:var(--mono);font-size:12px;background:var(--bg-elevated);
+               border:1px solid var(--divider);border-radius:3px;padding:1px 5px}
+  .cites{margin-top:12px;padding-top:11px;border-top:1px solid var(--divider)}
+  .citehd{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary);margin-bottom:7px}
+  .cite{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;
+        color:var(--accent);padding:3px 0;cursor:pointer}
+  .cite .r{color:var(--text-secondary)}
+  .note{border-left:2px solid var(--accent);padding:10px 0 10px 14px;color:var(--text-secondary);
+        font-size:12px;margin-top:28px;max-width:70ch}
+  .note b{color:var(--text-primary);font-weight:600}
+</style>
+
+<h2 class="sr-only">Nexus 코드블록과 AI 답변 컴포넌트 — 언어 라벨, 라인 번호, 하이라이트, 근거 인용</h2>
+
+<h1>Code Block &amp; AI Answer</h1>
+<p class="lede">신택스 하이라이트는 슬레이트 배경 위에서 <b style="color:var(--text-primary)">저채도</b>로 유지한다. 코드가 화면에서 가장 화려한 요소가 되면 안 된다.</p>
+
+<h2>코드블록</h2>
+<div class="cb">
+  <div class="cbhd">
+    <span class="lang">TypeScript</span>
+    <span class="path">server/src/realtime/realtime.gateway.ts</span>
+    <span class="copy"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h8"/></svg>복사</span>
+  </div>
+  <pre class="code"><div class="ln"><span class="n">58</span><span><span class="kw">let</span> payload<span class="pn">:</span> <span class="pn">{</span> sub<span class="pn">?:</span> <span class="fn">string</span><span class="pn">;</span> email<span class="pn">?:</span> <span class="fn">string</span> <span class="pn">};</span></span></div><div class="ln"><span class="n">59</span><span><span class="kw">try</span> <span class="pn">{</span></span></div><div class="ln"><span class="n">60</span><span>  payload <span class="pn">=</span> <span class="kw">await</span> <span class="kw">this</span><span class="pn">.</span>jwt<span class="pn">.</span><span class="fn">verifyAsync</span><span class="pn">(</span>token<span class="pn">, {</span></span></div><div class="ln hl"><span class="n">61</span><span>    secret<span class="pn">:</span> <span class="kw">this</span><span class="pn">.</span>config<span class="pn">.</span><span class="fn">get</span><span class="pn">(</span><span class="st">'JWT_SECRET'</span><span class="pn">) ??</span> <span class="kw">this</span><span class="pn">.</span>config<span class="pn">.</span><span class="fn">get</span><span class="pn">(</span><span class="st">'JWT_ACCESS_SECRET'</span><span class="pn">),</span></span></div><div class="ln"><span class="n">62</span><span>  <span class="pn">});</span></span></div><div class="ln"><span class="n">63</span><span><span class="pn">}</span> <span class="kw">catch</span> <span class="pn">{</span></span></div><div class="ln"><span class="n">64</span><span>  <span class="cm">// 토큰 검증 실패 — 소켓을 끊는다</span></span></div><div class="ln"><span class="n">65</span><span>  client<span class="pn">.</span><span class="fn">disconnect</span><span class="pn">(</span><span class="kw">true</span><span class="pn">);</span></span></div><div class="ln"><span class="n">66</span><span><span class="pn">}</span></span></div></pre>
+</div>
+
+<h2>AI 답변 — 근거 인용이 핵심</h2>
+<div class="ai">
+  <div class="aihd">
+    <span class="aiic"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l2.2 5.6L20 11l-5.8 2.4L12 19l-2.2-5.6L4 11l5.8-2.4z"/></svg></span>
+    <span class="aity">코드 질의</span>
+    <span class="aisub">nexus/server · 청크 6개 참조</span>
+  </div>
+  <div class="aibody">
+    소켓만 인증에 실패하는 원인은 <b>시크릿 해석이 모듈마다 다르기 때문</b>입니다.
+    게이트웨이는 <code>JWT_ACCESS_SECRET</code>으로 폴백하는데 이 변수는 어디에도 정의돼 있지 않고,
+    REST 쪽은 <code>'dev-insecure-secret'</code> 하드코딩으로 폴백합니다.
+    그래서 <code>JWT_SECRET</code>이 비어 있으면 REST는 뜨고 소켓만 전부 끊깁니다.
+  </div>
+  <div class="cites">
+    <div class="citehd">근거</div>
+    <div class="cite">server/src/realtime/realtime.gateway.ts<span class="r">:58–62</span></div>
+    <div class="cite">server/src/auth/auth.module.ts<span class="r">:16</span></div>
+    <div class="cite">server/src/auth/jwt.strategy.ts<span class="r">:28</span></div>
+  </div>
+</div>
+
+<p class="note"><b>인용이 없는 AI 답변은 만들지 않는다.</b> 코드 질의의 가치는 답이 아니라 <b>어디를 봐야 하는지</b>에 있다. 파일 경로와 라인이 없으면 사용자는 답을 검증할 수 없고, 검증할 수 없는 답은 결국 아무도 신뢰하지 않는다. 인용 줄은 클릭하면 해당 파일 열람 화면으로 이동한다.</p>

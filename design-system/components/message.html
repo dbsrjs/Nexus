@@ -1,0 +1,151 @@
+<!-- @dsCard group="Chat" -->
+<meta charset="utf-8">
+<title>Nexus — Message</title>
+<style>
+  :root{
+    --bg-base:#121314;--bg-surface:#1C1D1F;--bg-elevated:#282A2C;
+    --divider:rgba(221,230,237,.10);--border-strong:#63676B;--text-secondary:#9DA0A4;--text-primary:#DDE6ED;
+    --accent:#77AECF;--accent-subtle:rgba(119,174,207,.10);--danger:#D47D7D;
+    --font:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    --micro:120ms cubic-bezier(0,0,.2,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font);
+       font-size:14px;line-height:1.5;padding:32px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .lede{color:var(--text-secondary);font-size:13px;margin:0 0 32px;max-width:62ch}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary);
+     margin:32px 0 12px;font-weight:600}
+  h2:first-of-type{margin-top:0}
+  .stream{background:var(--bg-base);border:1px solid var(--divider);border-radius:6px;padding:8px 0}
+
+  /* ── Message row ────────────────────── */
+  .msg{display:grid;grid-template-columns:40px 1fr;gap:10px;padding:5px 16px;position:relative;
+       transition:background var(--micro)}
+  .msg:hover{background:rgba(221,230,237,.045)}
+  .msg.cont{padding-top:1px;padding-bottom:1px}
+  .msg.mention{background:var(--accent-subtle);box-shadow:inset 2px 0 0 var(--accent)}
+  .av{width:32px;height:32px;border-radius:9999px;display:grid;place-items:center;
+      font-size:12px;font-weight:600;color:#121314;margin-top:2px}
+  .gut{font-family:var(--mono);font-size:10px;color:var(--text-secondary);
+       text-align:right;padding-right:2px;line-height:21px;opacity:0;transition:opacity var(--micro)}
+  .msg.cont:hover .gut{opacity:1}
+  .hd{display:flex;align-items:baseline;gap:8px;margin-bottom:1px}
+  .who{font-size:14px;font-weight:600;color:var(--text-primary)}
+  .ts{font-family:var(--mono);font-size:10px;color:var(--text-secondary)}
+  .body{font-size:14px;line-height:1.5;color:var(--text-primary);word-break:break-word}
+  .body code{font-family:var(--mono);font-size:12.5px;background:var(--bg-elevated);
+             border:1px solid var(--divider);border-radius:3px;padding:1px 5px}
+  .at{color:var(--accent);background:var(--accent-subtle);border-radius:3px;padding:1px 4px;font-weight:500}
+  .edited{font-size:10px;color:var(--text-secondary);margin-left:5px}
+  .deleted{font-size:13px;color:var(--text-secondary);font-style:italic}
+
+  /* 리액션 */
+  .rx{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+  .chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 7px;
+        border-radius:9999px;background:var(--bg-elevated);border:1px solid var(--border-strong);
+        font-family:var(--mono);font-size:11px;color:var(--text-secondary);cursor:pointer;
+        transition:border-color var(--micro),color var(--micro)}
+  .chip:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+  .chip.mine{border-color:var(--accent);color:var(--accent);background:var(--accent-subtle)}
+  .chip .e{font-size:12px}
+
+  /* 스레드 요약 */
+  .thread{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;
+          color:var(--accent);cursor:pointer;padding:2px 0}
+  .thread .n{font-family:var(--mono);font-size:11px}
+  .thread .last{color:var(--text-secondary);font-family:var(--mono);font-size:10px}
+
+  /* 타이핑 */
+  .typing{display:flex;align-items:center;gap:8px;padding:6px 16px;
+          font-size:12px;color:var(--text-secondary)}
+  .dots{display:inline-flex;gap:3px}
+  .dots i{width:5px;height:5px;border-radius:9999px;background:var(--text-secondary);
+          animation:bl 1.3s infinite}
+  .dots i:nth-child(2){animation-delay:.18s}
+  .dots i:nth-child(3){animation-delay:.36s}
+  @keyframes bl{0%,60%,100%{opacity:.28}30%{opacity:1}}
+  @media(prefers-reduced-motion:reduce){.dots i{animation:none;opacity:.6}}
+
+  .sep{display:flex;align-items:center;gap:12px;padding:10px 16px 6px}
+  .sep .l{flex:1;height:1px;background:var(--border-strong)}
+  .sep .d{font-family:var(--mono);font-size:10px;color:var(--text-secondary)}
+  .note{border-left:2px solid var(--accent);padding:10px 0 10px 14px;color:var(--text-secondary);
+        font-size:12px;margin-top:28px;max-width:70ch}
+  .note b{color:var(--text-primary);font-weight:600}
+</style>
+
+<h2 class="sr-only">Nexus 메시지 컴포넌트 — 일반, 연속, 편집됨, 삭제됨, 멘션 하이라이트, 리액션, 스레드 요약</h2>
+
+<h1>Message</h1>
+<p class="lede">메시지에 말풍선을 쓰지 않는다. 배경 없는 행 기반이라 세로 밀도가 훨씬 높고, 코드블록과 첨부가 자연스럽게 들어간다.</p>
+
+<h2>스트림</h2>
+<div class="stream">
+  <div class="sep"><span class="l"></span><span class="d">2026년 8월 13일</span><span class="l"></span></div>
+
+  <div class="msg">
+    <div class="av" style="background:#90A8C1">이</div>
+    <div>
+      <div class="hd"><span class="who">이윤건</span><span class="ts">09:41</span></div>
+      <div class="body">웹훅 서명 검증이 빠져 있는 것 같은데, <code>repos/webhook.controller.ts</code> 확인해줄 수 있어?</div>
+    </div>
+  </div>
+
+  <div class="msg cont">
+    <div class="gut">09:41</div>
+    <div>
+      <div class="body">외부에서 임의 이벤트를 주입할 수 있는 상태야</div>
+      <div class="rx">
+        <span class="chip mine"><span class="e">👀</span>2</span>
+        <span class="chip"><span class="e">🔥</span>1</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="msg mention">
+    <div class="av" style="background:#90C1A0">김</div>
+    <div>
+      <div class="hd"><span class="who">김서연</span><span class="ts">09:44</span></div>
+      <div class="body"><span class="at">@이윤건</span> 확인했어요. HMAC 비교를 타이밍 세이프하게 바꾸는 것까지 같이 하는 게 좋겠습니다</div>
+      <div class="thread">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 01-8 8H7l-4 3V12a8 8 0 018-8h2a8 8 0 018 8z"/></svg>
+        <span class="n">답글 4개</span><span class="last">마지막 09:52</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="msg">
+    <div class="av" style="background:#C1A890">박</div>
+    <div>
+      <div class="hd"><span class="who">박도현</span><span class="ts">09:47</span></div>
+      <div class="body">그럼 이슈로 만들어둘게<span class="edited">(편집됨)</span></div>
+    </div>
+  </div>
+
+  <div class="msg cont">
+    <div class="gut">09:48</div>
+    <div><div class="body deleted">삭제된 메시지입니다</div></div>
+  </div>
+
+  <div class="typing">
+    <span class="dots"><i></i><i></i><i></i></span>
+    <span>김서연님이 입력 중…</span>
+  </div>
+</div>
+
+<h2>변형 정리</h2>
+<div class="stream" style="padding:14px 0">
+  <div class="msg"><div class="av" style="background:#9C90C1">최</div>
+    <div><div class="hd"><span class="who">최지우</span><span class="ts">10:02</span></div>
+      <div class="body"><b>일반</b> — 아바타 + 이름 + 타임스탬프</div></div></div>
+  <div class="msg cont"><div class="gut">10:02</div>
+    <div><div class="body"><b>연속</b> — 같은 사람이 5분 내에 이어 말하면 헤더를 생략한다. 타임스탬프는 호버 시 좌측 여백에 나타난다</div></div></div>
+  <div class="msg mention"><div class="av" style="background:#C1909C">정</div>
+    <div><div class="hd"><span class="who">정민호</span><span class="ts">10:05</span></div>
+      <div class="body"><b>멘션</b> — <span class="at">@everyone</span> 좌측 2px 액센트 바 + 은은한 배경</div></div></div>
+</div>
+
+<p class="note"><b>왜 말풍선을 쓰지 않는가.</b> 말풍선은 짧은 대화에 맞다. Nexus의 메시지에는 코드블록 · 스택트레이스 · PR 카드가 자주 들어가고, 이것들은 풍선 안에서 어색해진다. 행 기반은 세로 밀도가 높고 좌측 정렬이 일정해 <b>긴 로그를 훑기 좋다</b>. 연속 메시지에서 헤더를 지우는 것만으로 같은 화면에 40% 더 담긴다.</p>

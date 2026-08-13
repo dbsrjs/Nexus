@@ -1,0 +1,156 @@
+<!-- @dsCard group="Identity" -->
+<meta charset="utf-8">
+<title>Nexus — Avatar & Badge</title>
+<style>
+  :root{
+    --bg-base:#121314;--bg-surface:#1C1D1F;--bg-elevated:#282A2C;
+    --divider:rgba(221,230,237,.10);--border-strong:#63676B;--text-secondary:#9DA0A4;--text-primary:#DDE6ED;
+    --accent:#77AECF;--success:#74B48F;--warning:#D3B069;--danger:#D47D7D;--merged:#A18ECC;
+    --avatar-1:#90A8C1;--avatar-2:#9C90C1;--avatar-3:#C190C1;--avatar-4:#C1909C;
+    --avatar-5:#C1A890;--avatar-6:#B4C190;--avatar-7:#90C1A0;--avatar-8:#90C1C1;
+    --font:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font);
+       font-size:14px;line-height:1.5;padding:32px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .lede{color:var(--text-secondary);font-size:13px;margin:0 0 32px;max-width:62ch}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary);
+     margin:32px 0 12px;font-weight:600}
+  h2:first-of-type{margin-top:0}
+  .panel{background:var(--bg-surface);border:1px solid var(--divider);border-radius:6px;padding:20px}
+  .row{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;padding:14px 0;
+       border-top:1px solid var(--divider)}
+  .row:first-child{border-top:0;padding-top:0}
+  .rl{font-family:var(--mono);font-size:11px;color:var(--text-secondary);width:104px;flex:none;align-self:center}
+  .u{text-align:center}
+  .u .cap{font-family:var(--mono);font-size:10px;color:var(--text-secondary);margin-top:6px}
+
+  /* ── Avatar ─────────────────────────── */
+  .av{border-radius:9999px;display:grid;place-items:center;font-weight:600;
+      color:#121314;position:relative;flex:none;user-select:none}
+  .av.xs{width:20px;height:20px;font-size:9px}
+  .av.sm{width:24px;height:24px;font-size:10px}
+  .av.md{width:32px;height:32px;font-size:12px}
+  .av.lg{width:40px;height:40px;font-size:14px}
+  .av.xl{width:56px;height:56px;font-size:19px}
+  .pr{position:absolute;right:-1px;bottom:-1px;border-radius:9999px;
+      border:2px solid var(--bg-surface)}
+  .md .pr{width:10px;height:10px}
+  .lg .pr{width:12px;height:12px}
+  .xl .pr{width:15px;height:15px}
+  .on{background:var(--success)}
+  .away{background:var(--warning)}
+  .off{background:var(--border-strong)}
+
+  /* ── Badge ──────────────────────────── */
+  .b{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);
+     font-size:11px;line-height:1;border-radius:9999px;padding:3px 7px;font-weight:500}
+  .b-count{background:var(--border-strong);color:var(--text-primary);min-width:18px;justify-content:center}
+  .b-mention{background:var(--accent);color:#121314;min-width:18px;justify-content:center;font-weight:700}
+  .b-dot{width:7px;height:7px;padding:0;border-radius:9999px}
+  .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;line-height:1;
+       border-radius:4px;padding:4px 7px;border:1px solid;background:transparent}
+  .t-open{color:var(--success);border-color:rgba(116,180,143,.4)}
+  .t-merged{color:var(--merged);border-color:rgba(161,142,204,.4)}
+  .t-closed{color:var(--danger);border-color:rgba(212,125,125,.4)}
+  .t-draft{color:var(--text-secondary);border-color:var(--border-strong)}
+  .t-high{color:var(--warning);border-color:rgba(211,176,105,.4)}
+  .lab{display:inline-flex;align-items:center;gap:5px;font-size:11px;line-height:1;
+       border-radius:9999px;padding:4px 9px;background:var(--bg-elevated);
+       border:1px solid var(--border-strong);color:var(--text-secondary)}
+  .lab .d{width:7px;height:7px;border-radius:9999px}
+  .note{border-left:2px solid var(--accent);padding:10px 0 10px 14px;color:var(--text-secondary);
+        font-size:12px;margin-top:28px;max-width:70ch}
+  .note b{color:var(--text-primary);font-weight:600}
+  @media(max-width:560px){.rl{width:100%}}
+</style>
+
+<h2 class="sr-only">Nexus 아바타와 뱃지 컴포넌트 — 크기별 아바타, 프레즌스 표시, 카운트 뱃지, 상태 태그</h2>
+
+<h1>Avatar &amp; Badge</h1>
+<p class="lede">아바타 배경색은 사용자 id에서 결정론적으로 뽑는다. 슬레이트 램프 바깥의 저채도 색만 쓰므로 UI를 어지럽히지 않는다.</p>
+
+<h2>아바타 — 크기</h2>
+<div class="panel">
+  <div class="row"><span class="rl">size</span>
+    <div class="u"><div class="av xs" style="background:#90A8C1">이</div><div class="cap">xs · 20</div></div>
+    <div class="u"><div class="av sm" style="background:#90C1A0">김</div><div class="cap">sm · 24</div></div>
+    <div class="u"><div class="av md" style="background:#C1A890">박<span class="pr on"></span></div><div class="cap">md · 32</div></div>
+    <div class="u"><div class="av lg" style="background:#9C90C1">최<span class="pr away"></span></div><div class="cap">lg · 40</div></div>
+    <div class="u"><div class="av xl" style="background:#C1909C">정<span class="pr off"></span></div><div class="cap">xl · 56</div></div>
+  </div>
+  <div class="row"><span class="rl">presence</span>
+    <div class="u"><div class="av lg" style="background:#90A8C1">이<span class="pr on"></span></div><div class="cap">online</div></div>
+    <div class="u"><div class="av lg" style="background:#90A8C1">이<span class="pr away"></span></div><div class="cap">away</div></div>
+    <div class="u"><div class="av lg" style="background:#90A8C1">이<span class="pr off"></span></div><div class="cap">offline</div></div>
+    <span style="font-size:11px;color:var(--text-secondary);align-self:center">테두리는 바탕색과 같게 — 아바타에서 떠 보이게 한다</span>
+  </div>
+</div>
+
+<h2>아바타 팔레트 — 8색</h2>
+<div class="panel">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:12px">
+    <div class="u"><div class="av lg" style="background:var(--avatar-1)">이</div><div class="cap">avatar-1<br>210°</div></div>
+    <div class="u"><div class="av lg" style="background:var(--avatar-2)">김</div><div class="cap">avatar-2<br>255°</div></div>
+    <div class="u"><div class="av lg" style="background:var(--avatar-3)">박</div><div class="cap">avatar-3<br>300°</div></div>
+    <div class="u"><div class="av lg" style="background:var(--avatar-4)">최</div><div class="cap">avatar-4<br>345°</div></div>
+    <div class="u"><div class="av lg" style="background:var(--avatar-5)">정</div><div class="cap">avatar-5<br>30°</div></div>
+    <div class="u"><div class="av lg" style="background:var(--avatar-6)">강</div><div class="cap">avatar-6<br>75°</div></div>
+    <div class="u"><div class="av lg" style="background:var(--avatar-7)">윤</div><div class="cap">avatar-7<br>140°</div></div>
+    <div class="u"><div class="av lg" style="background:var(--avatar-8)">서</div><div class="cap">avatar-8<br>180°</div></div>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <span class="rl">규칙</span>
+    <span style="font-size:12px;color:var(--text-secondary);align-self:center;max-width:56ch">
+      8색 전부 <b style="color:var(--text-primary)">채도 28% · 명도 66% 고정</b>, 색상만 균등 분배.
+      배정은 <span style="font-family:var(--mono)">hash(userId) % 8</span> — 결정론적이라 같은 사람은 어느 화면에서든 같은 색이다.
+      이니셜은 <span style="font-family:var(--mono)">--bg-base</span>로 얹으며 8색 모두 <b style="color:var(--success)">7:1 이상(AAA)</b>이다.
+    </span>
+  </div>
+</div>
+
+<h2>뱃지 — 카운트</h2>
+<div class="panel">
+  <div class="row"><span class="rl">안 읽음</span>
+    <span class="b b-count">3</span>
+    <span class="b b-count">12</span>
+    <span class="b b-count">99+</span>
+    <span style="font-size:11px;color:var(--text-secondary);align-self:center">중성색 — 조용히 알린다</span>
+  </div>
+  <div class="row"><span class="rl">멘션</span>
+    <span class="b b-mention">1</span>
+    <span class="b b-mention">5</span>
+    <span style="font-size:11px;color:var(--text-secondary);align-self:center">액센트 — 나를 부른 것만 튄다</span>
+  </div>
+  <div class="row"><span class="rl">점</span>
+    <span class="b b-dot" style="background:var(--accent)"></span>
+    <span class="b b-dot" style="background:var(--border-strong)"></span>
+    <span style="font-size:11px;color:var(--text-secondary);align-self:center">숫자가 무의미할 때 (활동 있음)</span>
+  </div>
+</div>
+
+<h2>상태 태그 — 색 + 아이콘</h2>
+<div class="panel">
+  <div class="row"><span class="rl">PR</span>
+    <span class="tag t-open"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><circle cx="18" cy="18" r="3"/><path d="M18 15V9a4 4 0 00-4-4h-2"/></svg>open</span>
+    <span class="tag t-draft"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/></svg>draft</span>
+    <span class="tag t-merged"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><path d="M6 6h6a4 4 0 014 4v2"/><circle cx="18" cy="15" r="3"/></svg>merged</span>
+    <span class="tag t-closed"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18"/></svg>closed</span>
+  </div>
+  <div class="row"><span class="rl">우선순위</span>
+    <span class="tag t-high"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 5v9M12 18h.01"/></svg>high</span>
+    <span class="tag t-draft">mid</span>
+    <span class="tag t-draft" style="opacity:.65">low</span>
+  </div>
+  <div class="row"><span class="rl">라벨</span>
+    <span class="lab"><span class="d" style="background:#77AECF"></span>backend</span>
+    <span class="lab"><span class="d" style="background:#74B48F"></span>enhancement</span>
+    <span class="lab"><span class="d" style="background:#D47D7D"></span>bug</span>
+    <span class="lab"><span class="d" style="background:#A18ECC"></span>design</span>
+  </div>
+</div>
+
+<p class="note"><b>상태 태그에 아이콘을 반드시 붙이는 이유.</b> open(녹) · merged(자주) · closed(적)를 색으로만 구분하면 적록색약 사용자에게 open과 closed가 구분되지 않는다. 색은 <b>빠른 스캔용 보조 신호</b>이고, 의미는 아이콘과 텍스트가 짊어진다.</p>

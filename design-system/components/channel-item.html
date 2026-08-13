@@ -1,0 +1,120 @@
+<!-- @dsCard group="Chat" -->
+<meta charset="utf-8">
+<title>Nexus — Channel List</title>
+<style>
+  :root{
+    --bg-base:#121314;--bg-surface:#1C1D1F;--bg-elevated:#282A2C;
+    --divider:rgba(221,230,237,.10);--border-strong:#63676B;--text-secondary:#9DA0A4;--text-primary:#DDE6ED;
+    --accent:#77AECF;--accent-subtle:rgba(119,174,207,.10);--success:#74B48F;--warning:#D3B069;
+    --font:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+    --micro:120ms cubic-bezier(0,0,.2,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font);
+       font-size:14px;line-height:1.5;padding:32px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .lede{color:var(--text-secondary);font-size:13px;margin:0 0 32px;max-width:62ch}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary);
+     margin:32px 0 12px;font-weight:600}
+  h2:first-of-type{margin-top:0}
+  .wrap{display:grid;grid-template-columns:260px 1fr;gap:24px;align-items:start}
+  @media(max-width:640px){.wrap{grid-template-columns:1fr}}
+
+  .side{background:var(--bg-surface);border:1px solid var(--divider);border-radius:6px;
+        padding:8px 6px;width:260px;max-width:100%}
+  .cat{display:flex;align-items:center;gap:5px;padding:8px 8px 4px;font-size:11px;
+       font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary);cursor:pointer}
+  .cat svg{transition:transform var(--micro)}
+  .cat.closed svg{transform:rotate(-90deg)}
+
+  .ch{display:flex;align-items:center;gap:7px;height:30px;padding:0 8px;border-radius:4px;
+      cursor:pointer;position:relative;transition:background var(--micro),color var(--micro)}
+  .ch .hash{color:var(--border-strong);font-family:var(--mono);font-size:14px;flex:none;line-height:1}
+  .ch .nm{font-size:13px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ch .meta{margin-left:auto;display:flex;align-items:center;gap:5px;flex:none}
+
+  .ch:hover{background:var(--bg-elevated)}
+  .ch:hover .nm{color:var(--text-primary)}
+
+  .ch.unread .nm{color:var(--text-primary);font-weight:600}
+  .ch.unread .hash{color:var(--text-secondary)}
+
+  .ch.sel{background:var(--accent-subtle)}
+  .ch.sel::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:2px;
+                  background:var(--accent);border-radius:0 2px 2px 0}
+  .ch.sel .nm{color:var(--text-primary);font-weight:600}
+  .ch.sel .hash{color:var(--accent)}
+
+  .ch.muted{opacity:.45}
+
+  .cnt{font-family:var(--mono);font-size:10px;background:var(--border-strong);color:var(--text-primary);
+       border-radius:9999px;min-width:17px;height:17px;display:grid;place-items:center;padding:0 5px}
+  .men{font-family:var(--mono);font-size:10px;font-weight:700;background:var(--accent);color:#121314;
+       border-radius:9999px;min-width:17px;height:17px;display:grid;place-items:center;padding:0 5px}
+
+  .dm{display:flex;align-items:center;gap:8px;height:30px;padding:0 8px;border-radius:4px;cursor:pointer}
+  .dm:hover{background:var(--bg-elevated)}
+  .dav{width:20px;height:20px;border-radius:9999px;display:grid;place-items:center;
+       font-size:9px;font-weight:600;color:#121314;position:relative;flex:none}
+  .dav .p{position:absolute;right:-1px;bottom:-1px;width:8px;height:8px;border-radius:9999px;
+          border:2px solid var(--bg-surface)}
+  .dm .nm{font-size:13px;color:var(--text-secondary)}
+
+  .repo{display:flex;align-items:center;gap:7px;height:28px;padding:0 8px;border-radius:4px;cursor:pointer}
+  .repo:hover{background:var(--bg-elevated)}
+  .repo .nm{font-family:var(--mono);font-size:12px;color:var(--text-secondary)}
+  .repo .st{margin-left:auto;width:7px;height:7px;border-radius:9999px}
+
+  .specs{background:var(--bg-surface);border:1px solid var(--divider);border-radius:6px;padding:18px}
+  .srow{display:grid;grid-template-columns:96px 1fr;gap:14px;padding:11px 0;
+        border-top:1px solid var(--divider);align-items:center}
+  .srow:first-child{border-top:0;padding-top:0}
+  .sk{font-family:var(--mono);font-size:11px;color:var(--accent)}
+  .sv{font-size:12px;color:var(--text-secondary)}
+  .note{border-left:2px solid var(--accent);padding:10px 0 10px 14px;color:var(--text-secondary);
+        font-size:12px;margin-top:28px;max-width:70ch}
+  .note b{color:var(--text-primary);font-weight:600}
+</style>
+
+<h2 class="sr-only">Nexus 채널 목록 컴포넌트 — 읽음, 안읽음, 멘션, 선택, 음소거 상태와 카테고리 트리</h2>
+
+<h1>Channel List</h1>
+<p class="lede">행 높이 30px. 밀도가 높아도 상태는 굵기 · 명도 · 뱃지 세 축으로 명확히 갈린다.</p>
+
+<div class="wrap">
+  <div class="side">
+    <div class="cat"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 7 6-7z"/></svg>NEXUS</div>
+    <div class="ch sel"><span class="hash">#</span><span class="nm">general</span>
+      <span class="meta"><span class="men">2</span></span></div>
+    <div class="ch unread"><span class="hash">#</span><span class="nm">backend</span>
+      <span class="meta"><span class="cnt">12</span></span></div>
+    <div class="ch"><span class="hash">#</span><span class="nm">design</span></div>
+    <div class="ch muted"><span class="hash">#</span><span class="nm">random</span>
+      <span class="meta"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2"><path d="M11 5L6 9H3v6h3l5 4V5zM19 5L5 19"/></svg></span></div>
+
+    <div class="cat" style="margin-top:6px"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 7 6-7z"/></svg>저장소</div>
+    <div class="repo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" stroke-width="2"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5"/></svg>
+      <span class="nm">nexus/server</span><span class="st" style="background:var(--success)"></span></div>
+    <div class="repo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" stroke-width="2"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5"/></svg>
+      <span class="nm">nexus/app</span><span class="st" style="background:var(--warning)"></span></div>
+
+    <div class="cat closed" style="margin-top:6px"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 7 6-7z"/></svg>다이렉트 메시지</div>
+    <div class="dm"><span class="dav" style="background:#90C1A0">김<span class="p" style="background:var(--success)"></span></span><span class="nm">김서연</span></div>
+    <div class="dm"><span class="dav" style="background:#C1A890">박<span class="p" style="background:var(--warning)"></span></span><span class="nm">박도현</span></div>
+    <div class="dm"><span class="dav" style="background:#9C90C1">최<span class="p" style="background:var(--border-strong)"></span></span><span class="nm">최지우</span></div>
+  </div>
+
+  <div class="specs">
+    <div class="srow"><span class="sk">읽음</span><span class="sv">이름 <b style="color:var(--text-secondary)">text-secondary</b> · 보통 굵기. 기본값이자 가장 조용한 상태</span></div>
+    <div class="srow"><span class="sk">안 읽음</span><span class="sv">이름 <b style="color:var(--text-primary)">text-primary</b> · <b style="color:var(--text-primary)">600</b> + 중성 카운트 뱃지</span></div>
+    <div class="srow"><span class="sk">멘션</span><span class="sv">액센트 뱃지. 화면에서 채도가 높은 유일한 지점이 된다</span></div>
+    <div class="srow"><span class="sk">선택</span><span class="sv">좌측 2px 액센트 바 + <span style="font-family:var(--mono)">accent-subtle</span> 배경</span></div>
+    <div class="srow"><span class="sk">음소거</span><span class="sv">투명도 45%. 뱃지를 표시하지 않는다</span></div>
+    <div class="srow"><span class="sk">저장소</span><span class="sv">모노스페이스 이름 + 마지막 빌드 상태 점</span></div>
+    <div class="srow"><span class="sk">높이</span><span class="sv">채널 30px · 저장소 28px · 모바일에서는 44px로 확대</span></div>
+  </div>
+</div>
+
+<p class="note"><b>왜 안 읽음에 색을 쓰지 않는가.</b> 안 읽은 채널은 흔하다. 여기에 색을 쓰면 화면 절반이 채도를 갖게 되고, 정작 <b>나를 부른 멘션</b>이 묻힌다. 안 읽음은 굵기와 명도로만 알리고, 액센트는 멘션에만 남겨 둔다 — 이것이 "채도를 아낀다"는 원칙의 가장 실용적인 적용이다.</p>

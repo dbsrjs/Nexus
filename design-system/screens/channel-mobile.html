@@ -1,0 +1,208 @@
+<!-- @dsCard group="Screens" -->
+<meta charset="utf-8">
+<title>Nexus — Channel (Mobile)</title>
+<style>
+  :root{
+    --bg-base:#121314;--bg-surface:#1C1D1F;--bg-elevated:#282A2C;
+    --divider:rgba(221,230,237,.10);--border-strong:#63676B;--text-secondary:#9DA0A4;--text-primary:#DDE6ED;
+    --accent:#77AECF;--accent-subtle:rgba(119,174,207,.10);
+    --success:#74B48F;--warning:#D3B069;--danger:#D47D7D;--merged:#A18ECC;
+    --font:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font);
+       font-size:14px;line-height:1.5;padding:24px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .lede{color:var(--text-secondary);font-size:13px;margin:0 0 24px;max-width:64ch}
+  .screens{display:flex;gap:24px;flex-wrap:wrap}
+  .unit{flex:none}
+  .cap{font-family:var(--mono);font-size:11px;color:var(--text-secondary);margin-bottom:8px}
+  .phone{width:340px;max-width:100%;height:640px;border:1px solid var(--divider);border-radius:14px;
+         overflow:hidden;background:var(--bg-base);display:flex;flex-direction:column}
+
+  /* 상단바 */
+  .top{height:52px;display:flex;align-items:center;gap:10px;padding:0 12px;
+       border-bottom:1px solid var(--divider);background:var(--bg-surface);flex:none}
+  .bk{width:32px;height:32px;display:grid;place-items:center;color:var(--text-secondary);margin-left:-6px}
+  .tt{display:flex;align-items:baseline;gap:6px;min-width:0}
+  .tt .h{font-family:var(--mono);color:var(--text-secondary);font-size:14px}
+  .tt .n{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tacts{margin-left:auto;display:flex;gap:2px;flex:none}
+  .ib{width:34px;height:34px;display:grid;place-items:center;border-radius:4px;color:var(--text-secondary)}
+  .ib.on{background:var(--accent-subtle);color:var(--accent)}
+
+  /* 스트림 */
+  .stream{flex:1;overflow-y:auto;padding:6px 0}
+  .sep{display:flex;align-items:center;gap:10px;padding:8px 14px 4px}
+  .sep .l{flex:1;height:1px;background:var(--border-strong)}
+  .sep .d{font-family:var(--mono);font-size:10px;color:var(--text-secondary)}
+  .msg{display:grid;grid-template-columns:36px 1fr;gap:9px;padding:5px 14px}
+  .msg.cont{padding-top:1px;padding-bottom:1px}
+  .msg.men{background:var(--accent-subtle);box-shadow:inset 2px 0 0 var(--accent)}
+  .av{width:30px;height:30px;border-radius:9999px;display:grid;place-items:center;
+      font-size:11px;font-weight:600;color:#121314;margin-top:2px}
+  .hd{display:flex;align-items:baseline;gap:7px}
+  .who{font-size:13.5px;font-weight:600}
+  .ts{font-family:var(--mono);font-size:10px;color:var(--text-secondary)}
+  .bd{font-size:14px;line-height:1.5;word-break:break-word}
+  .bd code{font-family:var(--mono);font-size:12px;background:var(--bg-elevated);
+           border:1px solid var(--divider);border-radius:3px;padding:1px 4px}
+  .at{color:var(--accent);background:var(--accent-subtle);border-radius:3px;padding:1px 4px;font-weight:500}
+  .rx{display:flex;gap:5px;margin-top:5px}
+  .chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:9999px;
+        background:var(--bg-elevated);border:1px solid var(--border-strong);font-family:var(--mono);
+        font-size:11px;color:var(--text-secondary)}
+  .chip.mine{border-color:var(--accent);color:var(--accent);background:var(--accent-subtle)}
+  .thr{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--accent)}
+  .ev{display:grid;grid-template-columns:28px 1fr;gap:9px;margin:6px 14px;padding:8px 10px;
+      border-left:2px solid var(--merged);background:rgba(221,230,237,.04);border-radius:0 4px 4px 0}
+  .ev .i{width:22px;height:22px;border-radius:9999px;background:var(--bg-elevated);
+         display:grid;place-items:center;color:var(--merged)}
+  .ev .h{font-size:11.5px;color:var(--text-secondary)}
+  .ev .b{font-size:12.5px}
+  .ev .m{font-family:var(--mono);font-size:10px;color:var(--text-secondary);margin-top:3px}
+
+  /* 작성창 */
+  .comp{flex:none;padding:8px 12px;border-top:1px solid var(--divider);display:flex;gap:8px;align-items:flex-end}
+  .box{flex:1;background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:6px;
+       min-height:44px;display:flex;align-items:center;padding:0 12px;font-size:14px;
+       color:var(--text-secondary);opacity:.75}
+  .fab{width:44px;height:44px;flex:none;border-radius:6px;background:var(--accent);
+       display:grid;place-items:center;color:#121314;opacity:.35}
+  .att{width:44px;height:44px;flex:none;display:grid;place-items:center;color:var(--text-secondary)}
+
+  /* 하단 탭 */
+  .tabs{flex:none;height:58px;display:grid;grid-template-columns:repeat(4,1fr);
+        border-top:1px solid var(--divider);background:var(--bg-surface)}
+  .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+       color:var(--text-secondary);font-size:10px;position:relative}
+  .tab.act{color:var(--accent)}
+  .tab .bg{position:absolute;top:8px;right:calc(50% - 20px);font-family:var(--mono);font-size:9px;
+           font-weight:700;background:var(--accent);color:#121314;border-radius:9999px;
+           min-width:15px;height:15px;display:grid;place-items:center;padding:0 4px}
+  .tab .bgc{position:absolute;top:8px;right:calc(50% - 20px);font-family:var(--mono);font-size:9px;
+            background:var(--border-strong);color:var(--text-primary);border-radius:9999px;
+            min-width:15px;height:15px;display:grid;place-items:center;padding:0 4px}
+
+  /* 드로어 */
+  .drawer{position:relative;flex:1;display:flex;overflow:hidden}
+  .dpanel{width:270px;background:var(--bg-surface);border-right:1px solid var(--divider);
+          padding:8px 6px;overflow-y:auto;flex:none}
+  .scrim{flex:1;background:rgba(0,0,0,.5)}
+  .cat{display:flex;align-items:center;gap:5px;padding:8px 8px 4px;font-size:11px;font-weight:600;
+       letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary)}
+  .ch{display:flex;align-items:center;gap:8px;height:44px;padding:0 8px;border-radius:4px;position:relative}
+  .ch .h{color:var(--border-strong);font-family:var(--mono);font-size:15px;line-height:1}
+  .ch .n{font-size:14px;color:var(--text-secondary)}
+  .ch.unread .n{color:var(--text-primary);font-weight:600}
+  .ch.sel{background:var(--accent-subtle)}
+  .ch.sel::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:2px;background:var(--accent);border-radius:0 2px 2px 0}
+  .ch.sel .n{color:var(--text-primary);font-weight:600}
+  .ch.sel .h{color:var(--accent)}
+  .b-m{margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:700;background:var(--accent);
+       color:#121314;border-radius:9999px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 5px}
+  .b-c{margin-left:auto;font-family:var(--mono);font-size:10px;background:var(--border-strong);
+       color:var(--text-primary);border-radius:9999px;min-width:18px;height:18px;display:grid;place-items:center;padding:0 5px}
+  .dhd{height:52px;display:flex;align-items:center;gap:10px;padding:0 14px;
+       border-bottom:1px solid var(--divider);background:var(--bg-surface);flex:none}
+  .sav{width:32px;height:32px;border-radius:9px;background:var(--accent);color:#121314;
+       display:grid;place-items:center;font-weight:700;font-size:13px}
+  .note{border-left:2px solid var(--accent);padding:10px 0 10px 14px;color:var(--text-secondary);
+        font-size:12px;margin-top:24px;max-width:72ch}
+  .note b{color:var(--text-primary);font-weight:600}
+</style>
+
+<h2 class="sr-only">Nexus 모바일 채널 화면 — 대화 뷰와 채널 드로어, 하단 4탭 구조</h2>
+
+<h1>Channel — Mobile</h1>
+<p class="lede">데스크톱의 4단이 여기서는 드로어 + 하단 탭으로 접힌다. <b style="color:var(--text-primary)">모든 터치 타깃은 44px 이상</b>으로 확대되지만, 메시지 행 자체의 밀도는 그대로 유지한다.</p>
+
+<div class="screens">
+
+  <!-- 대화 -->
+  <div class="unit">
+    <div class="cap">대화 · 375×812 기준</div>
+    <div class="phone">
+      <div class="top">
+        <span class="bk"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></span>
+        <span class="tt"><span class="h">#</span><span class="n">backend</span></span>
+        <span class="tacts">
+          <span class="ib on"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><circle cx="18" cy="18" r="3"/><path d="M18 15V9a4 4 0 00-4-4h-2"/></svg></span>
+          <span class="ib"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+        </span>
+      </div>
+
+      <div class="stream">
+        <div class="sep"><span class="l"></span><span class="d">8월 13일</span><span class="l"></span></div>
+        <div class="msg"><div class="av" style="background:#90A8C1">이</div>
+          <div><div class="hd"><span class="who">이윤건</span><span class="ts">09:41</span></div>
+            <div class="bd">웹훅 서명 검증이 빠져 있는 것 같은데 <code>webhook.controller.ts</code> 확인해줄 수 있어?</div></div></div>
+        <div class="msg cont"><div></div>
+          <div><div class="bd">외부에서 임의 이벤트를 주입할 수 있는 상태야</div>
+            <div class="rx"><span class="chip mine">👀 2</span><span class="chip">🔥 1</span></div></div></div>
+        <div class="msg men"><div class="av" style="background:#90C1A0">김</div>
+          <div><div class="hd"><span class="who">김서연</span><span class="ts">09:44</span></div>
+            <div class="bd"><span class="at">@이윤건</span> 확인했어요. HMAC 비교도 타이밍 세이프하게 바꾸죠</div>
+            <div class="thr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 01-8 8H7l-4 3V12a8 8 0 018-8h2a8 8 0 018 8z"/></svg>답글 4개</div></div></div>
+        <div class="ev">
+          <div class="i"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><path d="M6 6h6a4 4 0 014 4v2"/><circle cx="18" cy="15" r="3"/></svg></div>
+          <div><div class="h"><b style="color:var(--text-primary)">박도현</b>님이 PR 머지</div>
+            <div class="b">#124 SpaceGuard 멤버십 검증</div>
+            <div class="m">NEXUS-131 닫힘</div></div></div>
+        <div class="msg"><div class="av" style="background:#C1A890">박</div>
+          <div><div class="hd"><span class="who">박도현</span><span class="ts">09:52</span></div>
+            <div class="bd">이슈로 만들어둘게 — <span class="at">NEXUS-141</span></div></div></div>
+      </div>
+
+      <div class="comp">
+        <span class="att"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12l-8.5 8.5a5 5 0 01-7-7L14 5a3.5 3.5 0 015 5l-8.5 8.5a2 2 0 01-3-3L15 8"/></svg></span>
+        <div class="box">메시지 보내기</div>
+        <div class="fab"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 12l16-8-6 16-3-6z"/></svg></div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab act"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 01-8 8H7l-4 3V12a8 8 0 018-8h2a8 8 0 018 8z"/></svg>대화<span class="bg">2</span></div>
+        <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="6" height="16" rx="1.5"/><rect x="10.5" y="4" width="6" height="10" rx="1.5"/><rect x="18" y="4" width="3" height="7" rx="1.5"/></svg>보드</div>
+        <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10.5 21a2 2 0 003 0"/></svg>알림<span class="bgc">9</span></div>
+        <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>내정보</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 드로어 -->
+  <div class="unit">
+    <div class="cap">채널 드로어 · 좌측 스와이프</div>
+    <div class="phone">
+      <div class="dhd"><span class="sav">N</span>
+        <span class="tt"><span class="n">Nexus</span></span>
+        <span class="ib" style="margin-left:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 7 6-7"/></svg></span></div>
+      <div class="drawer">
+        <div class="dpanel">
+          <div class="cat"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 7 6-7z"/></svg>NEXUS</div>
+          <div class="ch sel"><span class="h">#</span><span class="n">backend</span><span class="b-m">2</span></div>
+          <div class="ch unread"><span class="h">#</span><span class="n">general</span><span class="b-c">12</span></div>
+          <div class="ch"><span class="h">#</span><span class="n">design</span></div>
+          <div class="ch"><span class="h">#</span><span class="n">random</span></div>
+          <div class="cat" style="margin-top:4px"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 7 6-7z"/></svg>저장소</div>
+          <div class="ch"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" stroke-width="2"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5"/></svg><span class="n" style="font-family:var(--mono);font-size:12.5px">nexus/server</span><span style="margin-left:auto;width:7px;height:7px;border-radius:9999px;background:var(--success)"></span></div>
+          <div class="ch"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" stroke-width="2"><path d="M4 4h11l5 5v11H4z"/><path d="M15 4v5h5"/></svg><span class="n" style="font-family:var(--mono);font-size:12.5px">nexus/app</span><span style="margin-left:auto;width:7px;height:7px;border-radius:9999px;background:var(--warning)"></span></div>
+          <div class="cat" style="margin-top:4px"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 7 6-7z"/></svg>DM</div>
+          <div class="ch"><span class="av" style="width:22px;height:22px;font-size:9px;background:#90C1A0">김</span><span class="n">김서연</span></div>
+          <div class="ch"><span class="av" style="width:22px;height:22px;font-size:9px;background:#C1A890">박</span><span class="n">박도현</span></div>
+        </div>
+        <div class="scrim"></div>
+      </div>
+      <div class="tabs">
+        <div class="tab act"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 01-8 8H7l-4 3V12a8 8 0 018-8h2a8 8 0 018 8z"/></svg>대화<span class="bg">2</span></div>
+        <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="6" height="16" rx="1.5"/><rect x="10.5" y="4" width="6" height="10" rx="1.5"/><rect x="18" y="4" width="3" height="7" rx="1.5"/></svg>보드</div>
+        <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10.5 21a2 2 0 003 0"/></svg>알림<span class="bgc">9</span></div>
+        <div class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>내정보</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="note"><b>모바일에서 밀도를 어디까지 지키는가.</b> 손가락이 닿는 것(채널 행 · 탭 · 버튼 · 작성창)은 44px로 키우고, <b>손가락이 닿지 않는 것</b>(메시지 행 · 타임스탬프 · 리액션 칩)은 데스크톱과 같은 밀도를 유지한다. 읽기만 하는 영역까지 키우면 한 화면에 담기는 대화가 절반으로 줄어든다.</p>

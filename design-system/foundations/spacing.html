@@ -1,0 +1,117 @@
+<!-- @dsCard group="Foundations" -->
+<meta charset="utf-8">
+<title>Nexus — Spacing, Shape & Motion</title>
+<style>
+  :root{
+    --bg-base:#121314;--bg-surface:#1C1D1F;--bg-elevated:#282A2C;
+    --divider:rgba(221,230,237,.10);--border-strong:#63676B;--text-secondary:#9DA0A4;--text-primary:#DDE6ED;--accent:#77AECF;
+    --font:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+    --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-base);color:var(--text-primary);font-family:var(--font);
+       font-size:14px;line-height:1.5;padding:32px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .lede{color:var(--text-secondary);font-size:13px;margin:0 0 32px;max-width:62ch}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary);
+     margin:32px 0 12px;font-weight:600}
+  h2:first-of-type{margin-top:0}
+  .steps{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;
+         background:var(--bg-surface);border:1px solid var(--divider);border-radius:6px;padding:20px}
+  .step{text-align:center}
+  .bar{background:var(--accent);height:24px;border-radius:2px;margin:0 auto 8px}
+  .step .t{font-family:var(--mono);font-size:10px;color:var(--text-secondary)}
+  .step .v{font-family:var(--mono);font-size:11px;color:var(--text-primary)}
+  .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .card{background:var(--bg-surface);border:1px solid var(--divider);border-radius:6px;padding:18px}
+  .card h3{font-size:12px;margin:0 0 14px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em}
+  .shape{display:flex;align-items:center;gap:12px;padding:8px 0}
+  .sw{width:46px;height:32px;background:var(--bg-elevated);border:1px solid var(--divider);flex:none}
+  .sl{font-family:var(--mono);font-size:11px;color:var(--accent)}
+  .sd{font-size:11px;color:var(--text-secondary)}
+  .depth{display:flex;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--divider)}
+  .layer{flex:1;padding:20px 14px;font-family:var(--mono);font-size:10px;color:var(--text-secondary);
+         border-right:1px solid var(--divider)}
+  .layer:last-child{border-right:0}
+  .motion{display:flex;flex-direction:column;gap:14px}
+  .mrow{display:flex;align-items:center;gap:14px}
+  .track{flex:1;height:2px;background:var(--border-strong);position:relative;border-radius:2px}
+  .dot{width:10px;height:10px;border-radius:9999px;background:var(--accent);position:absolute;top:-4px;left:0}
+  .m1 .dot{animation:slide 1.8s var(--ease,cubic-bezier(0,0,.2,1)) infinite}
+  .m2 .dot{animation:slide 2.4s cubic-bezier(0,0,.2,1) infinite}
+  @keyframes slide{0%{left:0}45%{left:calc(100% - 10px)}55%{left:calc(100% - 10px)}100%{left:0}}
+  .mlabel{font-family:var(--mono);font-size:11px;color:var(--text-primary);width:150px;flex:none}
+  .msub{font-size:11px;color:var(--text-secondary);width:130px;flex:none}
+  .note{border-left:2px solid var(--accent);padding:10px 0 10px 14px;color:var(--text-secondary);
+        font-size:12px;margin-top:28px;max-width:70ch}
+  .note b{color:var(--text-primary);font-weight:600}
+  @media(prefers-reduced-motion:reduce){.dot{animation:none!important}}
+  @media(max-width:560px){.msub{display:none}.mlabel{width:110px}}
+</style>
+
+<h2 class="sr-only">Nexus 디자인 시스템의 간격 4px 그리드, radius, 깊이 표현 방식, 모션 토큰</h2>
+
+<h1>Spacing · Shape · Motion</h1>
+<p class="lede">4px 그리드 위에 모든 것을 올린다. 깊이는 그림자가 아니라 배경 명도로 만들고, 모션은 짧게 끊는다.</p>
+
+<h2>간격 — 4px 그리드</h2>
+<div class="steps">
+  <div class="step"><div class="bar" style="width:2px"></div><div class="v">2</div><div class="t">sp-1</div></div>
+  <div class="step"><div class="bar" style="width:4px"></div><div class="v">4</div><div class="t">sp-2</div></div>
+  <div class="step"><div class="bar" style="width:6px"></div><div class="v">6</div><div class="t">sp-3</div></div>
+  <div class="step"><div class="bar" style="width:8px"></div><div class="v">8</div><div class="t">sp-4</div></div>
+  <div class="step"><div class="bar" style="width:12px"></div><div class="v">12</div><div class="t">sp-5</div></div>
+  <div class="step"><div class="bar" style="width:16px"></div><div class="v">16</div><div class="t">sp-6</div></div>
+  <div class="step"><div class="bar" style="width:20px"></div><div class="v">20</div><div class="t">sp-7</div></div>
+  <div class="step"><div class="bar" style="width:24px"></div><div class="v">24</div><div class="t">sp-8</div></div>
+  <div class="step"><div class="bar" style="width:32px"></div><div class="v">32</div><div class="t">sp-9</div></div>
+  <div class="step"><div class="bar" style="width:48px"></div><div class="v">48</div><div class="t">sp-10</div></div>
+</div>
+
+<div class="cols" style="margin-top:12px">
+  <div class="card">
+    <h3>Radius</h3>
+    <div class="shape"><div class="sw" style="border-radius:4px"></div>
+      <div><div class="sl">--r-sm · 4px</div><div class="sd">버튼 · 입력 · 칩</div></div></div>
+    <div class="shape"><div class="sw" style="border-radius:6px"></div>
+      <div><div class="sl">--r-md · 6px</div><div class="sd">카드 · 패널</div></div></div>
+    <div class="shape"><div class="sw" style="border-radius:9999px"></div>
+      <div><div class="sl">--r-full</div><div class="sd">아바타 · 뱃지 · 리액션</div></div></div>
+    <div class="sd" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--divider)">
+      각진 편이 밀도와 맞는다. <b style="color:var(--text-primary)">8px 이상은 쓰지 않는다.</b></div>
+  </div>
+
+  <div class="card">
+    <h3>깊이 — 그림자 없음</h3>
+    <div class="depth">
+      <div class="layer" style="background:#121314">bg-base<br><span style="opacity:.6">앱 배경</span></div>
+      <div class="layer" style="background:#1C1D1F">bg-surface<br><span style="opacity:.6">사이드바</span></div>
+      <div class="layer" style="background:#282A2C">bg-elevated<br><span style="opacity:.6">카드 · 입력</span></div>
+    </div>
+    <div class="sd" style="margin-top:14px">
+      다크 배경에서 그림자는 거의 보이지 않으면서 렌더링 비용만 든다.
+      <b style="color:var(--text-primary)">배경 3단계 + 1px border</b>로만 층위를 만든다.
+      오버레이(모달·드롭다운)만 예외적으로 백드롭을 쓴다.</div>
+  </div>
+</div>
+
+<h2>모션</h2>
+<div class="card">
+  <div class="motion">
+    <div class="mrow m1">
+      <span class="mlabel">--motion-micro</span><span class="msub">120ms ease-out</span>
+      <span class="track"><span class="dot"></span></span>
+    </div>
+    <div class="mrow m2">
+      <span class="mlabel">--motion-panel</span><span class="msub">180ms ease-out</span>
+      <span class="track"><span class="dot"></span></span>
+    </div>
+  </div>
+  <div class="sd" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--divider)">
+    micro = 호버 · 포커스 · 체크 &nbsp;·&nbsp; panel = 패널 열림 · 드로어 · 모달<br>
+    <code style="font-family:var(--mono);color:var(--accent)">prefers-reduced-motion</code>에서는 전부 0ms로 떨어뜨린다.
+  </div>
+</div>
+
+<p class="note"><b>왜 모션을 짧게 끊는가.</b> 매일 수백 번 보는 전환이다. 200ms를 넘기면 "부드럽다"가 아니라 "느리다"로 읽히기 시작한다. 조용한 도구에서 과한 모션은 장식이 아니라 비용이다.</p>
