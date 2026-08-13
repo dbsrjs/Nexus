@@ -5,6 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import type { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
+import { enableBigIntSerialization } from './common/bigint-serializer';
+
+// 모듈 로딩보다 먼저 걸어 둔다. 이게 없으면 bigint 컬럼이 섞인 응답이 전부 500 이다.
+enableBigIntSerialization();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
