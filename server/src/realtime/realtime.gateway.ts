@@ -77,13 +77,28 @@ export class RealtimeGateway
     });
   }
 
+  /**
+   * Nest 는 이 메서드가 돌려주는 Promise 를 await 하지 않는다
+   * (WebSocketsController.subscribeConnectionEvent). syncRooms 가 리젝트되면
+   * try/catch 없이는 unhandled rejection 이 되어 Node 가 프로세스 전체를
+   * 종료시킨다 — 한 사용자의 접속 시점 DB 순간 장애가 접속 중인 전원의
+   * 연결을 끊는 결과다.
+   *
+   * 실패해도 연결은 끊지 않는다. 룸이 비면 그 소켓은 실시간 이벤트를 못
+   * 받을 뿐이고 앱이 rooms:sync 로 다시 부르면 회복된다. 끊으면 재연결
+   * 폭풍이 된다(docs/백엔드-설계.md §7).
+   */
   async handleConnection(client: AuthedSocket): Promise<void> {
     client.join(room.user(client.data.userId));
-    const joined = await this.syncRooms(client);
-    this.logger.log(
-      `소켓 ${client.id} 연결: user=${client.data.userId}, ` +
-        `스페이스 ${joined.spaceIds.length} · 채널 ${joined.channelIds.length}`,
-    );
+    try {
+      const joined = await this.syncRooms(client);
+      this.logger.log(
+        `소켓 ${client.id} 연결: user=${client.data.userId}, ` +
+          `스페이스 ${joined.spaceIds.length} · 채널 ${joined.channelIds.length}`,
+      );
+    } catch (err) {
+      this.logger.error(`연결 시 룸 조인 실패 (user=${client.data.userId})`, err as Error);
+    }
   }
 
   handleDisconnect(client: AuthedSocket): void {
