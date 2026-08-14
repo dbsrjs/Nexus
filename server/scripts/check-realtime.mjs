@@ -282,6 +282,19 @@ async function main() {
   check('DTO 위반은 ok:false', badAck?.ok === false, JSON.stringify(badAck));
   check('잘못된 페이로드로 연결이 끊기지 않는다', owner.connected);
 
+  // (3-1) markRead() 가 실제로 예외를 던지는 경우 (read_failed) — 스페이스 멤버지만
+  // 그 채널은 못 보는 경우. 위의 "비공개 채널 생성" 절에서 만든 priv 채널은
+  // 생성자인 owner 조차 channel_members 에 들어가지 않아 볼 수 없다. ack 형태는
+  // read_failed 로 동일해야 하고, 이때 서버 로그에 에러가 남는지는 이 스크립트가
+  // 아니라 보고서에서 server.log 를 직접 확인한다.
+  const readFailedAck = await emitWithAck(owner, 'read', {
+    spaceId,
+    channelId: priv.json.id,
+    lastReadMessageId: marker2.json.id,
+  });
+  check('볼 수 없는 채널의 read 는 read_failed', readFailedAck?.ok === false, JSON.stringify(readFailedAck));
+  check('read_failed 이후에도 연결은 유지된다', owner.connected);
+
   // outsider 는 위 "메시지 브로드캐스트" 절에서 초대를 수락해 이미 스페이스
   // 멤버가 됐다. 진짜 비멤버로 거부 분기(not_a_member)를 확인하려면 그
   // 스페이스에 한 번도 들어간 적 없는 사용자가 필요해 여기서 새로 만든다.

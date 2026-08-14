@@ -160,8 +160,15 @@ export class RealtimeGateway
         lastReadMessageId: dto.lastReadMessageId,
       });
       return { ok: true };
-    } catch {
-      // assertCanView 의 404 등. 룸이 낡았을 뿐일 수 있으므로 끊지 않는다.
+    } catch (err) {
+      // assertCanView 의 404 뿐 아니라 DB/인프라 오류도 여기로 온다. 클라이언트에는
+      // 이유를 세분해 알리지 않는다 — 채널 존재 여부를 흘리게 된다(403 대신 404 를
+      // 쓰는 것과 같은 이유). 대신 서버 로그에 남긴다: 읽음 저장 실패가 조용히
+      // 지나가는 게 이 태스크가 없애려던 사고(전환 계획 §3.5-3)와 같은 양상이다.
+      this.logger.error(
+        `읽음 저장 실패 (user=${client.data.userId}, space=${dto.spaceId}, channel=${dto.channelId})`,
+        err as Error,
+      );
       return { ok: false, error: 'read_failed' };
     }
   }
