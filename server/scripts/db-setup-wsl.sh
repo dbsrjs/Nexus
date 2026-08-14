@@ -27,10 +27,28 @@ if [ -z "$PGVER" ]; then
 fi
 echo "  PostgreSQL 메이저 버전: $PGVER"
 
-if ! apt-get install -y -qq "postgresql-${PGVER}-pgvector"; then
-  echo "postgresql-${PGVER}-pgvector 설치 실패." >&2
-  echo "pgvector 없이는 init 마이그레이션이 CREATE EXTENSION 에서 실패합니다." >&2
-  exit 1
+install_pgvector() {
+  apt-get install -y -qq "postgresql-${PGVER}-pgvector" 2>/dev/null
+}
+
+# pgvector 가 배포판 저장소에 없는 경우가 있다. Ubuntu 는 23.04 부터 담기 시작해서
+# 22.04(jammy) 에는 postgresql-14-pgvector 가 아예 없다. 그럴 때는 PostgreSQL
+# 공식 저장소(PGDG)를 붙인다 — 모든 지원 메이저 버전의 pgvector 를 제공한다.
+if ! install_pgvector; then
+  echo "  배포판 저장소에 pgvector 가 없다 — PGDG(apt.postgresql.org) 를 추가한다"
+  apt-get install -y -qq curl ca-certificates gnupg lsb-release
+  install -d /usr/share/postgresql-common/pgdg
+  curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+  echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+    > /etc/apt/sources.list.d/pgdg.list
+  apt-get update -qq
+
+  if ! install_pgvector; then
+    echo "postgresql-${PGVER}-pgvector 설치 실패." >&2
+    echo "pgvector 없이는 init 마이그레이션이 CREATE EXTENSION 에서 실패합니다." >&2
+    exit 1
+  fi
 fi
 
 CONF="/etc/postgresql/${PGVER}/main/postgresql.conf"

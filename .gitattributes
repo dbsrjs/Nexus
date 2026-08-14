@@ -1,0 +1,31 @@
+# 줄바꿈 고정.
+#
+# 이 저장소는 Windows(+WSL)에서 개발된다. Windows 의 git 은 보통
+# core.autocrlf=true 라 체크아웃할 때 텍스트 파일을 CRLF 로 바꾸는데,
+# 그 상태의 .sh 를 WSL bash 로 실행하면 첫 줄부터
+#   set: pipefail: invalid option name
+# 처럼 깨진다(`\r` 이 인자에 붙는다). 아래 규칙으로 파일별 줄바꿈을 못 박는다.
+
+* text=auto
+
+# Linux(WSL · 컨테이너)에서 실행되는 것들 — 반드시 LF
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+
+# Windows PowerShell 전용 — CRLF
+*.ps1       text eol=crlf
+*.cmd       text eol=crlf
+*.bat       text eol=crlf
+
+# 바이너리로 취급 (줄바꿈 변환 금지)
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.pdf       binary
