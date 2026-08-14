@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth_controller.dart';
 import '../features/auth/login_screen.dart';
-import '../features/home/home_screen.dart';
+import '../features/shell/app_shell.dart';
+import '../features/space/space_picker_screen.dart';
 
-/// 라우트는 docs/앱-설계.md §5 를 따른다. 슬라이스 1 은 그중 인증 부분만 채운다.
-/// `/spaces` · `/s/:spaceId/...` 는 슬라이스 2~3 에서 붙인다.
+/// 라우트는 docs/앱-설계.md §5 를 따른다. 슬라이스 2 시점에서
+/// `/login` · `/spaces` · `/s/:spaceId` 까지 채웠다.
+/// `/s/:spaceId/c/:channelId`(채널)는 슬라이스 3 에서 붙인다.
 final routerProvider = Provider<GoRouter>((ref) {
   // GoRouter 를 상태마다 새로 만들면 내비게이션 스택이 날아간다.
   // 대신 Listenable 하나를 두고 인증 상태 변화만 흘려보낸다.
@@ -36,14 +38,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       final onAuthPage = path == '/login' || path == '/signup';
 
       if (!signedIn) return onAuthPage ? null : '/login';
-      if (onAuthPage || path == '/') return '/home';
+      if (onAuthPage || path == '/') return '/spaces';
       return null;
     },
     routes: [
       GoRoute(path: '/', builder: (_, _) => const _SplashScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const _SignupPlaceholder()),
-      GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+      GoRoute(path: '/spaces', builder: (_, _) => const SpacePickerScreen()),
+      GoRoute(
+        path: '/s/:spaceId',
+        builder: (_, state) =>
+            AppShell(spaceId: state.pathParameters['spaceId']!),
+      ),
     ],
   );
 });
@@ -57,7 +64,7 @@ class _SplashScreen extends StatelessWidget {
       const Scaffold(body: Center(child: CircularProgressIndicator()));
 }
 
-/// 회원가입은 슬라이스 1 범위 밖이다. 시드 계정으로 로그인해 검증한다.
+/// 회원가입은 아직 범위 밖이다. 시드 계정으로 로그인해 검증한다.
 class _SignupPlaceholder extends StatelessWidget {
   const _SignupPlaceholder();
 

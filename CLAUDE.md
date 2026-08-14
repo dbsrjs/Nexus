@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **작업 브랜치** | `feat/pivot-nexus` — **`main` 은 전환 이전의 옛 코드다.** 헷갈리지 말 것 |
-| **상태** | 사내 메신저 → 개인 프로젝트로 **전환 중**. 서버 4단계(실시간 최소) 완료. **앱은 5단계 슬라이스 1(로그인)까지 — `app/` 에 있다** |
+| **상태** | 사내 메신저 → 개인 프로젝트로 **전환 중**. 서버 4단계(실시간 최소) 완료. **앱은 5단계 슬라이스 2(스페이스 선택 + 반응형 셸)까지 — `app/` 에 있다** |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
 
@@ -175,7 +175,7 @@ prisma/       PrismaModule(@Global) + PrismaService
 common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug · bigint 직렬화
 ```
 
-### 앱 구조 (`app/lib/`) — 슬라이스 1 시점
+### 앱 구조 (`app/lib/`) — 슬라이스 2 시점
 
 [앱-설계.md §3](docs/앱-설계.md) 의 구조를 따르되 **쓰는 것만 만든다.** 빈 디렉터리를
 미리 파 두지 않는다.
@@ -184,19 +184,25 @@ common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug
 core/env.dart            API 주소를 읽는 유일한 지점. 하드코딩 금지
 core/theme.dart          design-system/tokens.css 를 이름까지 그대로 이식
 core/router.dart         go_router + 인증 가드(redirect)
+core/breakpoints.dart    Layout(mobile/tablet/desktop) + 고정 폭 상수
 data/api/api_client.dart dio + 401 → 리프레시 1회 재시도
 data/api/auth_api.dart   login · me · logout, 실패를 AuthFailure 로 분류
+data/api/api_failure.dart 그 밖의 요청 실패 분류(ApiFailure) + 문구
+data/api/spaces_api.dart GET /spaces
 data/auth_storage.dart   flutter_secure_storage 래퍼
-domain/models/           freezed + json_serializable (User · AuthTokens)
+domain/models/           freezed + json_serializable (User · AuthTokens · Space)
 features/auth/           로그인 화면 + Riverpod 컨트롤러
-features/home/           슬라이스 1 자리표시자. 슬라이스 2 의 셸이 대체한다
+features/space/          스페이스 선택 화면 + 목록/현재 스페이스 provider
+features/shell/          반응형 셸 — app_shell(분기) · space_rail · channel_pane
+shared/widgets/          NexusAvatar 등 공용 위젯
 ```
 
 **앱 규칙**
 
 - **API 주소는 `core/env.dart` 밖에서 만들지 않는다.** 옛 `www/api.js:6` 이 `localhost` 를 박아 실기기에서 연결 불가였다.
 - **디자인 토큰 이름을 바꾸지 않는다.** `--bg-surface` → `bgSurface` 처럼 표기만 바꿔 1:1 대응시킨다. 갈라지면 디자인 문서와 코드를 대조할 수 없다.
-- **서버 오류 문구를 화면에 그대로 쓰지 않는다.** 실패 종류(`AuthFailure`)만 받아 앱이 자기 문구를 쓴다. 서버 문구가 바뀔 때마다 앱 UX 가 흔들리면 안 된다.
+- **서버 오류 문구를 화면에 그대로 쓰지 않는다.** 실패 종류(`AuthFailure` · `ApiFailure`)만 받아 앱이 자기 문구를 쓴다. 서버 문구가 바뀔 때마다 앱 UX 가 흔들리면 안 된다.
+- **반응형 폭 분기는 `features/shell/app_shell.dart` 한 곳에서만 한다.** 안쪽 위젯은 자기가 어떤 폭에 있는지 모른다. 분기가 화면마다 흩어지면 손댈 수 없게 된다.
 - **401 재시도는 1회뿐.** 무한 재시도는 서버의 리프레시 재사용 탐지에 걸려 세션 family 가 끊긴다.
 - **모델을 고치면 `dart run build_runner build`** 를 돌린다. `.freezed.dart` · `.g.dart` 는 커밋한다 — 체크아웃 직후 코드젠 없이 빌드되게 하기 위함이다.
 
@@ -256,8 +262,23 @@ features/home/           슬라이스 1 자리표시자. 슬라이스 2 의 셸�
 캔버스에 텍스트를 넣어야 하는데 §2 의 마지막 함정 때문에 재렌더 후 입력이 들어가지
 않았다. 사람이 직접 띄워 확인하면 된다.
 
-**아직 없는 것**: 스레드 · 리액션 · 멘션 · 핀 · DM, 첨부, 이슈,
-저장소 연동, AI, 테스트 · 린트 · CI. 앱은 **셸 · 채널 · 메시지 · 소켓**이 남았다.
+### 앱 — 슬라이스 2 완료 (스페이스 선택 + 반응형 셸)
+
+`/spaces`(스페이스 선택) → `/s/:spaceId`(셸)까지 라우트가 이어진다.
+자리표시자였던 `home_screen.dart` 는 셸이 대체했다.
+
+- **폭 분기는 `app_shell.dart` 한 곳에서만 한다** (`core/breakpoints.dart` 의 600 · 1024).
+  안쪽 위젯(`SpaceRail` · `ChannelPane` · 본문)은 자기가 어떤 폭에 있는지 모른다.
+  이 규칙이 깨지면 반응형 분기가 화면마다 흩어진다
+- **에뮬레이터 논리 해상도를 바꿔 세 분기를 모두 확인했다** — `adb shell wm size/density`.
+  desktop(2560dp) 3단 · tablet(800dp) 드로어 · mobile(기본) 하단 탭.
+  확인 후 `wm size reset` · `wm density reset` 으로 되돌릴 것
+- 그 과정에서 **드로어·데스크톱 양쪽에 `SafeArea` 누락**을 잡았다. 상태 표시줄과
+  레일 첫 아바타·채널 헤더가 겹쳤다. 데스크톱 OS 에는 상태 표시줄이 없지만
+  **Android 태블릿이 1024dp 를 넘으면 desktop 분기를 탄다**
+
+**아직 없는 것**: 채널 목록 · 메시지(슬라이스 3), 소켓 연동(슬라이스 4),
+스레드 · 리액션 · 멘션 · 핀 · DM, 첨부, 이슈, 저장소 연동, AI, 린트 · CI.
 (실시간 서버는 `typing` · `presence:changed` · `thread:*` 룸만 남았다 — §5 참고)
 
 ---
@@ -276,8 +297,8 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | 5-1 | 스캐폴드 · 스택 배선 · 테마 · 라우터 · **인증** | ✅ `ce70d56` |
-| **5-2** ← 다음 | **스페이스 선택 + 반응형 셸** (3단 ↔ 모바일 탭) | |
-| 5-3 | 채널 목록 + 메시지 리스트/전송 (REST, 낙관적 갱신) | |
+| 5-2 | **스페이스 선택 + 반응형 셸** (3단 ↔ 모바일 탭) | ✅ |
+| **5-3** ← 다음 | 채널 목록 + 메시지 리스트/전송 (REST, 낙관적 갱신) | |
 | 5-4 | 소켓 연결 · 실시간 갱신 · catch-up | |
 | **6** | drift 캐시 → 단일 진실 공급원 전환 → Phase 0 달성(실사용 가능) | |
 | **7~** | **기능 단위로 서버 + 앱을 함께**: 스레드 · 리액션 · 멘션 · 핀 → 첨부 → 이슈 · 스프린트 → repos(웹훅 · 열람 프록시) → PR → 인덱싱 → AI | |
@@ -296,7 +317,7 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 - GitHub OAuth 는 스키마(`oauth_accounts`)만 있고 미구현. 저장소 연동 단계에서 만든다.
 - **`updateMemberRole` 의 `rooms:invalidate`(`member.role`)는 자동 검증되지 않는다.** 두 번째 admin 계정과 역할 왕복이 필요해 `check:realtime` 에서 뺐다. 코드 리뷰로만 확인.
 - **비공개 채널에 다른 사람을 넣는 방법이 없다.** 생성자는 채널 생성 시 자동으로 멤버가 되지만(`ChannelsService.create()`), 채널 멤버 추가·제거 API 가 아직 없어 비공개 채널은 사실상 "나만 보는 채널"이다. 여럿이 쓰는 비공개 채널이 필요해지는 단계에서 함께 설계한다.
-- **앱에 자동 테스트가 사실상 없다.** `app/test/` 에는 `Env` 불변식 2개뿐이다. 위젯 테스트는 화면이 하나뿐이라 얻는 것이 적었고, 통합 테스트(로그인 → 채널 → 전송)는 슬라이스 3 이 끝나야 의미가 있다. **슬라이스 3 에서 갚기로 한 빚이다.**
+- **앱에 자동 테스트가 거의 없다.** `app/test/` 에는 `Env` 불변식 2개 + 반응형 경계 4개뿐이다. 위젯 테스트는 화면이 하나뿐이라 얻는 것이 적었고, 통합 테스트(로그인 → 채널 → 전송)는 슬라이스 3 이 끝나야 의미가 있다. **슬라이스 3 에서 갚기로 한 빚이다.**
 - **소켓 CORS 화이트리스트가 검증되지 않았다.** `SocketIoAdapter` 가 `CORS_ORIGINS` 를 적용하지만, 검증 스크립트는 Node 소켓 클라이언트라 브라우저 SOP 를 따르지 않아 실제로 막히는지 확인된 적이 없다. Flutter 웹으로 소켓을 붙이는 슬라이스 4 에서 드러난다.
 - ~~Windows 데스크톱 빌드 불가~~ — **해결됐다.** Flutter 3.47 + VS 2026 + 개발자 모드로 빌드된다(`flutter build windows --debug` 확인). 검증 경로는 Windows 데스크톱 · Chrome · Android 에뮬레이터 셋 다 열려 있다.
 
