@@ -237,6 +237,70 @@ async function main() {
   const deleted = await deletedEvent;
   check('message:deleted 도착', deleted?.messageId === sent.json.id, JSON.stringify(deleted));
 
+  console.log('\n── 읽음 ──');
+
+  // 같은 사용자의 두 번째 기기.
+  const owner2 = track(await connect(ownerToken));
+  check('같은 사용자의 두 번째 소켓 연결', !(owner2 instanceof Error));
+
+  const marker = await api('POST', `/spaces/${spaceId}/channels/${channelId}/messages`, {
+    token: ownerToken,
+    body: { body: '읽음 기준 메시지' },
+  });
+
+  // (1) 소켓 경로
+  const syncedOnDevice2 = waitFor(owner2, 'read:synced');
+  const readAck = await emitWithAck(owner, 'read', {
+    spaceId,
+    channelId,
+    lastReadMessageId: marker.json.id,
+  });
+  check('소켓 read 가 ok ack', readAck?.ok === true, JSON.stringify(readAck));
+
+  const synced = await syncedOnDevice2;
+  check('다른 기기에 read:synced 도착', synced?.lastReadMessageId === marker.json.id, JSON.stringify(synced));
+
+  // DB 에 실제로 저장됐는지는 채널 목록의 lastReadMessageId 로 확인한다.
+  const after = await api('GET', `/spaces/${spaceId}/channels`, { token: ownerToken });
+  const row = after.json.find((c) => c.id === channelId);
+  check('DB 에 읽음이 저장됨', row?.lastReadMessageId === marker.json.id, JSON.stringify(row?.lastReadMessageId));
+
+  // (2) REST 경로도 같은 코드를 지나가는지
+  const marker2 = await api('POST', `/spaces/${spaceId}/channels/${channelId}/messages`, {
+    token: ownerToken,
+    body: { body: '두 번째 읽음 기준' },
+  });
+  const syncedFromRest = waitFor(owner2, 'read:synced');
+  await api('POST', `/spaces/${spaceId}/channels/${channelId}/read`, {
+    token: ownerToken,
+    body: { lastReadMessageId: marker2.json.id },
+  });
+  check('REST 읽음도 read:synced 를 쏜다', (await syncedFromRest)?.lastReadMessageId === marker2.json.id);
+
+  // (3) 잘못된 페이로드로 연결이 끊기지 않는다
+  const badAck = await emitWithAck(owner, 'read', { spaceId, channelId });
+  check('DTO 위반은 ok:false', badAck?.ok === false, JSON.stringify(badAck));
+  check('잘못된 페이로드로 연결이 끊기지 않는다', owner.connected);
+
+  // outsider 는 위 "메시지 브로드캐스트" 절에서 초대를 수락해 이미 스페이스
+  // 멤버가 됐다. 진짜 비멤버로 거부 분기(not_a_member)를 확인하려면 그
+  // 스페이스에 한 번도 들어간 적 없는 사용자가 필요해 여기서 새로 만든다.
+  const strangerEmail = `check-stranger-${Date.now()}@example.com`;
+  const strangerPassword = 'check-stranger-password-1234';
+  const strangerSignup = await api('POST', '/auth/signup', {
+    body: { email: strangerEmail, password: strangerPassword, name: '읽음 검증용 비멤버' },
+  });
+  check('읽음 검증용 비멤버 가입', strangerSignup.status === 201, JSON.stringify(strangerSignup.json));
+  const stranger = track(await connect(strangerSignup.json.accessToken));
+
+  const foreignAck = await emitWithAck(stranger, 'read', {
+    spaceId,
+    channelId,
+    lastReadMessageId: marker2.json.id,
+  });
+  check('비멤버의 read 는 거부된다', foreignAck?.ok === false, JSON.stringify(foreignAck));
+  check('거부해도 연결은 유지된다', stranger.connected);
+
   report();
 }
 

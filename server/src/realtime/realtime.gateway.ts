@@ -11,10 +11,14 @@ import {
   WebSocketGateway,
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import { resolveJwtSecrets } from '../config/jwt.config';
 import { RealtimeEmitter } from './realtime-emitter';
 import { RoomsService } from './rooms.service';
 import { isPinnedRoom, room } from './rooms';
+import { SocketReadDto } from './dto/socket-read.dto';
+import { ChannelsService } from '../channels/channels.service';
 
 /** 인증을 통과한 소켓. 역할은 담지 않는다 — 스페이스마다 다르다. */
 interface AuthedSocket extends Socket {
@@ -44,6 +48,7 @@ export class RealtimeGateway
     config: ConfigService,
     private readonly emitter: RealtimeEmitter,
     private readonly rooms: RoomsService,
+    private readonly channels: ChannelsService,
   ) {
     // 시크릿 해석은 부팅 시 한 번. 미설정이면 여기서 부팅이 중단된다.
     this.accessSecret = resolveJwtSecrets(config).accessSecret;
@@ -119,6 +124,45 @@ export class RealtimeGateway
     } catch (err) {
       this.logger.error(`rooms:sync 실패 (user=${client.data.userId})`, err as Error);
       return { ok: false, error: 'rooms_sync_failed' };
+    }
+  }
+
+  /**
+   * 읽음 위치를 저장한다. REST POST /read 와 같은 ChannelsService.markRead 를
+   * 지나가므로 두 경로의 동작이 갈릴 수 없다.
+   *
+   * 잘못된 페이로드로 **연결을 끊지 않는다.** 앱이 룸을 재계산하는 사이의 경합
+   * 으로도 생길 수 있는 일이고, 끊으면 재연결 폭풍이 된다.
+   */
+  @SubscribeMessage('read')
+  async handleRead(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: unknown,
+  ) {
+    const dto = plainToInstance(SocketReadDto, body ?? {});
+    const errors = await validate(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+    if (errors.length > 0) {
+      return { ok: false, error: 'invalid_payload' };
+    }
+
+    // 소켓에 역할을 담지 않으므로 매번 DB 에서 읽는다. 클라이언트가 보낸
+    // spaceId · channelId 를 그대로 믿지 않는다.
+    const member = await this.rooms.findMember(client.data.userId, dto.spaceId);
+    if (!member) {
+      return { ok: false, error: 'not_a_member' };
+    }
+
+    try {
+      await this.channels.markRead(dto.channelId, member, {
+        lastReadMessageId: dto.lastReadMessageId,
+      });
+      return { ok: true };
+    } catch {
+      // assertCanView 의 404 등. 룸이 낡았을 뿐일 수 있으므로 끊지 않는다.
+      return { ok: false, error: 'read_failed' };
     }
   }
 

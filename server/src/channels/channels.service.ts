@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Channel, Prisma, SpaceMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { slugify } from '../common/slug';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
@@ -21,7 +22,10 @@ export interface ChannelListItem extends Channel {
 
 @Injectable()
 export class ChannelsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeEmitter,
+  ) {}
 
   // ──────────────────────────────────────────────
   // 가시성 규칙
@@ -263,7 +267,7 @@ export class ChannelsService {
       return existing;
     }
 
-    return this.prisma.channelMember.upsert({
+    const saved = await this.prisma.channelMember.upsert({
       where: { channelId_userId: { channelId, userId: member.userId } },
       update: { lastReadAt: message.createdAt, lastReadMessageId: message.id },
       create: {
@@ -273,6 +277,17 @@ export class ChannelsService {
         lastReadMessageId: message.id,
       },
     });
+
+    // 개인 룸으로 쏜다. 같은 사용자의 다른 기기가 읽음 위치를 따라온다.
+    // REST 와 소켓이 이 메서드를 함께 쓰므로 두 경로의 동작이 갈릴 수 없다.
+    this.realtime.toUser(member.userId, 'read:synced', {
+      spaceId: member.spaceId,
+      channelId,
+      lastReadMessageId: saved.lastReadMessageId,
+      lastReadAt: saved.lastReadAt,
+    });
+
+    return saved;
   }
 
   /** 채널 참여 — 공개 채널에 스스로 들어간다. */
