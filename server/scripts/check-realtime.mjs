@@ -120,6 +120,23 @@ async function main() {
   }
   track(owner);
 
+  console.log('\n── 룸 ──');
+
+  const spaces = await api('GET', '/spaces', { token: ownerToken });
+  const spaceId = spaces.json[0].id;
+  const channels = await api('GET', `/spaces/${spaceId}/channels`, { token: ownerToken });
+  const channelIds = channels.json.map((c) => c.id);
+
+  const sync = await emitWithAck(owner, 'rooms:sync', {});
+  check('rooms:sync 가 ack 을 준다', sync?.ok === true, JSON.stringify(sync));
+  check(
+    'ack 의 채널이 REST 채널 목록과 같다',
+    sync?.channels?.length === channelIds.length &&
+      channelIds.every((id) => sync.channels.includes(id)),
+    `소켓=${sync?.channels?.length} REST=${channelIds.length}`,
+  );
+  check('ack 에 스페이스가 담긴다', sync?.spaces?.includes(spaceId), JSON.stringify(sync?.spaces));
+
   report();
 }
 
