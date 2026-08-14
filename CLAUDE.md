@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **작업 브랜치** | `feat/pivot-nexus` — **`main` 은 전환 이전의 옛 코드다.** 헷갈리지 말 것 |
-| **상태** | 사내 메신저 → 개인 프로젝트로 **전환 중**. 서버 3단계까지 완료, 앱은 아직 없음 |
+| **상태** | 사내 메신저 → 개인 프로젝트로 **전환 중**. 서버 4단계(실시간 최소)까지 완료, 앱은 아직 없음 |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
 
@@ -32,7 +32,9 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 npm run db:setup     # (새 PC에서 1회) WSL 안에 Postgres + pgvector 자동 구성
                      #  Docker 를 쓴다면 건너뛰고 db:up:docker 사용
 npm run db:up        # DB 기동 + 준비될 때까지 대기
-npm --prefix server exec prisma migrate deploy
+npm --prefix server run prisma:generate   # node_modules 를 새 스키마 기준으로 생성.
+                                          # 빠뜨리면 시드가 SpaceRole 없음으로 실패한다
+npm --prefix server run prisma:deploy     # migrate deploy
 npm run db:seed
 
 npm run server:dev   # http://localhost:3000/api
@@ -49,6 +51,7 @@ WSL 이 없으면 먼저 `wsl --install -d Ubuntu`.
 | `npm run db:seed` · `db:studio` | 시드 · Prisma Studio |
 | `npm run server:dev` · `server:build` | 개발 서버 · 빌드 |
 | `npm --prefix server run typecheck` | 타입 검사만 |
+| `npm run check:realtime -- <시드비밀번호>` | 실서버 · 실DB · 실소켓으로 소켓 계약 검증 (`db:up` · `server:dev` 실행 중이어야 함) |
 
 ### DB 는 PC 마다 따로다
 
@@ -67,6 +70,7 @@ WSL 이 없으면 먼저 `wsl --install -d Ubuntu`.
 | PowerShell 스크립트 파싱 에러 | Windows PowerShell 5.1 은 BOM 없는 UTF-8 을 ANSI 로 읽는다. 한글이 든 `.ps1` 은 **UTF-8 BOM** 으로 저장할 것 |
 | `wsl` 명령이 무응답 | Ubuntu OOBE(첫 사용자 생성)가 걸린 상태일 수 있다. `wsl --shutdown` 후 재시도. 이 PC 는 개인 UNIX 계정 없이 **root 로** 쓰고 있다 |
 | `bash -c` 안의 따옴표가 깨짐 | Git Bash 는 `/bin/sh` 를 Windows 경로로 바꾼다. WSL 명령은 **PowerShell 도구로** 실행하고, 복잡한 스크립트는 파일로 만들어 `wsl ... /bin/bash <path>` 로 넘길 것 |
+| `npm --prefix server exec prisma ...` 가 `Could not find Prisma Schema` 로 실패 | `--prefix` 는 npm 이 패키지를 찾는 경로만 바꾸고 **실행되는 명령의 cwd 는 그대로**라 `prisma/schema.prisma` 를 못 찾는다. `npm --prefix server run <script>` 를 쓸 것 — `npm run` 은 패키지 디렉터리 안에서 스크립트를 실행한다 |
 
 ---
 
@@ -131,9 +135,11 @@ common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug
 
 ### 아직 이관하지 않은 모듈 — 빌드에서 빠져 있다
 
-`src/realtime` `src/permissions` `src/notifications` `src/files` `src/issues`
+`src/permissions` `src/notifications` `src/files` `src/issues`
 `src/gitlab` `src/ai` 는 **옛 스키마를 참조해 컴파일되지 않는다.** 소스는 참고용으로 남겨 두고
 `tsconfig.json` · `tsconfig.build.json` 의 `exclude` 로 빌드에서만 뺐다.
+`src/realtime` 은 4단계에서 이관을 마쳤다 — `redis-io.adapter.ts` 하나만 다중
+인스턴스가 될 때까지 개별 제외돼 있다.
 
 되살리는 절차: ① 두 tsconfig 의 `exclude` 에서 경로 삭제 → ② `spaceId` 기준으로 코드 수정
 → ③ `app.module.ts` 의 `imports` 에 등록.
@@ -150,6 +156,7 @@ common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug
 | 2 | 멀티테넌시 골격 — 스키마 재작성 · auth 개편 · spaces · SpaceGuard | ✅ `c83013a` |
 | 3 | 채팅 API 뼈대 — categories · channels · messages | ✅ `12138c9` |
 | — | 실제 DB(Postgres 18 + pgvector 0.8.1)로 종단 확인 | ✅ `55c59a6` |
+| 4 | 실시간 최소 — 소켓 인증(`auth.token` 만) · 룸 조인 · `rooms:sync`/`rooms:invalidate` · `message:*` 브로드캐스트 · 읽음 저장 | ✅ `c5806a8` |
 
 **동작이 확인된 것** — 실제 DB 로 38개 케이스 통과:
 가입 · 중복 거부 · 로그인 · 리프레시 회전 · **재사용 탐지** · 스페이스 생성(한글 이름) ·
@@ -157,24 +164,38 @@ common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug
 **커서 페이지네이션** · 수정 이력 · **소프트 삭제** · **안 읽은 수** · 읽음 마커(뒤로 안 감) ·
 권한 거부(403).
 
-**아직 없는 것**: 실시간(소켓), 스레드 · 리액션 · 멘션 · 핀 · DM, 첨부, 이슈,
-저장소 연동, AI, **Flutter 앱 전체**, 테스트 · 린트 · CI.
+**실시간(소켓)도 실서버 · 실DB · 실소켓으로 38개 케이스 통과** (`npm run check:realtime`):
+핸드셰이크 인증(토큰 없음/오류 거부) · `rooms:sync` · 테넌트 격리(비멤버에게 안 감) ·
+`message:new`/`edited`/`deleted` 브로드캐스트(같은 사용자의 다른 소켓까지 도달 확인) ·
+`rooms:invalidate`(채널 생성 시 재동기화) · 소켓 `read`/REST `POST /read` 가 같은 코드로
+저장되고 `read:synced` 로 반영 · 잘못된 페이로드 · 비멤버 read 거부에도 연결 유지.
+
+다만 두 가지는 검증하지 못했다: **`updateMemberRole` 의 `rooms:invalidate`(`member.role`)**
+는 두 번째 admin 계정과 역할 왕복이 필요해 검증 스크립트에서 뺐다 — 코드 리뷰로만 확인.
+**비공개 채널의 실시간 유출 경로**도 검증하지 못했다 — 현재 구현에서 비공개 채널을
+만들어도 생성자가 `channel_members` 에 들어가지 않아 생성자 본인조차 그 채널을 보거나
+메시지를 보낼 수 없다(404, 4단계 범위 밖의 별도 결함). 룸 계산 자체는 "비공개 채널이
+누구의 룸에도 없다"로 확인됐다.
+
+**아직 없는 것**: 스레드 · 리액션 · 멘션 · 핀 · DM, 첨부, 이슈,
+저장소 연동, AI, **Flutter 앱 전체**, 테스트 · 린트 · CI. (실시간은 `typing` ·
+`presence:changed` · `thread:*` 룸만 남았다 — §5 참고)
 
 ---
 
 ## 5. 남은 작업
 
 순서는 2026-08-14 에 개정됐다. **원안(계층을 다 쌓고 앱)은 5단계까지 화면이 없어서**,
-부가 기능을 뒤로 미루고 앱을 앞으로 당겼다.
+부가 기능을 뒤로 미루고 앱을 앞으로 당겼다. 4단계(실시간 최소)가 끝나 이제
+**Flutter 앱이 다음이다.**
 
 잘라내는 기준: **미루는 것은 기능이지 구조가 아니다.**
 스레드 · 리액션은 나중에 붙여도 기존 코드를 안 건드리지만, 실시간을 미루면 앱 상태 계층을
-REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보다 먼저** 한다.
+REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보다 먼저** 했다.
 
 | 단계 | 내용 |
 |---|---|
-| **4** ← 다음 | **실시간 최소** — 소켓 인증(`auth.token` 만), 룸 조인, `rooms:sync` / `rooms:invalidate`, `message:new`, 읽음 저장 |
-| **5** | **Flutter 앱** — 스캐폴드 → 인증 → 셸 → 채널 → 메시지 (소켓 포함). **처음으로 눈에 보이는 앱** |
+| **5** ← 다음 | **Flutter 앱** — 스캐폴드 → 인증 → 셸 → 채널 → 메시지 (소켓 포함). **처음으로 눈에 보이는 앱** |
 | **6** | drift 캐시 + catch-up → Phase 0 달성(실사용 가능) |
 | **7~** | **기능 단위로 서버 + 앱을 함께**: 스레드 · 리액션 · 멘션 · 핀 → 첨부 → 이슈 · 스프린트 → repos(웹훅 · 열람 프록시) → PR → 인덱싱 → AI |
 | 마지막 | 푸시 · 트레이 · 딥링크 · CI · 테넌트 격리 통합 테스트 |
@@ -184,9 +205,11 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 
 ### 알려진 빚
 
-- **테스트 · 린트 · CI 가 전혀 없다.** 루트의 `server:test` · `server:lint` 는 `server/package.json` 에 대상 스크립트가 없어 **실행하면 실패한다.** Jest · ESLint 셋업은 전환 계획 §5 에 있다.
+- **테스트 · 린트 · CI 가 전혀 없다.** 루트의 `server:test` · `server:lint` 는 `server/package.json` 에 대상 스크립트가 없어 **실행하면 실패한다.** Jest · ESLint 셋업은 전환 계획 §5 에 있다. 4단계에서 `npm run check:realtime` 이 생겼지만, 이건 실서버 · 실DB · 실소켓으로 동작을 확인하는 스크립트일 뿐 단위 테스트 · CI 를 대신하지 않는다.
 - `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다.
 - GitHub OAuth 는 스키마(`oauth_accounts`)만 있고 미구현. 저장소 연동 단계에서 만든다.
+- **`updateMemberRole` 의 `rooms:invalidate`(`member.role`)는 자동 검증되지 않는다.** 두 번째 admin 계정과 역할 왕복이 필요해 `check:realtime` 에서 뺐다. 코드 리뷰로만 확인.
+- **비공개 채널의 실시간 유출 경로를 검증하지 못했다.** 비공개 채널을 만들어도 생성자가 `channel_members` 에 들어가지 않아 생성자 본인조차 그 채널을 보거나 메시지를 보낼 수 없다(404) — 4단계 범위 밖의 별도 결함. 룸 계산 자체는 "비공개 채널이 누구의 룸에도 없다"로 확인됐다.
 
 ---
 

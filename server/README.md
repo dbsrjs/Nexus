@@ -14,9 +14,9 @@
 - JWT + argon2 — 리프레시 토큰 회전 · 재사용 탐지
 - S3 호환 스토리지 (개발: MinIO / 운영: Cloudflare R2)
 
-## 현재 상태 — 전환 3단계까지
+## 현재 상태 — 전환 4단계까지
 
-REST로 대화가 되는 데까지 올라와 있다. 실시간은 아직이다.
+REST 로 대화가 되고, 소켓으로 실시간 갱신이 온다. Flutter 앱은 아직 없다(5단계).
 
 | 영역 | 상태 |
 |---|---|
@@ -25,13 +25,14 @@ REST로 대화가 되는 데까지 올라와 있다. 실시간은 아직이다.
 | spaces — CRUD · 멤버 · 초대 · `SpaceGuard` | ✅ |
 | categories · channels · messages — 목록 · 전송 · 수정 · 소프트 삭제 · 읽음 마커 | ✅ |
 | 마이그레이션 · 시드 · 종단 확인 (실제 Postgres 18 + pgvector 0.8.1) | ✅ 38개 케이스 통과 |
-| realtime (소켓) | ⬜ 4단계 |
+| realtime — 소켓 인증 · 룸 조인 · `rooms:sync`/`rooms:invalidate` · `message:*` 브로드캐스트 · 읽음 저장 | ✅ 실소켓 38개 케이스 통과 |
 | 스레드 · 리액션 · 멘션 · 핀 · DM · 첨부 · 이슈 · repos · ai | ⬜ 7단계 이후 |
 
-**미이관 모듈은 컴파일 대상에서 빠져 있다.** `src/realtime` `src/permissions`
+**미이관 모듈은 컴파일 대상에서 빠져 있다.** `src/permissions`
 `src/notifications` `src/files` `src/issues` `src/gitlab` `src/ai` 는 새 스키마를
 참조하지 못해 `tsconfig.json` · `tsconfig.build.json` 의 `exclude` 에 들어 있다.
-소스는 참고용으로 남겨 두었다.
+소스는 참고용으로 남겨 두었다. `src/realtime` 은 4단계에서 이관을 마쳤고,
+`redis-io.adapter.ts` 하나만 다중 인스턴스가 될 때까지 개별 제외돼 있다.
 
 되살리는 절차: 두 tsconfig 의 `exclude` 에서 해당 경로를 지우고 →
 `spaceId` 기준으로 코드를 고친 뒤 → `app.module.ts` 의 `imports` 에 다시 넣는다.
@@ -59,7 +60,9 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 npm install
 
 # 4. DB 스키마 적용
-npx prisma migrate deploy
+npm run prisma:generate   # node_modules 를 새 스키마 기준으로 생성 — 빠뜨리면 시드가
+                          # `Module '"@prisma/client"' has no exported member 'SpaceRole'` 로 실패한다
+npm run prisma:deploy     # migrate deploy
 
 # 5. 시드 (내 계정 1개 + 스페이스 1개 + 채널 5개)
 npm run seed
@@ -111,6 +114,7 @@ WSL 배포판에 systemd 가 켜져 있으면(`/etc/wsl.conf` 의 `[boot] system
 | `npm run typecheck` | 타입 검사만 (`tsc --noEmit`) |
 | `npm run prisma:generate` | `prisma generate` |
 | `npm run prisma:migrate` | `prisma migrate dev` |
+| `npm run prisma:deploy` | `prisma migrate deploy` |
 | `npm run seed` | `ts-node prisma/seed.ts` |
 
 ## 프로젝트 규약 (모든 모듈 공통)
