@@ -58,6 +58,26 @@ flutter run -d chrome --web-port=5173 --dart-define=API_BASE=http://127.0.0.1:30
 **웹 포트를 5173 으로 고정하는 이유**: 서버 `.env` 의 `CORS_ORIGINS` 가 이 주소만
 허용한다. 다른 포트로 띄우면 브라우저가 요청을 막는다.
 
+#### Android 에뮬레이터
+
+이 PC 에는 Android SDK 36 · JDK 21 · AVD(`nexus_pixel`, Pixel 7)가 설치돼 있다.
+새 PC 라면 `app/scripts/android-setup.ps1` 을 1회 실행한다(라이선스 동의는 사람이 `y`).
+
+```bash
+# 1) 에뮬레이터 기동 (부팅까지 1~2분)
+%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe -avd nexus_pixel
+
+# 2) 빌드 · 설치 · 실행 — flutter run 은 백그라운드에서 stdin EOF 로 죽으므로
+#    자동화할 때는 build → adb install 로 간다
+cd app
+flutter build apk --debug --dart-define=API_BASE=http://10.0.2.2:3000
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+adb shell monkey -p com.nexus.nexus_app -c android.intent.category.LAUNCHER 1
+```
+
+**화면 확인**은 `adb shell screencap -p /sdcard/s.png` 후 `adb pull` 로 가져온다.
+PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨진다**(BOM 삽입).
+
 ### 자주 쓰는 명령
 
 | 명령 | 설명 |
@@ -89,7 +109,8 @@ flutter run -d chrome --web-port=5173 --dart-define=API_BASE=http://127.0.0.1:30
 | `wsl` 명령이 무응답 | Ubuntu OOBE(첫 사용자 생성)가 걸린 상태일 수 있다. `wsl --shutdown` 후 재시도. 이 PC 는 개인 UNIX 계정 없이 **root 로** 쓰고 있다 |
 | `bash -c` 안의 따옴표가 깨짐 | Git Bash 는 `/bin/sh` 를 Windows 경로로 바꾼다. WSL 명령은 **PowerShell 도구로** 실행하고, 복잡한 스크립트는 파일로 만들어 `wsl ... /bin/bash <path>` 로 넘길 것 |
 | `npm --prefix server exec prisma ...` 가 `Could not find Prisma Schema` 로 실패 | `--prefix` 는 npm 이 패키지를 찾는 경로만 바꾸고 **실행되는 명령의 cwd 는 그대로**라 `prisma/schema.prisma` 를 못 찾는다. `npm --prefix server run <script>` 를 쓸 것 — `npm run` 은 패키지 디렉터리 안에서 스크립트를 실행한다 |
-| `flutter run -d windows` 가 `CMake Error ... Visual Studio 16 2019 could not find any instance of Visual Studio` | 이 PC 에는 **VS 2026(18.x)** 이 깔려 있는데 Flutter 3.38 이 그 버전을 몰라 CMake 제너레이터를 VS 2019 로 잡는다. `flutter doctor` 는 통과라고 말하므로 헷갈리기 쉽다. **Windows 데스크톱 빌드는 현재 불가**하고, `-d chrome` 또는 Android 에뮬레이터로 확인한다. Flutter 를 올리거나 VS 2022 빌드 도구를 따로 깔면 풀린다 |
+| `Building with plugins requires symlink support` | **Windows 개발자 모드**가 꺼져 있다. `flutter_secure_storage` 같은 네이티브 플러그인이 심볼릭 링크를 쓴다. `start ms-settings:developers` 로 켠다. (예전에 이 자리에 있던 `CMake Error ... Visual Studio 16 2019` 는 **Flutter 3.47 로 올라가며 해결됐다** — VS 2026 을 정상 인식하고 데스크톱 빌드가 된다) |
+| Android 빌드가 `Run this build using a Java 11 or newer JVM` 으로 실패 | 이 PC 의 시스템 기본 java 가 **8** 이라 Gradle 이 그걸 집는다. `flutter config --jdk-dir <JDK21 경로>` 로 고정한다(이미 설정돼 있다) |
 | `flutter run` 이 시작하자마자 조용히 종료 | `flutter run` 은 stdin 으로 키 명령(r · R · q)을 받는데, 백그라운드로 띄우면 stdin 이 EOF 라 종료로 해석한다. 사람이 직접 터미널에서 돌리거나, 검증 자동화는 `flutter build web` 후 정적 서버로 띄울 것 |
 | 브라우저 자동화로 Flutter 웹 입력이 안 먹음 | Flutter 웹은 캔버스로 그려 접근성 트리가 비어 있다. `flutter-semantics-placeholder` 를 클릭해 시맨틱스를 켜면 입력 요소가 노출된다. 그래도 **BackSpace · 값 직접 대입은 컨트롤러까지 전달되지 않고 타이핑만 append 된다** — 폼을 비우려면 페이지를 새로고침할 것 |
 
@@ -277,7 +298,7 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 - **비공개 채널에 다른 사람을 넣는 방법이 없다.** 생성자는 채널 생성 시 자동으로 멤버가 되지만(`ChannelsService.create()`), 채널 멤버 추가·제거 API 가 아직 없어 비공개 채널은 사실상 "나만 보는 채널"이다. 여럿이 쓰는 비공개 채널이 필요해지는 단계에서 함께 설계한다.
 - **앱에 자동 테스트가 사실상 없다.** `app/test/` 에는 `Env` 불변식 2개뿐이다. 위젯 테스트는 화면이 하나뿐이라 얻는 것이 적었고, 통합 테스트(로그인 → 채널 → 전송)는 슬라이스 3 이 끝나야 의미가 있다. **슬라이스 3 에서 갚기로 한 빚이다.**
 - **소켓 CORS 화이트리스트가 검증되지 않았다.** `SocketIoAdapter` 가 `CORS_ORIGINS` 를 적용하지만, 검증 스크립트는 Node 소켓 클라이언트라 브라우저 SOP 를 따르지 않아 실제로 막히는지 확인된 적이 없다. Flutter 웹으로 소켓을 붙이는 슬라이스 4 에서 드러난다.
-- **Windows 데스크톱 빌드가 현재 불가능하다.** §2 의 VS 2026 함정 참조. 앱 검증은 Chrome 또는 Android 에뮬레이터로 한다.
+- ~~Windows 데스크톱 빌드 불가~~ — **해결됐다.** Flutter 3.47 + VS 2026 + 개발자 모드로 빌드된다(`flutter build windows --debug` 확인). 검증 경로는 Windows 데스크톱 · Chrome · Android 에뮬레이터 셋 다 열려 있다.
 
 ---
 
