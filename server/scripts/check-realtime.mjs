@@ -140,13 +140,24 @@ async function main() {
   report();
 }
 
+/**
+ * disconnect() 직후 process.exit() 를 부르면, libuv 가 소켓을 닫는 중인 핸들을
+ * 프로세스 종료 절차가 한 번 더 닫으려 해서 Windows 에서 assert 로 죽는다
+ * (`UV_HANDLE_CLOSING`, src/win/async.c). 룸이 늘어 소켓이 여러 개 열리면서
+ * 드러났다.
+ *
+ * process.exit() 를 아예 쓰지 않고 process.exitCode 만 설정한 뒤 자연 종료를
+ * 기다린다. 통과/실패는 그대로 종료 코드에 반영되지만(0 = 전부 통과), 진행
+ * 중이던 핸들을 강제로 끊지 않으므로 이 crash 가 생기지 않는다.
+ */
 function report() {
   for (const s of sockets) s.disconnect();
   console.log(`\n통과 ${pass} / 실패 ${fail}`);
-  process.exit(fail ? 1 : 0);
+  process.exitCode = fail ? 1 : 0;
 }
 
 main().catch((err) => {
   console.error(err);
-  process.exit(1);
+  for (const s of sockets) s.disconnect();
+  process.exitCode = 1;
 });
