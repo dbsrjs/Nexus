@@ -186,7 +186,23 @@ export class ChannelsService {
   // 변경
   // ──────────────────────────────────────────────
 
-  async create(spaceId: string, dto: CreateChannelDto): Promise<Channel> {
+  /**
+   * 채널을 만들고 **생성자를 채널 멤버로 함께 넣는다.**
+   *
+   * 이전에는 채널 행만 만들었다. 그러면 비공개 채널은 `canView` 가 channel_members
+   * 를 요구하므로 **만든 사람조차 볼 수도 쓸 수도 없는** 상태가 됐다. join 으로
+   * 들어갈 수도 없다 — join 이 assertCanView 를 먼저 거치기 때문이다.
+   *
+   * 공개 채널도 구분 없이 넣는다. `SpacesService.create()` 가 기본 채널에,
+   * `prisma/seed.ts` 가 시드 채널에 이미 같은 일을 한다. `isPrivate` 일 때만 넣으면
+   * 한 코드베이스에 규칙이 둘이 된다. 공개 채널의 멤버 행은 어차피 markRead 가
+   * 만들므로 미리 있다고 달라지는 것이 없다.
+   */
+  async create(
+    spaceId: string,
+    member: SpaceMember,
+    dto: CreateChannelDto,
+  ): Promise<Channel> {
     const key = dto.key ?? slugify(dto.name, 'channel');
 
     const taken = await this.prisma.channel.findUnique({
@@ -200,16 +216,28 @@ export class ChannelsService {
       await this.requireCategoryInSpace(spaceId, dto.categoryId);
     }
 
-    const channel = await this.prisma.channel.create({
-      data: {
-        spaceId,
-        key,
-        name: dto.name.trim(),
-        topic: dto.topic,
-        categoryId: dto.categoryId ?? null,
-        isPrivate: dto.isPrivate ?? false,
-        position: dto.position ?? (await this.nextPosition(spaceId)),
-      },
+    const position = dto.position ?? (await this.nextPosition(spaceId));
+
+    // 한 트랜잭션으로 묶는다. 채널만 만들어지고 멤버 행이 빠지면 그것이 바로
+    // 위에서 설명한, 아무도 접근할 수 없는 채널이다.
+    const channel = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.channel.create({
+        data: {
+          spaceId,
+          key,
+          name: dto.name.trim(),
+          topic: dto.topic,
+          categoryId: dto.categoryId ?? null,
+          isPrivate: dto.isPrivate ?? false,
+          position,
+        },
+      });
+
+      await tx.channelMember.create({
+        data: { channelId: created.id, userId: member.userId },
+      });
+
+      return created;
     });
 
     this.realtime.toSpace(spaceId, 'rooms:invalidate', { reason: 'channel.created' });

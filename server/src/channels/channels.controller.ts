@@ -57,8 +57,9 @@ export class ChannelsController {
   create(
     @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
     @Body() dto: CreateChannelDto,
+    @CurrentSpaceMember() member: SpaceMember,
   ) {
-    return this.channels.create(spaceId, dto);
+    return this.channels.create(spaceId, member, dto);
   }
 
   @Patch(':channelId')

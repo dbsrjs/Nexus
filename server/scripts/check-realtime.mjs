@@ -198,12 +198,9 @@ async function main() {
   );
 
   // ── 비공개 채널 격리 ──
-  // 이제 outsider 는 스페이스 멤버다. 그래도 비공개 채널은 룸에 들어오면 안 된다.
-  //
-  // ⚠ 이 채널에 메시지를 보내 "새는지" 까지는 확인하지 못한다. 현재 구현에서는
-  //    비공개 채널을 만들어도 생성자가 channel_members 에 들어가지 않아 생성자
-  //    본인조차 404 라 메시지를 보낼 수 없다. 4단계 범위 밖이므로 여기서 고치지
-  //    않고 별도 작업으로 남긴다. 룸 계산 자체는 아래로 확인된다.
+  // outsider 는 이제 스페이스 멤버다. 그래도 비공개 채널은 룸에 들어오면 안 된다.
+  // 반대로 생성자는 채널 생성 시 channel_members 에 함께 들어가므로 자기 채널을
+  // 보고 쓸 수 있어야 한다.
   const priv = await api('POST', `/spaces/${spaceId}/channels`, {
     token: ownerToken,
     body: { name: `비공개-${Date.now()}`, isPrivate: true },
@@ -219,10 +216,34 @@ async function main() {
 
   const ownerSync = await emitWithAck(owner, 'rooms:sync', {});
   check(
-    '비공개 채널은 참여하지 않은 생성자의 룸에도 없다',
-    !ownerSync?.channels?.includes(priv.json.id),
+    '생성자는 자기 비공개 채널의 룸에 있다',
+    ownerSync?.channels?.includes(priv.json.id),
     JSON.stringify(ownerSync?.channels),
   );
+
+  // 여기부터가 백엔드 설계 §5 가 요구하던 격리 케이스다. 4단계에서는 생성자조차
+  // 비공개 채널에 메시지를 보낼 수 없어(404) 실행하지 못했다.
+  // "룸 계산이 맞다"와 "실제로 새지 않는다"는 다른 이야기다.
+  const privOwnerGets = waitFor(owner, 'message:new');
+  const privLeak = waitFor(outsider, 'message:new', 1500);
+  const privSent = await api('POST', `/spaces/${spaceId}/channels/${priv.json.id}/messages`, {
+    token: ownerToken,
+    body: { body: '비공개 채널 메시지' },
+  });
+  check(
+    '생성자는 자기 비공개 채널에 메시지를 보낼 수 있다',
+    privSent.status === 201,
+    JSON.stringify(privSent.json),
+  );
+  // 양쪽이 undefined 여도 참이 되지 않도록 id 가 실제로 있는지부터 본다.
+  // 전송이 404 면 두 값이 모두 undefined 가 되어 공허하게 통과한다.
+  const privReceived = await privOwnerGets;
+  check(
+    '생성자 소켓에 비공개 채널 message:new 도착',
+    !!privSent.json?.id && privReceived?.message?.id === privSent.json.id,
+    JSON.stringify(privReceived),
+  );
+  check('비공개 채널 메시지가 비참여자에게 새지 않는다', (await privLeak) === null);
 
   const editedEvent = waitFor(owner, 'message:edited');
   await api('PATCH', `/spaces/${spaceId}/messages/${sent.json.id}`, {
@@ -283,17 +304,18 @@ async function main() {
   check('잘못된 페이로드로 연결이 끊기지 않는다', owner.connected);
 
   // (3-1) markRead() 가 실제로 예외를 던지는 경우 (read_failed) — 스페이스 멤버지만
-  // 그 채널은 못 보는 경우. 위의 "비공개 채널 생성" 절에서 만든 priv 채널은
-  // 생성자인 owner 조차 channel_members 에 들어가지 않아 볼 수 없다. ack 형태는
-  // read_failed 로 동일해야 하고, 이때 서버 로그에 에러가 남는지는 이 스크립트가
-  // 아니라 보고서에서 server.log 를 직접 확인한다.
-  const readFailedAck = await emitWithAck(owner, 'read', {
+  // 그 채널은 못 보는 경우다. outsider 는 초대를 수락해 스페이스 멤버이지만 위에서
+  // 만든 비공개 채널 priv 의 채널 멤버는 아니라 assertCanView 가 404 를 던진다.
+  // (owner 로는 확인할 수 없다 — 생성자는 자기 비공개 채널을 볼 수 있다.)
+  // ack 형태는 read_failed 로 동일해야 하고, 서버 로그에 에러가 남는지는 이 스크립트가
+  // 아니라 server.log 를 직접 확인한다.
+  const readFailedAck = await emitWithAck(outsider, 'read', {
     spaceId,
     channelId: priv.json.id,
     lastReadMessageId: marker2.json.id,
   });
   check('볼 수 없는 채널의 read 는 read_failed', readFailedAck?.ok === false, JSON.stringify(readFailedAck));
-  check('read_failed 이후에도 연결은 유지된다', owner.connected);
+  check('read_failed 이후에도 연결은 유지된다', outsider.connected);
 
   // outsider 는 위 "메시지 브로드캐스트" 절에서 초대를 수락해 이미 스페이스
   // 멤버가 됐다. 진짜 비멤버로 거부 분기(not_a_member)를 확인하려면 그
