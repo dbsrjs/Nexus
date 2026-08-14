@@ -10,6 +10,7 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
 import { hasAtLeast } from '../spaces/space-role';
+import { RealtimeEmitter } from '../realtime/realtime-emitter';
 
 /** 메시지에 함께 실어 보내는 작성자 정보. 이메일은 내보내지 않는다. */
 const AUTHOR_SELECT = {
@@ -21,6 +22,7 @@ export class MessagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly channels: ChannelsService,
+    private readonly realtime: RealtimeEmitter,
   ) {}
 
   /**
@@ -71,7 +73,13 @@ export class MessagesService {
       include: { author: AUTHOR_SELECT },
     });
 
-    // NOTE: message:new 브로드캐스트와 알림 팬아웃은 4단계(realtime)에서 붙인다.
+    this.realtime.toChannel(channelId, 'message:new', {
+      spaceId: member.spaceId,
+      channelId,
+      message,
+    });
+
+    // NOTE: 멘션 알림 팬아웃은 7단계(mentions)에서 붙인다.
     return message;
   }
 
@@ -100,6 +108,12 @@ export class MessagesService {
       }),
     ]);
 
+    this.realtime.toChannel(existing.channelId, 'message:edited', {
+      spaceId: member.spaceId,
+      channelId: existing.channelId,
+      message: updated,
+    });
+
     return updated;
   }
 
@@ -127,6 +141,14 @@ export class MessagesService {
       where: { id: messageId },
       data: { deletedAt: new Date() },
       include: { author: AUTHOR_SELECT },
+    });
+
+    // 페이로드에 본문을 싣지 않는다. 삭제된 메시지의 본문이 소켓으로 흘러나가면
+    // 소프트 삭제의 의미가 없다.
+    this.realtime.toChannel(existing.channelId, 'message:deleted', {
+      spaceId: member.spaceId,
+      channelId: existing.channelId,
+      messageId,
     });
 
     return redactIfDeleted(deleted);

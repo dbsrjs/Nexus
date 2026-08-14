@@ -137,6 +137,106 @@ async function main() {
   );
   check('ack 에 스페이스가 담긴다', sync?.spaces?.includes(spaceId), JSON.stringify(sync?.spaces));
 
+  console.log('\n── 메시지 브로드캐스트 ──');
+
+  // 두 번째 사용자를 만들어 초대로 같은 스페이스에 넣는다.
+  const outsiderEmail = `check-outsider-${Date.now()}@example.com`;
+  const outsiderPassword = 'check-outsider-password-1234';
+  const signup = await api('POST', '/auth/signup', {
+    body: { email: outsiderEmail, password: outsiderPassword, name: '검증용 외부인' },
+  });
+  check('두 번째 사용자 가입', signup.status === 201, JSON.stringify(signup.json));
+  const outsiderToken = signup.json.accessToken;
+
+  // 아직 스페이스 멤버가 아닌 상태로 연결한다.
+  const outsider = track(await connect(outsiderToken));
+  check('비멤버도 소켓 연결은 된다', !(outsider instanceof Error));
+
+  const outsiderSync = await emitWithAck(outsider, 'rooms:sync', {});
+  check(
+    '비멤버는 그 스페이스 룸에 없다',
+    !outsiderSync?.spaces?.includes(spaceId),
+    JSON.stringify(outsiderSync?.spaces),
+  );
+
+  const channelId = channelIds[0];
+  const newEvent = waitFor(owner, 'message:new');
+  const outsiderShouldNotGet = waitFor(outsider, 'message:new', 1500);
+
+  const sent = await api('POST', `/spaces/${spaceId}/channels/${channelId}/messages`, {
+    token: ownerToken,
+    body: { body: '실시간 검증 메시지' },
+  });
+  check('REST 로 메시지 전송', sent.status === 201, JSON.stringify(sent.json));
+
+  const received = await newEvent;
+  check('멤버 소켓에 message:new 도착', received?.message?.id === sent.json.id, JSON.stringify(received));
+  check('payload 에 spaceId · channelId 가 있다', received?.spaceId === spaceId && received?.channelId === channelId);
+  check('비멤버에게는 안 간다 (테넌트 격리)', (await outsiderShouldNotGet) === null);
+
+  // ── 사용자 간 전달 ──
+  // 위까지는 보낸 사람이 자기 이벤트를 받은 것뿐이라, 룸이 실제로 다른 사용자에게
+  // 닿는지는 증명되지 않았다. 초대로 멤버를 만들어 확인한다.
+  const invite = await api('POST', `/spaces/${spaceId}/invites`, { token: ownerToken, body: {} });
+  check('초대 발급', invite.status === 201, JSON.stringify(invite.json));
+
+  const accepted = await api('POST', `/invites/${invite.json.code}/accept`, { token: outsiderToken });
+  check('초대 수락', accepted.status === 200 || accepted.status === 201, JSON.stringify(accepted.json));
+
+  const memberSync = await emitWithAck(outsider, 'rooms:sync', {});
+  check('수락 후 rooms:sync 에 스페이스가 들어온다', memberSync?.spaces?.includes(spaceId));
+
+  const crossUser = waitFor(outsider, 'message:new');
+  const sent2 = await api('POST', `/spaces/${spaceId}/channels/${channelId}/messages`, {
+    token: ownerToken,
+    body: { body: '다른 사용자에게 갈 메시지' },
+  });
+  check(
+    '다른 사용자의 소켓에 message:new 도착',
+    (await crossUser)?.message?.id === sent2.json.id,
+    '룸이 실제로 다른 연결에 닿는지',
+  );
+
+  // ── 비공개 채널 격리 ──
+  // 이제 outsider 는 스페이스 멤버다. 그래도 비공개 채널은 룸에 들어오면 안 된다.
+  //
+  // ⚠ 이 채널에 메시지를 보내 "새는지" 까지는 확인하지 못한다. 현재 구현에서는
+  //    비공개 채널을 만들어도 생성자가 channel_members 에 들어가지 않아 생성자
+  //    본인조차 404 라 메시지를 보낼 수 없다. 4단계 범위 밖이므로 여기서 고치지
+  //    않고 별도 작업으로 남긴다. 룸 계산 자체는 아래로 확인된다.
+  const priv = await api('POST', `/spaces/${spaceId}/channels`, {
+    token: ownerToken,
+    body: { name: `비공개-${Date.now()}`, isPrivate: true },
+  });
+  check('비공개 채널 생성', priv.status === 201, JSON.stringify(priv.json));
+
+  const privSync = await emitWithAck(outsider, 'rooms:sync', {});
+  check(
+    '비공개 채널은 비참여자의 룸에 없다',
+    !privSync?.channels?.includes(priv.json.id),
+    JSON.stringify(privSync?.channels),
+  );
+
+  const ownerSync = await emitWithAck(owner, 'rooms:sync', {});
+  check(
+    '비공개 채널은 참여하지 않은 생성자의 룸에도 없다',
+    !ownerSync?.channels?.includes(priv.json.id),
+    JSON.stringify(ownerSync?.channels),
+  );
+
+  const editedEvent = waitFor(owner, 'message:edited');
+  await api('PATCH', `/spaces/${spaceId}/messages/${sent.json.id}`, {
+    token: ownerToken,
+    body: { body: '수정된 본문' },
+  });
+  const edited = await editedEvent;
+  check('message:edited 도착', edited?.message?.body === '수정된 본문', JSON.stringify(edited));
+
+  const deletedEvent = waitFor(owner, 'message:deleted');
+  await api('DELETE', `/spaces/${spaceId}/messages/${sent.json.id}`, { token: ownerToken });
+  const deleted = await deletedEvent;
+  check('message:deleted 도착', deleted?.messageId === sent.json.id, JSON.stringify(deleted));
+
   report();
 }
 
