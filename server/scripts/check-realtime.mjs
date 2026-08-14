@@ -314,6 +314,31 @@ async function main() {
   check('비멤버의 read 는 거부된다', foreignAck?.ok === false, JSON.stringify(foreignAck));
   check('거부해도 연결은 유지된다', stranger.connected);
 
+  console.log('\n── rooms:invalidate ──');
+
+  const invalidated = waitFor(owner, 'rooms:invalidate');
+  const created = await api('POST', `/spaces/${spaceId}/channels`, {
+    token: ownerToken,
+    body: { name: `검증채널-${Date.now()}` },
+  });
+  check('채널 생성 201', created.status === 201, JSON.stringify(created.json));
+  check(
+    '채널 생성 시 rooms:invalidate 도착',
+    (await invalidated)?.reason === 'channel.created',
+    JSON.stringify(await invalidated),
+  );
+
+  // 재계산하면 새 채널이 룸에 들어와 있어야 한다.
+  const resync = await emitWithAck(owner, 'rooms:sync', {});
+  check('rooms:sync 후 새 채널이 룸에 있다', resync?.channels?.includes(created.json.id));
+
+  const newChannelEvent = waitFor(owner, 'message:new');
+  await api('POST', `/spaces/${spaceId}/channels/${created.json.id}/messages`, {
+    token: ownerToken,
+    body: { body: '새 채널 메시지' },
+  });
+  check('새 채널의 메시지도 받는다', (await newChannelEvent)?.channelId === created.json.id);
+
   report();
 }
 

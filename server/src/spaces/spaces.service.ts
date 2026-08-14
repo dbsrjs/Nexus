@@ -8,6 +8,7 @@ import {
 import { randomBytes } from 'crypto';
 import { Prisma, Space, SpaceMember, SpaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { CreateSpaceDto } from './dto/create-space.dto';
 import { slugify } from '../common/slug';
 import { UpdateSpaceDto } from './dto/update-space.dto';
@@ -33,7 +34,10 @@ export type SpaceMemberWithUser = Prisma.SpaceMemberGetPayload<{
 
 @Injectable()
 export class SpacesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeEmitter,
+  ) {}
 
   /** GET /api/spaces — 내가 속한 스페이스만. */
   async listForUser(userId: string): Promise<(Space & { role: SpaceRole })[]> {
@@ -162,10 +166,17 @@ export class SpacesService {
       );
     }
 
-    return this.prisma.spaceMember.update({
+    const updated = await this.prisma.spaceMember.update({
       where: { spaceId_userId: { spaceId, userId: targetUserId } },
       data: { role },
     });
+
+    // 역할은 JWT 에도 소켓에도 담지 않으므로 토큰을 다시 발급할 필요는 없다.
+    // 다만 역할에 걸린 ChannelPermission 때문에 볼 수 있는 채널이 달라질 수
+    // 있어, 그 사용자에게만 룸 재계산을 요청한다.
+    this.realtime.toUser(targetUserId, 'rooms:invalidate', { reason: 'member.role' });
+
+    return updated;
   }
 
   /**

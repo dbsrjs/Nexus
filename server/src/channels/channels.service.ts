@@ -200,7 +200,7 @@ export class ChannelsService {
       await this.requireCategoryInSpace(spaceId, dto.categoryId);
     }
 
-    return this.prisma.channel.create({
+    const channel = await this.prisma.channel.create({
       data: {
         spaceId,
         key,
@@ -211,6 +211,9 @@ export class ChannelsService {
         position: dto.position ?? (await this.nextPosition(spaceId)),
       },
     });
+
+    this.realtime.toSpace(spaceId, 'rooms:invalidate', { reason: 'channel.created' });
+    return channel;
   }
 
   async update(
@@ -218,13 +221,13 @@ export class ChannelsService {
     channelId: string,
     dto: UpdateChannelDto,
   ): Promise<Channel> {
-    await this.requireChannel(spaceId, channelId);
+    const before = await this.requireChannel(spaceId, channelId);
 
     if (dto.categoryId) {
       await this.requireCategoryInSpace(spaceId, dto.categoryId);
     }
 
-    return this.prisma.channel.update({
+    const updated = await this.prisma.channel.update({
       where: { id: channelId },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
@@ -234,6 +237,11 @@ export class ChannelsService {
         ...(dto.position !== undefined ? { position: dto.position } : {}),
       },
     });
+
+    if (updated.isPrivate !== before.isPrivate) {
+      this.realtime.toSpace(spaceId, 'rooms:invalidate', { reason: 'channel.visibility' });
+    }
+    return updated;
   }
 
   /**
@@ -293,11 +301,15 @@ export class ChannelsService {
   /** 채널 참여 — 공개 채널에 스스로 들어간다. */
   async join(channelId: string, member: SpaceMember) {
     await this.assertCanView(channelId, member);
-    return this.prisma.channelMember.upsert({
+    const joined = await this.prisma.channelMember.upsert({
       where: { channelId_userId: { channelId, userId: member.userId } },
       update: {},
       create: { channelId, userId: member.userId },
     });
+
+    // 본인에게만. 다른 사람의 룸 계산은 바뀌지 않았다.
+    this.realtime.toUser(member.userId, 'rooms:invalidate', { reason: 'channel.joined' });
+    return joined;
   }
 
   // ──────────────────────────────────────────────
