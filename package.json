@@ -16,6 +16,7 @@
     "db:down:docker": "docker compose -f server/docker-compose.yml down",
     "db:migrate": "npm --prefix server exec prisma migrate dev",
     "db:studio": "npm --prefix server exec prisma studio",
-    "db:seed": "npm --prefix server run seed"
+    "db:seed": "npm --prefix server run seed",
+    "check:realtime": "node server/scripts/check-realtime.mjs"
   }
 }

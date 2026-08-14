@@ -47,6 +47,7 @@
     "@types/node": "*",
     "@types/passport-jwt": "*",
     "prisma": "^5",
+    "socket.io-client": "^4.8.3",
     "ts-node": "^10",
     "typescript": "^5"
   }

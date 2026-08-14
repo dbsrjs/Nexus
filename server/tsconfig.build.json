@@ -10,11 +10,11 @@
     // ── 아직 spaceId 기준으로 이관하지 않은 모듈 (docs/전환-계획.md §6) ──
     // 새 스키마를 참조하지 못해 컴파일되지 않는다. 소스는 남겨 두고 빌드에서만
     // 뺀다. 이관하는 단계에서 해당 줄을 지우고 app.module.ts 에 다시 등록한다.
-    //   4단계  → realtime
     //   7단계~ → permissions · notifications (멘션 · 알림)
     //   7단계~ → files (attachments 로 개명)
     //   7단계~ → issues, gitlab (repos 로 개명), ai
-    "src/realtime/**",
+    // Redis 어댑터는 다중 인스턴스가 될 때 되살린다 (스펙 §6)
+    "src/realtime/redis-io.adapter.ts",
     "src/permissions/**",
     "src/notifications/**",
     "src/files/**",

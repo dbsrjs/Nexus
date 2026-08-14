@@ -26,7 +26,8 @@
 
     // tsconfig.build.json 과 같은 목록. 에디터에서도 미이관 모듈의 오류가
     // 뜨지 않도록 맞춰 둔다. 이관할 때 두 파일에서 함께 지운다.
-    "src/realtime/**",
+    // Redis 어댑터는 다중 인스턴스가 될 때 되살린다 (스펙 §6)
+    "src/realtime/redis-io.adapter.ts",
     "src/permissions/**",
     "src/notifications/**",
     "src/files/**",

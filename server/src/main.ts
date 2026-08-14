@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import type { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
 import { enableBigIntSerialization } from './common/bigint-serializer';
+import { SocketIoAdapter } from './realtime/socket-io.adapter';
 
 // 모듈 로딩보다 먼저 걸어 둔다. 이게 없으면 bigint 컬럼이 섞인 응답이 전부 500 이다.
 enableBigIntSerialization();
@@ -46,6 +47,9 @@ async function bootstrap() {
     );
   }
 
+  // 소켓에도 같은 CORS 화이트리스트를 적용한다.
+  app.useWebSocketAdapter(new SocketIoAdapter(app));
+
   // API 응답은 브라우저가 캐싱하지 않도록 한다. (이게 없으면 GET 응답이
   // HTTP 캐시되어 새 데이터가 생겨도 화면이 옛 응답을 그대로 보여준다.)
   app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -53,7 +57,7 @@ async function bootstrap() {
     next();
   });
 
-  // NOTE: Socket.IO Redis 어댑터는 realtime 모듈과 함께 4단계에서 되살린다.
+  // NOTE: Redis 어댑터는 인스턴스가 2개 이상이 될 때 SocketIoAdapter 에 붙인다.
 
   const port = config.get<string>('PORT') ? Number(config.get<string>('PORT')) : 3000;
   await app.listen(port);

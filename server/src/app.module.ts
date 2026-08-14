@@ -11,11 +11,12 @@ import { SpacesModule } from './spaces/spaces.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ChannelsModule } from './channels/channels.module';
 import { MessagesModule } from './messages/messages.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 /**
  * 전환 3단계 시점의 모듈 구성 (docs/전환-계획.md §6).
  *
- * 아직 spaceId 기준으로 이관하지 않은 모듈들 — realtime · permissions ·
+ * 아직 spaceId 기준으로 이관하지 않은 모듈들 — permissions ·
  * notifications · files · issues · gitlab · ai — 은 여기서 등록을 뺐고,
  * tsconfig 의 exclude 로 컴파일 대상에서도 제외했다.
  * 되살리는 절차: tsconfig(.build).json 의 exclude 에서 해당 경로를 지우고
@@ -32,6 +33,7 @@ import { MessagesModule } from './messages/messages.module';
     CategoriesModule,
     ChannelsModule,
     MessagesModule,
+    RealtimeModule,
   ],
   providers: [
     {

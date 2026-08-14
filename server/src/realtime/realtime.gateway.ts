@@ -1,166 +1,83 @@
 import { Logger } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
-  SubscribeMessage,
+  OnGatewayInit,
   WebSocketGateway,
-  WebSocketServer,
-  MessageBody,
-  ConnectedSocket,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import { Role } from '@prisma/client';
-import { ChannelsService } from '../channels/channels.service';
+import type { Server, Socket } from 'socket.io';
+import { resolveJwtSecrets } from '../config/jwt.config';
+import { RealtimeEmitter } from './realtime-emitter';
+import { room } from './rooms';
 
-interface SocketUser {
-  id: string;
-  email: string;
-  role: Role;
-}
-
+/** 인증을 통과한 소켓. 역할은 담지 않는다 — 스페이스마다 다르다. */
 interface AuthedSocket extends Socket {
-  data: { user?: SocketUser };
+  data: { userId: string };
 }
 
 /**
- * Common Socket.IO gateway (설계서 §5).
+ * 소켓 게이트웨이 (docs/백엔드-설계.md §5).
  *
- * Handshake: verifies the JWT (auth.token / Authorization header / ?token=),
- * then joins the socket to a personal room (user:{id}) and to every
- * channel room (channel:{id}) the user may view.
+ * 인증은 handleConnection 이 아니라 **미들웨어**에서 한다. handleConnection 안에서
+ * disconnect() 하면 클라이언트는 이유 없이 끊긴 것만 보지만, 미들웨어에서
+ * next(Error) 를 하면 앱이 connect_error 로 이유를 받는다. 5단계 앱은 "토큰이
+ * 만료돼 재로그인" 과 "서버가 죽음" 을 구분해야 한다.
  *
- * Server→client events emitted here: `message:new`, `message:edited`.
- * MessagesService calls emitMessageNew / emitMessageEdited.
+ * 토큰은 handshake.auth.token 만 받는다. 쿼리스트링은 액세스 로그·프록시 로그에
+ * 토큰을 남긴다 (전환 계획 §3.5).
  */
-@WebSocketGateway({ cors: { origin: true, credentials: true } })
-export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  @WebSocketServer()
-  server!: Server;
-
+@WebSocketGateway()
+export class RealtimeGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   private readonly logger = new Logger(RealtimeGateway.name);
+  private readonly accessSecret: string;
 
   constructor(
     private readonly jwt: JwtService,
-    private readonly config: ConfigService,
-    private readonly channels: ChannelsService,
-  ) {}
+    config: ConfigService,
+    private readonly emitter: RealtimeEmitter,
+  ) {
+    // 시크릿 해석은 부팅 시 한 번. 미설정이면 여기서 부팅이 중단된다.
+    this.accessSecret = resolveJwtSecrets(config).accessSecret;
+  }
+
+  afterInit(server: Server): void {
+    this.emitter.bind(server);
+
+    server.use(async (socket, next) => {
+      const auth = socket.handshake.auth as { token?: string } | undefined;
+      const token = auth?.token?.replace(/^Bearer\s+/i, '');
+
+      if (!token) {
+        next(new Error('unauthorized'));
+        return;
+      }
+
+      try {
+        const payload = await this.jwt.verifyAsync<{ sub?: string }>(token, {
+          secret: this.accessSecret,
+        });
+        if (!payload?.sub) {
+          next(new Error('unauthorized'));
+          return;
+        }
+        socket.data.userId = payload.sub;
+        next();
+      } catch {
+        next(new Error('unauthorized'));
+      }
+    });
+  }
 
   async handleConnection(client: AuthedSocket): Promise<void> {
-    const token = this.extractToken(client);
-    if (!token) {
-      this.logger.warn(`소켓 ${client.id} 인증 실패: 토큰 없음`);
-      client.disconnect(true);
-      return;
-    }
-
-    let payload: { sub?: string; email?: string; role?: Role };
-    try {
-      payload = await this.jwt.verifyAsync(token, {
-        secret: this.config.get<string>('JWT_SECRET') ?? this.config.get<string>('JWT_ACCESS_SECRET'),
-      });
-    } catch {
-      this.logger.warn(`소켓 ${client.id} 인증 실패: 토큰 검증 오류`);
-      client.disconnect(true);
-      return;
-    }
-
-    if (!payload?.sub) {
-      client.disconnect(true);
-      return;
-    }
-
-    const user: SocketUser = {
-      id: payload.sub,
-      email: payload.email ?? '',
-      role: (payload.role as Role) ?? Role.member,
-    };
-    client.data.user = user;
-
-    // Personal room (for targeted pushes) + every viewable channel room.
-    client.join(this.userRoom(user.id));
-    const channelIds = await this.channels.viewableChannelIds(user.id, user.role);
-    for (const id of channelIds) {
-      client.join(this.channelRoom(id));
-    }
-
-    this.logger.log(`소켓 ${client.id} 연결: user=${user.id}, 채널 ${channelIds.length}개 참여`);
+    client.join(room.user(client.data.userId));
+    this.logger.log(`소켓 ${client.id} 연결: user=${client.data.userId}`);
   }
 
   handleDisconnect(client: AuthedSocket): void {
-    const userId = client.data?.user?.id;
-    this.logger.log(`소켓 ${client.id} 연결 해제${userId ? ` (user=${userId})` : ''}`);
-  }
-
-  /** Client→server: refresh last_read_at marker. Echoes nothing by default. */
-  @SubscribeMessage('read')
-  handleRead(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: { channelId?: string },
-  ): void {
-    const user = client.data?.user;
-    if (!user || !body?.channelId) return;
-    // last_read_at persistence is owned by the channels phase; here we only
-    // relay so other sessions of the same user can sync read state.
-    this.server.to(this.userRoom(user.id)).emit('read:synced', {
-      channelId: body.channelId,
-      at: new Date().toISOString(),
-    });
-  }
-
-  /** Client→server: lightweight typing indicator (optional, §5). */
-  @SubscribeMessage('typing')
-  handleTyping(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: { channelId?: string },
-  ): void {
-    const user = client.data?.user;
-    if (!user || !body?.channelId) return;
-    client.to(this.channelRoom(body.channelId)).emit('typing', {
-      channelId: body.channelId,
-      userId: user.id,
-    });
-  }
-
-  // ── Server-side emit API (called by MessagesService) ──────────────
-
-  emitMessageNew(channelId: string, message: unknown): void {
-    this.server.to(this.channelRoom(channelId)).emit('message:new', message);
-  }
-
-  emitMessageEdited(channelId: string, message: unknown): void {
-    this.server.to(this.channelRoom(channelId)).emit('message:edited', message);
-  }
-
-  /** Push a freshly-created notification to a single user's personal room. */
-  emitNotification(userId: string, payload: unknown): void {
-    this.server.to(this.userRoom(userId)).emit('notification:new', payload);
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────────
-
-  private channelRoom(channelId: string): string {
-    return `channel:${channelId}`;
-  }
-
-  private userRoom(userId: string): string {
-    return `user:${userId}`;
-  }
-
-  private extractToken(client: Socket): string | null {
-    const auth = client.handshake.auth as { token?: string } | undefined;
-    if (auth?.token) {
-      return auth.token.replace(/^Bearer\s+/i, '');
-    }
-    const header = client.handshake.headers?.authorization;
-    if (typeof header === 'string' && header.length > 0) {
-      return header.replace(/^Bearer\s+/i, '');
-    }
-    const queryToken = client.handshake.query?.token;
-    if (typeof queryToken === 'string' && queryToken.length > 0) {
-      return queryToken;
-    }
-    return null;
+    this.logger.log(`소켓 ${client.id} 연결 해제 (user=${client.data?.userId})`);
   }
 }
