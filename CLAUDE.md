@@ -1,7 +1,7 @@
 # Nexus — 코딩 에이전트용 안내
 
 개발자 개인을 위한 커뮤니케이션 허브. 대화 · 파일 · 이슈 · 저장소 · AI를 한곳에 모은다.
-**NestJS 서버 + Flutter 앱(예정)**, Space 단위 멀티테넌트.
+**NestJS 서버 + Flutter 앱**, Space 단위 멀티테넌트.
 
 이 문서는 세션 시작 시 자동으로 읽힌다. 상세 설계는 `docs/` 를 볼 것.
 
@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **작업 브랜치** | `feat/pivot-nexus` — **`main` 은 전환 이전의 옛 코드다.** 헷갈리지 말 것 |
-| **상태** | 사내 메신저 → 개인 프로젝트로 **전환 중**. 서버 4단계(실시간 최소)까지 완료, 앱은 아직 없음 |
+| **상태** | 사내 메신저 → 개인 프로젝트로 **전환 중**. 서버 4단계(실시간 최소) 완료. **앱은 5단계 슬라이스 1(로그인)까지 — `app/` 에 있다** |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
 
@@ -42,6 +42,22 @@ npm run server:dev   # http://localhost:3000/api
 
 WSL 이 없으면 먼저 `wsl --install -d Ubuntu`.
 
+### 앱 (`app/`)
+
+```bash
+cd app
+flutter pub get
+dart run build_runner build        # freezed · json_serializable 코드 생성 (모델을 고쳤으면 매번)
+flutter run -d chrome --web-port=5173 --dart-define=API_BASE=http://127.0.0.1:3000
+```
+
+**`--dart-define=API_BASE` 를 반드시 넘긴다.** 기본값은 `http://127.0.0.1:3000` 이라
+데스크톱·웹에서는 생략해도 되지만, Android 에뮬레이터는 `http://10.0.2.2:3000` 이어야
+한다(에뮬레이터에게 `127.0.0.1` 은 자기 자신이다).
+
+**웹 포트를 5173 으로 고정하는 이유**: 서버 `.env` 의 `CORS_ORIGINS` 가 이 주소만
+허용한다. 다른 포트로 띄우면 브라우저가 요청을 막는다.
+
 ### 자주 쓰는 명령
 
 | 명령 | 설명 |
@@ -52,6 +68,8 @@ WSL 이 없으면 먼저 `wsl --install -d Ubuntu`.
 | `npm run server:dev` · `server:build` | 개발 서버 · 빌드 |
 | `npm --prefix server run typecheck` | 타입 검사만 |
 | `npm run check:realtime -- <시드비밀번호>` | 실서버 · 실DB · 실소켓으로 소켓 계약 검증 (`db:up` · `server:dev` 실행 중이어야 함) |
+| `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
+| `cd app && dart run build_runner build` | freezed · json_serializable 재생성 |
 
 ### DB 는 PC 마다 따로다
 
@@ -71,6 +89,9 @@ WSL 이 없으면 먼저 `wsl --install -d Ubuntu`.
 | `wsl` 명령이 무응답 | Ubuntu OOBE(첫 사용자 생성)가 걸린 상태일 수 있다. `wsl --shutdown` 후 재시도. 이 PC 는 개인 UNIX 계정 없이 **root 로** 쓰고 있다 |
 | `bash -c` 안의 따옴표가 깨짐 | Git Bash 는 `/bin/sh` 를 Windows 경로로 바꾼다. WSL 명령은 **PowerShell 도구로** 실행하고, 복잡한 스크립트는 파일로 만들어 `wsl ... /bin/bash <path>` 로 넘길 것 |
 | `npm --prefix server exec prisma ...` 가 `Could not find Prisma Schema` 로 실패 | `--prefix` 는 npm 이 패키지를 찾는 경로만 바꾸고 **실행되는 명령의 cwd 는 그대로**라 `prisma/schema.prisma` 를 못 찾는다. `npm --prefix server run <script>` 를 쓸 것 — `npm run` 은 패키지 디렉터리 안에서 스크립트를 실행한다 |
+| `flutter run -d windows` 가 `CMake Error ... Visual Studio 16 2019 could not find any instance of Visual Studio` | 이 PC 에는 **VS 2026(18.x)** 이 깔려 있는데 Flutter 3.38 이 그 버전을 몰라 CMake 제너레이터를 VS 2019 로 잡는다. `flutter doctor` 는 통과라고 말하므로 헷갈리기 쉽다. **Windows 데스크톱 빌드는 현재 불가**하고, `-d chrome` 또는 Android 에뮬레이터로 확인한다. Flutter 를 올리거나 VS 2022 빌드 도구를 따로 깔면 풀린다 |
+| `flutter run` 이 시작하자마자 조용히 종료 | `flutter run` 은 stdin 으로 키 명령(r · R · q)을 받는데, 백그라운드로 띄우면 stdin 이 EOF 라 종료로 해석한다. 사람이 직접 터미널에서 돌리거나, 검증 자동화는 `flutter build web` 후 정적 서버로 띄울 것 |
+| 브라우저 자동화로 Flutter 웹 입력이 안 먹음 | Flutter 웹은 캔버스로 그려 접근성 트리가 비어 있다. `flutter-semantics-placeholder` 를 클릭해 시맨틱스를 켜면 입력 요소가 노출된다. 그래도 **BackSpace · 값 직접 대입은 컨트롤러까지 전달되지 않고 타이핑만 append 된다** — 폼을 비우려면 페이지를 새로고침할 것 |
 
 ---
 
@@ -133,6 +154,31 @@ prisma/       PrismaModule(@Global) + PrismaService
 common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug · bigint 직렬화
 ```
 
+### 앱 구조 (`app/lib/`) — 슬라이스 1 시점
+
+[앱-설계.md §3](docs/앱-설계.md) 의 구조를 따르되 **쓰는 것만 만든다.** 빈 디렉터리를
+미리 파 두지 않는다.
+
+```
+core/env.dart            API 주소를 읽는 유일한 지점. 하드코딩 금지
+core/theme.dart          design-system/tokens.css 를 이름까지 그대로 이식
+core/router.dart         go_router + 인증 가드(redirect)
+data/api/api_client.dart dio + 401 → 리프레시 1회 재시도
+data/api/auth_api.dart   login · me · logout, 실패를 AuthFailure 로 분류
+data/auth_storage.dart   flutter_secure_storage 래퍼
+domain/models/           freezed + json_serializable (User · AuthTokens)
+features/auth/           로그인 화면 + Riverpod 컨트롤러
+features/home/           슬라이스 1 자리표시자. 슬라이스 2 의 셸이 대체한다
+```
+
+**앱 규칙**
+
+- **API 주소는 `core/env.dart` 밖에서 만들지 않는다.** 옛 `www/api.js:6` 이 `localhost` 를 박아 실기기에서 연결 불가였다.
+- **디자인 토큰 이름을 바꾸지 않는다.** `--bg-surface` → `bgSurface` 처럼 표기만 바꿔 1:1 대응시킨다. 갈라지면 디자인 문서와 코드를 대조할 수 없다.
+- **서버 오류 문구를 화면에 그대로 쓰지 않는다.** 실패 종류(`AuthFailure`)만 받아 앱이 자기 문구를 쓴다. 서버 문구가 바뀔 때마다 앱 UX 가 흔들리면 안 된다.
+- **401 재시도는 1회뿐.** 무한 재시도는 서버의 리프레시 재사용 탐지에 걸려 세션 family 가 끊긴다.
+- **모델을 고치면 `dart run build_runner build`** 를 돌린다. `.freezed.dart` · `.g.dart` 는 커밋한다 — 체크아웃 직후 코드젠 없이 빌드되게 하기 위함이다.
+
 ### 아직 이관하지 않은 모듈 — 빌드에서 빠져 있다
 
 `src/permissions` `src/notifications` `src/files` `src/issues`
@@ -174,28 +220,50 @@ common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug
 다만 **`updateMemberRole` 의 `rooms:invalidate`(`member.role`)** 는 검증하지 못했다 —
 두 번째 admin 계정과 역할 왕복이 필요해 검증 스크립트에서 뺐다. 코드 리뷰로만 확인.
 
+### 앱 — 5단계 슬라이스 1 완료 (`ce70d56`)
+
+5단계를 화면이 보이는 지점 기준으로 넷으로 잘랐다
+([스펙](docs/superpowers/specs/2026-08-14-앱-슬라이스1-인증-design.md) §1).
+그중 **첫 조각(스캐폴드 · 스택 배선 · 테마 · 라우터 · 인증)이 끝났다.**
+
+**실제 브라우저로 확인된 것**: 로그인 성공 후 계정 표시 · 틀린 비밀번호 거절(앱 문구,
+화면 유지) · **새로고침 후 로그인 화면 건너뜀**(저장 → 복원 → `/me` → 가드) · 로그아웃.
+`flutter analyze` 0건, `flutter test` 2/2.
+
+**확인하지 못한 것**: 서버가 꺼졌을 때의 "서버에 연결할 수 없습니다" 문구.
+앱이 죽지 않는 것까지는 봤지만(꺼진 뒤에도 렌더·검증이 동작), 그 분기를 태우려면
+캔버스에 텍스트를 넣어야 하는데 §2 의 마지막 함정 때문에 재렌더 후 입력이 들어가지
+않았다. 사람이 직접 띄워 확인하면 된다.
+
 **아직 없는 것**: 스레드 · 리액션 · 멘션 · 핀 · DM, 첨부, 이슈,
-저장소 연동, AI, **Flutter 앱 전체**, 테스트 · 린트 · CI. (실시간은 `typing` ·
-`presence:changed` · `thread:*` 룸만 남았다 — §5 참고)
+저장소 연동, AI, 테스트 · 린트 · CI. 앱은 **셸 · 채널 · 메시지 · 소켓**이 남았다.
+(실시간 서버는 `typing` · `presence:changed` · `thread:*` 룸만 남았다 — §5 참고)
 
 ---
 
 ## 5. 남은 작업
 
 순서는 2026-08-14 에 개정됐다. **원안(계층을 다 쌓고 앱)은 5단계까지 화면이 없어서**,
-부가 기능을 뒤로 미루고 앱을 앞으로 당겼다. 4단계(실시간 최소)가 끝나 이제
-**Flutter 앱이 다음이다.**
+부가 기능을 뒤로 미루고 앱을 앞으로 당겼다.
 
 잘라내는 기준: **미루는 것은 기능이지 구조가 아니다.**
 스레드 · 리액션은 나중에 붙여도 기존 코드를 안 건드리지만, 실시간을 미루면 앱 상태 계층을
 REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보다 먼저** 했다.
 
-| 단계 | 내용 |
-|---|---|
-| **5** ← 다음 | **Flutter 앱** — 스캐폴드 → 인증 → 셸 → 채널 → 메시지 (소켓 포함). **처음으로 눈에 보이는 앱** |
-| **6** | drift 캐시 + catch-up → Phase 0 달성(실사용 가능) |
-| **7~** | **기능 단위로 서버 + 앱을 함께**: 스레드 · 리액션 · 멘션 · 핀 → 첨부 → 이슈 · 스프린트 → repos(웹훅 · 열람 프록시) → PR → 인덱싱 → AI |
-| 마지막 | 푸시 · 트레이 · 딥링크 · CI · 테넌트 격리 통합 테스트 |
+5단계도 같은 기준으로 넷으로 잘랐다 — **한 조각이 끝나면 화면에 뭔가 새로 보여야 한다.**
+
+| 단계 | 내용 | 상태 |
+|---|---|---|
+| 5-1 | 스캐폴드 · 스택 배선 · 테마 · 라우터 · **인증** | ✅ `ce70d56` |
+| **5-2** ← 다음 | **스페이스 선택 + 반응형 셸** (3단 ↔ 모바일 탭) | |
+| 5-3 | 채널 목록 + 메시지 리스트/전송 (REST, 낙관적 갱신) | |
+| 5-4 | 소켓 연결 · 실시간 갱신 · catch-up | |
+| **6** | drift 캐시 → 단일 진실 공급원 전환 → Phase 0 달성(실사용 가능) | |
+| **7~** | **기능 단위로 서버 + 앱을 함께**: 스레드 · 리액션 · 멘션 · 핀 → 첨부 → 이슈 · 스프린트 → repos(웹훅 · 열람 프록시) → PR → 인덱싱 → AI | |
+| 마지막 | 푸시 · 트레이 · 딥링크 · CI · 테넌트 격리 통합 테스트 | |
+
+5-2 를 시작하기 전에 [슬라이스 1 스펙](docs/superpowers/specs/2026-08-14-앱-슬라이스1-인증-design.md)
+§1 의 분해와 §2-1 의 플랫폼 사정을 읽을 것.
 
 7단계부터는 **한 기능이 서버에서 화면까지 끝나야 완료로 친다.** 그래야 "화면 없는 구간"이
 다시 생기지 않는다.
@@ -207,6 +275,9 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 - GitHub OAuth 는 스키마(`oauth_accounts`)만 있고 미구현. 저장소 연동 단계에서 만든다.
 - **`updateMemberRole` 의 `rooms:invalidate`(`member.role`)는 자동 검증되지 않는다.** 두 번째 admin 계정과 역할 왕복이 필요해 `check:realtime` 에서 뺐다. 코드 리뷰로만 확인.
 - **비공개 채널에 다른 사람을 넣는 방법이 없다.** 생성자는 채널 생성 시 자동으로 멤버가 되지만(`ChannelsService.create()`), 채널 멤버 추가·제거 API 가 아직 없어 비공개 채널은 사실상 "나만 보는 채널"이다. 여럿이 쓰는 비공개 채널이 필요해지는 단계에서 함께 설계한다.
+- **앱에 자동 테스트가 사실상 없다.** `app/test/` 에는 `Env` 불변식 2개뿐이다. 위젯 테스트는 화면이 하나뿐이라 얻는 것이 적었고, 통합 테스트(로그인 → 채널 → 전송)는 슬라이스 3 이 끝나야 의미가 있다. **슬라이스 3 에서 갚기로 한 빚이다.**
+- **소켓 CORS 화이트리스트가 검증되지 않았다.** `SocketIoAdapter` 가 `CORS_ORIGINS` 를 적용하지만, 검증 스크립트는 Node 소켓 클라이언트라 브라우저 SOP 를 따르지 않아 실제로 막히는지 확인된 적이 없다. Flutter 웹으로 소켓을 붙이는 슬라이스 4 에서 드러난다.
+- **Windows 데스크톱 빌드가 현재 불가능하다.** §2 의 VS 2026 함정 참조. 앱 검증은 Chrome 또는 Android 에뮬레이터로 한다.
 
 ---
 
@@ -239,5 +310,15 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 | [docs/전환-계획.md](docs/전환-계획.md) | **작업 목록과 진행 상황. 작업 후 여기를 갱신할 것** |
 | [docs/기술-스택-가이드.md](docs/기술-스택-가이드.md) | 스택별 학습 순서 · 코드 읽기 시작점 (사용자용) |
 | [server/README.md](server/README.md) | 서버 셋업 · 규약 · 디렉터리 |
+
+### 단계별 설계 스펙 (`docs/superpowers/specs/`)
+
+| 스펙 | 내용 |
+|---|---|
+| [실시간 최소](docs/superpowers/specs/2026-08-14-실시간-최소-design.md) | 4단계 소켓 계약 — 룸 · 이벤트 · 인증 · 오류 처리 · 범위에서 뺀 것과 그 이유 |
+| [앱 슬라이스 1](docs/superpowers/specs/2026-08-14-앱-슬라이스1-인증-design.md) | 5단계 분해(4조각) · 검증 플랫폼 사정 · 인증 흐름 |
+
+계획 문서 `docs/superpowers/plans/` 도 있지만 **실행이 끝난 기록**이다. 현재 상태는
+계획이 아니라 이 문서와 스펙을 봐야 한다.
 
 작업을 끝내면 `docs/전환-계획.md` 의 체크박스와 이 문서의 §4 · §5 를 갱신한다.
