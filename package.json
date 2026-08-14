@@ -14,8 +14,8 @@
     "db:down": "wsl --shutdown",
     "db:up:docker": "docker compose -f server/docker-compose.yml up -d",
     "db:down:docker": "docker compose -f server/docker-compose.yml down",
-    "db:migrate": "npm --prefix server exec prisma migrate dev",
-    "db:studio": "npm --prefix server exec prisma studio",
+    "db:migrate": "npm --prefix server run prisma:migrate",
+    "db:studio": "npm --prefix server run prisma:studio",
     "db:seed": "npm --prefix server run seed",
     "check:realtime": "node server/scripts/check-realtime.mjs"
   }
