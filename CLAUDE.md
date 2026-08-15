@@ -48,17 +48,40 @@ WSL 이 없으면 먼저 `wsl --install -d Ubuntu`.
 cd app
 flutter pub get
 dart run build_runner build        # freezed · json_serializable 코드 생성 (모델을 고쳤으면 매번)
-flutter run -d chrome --web-port=5173 --dart-define=API_BASE=http://127.0.0.1:3000
+
+# 기본 검증 대상은 Windows 다 (아래 "검증 플랫폼" 참고)
+flutter run -d windows --dart-define=API_BASE=http://127.0.0.1:3000
 ```
+
+#### 검증 플랫폼 — Windows 하나로 좁혀 둔다
+
+플랫폼이 넷이어도 **UI 코드는 한 벌이다.** 비싼 것은 매 변경을 네 곳에서 확인하려는
+것이고, 실측 차이가 크다 — Windows 는 빌드 23초 + 즉시 실행, Android 는 증분 빌드
+11초에 **에뮬레이터 부팅만 1~2분**(게다가 종종 스스로 꺼진다).
+
+| 플랫폼 | 언제 |
+|---|---|
+| **Windows** | **모든 변경.** 개발 루프의 기본값 |
+| Android | 슬라이스 경계 + 플랫폼 민감 변경(보안 저장소 · 키보드 · `10.0.2.2` · 레이아웃 경계) |
+| Web | 슬라이스 경계. 포트폴리오 데모가 웹이다 |
+| **iOS** | **동결.** macOS 없이는 빌드 불가 — 이 PC 에서는 작업 대상이 아니다 |
+
+**좁히는 것은 검증이지 코드가 아니다.** 반응형은 기능이 아니라 구조라, PC 전용으로
+짜 두면 나중에 모든 화면을 다시 손대야 한다. 플랫폼 폴더도 지우지 않는다.
+근거는 [앱-설계.md §0-1](docs/앱-설계.md).
 
 **`--dart-define=API_BASE` 를 반드시 넘긴다.** 기본값은 `http://127.0.0.1:3000` 이라
 데스크톱·웹에서는 생략해도 되지만, Android 에뮬레이터는 `http://10.0.2.2:3000` 이어야
 한다(에뮬레이터에게 `127.0.0.1` 은 자기 자신이다).
 
 **웹 포트를 5173 으로 고정하는 이유**: 서버 `.env` 의 `CORS_ORIGINS` 가 이 주소만
-허용한다. 다른 포트로 띄우면 브라우저가 요청을 막는다.
+허용한다(`flutter run -d chrome --web-port=5173`). 다른 포트로 띄우면 브라우저가 요청을 막는다.
 
-#### Android 에뮬레이터
+**Windows 데스크톱 빌드에는 개발자 모드가 필요하다** — `flutter_secure_storage` 같은
+네이티브 플러그인이 심볼릭 링크를 쓴다. 이 PC 는 이미 켜져 있다. 새 PC 라면
+`start ms-settings:developers`.
+
+#### Android 에뮬레이터 — 슬라이스 경계에서만
 
 이 PC 에는 Android SDK 36 · JDK 21 · AVD(`nexus_pixel`, Pixel 7)가 설치돼 있다.
 새 PC 라면 `app/scripts/android-setup.ps1` 을 1회 실행한다(라이선스 동의는 사람이 `y`).
