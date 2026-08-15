@@ -354,6 +354,10 @@ model Message {
   parentId    String?   @map("parent_id")
   replyCount  Int       @default(0) @map("reply_count")
   lastReplyAt DateTime? @map("last_reply_at")
+  /// 답장(인용)이 가리키는 메시지. `parentId` 와 **다른 개념**이다 —
+  /// 스레드 답글은 타임라인에서 빠지지만 답장은 흐름 안에 남는다.
+  /// 원본이 소프트 삭제돼도 링크는 유지한다(답장의 맥락은 그때도 필요하다).
+  quotedMessageId String? @map("quoted_message_id")
   pinned      Boolean   @default(false)
   editedAt    DateTime? @map("edited_at")
   /// 소프트 삭제. 본문만 가려지고 첨부는 남는다 (보관 정책, 설계 §3).
@@ -366,6 +370,10 @@ model Message {
   author      User          @relation(fields: [authorId], references: [id])
   parent      Message?      @relation("MessageThread", fields: [parentId], references: [id], onDelete: Cascade)
   replies     Message[]     @relation("MessageThread")
+  /// 원본이 **하드 삭제**되면 링크만 끊고 답장 자체는 남긴다. 메시지는 소프트
+  /// 삭제가 원칙이라 이 경로는 보관 정책이 바뀔 때를 위한 안전장치다.
+  quoted      Message?      @relation("MessageQuote", fields: [quotedMessageId], references: [id], onDelete: SetNull)
+  quotedBy    Message[]     @relation("MessageQuote")
   edits       MessageEdit[]
   reactions   Reaction[]
   mentions    Mention[]
@@ -375,6 +383,7 @@ model Message {
 
   @@index([channelId, createdAt])
   @@index([parentId])
+  @@index([quotedMessageId])
   @@index([spaceId])
   @@map("messages")
 }

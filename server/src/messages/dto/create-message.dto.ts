@@ -15,4 +15,14 @@ export class CreateMessageDto {
   @IsOptional()
   @IsUUID()
   parentId?: string;
+
+  /**
+   * 답장(인용)이 가리키는 메시지 id.
+   *
+   * `parentId` 와 함께 쓸 수 있다 — 스레드 안에서 특정 답글을 가리키는 경우다.
+   * 둘은 다른 축이라 서로를 막지 않는다.
+   */
+  @IsOptional()
+  @IsUUID()
+  quotedMessageId?: string;
 }

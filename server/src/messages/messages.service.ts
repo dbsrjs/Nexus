@@ -19,6 +19,19 @@ const AUTHOR_SELECT = {
   select: { id: true, name: true, avatarUrl: true },
 } as const;
 
+/**
+ * 답장이 가리키는 원본. **요약만** 싣는다.
+ *
+ * 원본을 통째로 중첩하면 그 원본의 인용이 또 딸려 와 끝없이 깊어진다.
+ * 인용은 한 겹만 펼친다 — 화면도 그 이상은 그리지 않는다.
+ */
+export interface QuotedMessage {
+  id: string;
+  body: string;
+  authorName: string;
+  deleted: boolean;
+}
+
 @Injectable()
 export class MessagesService {
   constructor(
@@ -56,19 +69,67 @@ export class MessagesService {
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
 
-    // 리액션은 한 번에 접어 붙인다. 메시지마다 따로 조회하면 N+1 이 된다.
+    // 리액션·인용은 한 번에 모아 붙인다. 메시지마다 따로 조회하면 N+1 이 된다.
     const reactions = await this.reactions.summarizeMany(
       page.map((m) => m.id),
       member,
     );
+    const quoted = await this.loadQuoted(page, member);
 
     return {
       items: page.map((message) => ({
         ...redactIfDeleted(message),
         reactions: reactions.get(message.id) ?? [],
+        quoted: message.quotedMessageId
+          ? (quoted.get(message.quotedMessageId) ?? null)
+          : null,
       })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
     };
+  }
+
+  /**
+   * 인용된 원본들을 한 번에 읽어 요약한다.
+   *
+   * `spaceId` 조건을 함께 거는 이유: 인용 id 는 클라이언트가 준 값이 아니라
+   * DB 에 저장된 값이지만, 테넌트 조건은 **모든 쿼리에 넣는다**는 규칙을
+   * 예외 없이 지킨다(설계 §2).
+   */
+  private async loadQuoted(
+    messages: { quotedMessageId: string | null }[],
+    member: SpaceMember,
+  ): Promise<Map<string, QuotedMessage>> {
+    const ids = [
+      ...new Set(
+        messages
+          .map((m) => m.quotedMessageId)
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    if (ids.length === 0) return new Map();
+
+    const rows = await this.prisma.message.findMany({
+      where: { id: { in: ids }, spaceId: member.spaceId },
+      select: {
+        id: true,
+        body: true,
+        deletedAt: true,
+        author: { select: { name: true } },
+      },
+    });
+
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        {
+          id: row.id,
+          // 삭제된 원본의 본문은 내보내지 않는다 — 소프트 삭제의 의미가 없어진다.
+          body: row.deletedAt ? '' : row.body,
+          authorName: row.author.name,
+          deleted: row.deletedAt !== null,
+        },
+      ]),
+    );
   }
 
   /**
@@ -80,19 +141,34 @@ export class MessagesService {
   async create(channelId: string, member: SpaceMember, dto: CreateMessageDto) {
     await this.channels.assertCanSend(channelId, member);
 
+    const quotedMessageId = await this.resolveQuoted(
+      channelId,
+      member,
+      dto.quotedMessageId,
+    );
+
     if (dto.parentId) {
-      return this.createReply(channelId, member, dto.parentId, dto.body);
+      return this.createReply(
+        channelId,
+        member,
+        dto.parentId,
+        dto.body,
+        quotedMessageId,
+      );
     }
 
-    const message = await this.prisma.message.create({
+    const created = await this.prisma.message.create({
       data: {
         spaceId: member.spaceId,
         channelId,
         authorId: member.userId,
         body: dto.body,
+        quotedMessageId,
       },
       include: { author: AUTHOR_SELECT },
     });
+
+    const message = await this.withQuoted(created, member);
 
     this.realtime.toChannel(channelId, 'message:new', {
       spaceId: member.spaceId,
@@ -105,6 +181,47 @@ export class MessagesService {
   }
 
   /**
+   * 인용 대상을 확인한다. 없으면 null.
+   *
+   * **같은 채널의 메시지만** 인용할 수 있다. 다른 채널을 가리키면 볼 권한이
+   * 없는 대화가 인용문으로 새어 나온다.
+   *
+   * 삭제된 메시지는 인용할 수 있게 둔다 — 답장을 쓰는 사이에 원본이 지워질 수
+   * 있고, 그때 전송을 막으면 쓴 내용을 잃는다. 화면에는 "삭제된 메시지"로 뜬다.
+   */
+  private async resolveQuoted(
+    channelId: string,
+    member: SpaceMember,
+    quotedMessageId?: string,
+  ): Promise<string | null> {
+    if (!quotedMessageId) return null;
+
+    const quoted = await this.prisma.message.findFirst({
+      where: { id: quotedMessageId, spaceId: member.spaceId, channelId },
+      select: { id: true },
+    });
+    if (!quoted) {
+      throw new NotFoundException('인용할 메시지를 찾을 수 없습니다');
+    }
+    return quoted.id;
+  }
+
+  /** 방금 만든 메시지에 인용 요약을 붙인다. 전송 응답과 소켓이 같은 모양이어야 한다. */
+  private async withQuoted<T extends { quotedMessageId: string | null }>(
+    message: T,
+    member: SpaceMember,
+  ) {
+    const quoted = await this.loadQuoted([message], member);
+    return {
+      ...message,
+      reactions: [],
+      quoted: message.quotedMessageId
+        ? (quoted.get(message.quotedMessageId) ?? null)
+        : null,
+    };
+  }
+
+  /**
    * 스레드 답글. 답글 저장과 부모 갱신은 **한 트랜잭션**이다 —
    * 사이에서 끊기면 답글은 있는데 개수가 0인 상태가 남는다.
    */
@@ -113,6 +230,7 @@ export class MessagesService {
     member: SpaceMember,
     parentId: string,
     body: string,
+    quotedMessageId: string | null,
   ) {
     const parent = await this.prisma.message.findFirst({
       where: { id: parentId, spaceId: member.spaceId },
@@ -135,7 +253,7 @@ export class MessagesService {
     }
 
     const now = new Date();
-    const [reply, updatedParent] = await this.prisma.$transaction([
+    const [created, updatedParent] = await this.prisma.$transaction([
       this.prisma.message.create({
         data: {
           spaceId: member.spaceId,
@@ -143,6 +261,7 @@ export class MessagesService {
           authorId: member.userId,
           body,
           parentId,
+          quotedMessageId,
         },
         include: { author: AUTHOR_SELECT },
       }),
@@ -152,6 +271,8 @@ export class MessagesService {
         select: { id: true, replyCount: true, lastReplyAt: true },
       }),
     ]);
+
+    const reply = await this.withQuoted(created, member);
 
     // **채널 룸으로 보낸다.** 스레드를 연 사람만 받는 룸(thread:{id})을 따로
     // 두면, 채널을 보고 있는 사람에게 답글 수를 알릴 경로가 하나 더 필요해진다.
@@ -197,20 +318,24 @@ export class MessagesService {
     const page = hasMore ? rows.slice(0, limit) : rows;
 
     const reactions = await this.reactions.summarizeMany(
-      page.map((m) => m.id),
+      [...page.map((m) => m.id), parent.id],
       member,
     );
+    const quoted = await this.loadQuoted([...page, parent], member);
+
+    const withExtras = <T extends { id: string; quotedMessageId: string | null }>(
+      message: T,
+    ) => ({
+      ...redactIfDeleted(message as never),
+      reactions: reactions.get(message.id) ?? [],
+      quoted: message.quotedMessageId
+        ? (quoted.get(message.quotedMessageId) ?? null)
+        : null,
+    });
 
     return {
-      parent: {
-        ...redactIfDeleted(parent),
-        reactions: (await this.reactions.summarizeMany([parent.id], member))
-          .get(parent.id) ?? [],
-      },
-      items: page.map((message) => ({
-        ...redactIfDeleted(message),
-        reactions: reactions.get(message.id) ?? [],
-      })),
+      parent: withExtras(parent),
+      items: page.map(withExtras),
       nextCursor: hasMore ? page[page.length - 1].id : null,
     };
   }
