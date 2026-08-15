@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/api/messages_api.dart';
@@ -98,6 +96,8 @@ void _listenToSocket(
 
       case SocketConnected():
         // 끊겨 있는 동안 놓친 메시지를 따라잡는다.
+        // (큐를 내보내는 것은 realtimeChannelSyncProvider 가 한다 — 채널을
+        //  열지 않은 상태에서도 나가야 하기 때문이다.)
         repository.refresh(spaceId: spaceId, channelId: channelId);
 
       default:
@@ -119,11 +119,11 @@ class MessageActions {
 
   MessageRepository get _repository => _ref.read(messageRepositoryProvider);
 
-  /// 낙관적 전송.
+  /// 전송 = **큐에 넣고 흘려보내기.**
   ///
-  /// 서버 응답을 기다리지 않고 캐시에 먼저 넣는다. 실패하면 지우지 않고
-  /// failed 로 남긴다 — 조용히 사라지면 사용자는 보냈다고 믿는다.
-  /// **캐시에 남으므로 앱을 껐다 켜도 재시도할 수 있다.**
+  /// 네트워크 상태를 묻지 않는다. 큐에 들어간 순간 화면에 보이고(캐시와 큐를
+  /// 합쳐 구독하므로), 온라인이면 곧바로 나가고 오프라인이면 재연결 때 나간다.
+  /// 사용자 입장에서 두 경우가 구분되지 않는 것이 목표다.
   Future<void> send(String body) async {
     final trimmed = body.trim();
     if (trimmed.isEmpty) return;
@@ -135,39 +135,27 @@ class MessageActions {
     final auth = _ref.read(authControllerProvider);
     if (auth is! AuthSignedIn) return;
 
-    final localId = _localId();
-    final optimistic = Message(
-      id: localId,
+    await _repository.enqueue(
+      spaceId: spaceId,
       channelId: channelId,
       body: trimmed,
-      createdAt: DateTime.now(),
       author: MessageAuthor(
         id: auth.user.id,
         name: auth.user.name,
         avatarUrl: auth.user.avatarUrl,
       ),
-      pending: true,
     );
 
-    await _repository.insertPending(spaceId, optimistic);
-
-    try {
-      final sent = await _ref.read(messagesApiProvider).send(
-            spaceId: spaceId,
-            channelId: channelId,
-            body: trimmed,
-          );
-      await _repository.settleSent(spaceId, localId, sent);
-      markRead(sent.id);
-    } catch (_) {
-      await _repository.markFailed(spaceId, optimistic);
-    }
+    await flushOutbox();
   }
 
-  Future<void> retry(Message failed) async {
-    await _repository.discard(failed.id);
-    await send(failed.body);
+  /// 큐를 흘려보낸다. 재연결 시에도 불린다.
+  Future<void> flushOutbox() async {
+    final sent = await _repository.flush();
+    if (sent > 0) markReadToLatest();
   }
+
+  Future<void> retry(Message failed) => _repository.retry(failed.id);
 
   Future<void> discard(Message failed) => _repository.discard(failed.id);
 
@@ -235,7 +223,4 @@ class MessageActions {
     }
     return null;
   }
-
-  static String _localId() =>
-      'local-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 32)}';
 }

@@ -116,16 +116,6 @@ class $CachedMessagesTable extends CachedMessages
     requiredDuringInsert: false,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<SendState, int> sendState =
-      GeneratedColumn<int>(
-        'send_state',
-        aliasedName,
-        false,
-        type: DriftSqlType.int,
-        requiredDuringInsert: false,
-        defaultValue: const Constant(0),
-      ).withConverter<SendState>($CachedMessagesTable.$convertersendState);
-  @override
   List<GeneratedColumn> get $columns => [
     id,
     spaceId,
@@ -137,7 +127,6 @@ class $CachedMessagesTable extends CachedMessages
     authorId,
     authorName,
     authorAvatarUrl,
-    sendState,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -274,12 +263,6 @@ class $CachedMessagesTable extends CachedMessages
         DriftSqlType.string,
         data['${effectivePrefix}author_avatar_url'],
       ),
-      sendState: $CachedMessagesTable.$convertersendState.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.int,
-          data['${effectivePrefix}send_state'],
-        )!,
-      ),
     );
   }
 
@@ -287,13 +270,9 @@ class $CachedMessagesTable extends CachedMessages
   $CachedMessagesTable createAlias(String alias) {
     return $CachedMessagesTable(attachedDatabase, alias);
   }
-
-  static JsonTypeConverter2<SendState, int, int> $convertersendState =
-      const EnumIndexConverter<SendState>(SendState.values);
 }
 
 class CachedMessage extends DataClass implements Insertable<CachedMessage> {
-  /// 서버 id, 또는 아직 보내지 못한 메시지의 로컬 id(`local-…`).
   final String id;
   final String spaceId;
   final String channelId;
@@ -304,7 +283,6 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
   final String authorId;
   final String authorName;
   final String? authorAvatarUrl;
-  final SendState sendState;
   const CachedMessage({
     required this.id,
     required this.spaceId,
@@ -316,7 +294,6 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     required this.authorId,
     required this.authorName,
     this.authorAvatarUrl,
-    required this.sendState,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -336,11 +313,6 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     map['author_name'] = Variable<String>(authorName);
     if (!nullToAbsent || authorAvatarUrl != null) {
       map['author_avatar_url'] = Variable<String>(authorAvatarUrl);
-    }
-    {
-      map['send_state'] = Variable<int>(
-        $CachedMessagesTable.$convertersendState.toSql(sendState),
-      );
     }
     return map;
   }
@@ -363,7 +335,6 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       authorAvatarUrl: authorAvatarUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(authorAvatarUrl),
-      sendState: Value(sendState),
     );
   }
 
@@ -383,9 +354,6 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       authorId: serializer.fromJson<String>(json['authorId']),
       authorName: serializer.fromJson<String>(json['authorName']),
       authorAvatarUrl: serializer.fromJson<String?>(json['authorAvatarUrl']),
-      sendState: $CachedMessagesTable.$convertersendState.fromJson(
-        serializer.fromJson<int>(json['sendState']),
-      ),
     );
   }
   @override
@@ -402,9 +370,6 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       'authorId': serializer.toJson<String>(authorId),
       'authorName': serializer.toJson<String>(authorName),
       'authorAvatarUrl': serializer.toJson<String?>(authorAvatarUrl),
-      'sendState': serializer.toJson<int>(
-        $CachedMessagesTable.$convertersendState.toJson(sendState),
-      ),
     };
   }
 
@@ -419,7 +384,6 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     String? authorId,
     String? authorName,
     Value<String?> authorAvatarUrl = const Value.absent(),
-    SendState? sendState,
   }) => CachedMessage(
     id: id ?? this.id,
     spaceId: spaceId ?? this.spaceId,
@@ -433,7 +397,6 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     authorAvatarUrl: authorAvatarUrl.present
         ? authorAvatarUrl.value
         : this.authorAvatarUrl,
-    sendState: sendState ?? this.sendState,
   );
   CachedMessage copyWithCompanion(CachedMessagesCompanion data) {
     return CachedMessage(
@@ -451,7 +414,6 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       authorAvatarUrl: data.authorAvatarUrl.present
           ? data.authorAvatarUrl.value
           : this.authorAvatarUrl,
-      sendState: data.sendState.present ? data.sendState.value : this.sendState,
     );
   }
 
@@ -467,8 +429,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           ..write('deletedAt: $deletedAt, ')
           ..write('authorId: $authorId, ')
           ..write('authorName: $authorName, ')
-          ..write('authorAvatarUrl: $authorAvatarUrl, ')
-          ..write('sendState: $sendState')
+          ..write('authorAvatarUrl: $authorAvatarUrl')
           ..write(')'))
         .toString();
   }
@@ -485,7 +446,6 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     authorId,
     authorName,
     authorAvatarUrl,
-    sendState,
   );
   @override
   bool operator ==(Object other) =>
@@ -500,8 +460,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           other.deletedAt == this.deletedAt &&
           other.authorId == this.authorId &&
           other.authorName == this.authorName &&
-          other.authorAvatarUrl == this.authorAvatarUrl &&
-          other.sendState == this.sendState);
+          other.authorAvatarUrl == this.authorAvatarUrl);
 }
 
 class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
@@ -515,7 +474,6 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
   final Value<String> authorId;
   final Value<String> authorName;
   final Value<String?> authorAvatarUrl;
-  final Value<SendState> sendState;
   final Value<int> rowid;
   const CachedMessagesCompanion({
     this.id = const Value.absent(),
@@ -528,7 +486,6 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.authorId = const Value.absent(),
     this.authorName = const Value.absent(),
     this.authorAvatarUrl = const Value.absent(),
-    this.sendState = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedMessagesCompanion.insert({
@@ -542,7 +499,6 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     required String authorId,
     required String authorName,
     this.authorAvatarUrl = const Value.absent(),
-    this.sendState = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        spaceId = Value(spaceId),
@@ -562,7 +518,6 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Expression<String>? authorId,
     Expression<String>? authorName,
     Expression<String>? authorAvatarUrl,
-    Expression<int>? sendState,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -576,7 +531,6 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       if (authorId != null) 'author_id': authorId,
       if (authorName != null) 'author_name': authorName,
       if (authorAvatarUrl != null) 'author_avatar_url': authorAvatarUrl,
-      if (sendState != null) 'send_state': sendState,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -592,7 +546,6 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Value<String>? authorId,
     Value<String>? authorName,
     Value<String?>? authorAvatarUrl,
-    Value<SendState>? sendState,
     Value<int>? rowid,
   }) {
     return CachedMessagesCompanion(
@@ -606,7 +559,6 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       authorId: authorId ?? this.authorId,
       authorName: authorName ?? this.authorName,
       authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
-      sendState: sendState ?? this.sendState,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -644,11 +596,6 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     if (authorAvatarUrl.present) {
       map['author_avatar_url'] = Variable<String>(authorAvatarUrl.value);
     }
-    if (sendState.present) {
-      map['send_state'] = Variable<int>(
-        $CachedMessagesTable.$convertersendState.toSql(sendState.value),
-      );
-    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -668,7 +615,6 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
           ..write('authorId: $authorId, ')
           ..write('authorName: $authorName, ')
           ..write('authorAvatarUrl: $authorAvatarUrl, ')
-          ..write('sendState: $sendState, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1892,6 +1838,681 @@ class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
   }
 }
 
+class $OutboxMessagesTable extends OutboxMessages
+    with TableInfo<$OutboxMessagesTable, OutboxMessage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OutboxMessagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _spaceIdMeta = const VerificationMeta(
+    'spaceId',
+  );
+  @override
+  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
+    'space_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _channelIdMeta = const VerificationMeta(
+    'channelId',
+  );
+  @override
+  late final GeneratedColumn<String> channelId = GeneratedColumn<String>(
+    'channel_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorIdMeta = const VerificationMeta(
+    'authorId',
+  );
+  @override
+  late final GeneratedColumn<String> authorId = GeneratedColumn<String>(
+    'author_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorNameMeta = const VerificationMeta(
+    'authorName',
+  );
+  @override
+  late final GeneratedColumn<String> authorName = GeneratedColumn<String>(
+    'author_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorAvatarUrlMeta = const VerificationMeta(
+    'authorAvatarUrl',
+  );
+  @override
+  late final GeneratedColumn<String> authorAvatarUrl = GeneratedColumn<String>(
+    'author_avatar_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _attemptsMeta = const VerificationMeta(
+    'attempts',
+  );
+  @override
+  late final GeneratedColumn<int> attempts = GeneratedColumn<int>(
+    'attempts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _failedMeta = const VerificationMeta('failed');
+  @override
+  late final GeneratedColumn<bool> failed = GeneratedColumn<bool>(
+    'failed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("failed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _lastFailureMeta = const VerificationMeta(
+    'lastFailure',
+  );
+  @override
+  late final GeneratedColumn<String> lastFailure = GeneratedColumn<String>(
+    'last_failure',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    spaceId,
+    channelId,
+    body,
+    createdAt,
+    authorId,
+    authorName,
+    authorAvatarUrl,
+    attempts,
+    failed,
+    lastFailure,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'outbox_messages';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OutboxMessage> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('space_id')) {
+      context.handle(
+        _spaceIdMeta,
+        spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_spaceIdMeta);
+    }
+    if (data.containsKey('channel_id')) {
+      context.handle(
+        _channelIdMeta,
+        channelId.isAcceptableOrUnknown(data['channel_id']!, _channelIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_channelIdMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('author_id')) {
+      context.handle(
+        _authorIdMeta,
+        authorId.isAcceptableOrUnknown(data['author_id']!, _authorIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_authorIdMeta);
+    }
+    if (data.containsKey('author_name')) {
+      context.handle(
+        _authorNameMeta,
+        authorName.isAcceptableOrUnknown(data['author_name']!, _authorNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_authorNameMeta);
+    }
+    if (data.containsKey('author_avatar_url')) {
+      context.handle(
+        _authorAvatarUrlMeta,
+        authorAvatarUrl.isAcceptableOrUnknown(
+          data['author_avatar_url']!,
+          _authorAvatarUrlMeta,
+        ),
+      );
+    }
+    if (data.containsKey('attempts')) {
+      context.handle(
+        _attemptsMeta,
+        attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
+      );
+    }
+    if (data.containsKey('failed')) {
+      context.handle(
+        _failedMeta,
+        failed.isAcceptableOrUnknown(data['failed']!, _failedMeta),
+      );
+    }
+    if (data.containsKey('last_failure')) {
+      context.handle(
+        _lastFailureMeta,
+        lastFailure.isAcceptableOrUnknown(
+          data['last_failure']!,
+          _lastFailureMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OutboxMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OutboxMessage(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      spaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}space_id'],
+      )!,
+      channelId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}channel_id'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      authorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_id'],
+      )!,
+      authorName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_name'],
+      )!,
+      authorAvatarUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_avatar_url'],
+      ),
+      attempts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempts'],
+      )!,
+      failed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}failed'],
+      )!,
+      lastFailure: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_failure'],
+      ),
+    );
+  }
+
+  @override
+  $OutboxMessagesTable createAlias(String alias) {
+    return $OutboxMessagesTable(attachedDatabase, alias);
+  }
+}
+
+class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
+  /// 로컬에서 만든 임시 id(`local-…`). 전송에 성공하면 서버 id 로 대체된다.
+  final String id;
+  final String spaceId;
+  final String channelId;
+  final String body;
+
+  /// 사용자가 **쓴** 시각. 서버 도착 시각이 아니다. 큐는 이 순서로 나간다.
+  final DateTime createdAt;
+  final String authorId;
+  final String authorName;
+  final String? authorAvatarUrl;
+  final int attempts;
+
+  /// 자동 재시도를 포기한 상태. 사용자가 재시도하거나 버릴 때까지 남는다.
+  /// **조용히 지우지 않는다** — 사라지면 사용자는 보냈다고 믿는다.
+  final bool failed;
+
+  /// 마지막 실패 종류(`ApiFailure` 의 이름). 진단용이며 화면 문구는 앱이 정한다.
+  final String? lastFailure;
+  const OutboxMessage({
+    required this.id,
+    required this.spaceId,
+    required this.channelId,
+    required this.body,
+    required this.createdAt,
+    required this.authorId,
+    required this.authorName,
+    this.authorAvatarUrl,
+    required this.attempts,
+    required this.failed,
+    this.lastFailure,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['space_id'] = Variable<String>(spaceId);
+    map['channel_id'] = Variable<String>(channelId);
+    map['body'] = Variable<String>(body);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['author_id'] = Variable<String>(authorId);
+    map['author_name'] = Variable<String>(authorName);
+    if (!nullToAbsent || authorAvatarUrl != null) {
+      map['author_avatar_url'] = Variable<String>(authorAvatarUrl);
+    }
+    map['attempts'] = Variable<int>(attempts);
+    map['failed'] = Variable<bool>(failed);
+    if (!nullToAbsent || lastFailure != null) {
+      map['last_failure'] = Variable<String>(lastFailure);
+    }
+    return map;
+  }
+
+  OutboxMessagesCompanion toCompanion(bool nullToAbsent) {
+    return OutboxMessagesCompanion(
+      id: Value(id),
+      spaceId: Value(spaceId),
+      channelId: Value(channelId),
+      body: Value(body),
+      createdAt: Value(createdAt),
+      authorId: Value(authorId),
+      authorName: Value(authorName),
+      authorAvatarUrl: authorAvatarUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(authorAvatarUrl),
+      attempts: Value(attempts),
+      failed: Value(failed),
+      lastFailure: lastFailure == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastFailure),
+    );
+  }
+
+  factory OutboxMessage.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OutboxMessage(
+      id: serializer.fromJson<String>(json['id']),
+      spaceId: serializer.fromJson<String>(json['spaceId']),
+      channelId: serializer.fromJson<String>(json['channelId']),
+      body: serializer.fromJson<String>(json['body']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      authorId: serializer.fromJson<String>(json['authorId']),
+      authorName: serializer.fromJson<String>(json['authorName']),
+      authorAvatarUrl: serializer.fromJson<String?>(json['authorAvatarUrl']),
+      attempts: serializer.fromJson<int>(json['attempts']),
+      failed: serializer.fromJson<bool>(json['failed']),
+      lastFailure: serializer.fromJson<String?>(json['lastFailure']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'spaceId': serializer.toJson<String>(spaceId),
+      'channelId': serializer.toJson<String>(channelId),
+      'body': serializer.toJson<String>(body),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'authorId': serializer.toJson<String>(authorId),
+      'authorName': serializer.toJson<String>(authorName),
+      'authorAvatarUrl': serializer.toJson<String?>(authorAvatarUrl),
+      'attempts': serializer.toJson<int>(attempts),
+      'failed': serializer.toJson<bool>(failed),
+      'lastFailure': serializer.toJson<String?>(lastFailure),
+    };
+  }
+
+  OutboxMessage copyWith({
+    String? id,
+    String? spaceId,
+    String? channelId,
+    String? body,
+    DateTime? createdAt,
+    String? authorId,
+    String? authorName,
+    Value<String?> authorAvatarUrl = const Value.absent(),
+    int? attempts,
+    bool? failed,
+    Value<String?> lastFailure = const Value.absent(),
+  }) => OutboxMessage(
+    id: id ?? this.id,
+    spaceId: spaceId ?? this.spaceId,
+    channelId: channelId ?? this.channelId,
+    body: body ?? this.body,
+    createdAt: createdAt ?? this.createdAt,
+    authorId: authorId ?? this.authorId,
+    authorName: authorName ?? this.authorName,
+    authorAvatarUrl: authorAvatarUrl.present
+        ? authorAvatarUrl.value
+        : this.authorAvatarUrl,
+    attempts: attempts ?? this.attempts,
+    failed: failed ?? this.failed,
+    lastFailure: lastFailure.present ? lastFailure.value : this.lastFailure,
+  );
+  OutboxMessage copyWithCompanion(OutboxMessagesCompanion data) {
+    return OutboxMessage(
+      id: data.id.present ? data.id.value : this.id,
+      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
+      channelId: data.channelId.present ? data.channelId.value : this.channelId,
+      body: data.body.present ? data.body.value : this.body,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      authorId: data.authorId.present ? data.authorId.value : this.authorId,
+      authorName: data.authorName.present
+          ? data.authorName.value
+          : this.authorName,
+      authorAvatarUrl: data.authorAvatarUrl.present
+          ? data.authorAvatarUrl.value
+          : this.authorAvatarUrl,
+      attempts: data.attempts.present ? data.attempts.value : this.attempts,
+      failed: data.failed.present ? data.failed.value : this.failed,
+      lastFailure: data.lastFailure.present
+          ? data.lastFailure.value
+          : this.lastFailure,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutboxMessage(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('channelId: $channelId, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('authorId: $authorId, ')
+          ..write('authorName: $authorName, ')
+          ..write('authorAvatarUrl: $authorAvatarUrl, ')
+          ..write('attempts: $attempts, ')
+          ..write('failed: $failed, ')
+          ..write('lastFailure: $lastFailure')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    spaceId,
+    channelId,
+    body,
+    createdAt,
+    authorId,
+    authorName,
+    authorAvatarUrl,
+    attempts,
+    failed,
+    lastFailure,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OutboxMessage &&
+          other.id == this.id &&
+          other.spaceId == this.spaceId &&
+          other.channelId == this.channelId &&
+          other.body == this.body &&
+          other.createdAt == this.createdAt &&
+          other.authorId == this.authorId &&
+          other.authorName == this.authorName &&
+          other.authorAvatarUrl == this.authorAvatarUrl &&
+          other.attempts == this.attempts &&
+          other.failed == this.failed &&
+          other.lastFailure == this.lastFailure);
+}
+
+class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
+  final Value<String> id;
+  final Value<String> spaceId;
+  final Value<String> channelId;
+  final Value<String> body;
+  final Value<DateTime> createdAt;
+  final Value<String> authorId;
+  final Value<String> authorName;
+  final Value<String?> authorAvatarUrl;
+  final Value<int> attempts;
+  final Value<bool> failed;
+  final Value<String?> lastFailure;
+  final Value<int> rowid;
+  const OutboxMessagesCompanion({
+    this.id = const Value.absent(),
+    this.spaceId = const Value.absent(),
+    this.channelId = const Value.absent(),
+    this.body = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.authorId = const Value.absent(),
+    this.authorName = const Value.absent(),
+    this.authorAvatarUrl = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.failed = const Value.absent(),
+    this.lastFailure = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  OutboxMessagesCompanion.insert({
+    required String id,
+    required String spaceId,
+    required String channelId,
+    required String body,
+    required DateTime createdAt,
+    required String authorId,
+    required String authorName,
+    this.authorAvatarUrl = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.failed = const Value.absent(),
+    this.lastFailure = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       spaceId = Value(spaceId),
+       channelId = Value(channelId),
+       body = Value(body),
+       createdAt = Value(createdAt),
+       authorId = Value(authorId),
+       authorName = Value(authorName);
+  static Insertable<OutboxMessage> custom({
+    Expression<String>? id,
+    Expression<String>? spaceId,
+    Expression<String>? channelId,
+    Expression<String>? body,
+    Expression<DateTime>? createdAt,
+    Expression<String>? authorId,
+    Expression<String>? authorName,
+    Expression<String>? authorAvatarUrl,
+    Expression<int>? attempts,
+    Expression<bool>? failed,
+    Expression<String>? lastFailure,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (spaceId != null) 'space_id': spaceId,
+      if (channelId != null) 'channel_id': channelId,
+      if (body != null) 'body': body,
+      if (createdAt != null) 'created_at': createdAt,
+      if (authorId != null) 'author_id': authorId,
+      if (authorName != null) 'author_name': authorName,
+      if (authorAvatarUrl != null) 'author_avatar_url': authorAvatarUrl,
+      if (attempts != null) 'attempts': attempts,
+      if (failed != null) 'failed': failed,
+      if (lastFailure != null) 'last_failure': lastFailure,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  OutboxMessagesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? spaceId,
+    Value<String>? channelId,
+    Value<String>? body,
+    Value<DateTime>? createdAt,
+    Value<String>? authorId,
+    Value<String>? authorName,
+    Value<String?>? authorAvatarUrl,
+    Value<int>? attempts,
+    Value<bool>? failed,
+    Value<String?>? lastFailure,
+    Value<int>? rowid,
+  }) {
+    return OutboxMessagesCompanion(
+      id: id ?? this.id,
+      spaceId: spaceId ?? this.spaceId,
+      channelId: channelId ?? this.channelId,
+      body: body ?? this.body,
+      createdAt: createdAt ?? this.createdAt,
+      authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
+      authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
+      attempts: attempts ?? this.attempts,
+      failed: failed ?? this.failed,
+      lastFailure: lastFailure ?? this.lastFailure,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (spaceId.present) {
+      map['space_id'] = Variable<String>(spaceId.value);
+    }
+    if (channelId.present) {
+      map['channel_id'] = Variable<String>(channelId.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (authorId.present) {
+      map['author_id'] = Variable<String>(authorId.value);
+    }
+    if (authorName.present) {
+      map['author_name'] = Variable<String>(authorName.value);
+    }
+    if (authorAvatarUrl.present) {
+      map['author_avatar_url'] = Variable<String>(authorAvatarUrl.value);
+    }
+    if (attempts.present) {
+      map['attempts'] = Variable<int>(attempts.value);
+    }
+    if (failed.present) {
+      map['failed'] = Variable<bool>(failed.value);
+    }
+    if (lastFailure.present) {
+      map['last_failure'] = Variable<String>(lastFailure.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutboxMessagesCompanion(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('channelId: $channelId, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('authorId: $authorId, ')
+          ..write('authorName: $authorName, ')
+          ..write('authorAvatarUrl: $authorAvatarUrl, ')
+          ..write('attempts: $attempts, ')
+          ..write('failed: $failed, ')
+          ..write('lastFailure: $lastFailure, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1901,6 +2522,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $CachedSpacesTable cachedSpaces = $CachedSpacesTable(this);
+  late final $OutboxMessagesTable outboxMessages = $OutboxMessagesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1910,6 +2532,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cachedChannels,
     cachedCategories,
     cachedSpaces,
+    outboxMessages,
   ];
 }
 
@@ -1925,7 +2548,6 @@ typedef $$CachedMessagesTableCreateCompanionBuilder =
       required String authorId,
       required String authorName,
       Value<String?> authorAvatarUrl,
-      Value<SendState> sendState,
       Value<int> rowid,
     });
 typedef $$CachedMessagesTableUpdateCompanionBuilder =
@@ -1940,7 +2562,6 @@ typedef $$CachedMessagesTableUpdateCompanionBuilder =
       Value<String> authorId,
       Value<String> authorName,
       Value<String?> authorAvatarUrl,
-      Value<SendState> sendState,
       Value<int> rowid,
     });
 
@@ -2002,12 +2623,6 @@ class $$CachedMessagesTableFilterComposer
     column: $table.authorAvatarUrl,
     builder: (column) => ColumnFilters(column),
   );
-
-  ColumnWithTypeConverterFilters<SendState, SendState, int> get sendState =>
-      $composableBuilder(
-        column: $table.sendState,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
 }
 
 class $$CachedMessagesTableOrderingComposer
@@ -2068,11 +2683,6 @@ class $$CachedMessagesTableOrderingComposer
     column: $table.authorAvatarUrl,
     builder: (column) => ColumnOrderings(column),
   );
-
-  ColumnOrderings<int> get sendState => $composableBuilder(
-    column: $table.sendState,
-    builder: (column) => ColumnOrderings(column),
-  );
 }
 
 class $$CachedMessagesTableAnnotationComposer
@@ -2117,9 +2727,6 @@ class $$CachedMessagesTableAnnotationComposer
     column: $table.authorAvatarUrl,
     builder: (column) => column,
   );
-
-  GeneratedColumnWithTypeConverter<SendState, int> get sendState =>
-      $composableBuilder(column: $table.sendState, builder: (column) => column);
 }
 
 class $$CachedMessagesTableTableManager
@@ -2165,7 +2772,6 @@ class $$CachedMessagesTableTableManager
                 Value<String> authorId = const Value.absent(),
                 Value<String> authorName = const Value.absent(),
                 Value<String?> authorAvatarUrl = const Value.absent(),
-                Value<SendState> sendState = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion(
                 id: id,
@@ -2178,7 +2784,6 @@ class $$CachedMessagesTableTableManager
                 authorId: authorId,
                 authorName: authorName,
                 authorAvatarUrl: authorAvatarUrl,
-                sendState: sendState,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2193,7 +2798,6 @@ class $$CachedMessagesTableTableManager
                 required String authorId,
                 required String authorName,
                 Value<String?> authorAvatarUrl = const Value.absent(),
-                Value<SendState> sendState = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion.insert(
                 id: id,
@@ -2206,7 +2810,6 @@ class $$CachedMessagesTableTableManager
                 authorId: authorId,
                 authorName: authorName,
                 authorAvatarUrl: authorAvatarUrl,
-                sendState: sendState,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -2903,6 +3506,328 @@ typedef $$CachedSpacesTableProcessedTableManager =
       CachedSpace,
       PrefetchHooks Function()
     >;
+typedef $$OutboxMessagesTableCreateCompanionBuilder =
+    OutboxMessagesCompanion Function({
+      required String id,
+      required String spaceId,
+      required String channelId,
+      required String body,
+      required DateTime createdAt,
+      required String authorId,
+      required String authorName,
+      Value<String?> authorAvatarUrl,
+      Value<int> attempts,
+      Value<bool> failed,
+      Value<String?> lastFailure,
+      Value<int> rowid,
+    });
+typedef $$OutboxMessagesTableUpdateCompanionBuilder =
+    OutboxMessagesCompanion Function({
+      Value<String> id,
+      Value<String> spaceId,
+      Value<String> channelId,
+      Value<String> body,
+      Value<DateTime> createdAt,
+      Value<String> authorId,
+      Value<String> authorName,
+      Value<String?> authorAvatarUrl,
+      Value<int> attempts,
+      Value<bool> failed,
+      Value<String?> lastFailure,
+      Value<int> rowid,
+    });
+
+class $$OutboxMessagesTableFilterComposer
+    extends Composer<_$AppDatabase, $OutboxMessagesTable> {
+  $$OutboxMessagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get channelId => $composableBuilder(
+    column: $table.channelId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorAvatarUrl => $composableBuilder(
+    column: $table.authorAvatarUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get failed => $composableBuilder(
+    column: $table.failed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastFailure => $composableBuilder(
+    column: $table.lastFailure,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OutboxMessagesTableOrderingComposer
+    extends Composer<_$AppDatabase, $OutboxMessagesTable> {
+  $$OutboxMessagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get channelId => $composableBuilder(
+    column: $table.channelId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorAvatarUrl => $composableBuilder(
+    column: $table.authorAvatarUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get failed => $composableBuilder(
+    column: $table.failed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastFailure => $composableBuilder(
+    column: $table.lastFailure,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OutboxMessagesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OutboxMessagesTable> {
+  $$OutboxMessagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get spaceId =>
+      $composableBuilder(column: $table.spaceId, builder: (column) => column);
+
+  GeneratedColumn<String> get channelId =>
+      $composableBuilder(column: $table.channelId, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get authorId =>
+      $composableBuilder(column: $table.authorId, builder: (column) => column);
+
+  GeneratedColumn<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get authorAvatarUrl => $composableBuilder(
+    column: $table.authorAvatarUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get attempts =>
+      $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumn<bool> get failed =>
+      $composableBuilder(column: $table.failed, builder: (column) => column);
+
+  GeneratedColumn<String> get lastFailure => $composableBuilder(
+    column: $table.lastFailure,
+    builder: (column) => column,
+  );
+}
+
+class $$OutboxMessagesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OutboxMessagesTable,
+          OutboxMessage,
+          $$OutboxMessagesTableFilterComposer,
+          $$OutboxMessagesTableOrderingComposer,
+          $$OutboxMessagesTableAnnotationComposer,
+          $$OutboxMessagesTableCreateCompanionBuilder,
+          $$OutboxMessagesTableUpdateCompanionBuilder,
+          (
+            OutboxMessage,
+            BaseReferences<_$AppDatabase, $OutboxMessagesTable, OutboxMessage>,
+          ),
+          OutboxMessage,
+          PrefetchHooks Function()
+        > {
+  $$OutboxMessagesTableTableManager(
+    _$AppDatabase db,
+    $OutboxMessagesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OutboxMessagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OutboxMessagesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OutboxMessagesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> spaceId = const Value.absent(),
+                Value<String> channelId = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<String> authorId = const Value.absent(),
+                Value<String> authorName = const Value.absent(),
+                Value<String?> authorAvatarUrl = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<bool> failed = const Value.absent(),
+                Value<String?> lastFailure = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OutboxMessagesCompanion(
+                id: id,
+                spaceId: spaceId,
+                channelId: channelId,
+                body: body,
+                createdAt: createdAt,
+                authorId: authorId,
+                authorName: authorName,
+                authorAvatarUrl: authorAvatarUrl,
+                attempts: attempts,
+                failed: failed,
+                lastFailure: lastFailure,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String spaceId,
+                required String channelId,
+                required String body,
+                required DateTime createdAt,
+                required String authorId,
+                required String authorName,
+                Value<String?> authorAvatarUrl = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<bool> failed = const Value.absent(),
+                Value<String?> lastFailure = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OutboxMessagesCompanion.insert(
+                id: id,
+                spaceId: spaceId,
+                channelId: channelId,
+                body: body,
+                createdAt: createdAt,
+                authorId: authorId,
+                authorName: authorName,
+                authorAvatarUrl: authorAvatarUrl,
+                attempts: attempts,
+                failed: failed,
+                lastFailure: lastFailure,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OutboxMessagesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OutboxMessagesTable,
+      OutboxMessage,
+      $$OutboxMessagesTableFilterComposer,
+      $$OutboxMessagesTableOrderingComposer,
+      $$OutboxMessagesTableAnnotationComposer,
+      $$OutboxMessagesTableCreateCompanionBuilder,
+      $$OutboxMessagesTableUpdateCompanionBuilder,
+      (
+        OutboxMessage,
+        BaseReferences<_$AppDatabase, $OutboxMessagesTable, OutboxMessage>,
+      ),
+      OutboxMessage,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2915,4 +3840,6 @@ class $AppDatabaseManager {
       $$CachedCategoriesTableTableManager(_db, _db.cachedCategories);
   $$CachedSpacesTableTableManager get cachedSpaces =>
       $$CachedSpacesTableTableManager(_db, _db.cachedSpaces);
+  $$OutboxMessagesTableTableManager get outboxMessages =>
+      $$OutboxMessagesTableTableManager(_db, _db.outboxMessages);
 }

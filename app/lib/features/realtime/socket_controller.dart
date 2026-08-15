@@ -4,6 +4,7 @@ import '../../data/socket/socket_client.dart';
 import '../../data/socket/socket_event.dart';
 import '../auth/auth_controller.dart';
 import '../channel/channel_controller.dart';
+import '../chat/message_controller.dart';
 
 /// 앱 전체에 하나뿐인 소켓 연결.
 ///
@@ -61,13 +62,18 @@ final realtimeChannelSyncProvider = Provider<void>((ref) {
 
       case SocketConnected():
         // 끊겨 있는 동안 놓친 것이 있다. 목록을 다시 받아 안 읽은 수를 맞춘다.
-        // (열려 있는 채널의 메시지 catch-up 은 MessagesNotifier 가 한다.)
+        // (열려 있는 채널의 메시지 catch-up 은 messagesProvider 가 한다.)
         //
         // **카테고리도 함께 다시 받는다.** 오프라인으로 켠 기기는 카테고리를
         // 한 번도 받지 못한 상태라, 여기서 갱신하지 않으면 서버가 돌아와도
         // 채널이 계속 '기타'에 묶여 있다 — 실기기에서 실제로 겪은 버그다.
         ref.invalidate(channelsProvider);
         ref.invalidate(categoriesProvider);
+
+        // **쌓여 있던 전송분을 내보낸다.** 여기서 하는 이유는 이 리스너가
+        // 채널을 열지 않아도 살아 있기 때문이다 — 오프라인으로 여러 채널에
+        // 써 두고 스페이스 화면에 머물러 있어도 재연결 시 전부 나가야 한다.
+        ref.read(messageRepositoryProvider).flush();
 
       case ReadSynced():
         // 다른 기기에서 읽었다. 뱃지를 맞춘다.
