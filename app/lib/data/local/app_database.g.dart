@@ -155,6 +155,16 @@ class $CachedMessagesTable extends CachedMessages
         requiredDuringInsert: false,
       ).withConverter<DateTime?>($CachedMessagesTable.$converterlastReplyAtn);
   @override
+  late final GeneratedColumnWithTypeConverter<QuotedMessage?, String> quoted =
+      GeneratedColumn<String>(
+        'quoted',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      ).withConverter<QuotedMessage?>($CachedMessagesTable.$converterquoted);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     spaceId,
@@ -170,6 +180,7 @@ class $CachedMessagesTable extends CachedMessages
     parentId,
     replyCount,
     lastReplyAt,
+    quoted,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -324,6 +335,12 @@ class $CachedMessagesTable extends CachedMessages
           data['${effectivePrefix}last_reply_at'],
         ),
       ),
+      quoted: $CachedMessagesTable.$converterquoted.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}quoted'],
+        )!,
+      ),
     );
   }
 
@@ -345,6 +362,8 @@ class $CachedMessagesTable extends CachedMessages
       const _UtcMicros();
   static TypeConverter<DateTime?, int?> $converterlastReplyAtn =
       NullAwareTypeConverter.wrap($converterlastReplyAt);
+  static TypeConverter<QuotedMessage?, String> $converterquoted =
+      const _QuotedJson();
 }
 
 class CachedMessage extends DataClass implements Insertable<CachedMessage> {
@@ -365,6 +384,9 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
   final String? parentId;
   final int replyCount;
   final DateTime? lastReplyAt;
+
+  /// 답장이면 인용 요약. 빈 문자열이면 답장이 아니다.
+  final QuotedMessage? quoted;
   const CachedMessage({
     required this.id,
     required this.spaceId,
@@ -380,6 +402,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     this.parentId,
     required this.replyCount,
     this.lastReplyAt,
+    this.quoted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -422,6 +445,11 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
         $CachedMessagesTable.$converterlastReplyAtn.toSql(lastReplyAt),
       );
     }
+    if (!nullToAbsent || quoted != null) {
+      map['quoted'] = Variable<String>(
+        $CachedMessagesTable.$converterquoted.toSql(quoted),
+      );
+    }
     return map;
   }
 
@@ -451,6 +479,9 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       lastReplyAt: lastReplyAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastReplyAt),
+      quoted: quoted == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quoted),
     );
   }
 
@@ -474,6 +505,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       parentId: serializer.fromJson<String?>(json['parentId']),
       replyCount: serializer.fromJson<int>(json['replyCount']),
       lastReplyAt: serializer.fromJson<DateTime?>(json['lastReplyAt']),
+      quoted: serializer.fromJson<QuotedMessage?>(json['quoted']),
     );
   }
   @override
@@ -494,6 +526,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       'parentId': serializer.toJson<String?>(parentId),
       'replyCount': serializer.toJson<int>(replyCount),
       'lastReplyAt': serializer.toJson<DateTime?>(lastReplyAt),
+      'quoted': serializer.toJson<QuotedMessage?>(quoted),
     };
   }
 
@@ -512,6 +545,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     Value<String?> parentId = const Value.absent(),
     int? replyCount,
     Value<DateTime?> lastReplyAt = const Value.absent(),
+    Value<QuotedMessage?> quoted = const Value.absent(),
   }) => CachedMessage(
     id: id ?? this.id,
     spaceId: spaceId ?? this.spaceId,
@@ -529,6 +563,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     parentId: parentId.present ? parentId.value : this.parentId,
     replyCount: replyCount ?? this.replyCount,
     lastReplyAt: lastReplyAt.present ? lastReplyAt.value : this.lastReplyAt,
+    quoted: quoted.present ? quoted.value : this.quoted,
   );
   CachedMessage copyWithCompanion(CachedMessagesCompanion data) {
     return CachedMessage(
@@ -554,6 +589,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       lastReplyAt: data.lastReplyAt.present
           ? data.lastReplyAt.value
           : this.lastReplyAt,
+      quoted: data.quoted.present ? data.quoted.value : this.quoted,
     );
   }
 
@@ -573,7 +609,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           ..write('reactions: $reactions, ')
           ..write('parentId: $parentId, ')
           ..write('replyCount: $replyCount, ')
-          ..write('lastReplyAt: $lastReplyAt')
+          ..write('lastReplyAt: $lastReplyAt, ')
+          ..write('quoted: $quoted')
           ..write(')'))
         .toString();
   }
@@ -594,6 +631,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     parentId,
     replyCount,
     lastReplyAt,
+    quoted,
   );
   @override
   bool operator ==(Object other) =>
@@ -612,7 +650,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           other.reactions == this.reactions &&
           other.parentId == this.parentId &&
           other.replyCount == this.replyCount &&
-          other.lastReplyAt == this.lastReplyAt);
+          other.lastReplyAt == this.lastReplyAt &&
+          other.quoted == this.quoted);
 }
 
 class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
@@ -630,6 +669,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
   final Value<String?> parentId;
   final Value<int> replyCount;
   final Value<DateTime?> lastReplyAt;
+  final Value<QuotedMessage?> quoted;
   final Value<int> rowid;
   const CachedMessagesCompanion({
     this.id = const Value.absent(),
@@ -646,6 +686,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.parentId = const Value.absent(),
     this.replyCount = const Value.absent(),
     this.lastReplyAt = const Value.absent(),
+    this.quoted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedMessagesCompanion.insert({
@@ -663,6 +704,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.parentId = const Value.absent(),
     this.replyCount = const Value.absent(),
     this.lastReplyAt = const Value.absent(),
+    this.quoted = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        spaceId = Value(spaceId),
@@ -686,6 +728,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Expression<String>? parentId,
     Expression<int>? replyCount,
     Expression<int>? lastReplyAt,
+    Expression<String>? quoted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -703,6 +746,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       if (parentId != null) 'parent_id': parentId,
       if (replyCount != null) 'reply_count': replyCount,
       if (lastReplyAt != null) 'last_reply_at': lastReplyAt,
+      if (quoted != null) 'quoted': quoted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -722,6 +766,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Value<String?>? parentId,
     Value<int>? replyCount,
     Value<DateTime?>? lastReplyAt,
+    Value<QuotedMessage?>? quoted,
     Value<int>? rowid,
   }) {
     return CachedMessagesCompanion(
@@ -739,6 +784,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       parentId: parentId ?? this.parentId,
       replyCount: replyCount ?? this.replyCount,
       lastReplyAt: lastReplyAt ?? this.lastReplyAt,
+      quoted: quoted ?? this.quoted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -798,6 +844,11 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
         $CachedMessagesTable.$converterlastReplyAtn.toSql(lastReplyAt.value),
       );
     }
+    if (quoted.present) {
+      map['quoted'] = Variable<String>(
+        $CachedMessagesTable.$converterquoted.toSql(quoted.value),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -821,6 +872,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
           ..write('parentId: $parentId, ')
           ..write('replyCount: $replyCount, ')
           ..write('lastReplyAt: $lastReplyAt, ')
+          ..write('quoted: $quoted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2101,6 +2153,27 @@ class $OutboxMessagesTable extends OutboxMessages
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _quotedMessageIdMeta = const VerificationMeta(
+    'quotedMessageId',
+  );
+  @override
+  late final GeneratedColumn<String> quotedMessageId = GeneratedColumn<String>(
+    'quoted_message_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<QuotedMessage?, String> quoted =
+      GeneratedColumn<String>(
+        'quoted',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      ).withConverter<QuotedMessage?>($OutboxMessagesTable.$converterquoted);
   @override
   late final GeneratedColumnWithTypeConverter<DateTime, int> createdAt =
       GeneratedColumn<int>(
@@ -2196,6 +2269,8 @@ class $OutboxMessagesTable extends OutboxMessages
     channelId,
     body,
     parentId,
+    quotedMessageId,
+    quoted,
     createdAt,
     seq,
     authorId,
@@ -2250,6 +2325,15 @@ class $OutboxMessagesTable extends OutboxMessages
       context.handle(
         _parentIdMeta,
         parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta),
+      );
+    }
+    if (data.containsKey('quoted_message_id')) {
+      context.handle(
+        _quotedMessageIdMeta,
+        quotedMessageId.isAcceptableOrUnknown(
+          data['quoted_message_id']!,
+          _quotedMessageIdMeta,
+        ),
       );
     }
     if (data.containsKey('seq')) {
@@ -2333,6 +2417,16 @@ class $OutboxMessagesTable extends OutboxMessages
         DriftSqlType.string,
         data['${effectivePrefix}parent_id'],
       ),
+      quotedMessageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}quoted_message_id'],
+      ),
+      quoted: $OutboxMessagesTable.$converterquoted.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}quoted'],
+        )!,
+      ),
       createdAt: $OutboxMessagesTable.$convertercreatedAt.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.int,
@@ -2375,6 +2469,8 @@ class $OutboxMessagesTable extends OutboxMessages
     return $OutboxMessagesTable(attachedDatabase, alias);
   }
 
+  static TypeConverter<QuotedMessage?, String> $converterquoted =
+      const _QuotedJson();
   static TypeConverter<DateTime, int> $convertercreatedAt = const _UtcMicros();
 }
 
@@ -2387,6 +2483,13 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
 
   /// 스레드 답글이면 부모 id. 오프라인에서 쓴 답글도 답글로 나가야 한다.
   final String? parentId;
+
+  /// 답장이면 인용 대상 id. 큐에서도 답장은 답장으로 나가야 한다.
+  final String? quotedMessageId;
+
+  /// 인용 요약. 큐에 있는 동안 화면에 인용문을 그리려면 필요하다 —
+  /// 서버에 닿기 전에는 원본을 서버에서 받아올 수 없다.
+  final QuotedMessage? quoted;
 
   /// 사용자가 **쓴** 시각. 서버 도착 시각이 아니다.
   final DateTime createdAt;
@@ -2415,6 +2518,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     required this.channelId,
     required this.body,
     this.parentId,
+    this.quotedMessageId,
+    this.quoted,
     required this.createdAt,
     required this.seq,
     required this.authorId,
@@ -2433,6 +2538,14 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     map['body'] = Variable<String>(body);
     if (!nullToAbsent || parentId != null) {
       map['parent_id'] = Variable<String>(parentId);
+    }
+    if (!nullToAbsent || quotedMessageId != null) {
+      map['quoted_message_id'] = Variable<String>(quotedMessageId);
+    }
+    if (!nullToAbsent || quoted != null) {
+      map['quoted'] = Variable<String>(
+        $OutboxMessagesTable.$converterquoted.toSql(quoted),
+      );
     }
     {
       map['created_at'] = Variable<int>(
@@ -2462,6 +2575,12 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
       parentId: parentId == null && nullToAbsent
           ? const Value.absent()
           : Value(parentId),
+      quotedMessageId: quotedMessageId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quotedMessageId),
+      quoted: quoted == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quoted),
       createdAt: Value(createdAt),
       seq: Value(seq),
       authorId: Value(authorId),
@@ -2488,6 +2607,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
       channelId: serializer.fromJson<String>(json['channelId']),
       body: serializer.fromJson<String>(json['body']),
       parentId: serializer.fromJson<String?>(json['parentId']),
+      quotedMessageId: serializer.fromJson<String?>(json['quotedMessageId']),
+      quoted: serializer.fromJson<QuotedMessage?>(json['quoted']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       seq: serializer.fromJson<int>(json['seq']),
       authorId: serializer.fromJson<String>(json['authorId']),
@@ -2507,6 +2628,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
       'channelId': serializer.toJson<String>(channelId),
       'body': serializer.toJson<String>(body),
       'parentId': serializer.toJson<String?>(parentId),
+      'quotedMessageId': serializer.toJson<String?>(quotedMessageId),
+      'quoted': serializer.toJson<QuotedMessage?>(quoted),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'seq': serializer.toJson<int>(seq),
       'authorId': serializer.toJson<String>(authorId),
@@ -2524,6 +2647,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     String? channelId,
     String? body,
     Value<String?> parentId = const Value.absent(),
+    Value<String?> quotedMessageId = const Value.absent(),
+    Value<QuotedMessage?> quoted = const Value.absent(),
     DateTime? createdAt,
     int? seq,
     String? authorId,
@@ -2538,6 +2663,10 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     channelId: channelId ?? this.channelId,
     body: body ?? this.body,
     parentId: parentId.present ? parentId.value : this.parentId,
+    quotedMessageId: quotedMessageId.present
+        ? quotedMessageId.value
+        : this.quotedMessageId,
+    quoted: quoted.present ? quoted.value : this.quoted,
     createdAt: createdAt ?? this.createdAt,
     seq: seq ?? this.seq,
     authorId: authorId ?? this.authorId,
@@ -2556,6 +2685,10 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
       channelId: data.channelId.present ? data.channelId.value : this.channelId,
       body: data.body.present ? data.body.value : this.body,
       parentId: data.parentId.present ? data.parentId.value : this.parentId,
+      quotedMessageId: data.quotedMessageId.present
+          ? data.quotedMessageId.value
+          : this.quotedMessageId,
+      quoted: data.quoted.present ? data.quoted.value : this.quoted,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       seq: data.seq.present ? data.seq.value : this.seq,
       authorId: data.authorId.present ? data.authorId.value : this.authorId,
@@ -2581,6 +2714,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
           ..write('channelId: $channelId, ')
           ..write('body: $body, ')
           ..write('parentId: $parentId, ')
+          ..write('quotedMessageId: $quotedMessageId, ')
+          ..write('quoted: $quoted, ')
           ..write('createdAt: $createdAt, ')
           ..write('seq: $seq, ')
           ..write('authorId: $authorId, ')
@@ -2600,6 +2735,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     channelId,
     body,
     parentId,
+    quotedMessageId,
+    quoted,
     createdAt,
     seq,
     authorId,
@@ -2618,6 +2755,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
           other.channelId == this.channelId &&
           other.body == this.body &&
           other.parentId == this.parentId &&
+          other.quotedMessageId == this.quotedMessageId &&
+          other.quoted == this.quoted &&
           other.createdAt == this.createdAt &&
           other.seq == this.seq &&
           other.authorId == this.authorId &&
@@ -2634,6 +2773,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
   final Value<String> channelId;
   final Value<String> body;
   final Value<String?> parentId;
+  final Value<String?> quotedMessageId;
+  final Value<QuotedMessage?> quoted;
   final Value<DateTime> createdAt;
   final Value<int> seq;
   final Value<String> authorId;
@@ -2649,6 +2790,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     this.channelId = const Value.absent(),
     this.body = const Value.absent(),
     this.parentId = const Value.absent(),
+    this.quotedMessageId = const Value.absent(),
+    this.quoted = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.seq = const Value.absent(),
     this.authorId = const Value.absent(),
@@ -2665,6 +2808,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     required String channelId,
     required String body,
     this.parentId = const Value.absent(),
+    this.quotedMessageId = const Value.absent(),
+    this.quoted = const Value.absent(),
     required DateTime createdAt,
     this.seq = const Value.absent(),
     required String authorId,
@@ -2687,6 +2832,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     Expression<String>? channelId,
     Expression<String>? body,
     Expression<String>? parentId,
+    Expression<String>? quotedMessageId,
+    Expression<String>? quoted,
     Expression<int>? createdAt,
     Expression<int>? seq,
     Expression<String>? authorId,
@@ -2703,6 +2850,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
       if (channelId != null) 'channel_id': channelId,
       if (body != null) 'body': body,
       if (parentId != null) 'parent_id': parentId,
+      if (quotedMessageId != null) 'quoted_message_id': quotedMessageId,
+      if (quoted != null) 'quoted': quoted,
       if (createdAt != null) 'created_at': createdAt,
       if (seq != null) 'seq': seq,
       if (authorId != null) 'author_id': authorId,
@@ -2721,6 +2870,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     Value<String>? channelId,
     Value<String>? body,
     Value<String?>? parentId,
+    Value<String?>? quotedMessageId,
+    Value<QuotedMessage?>? quoted,
     Value<DateTime>? createdAt,
     Value<int>? seq,
     Value<String>? authorId,
@@ -2737,6 +2888,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
       channelId: channelId ?? this.channelId,
       body: body ?? this.body,
       parentId: parentId ?? this.parentId,
+      quotedMessageId: quotedMessageId ?? this.quotedMessageId,
+      quoted: quoted ?? this.quoted,
       createdAt: createdAt ?? this.createdAt,
       seq: seq ?? this.seq,
       authorId: authorId ?? this.authorId,
@@ -2766,6 +2919,14 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     }
     if (parentId.present) {
       map['parent_id'] = Variable<String>(parentId.value);
+    }
+    if (quotedMessageId.present) {
+      map['quoted_message_id'] = Variable<String>(quotedMessageId.value);
+    }
+    if (quoted.present) {
+      map['quoted'] = Variable<String>(
+        $OutboxMessagesTable.$converterquoted.toSql(quoted.value),
+      );
     }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(
@@ -2807,6 +2968,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
           ..write('channelId: $channelId, ')
           ..write('body: $body, ')
           ..write('parentId: $parentId, ')
+          ..write('quotedMessageId: $quotedMessageId, ')
+          ..write('quoted: $quoted, ')
           ..write('createdAt: $createdAt, ')
           ..write('seq: $seq, ')
           ..write('authorId: $authorId, ')
@@ -2860,6 +3023,7 @@ typedef $$CachedMessagesTableCreateCompanionBuilder =
       Value<String?> parentId,
       Value<int> replyCount,
       Value<DateTime?> lastReplyAt,
+      Value<QuotedMessage?> quoted,
       Value<int> rowid,
     });
 typedef $$CachedMessagesTableUpdateCompanionBuilder =
@@ -2878,6 +3042,7 @@ typedef $$CachedMessagesTableUpdateCompanionBuilder =
       Value<String?> parentId,
       Value<int> replyCount,
       Value<DateTime?> lastReplyAt,
+      Value<QuotedMessage?> quoted,
       Value<int> rowid,
     });
 
@@ -2968,6 +3133,12 @@ class $$CachedMessagesTableFilterComposer
         column: $table.lastReplyAt,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  ColumnWithTypeConverterFilters<QuotedMessage?, QuotedMessage, String>
+  get quoted => $composableBuilder(
+    column: $table.quoted,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 }
 
 class $$CachedMessagesTableOrderingComposer
@@ -3048,6 +3219,11 @@ class $$CachedMessagesTableOrderingComposer
     column: $table.lastReplyAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get quoted => $composableBuilder(
+    column: $table.quoted,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedMessagesTableAnnotationComposer
@@ -3110,6 +3286,9 @@ class $$CachedMessagesTableAnnotationComposer
         column: $table.lastReplyAt,
         builder: (column) => column,
       );
+
+  GeneratedColumnWithTypeConverter<QuotedMessage?, String> get quoted =>
+      $composableBuilder(column: $table.quoted, builder: (column) => column);
 }
 
 class $$CachedMessagesTableTableManager
@@ -3159,6 +3338,7 @@ class $$CachedMessagesTableTableManager
                 Value<String?> parentId = const Value.absent(),
                 Value<int> replyCount = const Value.absent(),
                 Value<DateTime?> lastReplyAt = const Value.absent(),
+                Value<QuotedMessage?> quoted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion(
                 id: id,
@@ -3175,6 +3355,7 @@ class $$CachedMessagesTableTableManager
                 parentId: parentId,
                 replyCount: replyCount,
                 lastReplyAt: lastReplyAt,
+                quoted: quoted,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3193,6 +3374,7 @@ class $$CachedMessagesTableTableManager
                 Value<String?> parentId = const Value.absent(),
                 Value<int> replyCount = const Value.absent(),
                 Value<DateTime?> lastReplyAt = const Value.absent(),
+                Value<QuotedMessage?> quoted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion.insert(
                 id: id,
@@ -3209,6 +3391,7 @@ class $$CachedMessagesTableTableManager
                 parentId: parentId,
                 replyCount: replyCount,
                 lastReplyAt: lastReplyAt,
+                quoted: quoted,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -3912,6 +4095,8 @@ typedef $$OutboxMessagesTableCreateCompanionBuilder =
       required String channelId,
       required String body,
       Value<String?> parentId,
+      Value<String?> quotedMessageId,
+      Value<QuotedMessage?> quoted,
       required DateTime createdAt,
       Value<int> seq,
       required String authorId,
@@ -3929,6 +4114,8 @@ typedef $$OutboxMessagesTableUpdateCompanionBuilder =
       Value<String> channelId,
       Value<String> body,
       Value<String?> parentId,
+      Value<String?> quotedMessageId,
+      Value<QuotedMessage?> quoted,
       Value<DateTime> createdAt,
       Value<int> seq,
       Value<String> authorId,
@@ -3972,6 +4159,17 @@ class $$OutboxMessagesTableFilterComposer
   ColumnFilters<String> get parentId => $composableBuilder(
     column: $table.parentId,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get quotedMessageId => $composableBuilder(
+    column: $table.quotedMessageId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<QuotedMessage?, QuotedMessage, String>
+  get quoted => $composableBuilder(
+    column: $table.quoted,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnWithTypeConverterFilters<DateTime, DateTime, int> get createdAt =>
@@ -4050,6 +4248,16 @@ class $$OutboxMessagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get quotedMessageId => $composableBuilder(
+    column: $table.quotedMessageId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get quoted => $composableBuilder(
+    column: $table.quoted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4114,6 +4322,14 @@ class $$OutboxMessagesTableAnnotationComposer
 
   GeneratedColumn<String> get parentId =>
       $composableBuilder(column: $table.parentId, builder: (column) => column);
+
+  GeneratedColumn<String> get quotedMessageId => $composableBuilder(
+    column: $table.quotedMessageId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<QuotedMessage?, String> get quoted =>
+      $composableBuilder(column: $table.quoted, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<DateTime, int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4184,6 +4400,8 @@ class $$OutboxMessagesTableTableManager
                 Value<String> channelId = const Value.absent(),
                 Value<String> body = const Value.absent(),
                 Value<String?> parentId = const Value.absent(),
+                Value<String?> quotedMessageId = const Value.absent(),
+                Value<QuotedMessage?> quoted = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> seq = const Value.absent(),
                 Value<String> authorId = const Value.absent(),
@@ -4199,6 +4417,8 @@ class $$OutboxMessagesTableTableManager
                 channelId: channelId,
                 body: body,
                 parentId: parentId,
+                quotedMessageId: quotedMessageId,
+                quoted: quoted,
                 createdAt: createdAt,
                 seq: seq,
                 authorId: authorId,
@@ -4216,6 +4436,8 @@ class $$OutboxMessagesTableTableManager
                 required String channelId,
                 required String body,
                 Value<String?> parentId = const Value.absent(),
+                Value<String?> quotedMessageId = const Value.absent(),
+                Value<QuotedMessage?> quoted = const Value.absent(),
                 required DateTime createdAt,
                 Value<int> seq = const Value.absent(),
                 required String authorId,
@@ -4231,6 +4453,8 @@ class $$OutboxMessagesTableTableManager
                 channelId: channelId,
                 body: body,
                 parentId: parentId,
+                quotedMessageId: quotedMessageId,
+                quoted: quoted,
                 createdAt: createdAt,
                 seq: seq,
                 authorId: authorId,

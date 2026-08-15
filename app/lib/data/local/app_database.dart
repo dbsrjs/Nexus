@@ -53,6 +53,24 @@ class _ReactionsJson extends TypeConverter<List<MessageReaction>, String> {
       jsonEncode([for (final r in value) r.toJson()]);
 }
 
+/// 인용 요약을 JSON 한 칸에 담는다. 리액션과 같은 이유다 —
+/// 정렬·필터 대상이 아니고 서버가 준 값으로 통째로 갈아 끼운다.
+class _QuotedJson extends TypeConverter<QuotedMessage?, String> {
+  const _QuotedJson();
+
+  @override
+  QuotedMessage? fromSql(String fromDb) {
+    if (fromDb.isEmpty) return null;
+    return QuotedMessage.fromJson(
+      jsonDecode(fromDb) as Map<String, dynamic>,
+    );
+  }
+
+  @override
+  String toSql(QuotedMessage? value) =>
+      value == null ? '' : jsonEncode(value.toJson());
+}
+
 /// 메시지 캐시. **서버에 있는 것만** 담는다.
 ///
 /// 서버 모델을 그대로 펼쳐 담는다. 중첩(author)을 JSON 으로 넣지 않는 이유는,
@@ -84,6 +102,10 @@ class CachedMessages extends Table {
   IntColumn get lastReplyAt =>
       integer().map(const _UtcMicros()).nullable()();
 
+  /// 답장이면 인용 요약. 빈 문자열이면 답장이 아니다.
+  TextColumn get quoted =>
+      text().map(const _QuotedJson()).withDefault(const Constant(''))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -106,6 +128,14 @@ class OutboxMessages extends Table {
 
   /// 스레드 답글이면 부모 id. 오프라인에서 쓴 답글도 답글로 나가야 한다.
   TextColumn get parentId => text().nullable()();
+
+  /// 답장이면 인용 대상 id. 큐에서도 답장은 답장으로 나가야 한다.
+  TextColumn get quotedMessageId => text().nullable()();
+
+  /// 인용 요약. 큐에 있는 동안 화면에 인용문을 그리려면 필요하다 —
+  /// 서버에 닿기 전에는 원본을 서버에서 받아올 수 없다.
+  TextColumn get quoted =>
+      text().map(const _QuotedJson()).withDefault(const Constant(''))();
 
   /// 사용자가 **쓴** 시각. 서버 도착 시각이 아니다.
   IntColumn get createdAt => integer().map(const _UtcMicros())();
@@ -200,7 +230,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus'));
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -224,10 +254,14 @@ class AppDatabase extends _$AppDatabase {
           // 시각 저장 형식이 두 번 바뀌었다(초 → 텍스트 → UTC 마이크로초).
           // 캐시는 방금 다시 만들었으니 상관없지만 **큐는 남겨 두므로**
           // 옛 형식으로 저장된 행을 직접 옮긴다.
-          // 8 에서 큐에 스레드 답글이 들어올 수 있게 됐다. 캐시와 달리 큐는
-          // 남겨 두므로 컬럼을 직접 붙인다.
+          // 8 에서 큐에 스레드 답글이, 9 에서 답장이 들어올 수 있게 됐다.
+          // 캐시와 달리 큐는 남겨 두므로 컬럼을 직접 붙인다.
           if (from < 8) {
             await m.addColumn(outboxMessages, outboxMessages.parentId);
+          }
+          if (from < 9) {
+            await m.addColumn(outboxMessages, outboxMessages.quotedMessageId);
+            await m.addColumn(outboxMessages, outboxMessages.quoted);
           }
 
           if (from < 6) {
@@ -303,7 +337,7 @@ class AppDatabase extends _$AppDatabase {
     return customSelect(
       '''
       SELECT id, channel_id, body, created_at, edited_at, deleted_at,
-             author_id, author_name, author_avatar_url, reactions,
+             author_id, author_name, author_avatar_url, reactions, quoted,
              parent_id, reply_count, last_reply_at,
              0 AS queued, 0 AS failed, 0 AS seq
         FROM cached_messages
@@ -311,7 +345,7 @@ class AppDatabase extends _$AppDatabase {
          ${channelId != null ? 'AND $cachedWhere' : ''}
       UNION ALL
       SELECT id, channel_id, body, created_at, NULL, NULL,
-             author_id, author_name, author_avatar_url, '[]' AS reactions,
+             author_id, author_name, author_avatar_url, '[]' AS reactions, quoted,
              parent_id, 0 AS reply_count, NULL AS last_reply_at,
              1 AS queued, failed, seq
         FROM outbox_messages
@@ -358,7 +392,7 @@ class AppDatabase extends _$AppDatabase {
   Stream<Message?> watchMessage(String id) => customSelect(
         '''
         SELECT id, channel_id, body, created_at, edited_at, deleted_at,
-               author_id, author_name, author_avatar_url, reactions,
+               author_id, author_name, author_avatar_url, reactions, quoted,
                parent_id, reply_count, last_reply_at,
                0 AS queued, 0 AS failed, 0 AS seq
           FROM cached_messages
@@ -610,6 +644,7 @@ Message _rowToMessage(QueryRow row) {
     parentId: row.readNullable<String>('parent_id'),
     replyCount: row.read<int>('reply_count'),
     lastReplyAt: at('last_reply_at'),
+    quoted: const _QuotedJson().fromSql(row.read<String>('quoted')),
     // 큐에 있으면서 아직 포기하지 않은 것이 '보내는 중'이다.
     pending: queued && !failed,
     failed: failed,
@@ -632,4 +667,5 @@ CachedMessagesCompanion _toRow(String spaceId, Message message) =>
       parentId: Value(message.parentId),
       replyCount: Value(message.replyCount),
       lastReplyAt: Value(message.lastReplyAt),
+      quoted: Value(message.quoted),
     );

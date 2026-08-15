@@ -215,6 +215,7 @@ class _FakeApi implements MessagesApi {
     required String channelId,
     required String body,
     String? parentId,
+    String? quotedMessageId,
   }) async =>
       throw UnimplementedError();
 }

@@ -130,6 +130,26 @@ void _listenToSocket(
   });
 }
 
+/// 지금 답장하려는 대상. null 이면 평범한 전송이다.
+///
+/// 입력창 위에 인용 미리보기를 띄우고, 전송하면 비운다 — 카카오톡과 같은
+/// 흐름이다. 채널마다 따로 두지 않는 이유는 채널을 옮기면 답장 맥락이
+/// 어차피 사라지기 때문이다(옮길 때 비운다).
+class ReplyTarget extends Notifier<Message?> {
+  @override
+  Message? build() {
+    // 채널이 바뀌면 답장 대상을 버린다. 다른 채널의 메시지는 인용할 수 없다.
+    ref.listen(currentChannelIdProvider, (_, _) => state = null);
+    return null;
+  }
+
+  void set(Message? message) => state = message;
+  void clear() => state = null;
+}
+
+final replyTargetProvider =
+    NotifierProvider<ReplyTarget, Message?>(ReplyTarget.new);
+
 /// 전송·재시도 같은 **동작**. 목록은 messagesProvider 가 담당한다.
 final messageActionsProvider = Provider<MessageActions>((ref) => MessageActions(ref));
 
@@ -159,10 +179,17 @@ class MessageActions {
     final auth = _ref.read(authControllerProvider);
     if (auth is! AuthSignedIn) return;
 
+    // 답장 대상이 있으면 함께 실어 보내고 바로 비운다. 전송이 끝난 뒤에
+    // 비우면 그 사이 사용자가 다음 메시지를 쓰기 시작할 수 있다.
+    final replyTo = _ref.read(replyTargetProvider);
+    _ref.read(replyTargetProvider.notifier).clear();
+
     await _repository.enqueue(
       spaceId: spaceId,
       channelId: channelId,
       body: trimmed,
+      quotedMessageId: replyTo?.id,
+      quoted: replyTo == null ? null : quotedFrom(replyTo),
       author: MessageAuthor(
         id: auth.user.id,
         name: auth.user.name,

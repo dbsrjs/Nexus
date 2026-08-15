@@ -167,6 +167,8 @@ class MessageRepository {
     required String body,
     required MessageAuthor author,
     String? parentId,
+    String? quotedMessageId,
+    QuotedMessage? quoted,
   }) async {
     final id = _localId();
     await _db.enqueue(
@@ -176,6 +178,10 @@ class MessageRepository {
         channelId: channelId,
         body: body,
         parentId: Value(parentId),
+        quotedMessageId: Value(quotedMessageId),
+        // 요약도 함께 넣는다 — 큐에 있는 동안에는 서버에서 원본을 받아올 수
+        // 없으므로, 이 값이 없으면 인용문이 빈 채로 보인다.
+        quoted: Value(quoted),
         createdAt: DateTime.now(),
         authorId: author.id,
         authorName: author.name,
@@ -216,6 +222,7 @@ class MessageRepository {
             channelId: item.channelId,
             body: item.body,
             parentId: item.parentId,
+            quotedMessageId: item.quotedMessageId,
           );
           await _db.settleQueued(item.id, item.spaceId, sent);
           sentCount++;

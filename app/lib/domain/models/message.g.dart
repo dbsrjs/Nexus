@@ -34,6 +34,22 @@ Map<String, dynamic> _$MessageReactionToJson(_MessageReaction instance) =>
       'mine': instance.mine,
     };
 
+_QuotedMessage _$QuotedMessageFromJson(Map<String, dynamic> json) =>
+    _QuotedMessage(
+      id: json['id'] as String,
+      body: json['body'] as String,
+      authorName: json['authorName'] as String,
+      deleted: json['deleted'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$QuotedMessageToJson(_QuotedMessage instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'body': instance.body,
+      'authorName': instance.authorName,
+      'deleted': instance.deleted,
+    };
+
 _Message _$MessageFromJson(Map<String, dynamic> json) => _Message(
   id: json['id'] as String,
   channelId: json['channelId'] as String,
@@ -56,6 +72,9 @@ _Message _$MessageFromJson(Map<String, dynamic> json) => _Message(
   lastReplyAt: json['lastReplyAt'] == null
       ? null
       : DateTime.parse(json['lastReplyAt'] as String),
+  quoted: json['quoted'] == null
+      ? null
+      : QuotedMessage.fromJson(json['quoted'] as Map<String, dynamic>),
   pending: json['pending'] as bool? ?? false,
   failed: json['failed'] as bool? ?? false,
 );
@@ -72,6 +91,7 @@ Map<String, dynamic> _$MessageToJson(_Message instance) => <String, dynamic>{
   'parentId': instance.parentId,
   'replyCount': instance.replyCount,
   'lastReplyAt': instance.lastReplyAt?.toIso8601String(),
+  'quoted': instance.quoted,
   'pending': instance.pending,
   'failed': instance.failed,
 };

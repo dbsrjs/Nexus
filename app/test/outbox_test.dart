@@ -262,6 +262,7 @@ class _FakeMessagesApi implements MessagesApi {
     required String channelId,
     required String body,
     String? parentId,
+    String? quotedMessageId,
   }) async {
     if (failWith != null || failOnBody == body) {
       throw ApiException(failWith ?? ApiFailure.server);

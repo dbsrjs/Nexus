@@ -140,11 +140,16 @@ class MessagesApi {
     required String channelId,
     required String body,
     String? parentId,
+    String? quotedMessageId,
   }) async {
     try {
       final res = await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/channels/$channelId/messages',
-        data: {'body': body, 'parentId': ?parentId},
+        data: {
+          'body': body,
+          'parentId': ?parentId,
+          'quotedMessageId': ?quotedMessageId,
+        },
       );
       return Message.fromJson(res.data!);
     } on DioException catch (e) {

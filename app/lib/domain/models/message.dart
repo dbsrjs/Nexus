@@ -34,6 +34,25 @@ abstract class MessageReaction with _$MessageReaction {
       _$MessageReactionFromJson(json);
 }
 
+/// 답장이 가리키는 원본의 **요약**.
+///
+/// 원본을 통째로 담지 않는 이유: 그 원본의 인용이 또 딸려 와 끝없이 깊어진다.
+/// 인용은 한 겹만 펼친다 — 화면도 그 이상은 그리지 않는다.
+@freezed
+abstract class QuotedMessage with _$QuotedMessage {
+  const factory QuotedMessage({
+    required String id,
+    required String body,
+    required String authorName,
+
+    /// 원본이 지워졌는지. 그래도 인용은 남긴다 — 답장의 맥락은 그때도 필요하다.
+    @Default(false) bool deleted,
+  }) = _QuotedMessage;
+
+  factory QuotedMessage.fromJson(Map<String, dynamic> json) =>
+      _$QuotedMessageFromJson(json);
+}
+
 @freezed
 abstract class Message with _$Message {
   const factory Message({
@@ -61,6 +80,10 @@ abstract class Message with _$Message {
     /// 마지막 답글 시각. 스레드 요약을 그릴 때 쓴다.
     DateTime? lastReplyAt,
 
+    /// 답장이면 가리키는 원본. **`parentId` 와 다른 축이다** — 답장은
+    /// 타임라인에 남고, 스레드 답글은 빠진다. 둘을 함께 쓸 수도 있다.
+    QuotedMessage? quoted,
+
     /// 낙관적 갱신용 — 서버 응답을 기다리는 중.
     /// 서버 응답에는 없는 필드라 기본값 false 로 들어온다.
     @Default(false) bool pending,
@@ -77,6 +100,23 @@ abstract class Message with _$Message {
 
   /// 스레드가 달린 최상위 메시지인지. 답글 요약을 그릴지 결정한다.
   bool get hasThread => parentId == null && replyCount > 0;
+}
+
+/// 메시지를 답장 대상으로 삼을 때 쓸 요약을 만든다.
+///
+/// 서버가 주는 것과 같은 모양이어야 한다 — 큐에 있는 동안에는 이 값이 화면에
+/// 그려지고, 전송이 끝나면 서버 값으로 바뀐다. 둘이 다르면 전송 순간 인용문이
+/// 깜빡인다.
+QuotedMessage quotedFrom(Message message) => QuotedMessage(
+      id: message.id,
+      body: message.isDeleted ? '' : message.body,
+      authorName: message.author.name,
+      deleted: message.isDeleted,
+    );
+
+extension MessageQuoting on Message {
+  /// 답장인지. 인용 요약이 있으면 답장이다.
+  bool get isReply => quoted != null;
 
   /// 아직 서버에 닿지 않은 메시지. id 가 로컬에서 만든 임시 값이다.
   bool get isLocal => pending || failed;

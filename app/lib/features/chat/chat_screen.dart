@@ -245,6 +245,7 @@ class MessageTile extends ConsumerWidget {
                             style: theme.textTheme.labelSmall),
                       ],
                     ),
+                  if (message.quoted != null) _QuoteBlock(quoted: message.quoted!),
                   Text(message.body, style: theme.textTheme.bodyMedium),
                   if (message.editedAt != null)
                     Text('(수정됨)', style: theme.textTheme.labelSmall),
@@ -266,6 +267,48 @@ class MessageTile extends ConsumerWidget {
     final local = at.toLocal();
     return '${local.hour.toString().padLeft(2, '0')}:'
         '${local.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+/// 답장이 가리키는 원본. 본문 위에 접어서 보여 준다.
+///
+/// 한 겹만 그린다 — 인용의 인용까지 펼치면 화면이 계단이 된다. 서버도 요약을
+/// 한 겹만 준다.
+class _QuoteBlock extends StatelessWidget {
+  const _QuoteBlock({required this.quoted});
+
+  final QuotedMessage quoted;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.color;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: NexusSpacing.sp1),
+      padding: const EdgeInsets.only(left: NexusSpacing.sp3),
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(color: theme.dividerColor, width: 3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(quoted.authorName, style: theme.textTheme.labelSmall),
+          Text(
+            // 원본이 지워져도 인용은 남긴다 — 답장의 맥락은 그때도 필요하다.
+            quoted.deleted ? '삭제된 메시지입니다.' : quoted.body,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: muted,
+              fontStyle: quoted.deleted ? FontStyle.italic : null,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -355,12 +398,20 @@ Future<void> _pickReaction(
               ],
             ),
             const Divider(height: NexusSpacing.sp5),
-            // 스레드를 **시작하는** 입구. 답글이 이미 있으면 메시지 아래
-            // "답글 N개"로도 들어갈 수 있다.
+            // 답장은 흐름 안에 남고, 스레드는 곁가지로 접힌다. 둘을 나란히
+            // 두어 차이가 보이게 한다.
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.reply_outlined),
+              title: const Text('답장'),
+              subtitle: const Text('이 메시지를 인용해 대화에서 답한다'),
+              onTap: () => Navigator.of(sheetContext).pop(_replyAction),
+            ),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.forum_outlined),
               title: const Text('스레드로 답글'),
+              subtitle: const Text('대화에서 빼내어 따로 이어 간다'),
               onTap: () => Navigator.of(sheetContext).pop(_threadAction),
             ),
           ],
@@ -374,11 +425,17 @@ Future<void> _pickReaction(
     if (context.mounted) _openThread(context, ref, message);
     return;
   }
+  if (picked == _replyAction) {
+    ref.read(replyTargetProvider.notifier).set(message);
+    return;
+  }
   await ref.read(messageActionsProvider).toggleReaction(message, picked);
 }
 
 /// 이모지가 아닌 선택지를 같은 시트에서 돌려주기 위한 표식.
-const _threadAction = ' thread';
+/// 앞의 공백 덕분에 실제 이모지와 겹칠 일이 없다 — 이모지는 공백을 못 쓴다.
+const _threadAction = ' thread';
+const _replyAction = ' reply';
 
 /// 메시지에 달린 이모지들. 누르면 켜고 꺼진다.
 class _ReactionBar extends ConsumerWidget {
@@ -510,7 +567,13 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
       ),
       child: SafeArea(
         top: false,
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 답장 대상이 있으면 입력창 위에 띄운다. 무엇에 답하는지 보이지
+            // 않으면 엉뚱한 메시지에 답하기 쉽다.
+            if (widget.onSend == null) const _ReplyPreview(),
+            Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
@@ -554,6 +617,59 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
             ),
           ],
         ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 답장 대상 미리보기. 입력창 바로 위에 붙는다.
+class _ReplyPreview extends ConsumerWidget {
+  const _ReplyPreview();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final target = ref.watch(replyTargetProvider);
+    if (target == null) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: NexusSpacing.sp3),
+      padding: const EdgeInsets.only(left: NexusSpacing.sp3),
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(color: theme.colorScheme.primary, width: 3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${target.author.name} 에게 답장',
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.colorScheme.primary),
+                ),
+                Text(
+                  target.body,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            // 취소가 없으면 한번 고른 답장에서 빠져나올 수 없다.
+            onPressed: () => ref.read(replyTargetProvider.notifier).clear(),
+            icon: const Icon(Icons.close, size: 18),
+            tooltip: '답장 취소',
+          ),
+        ],
       ),
     );
   }
