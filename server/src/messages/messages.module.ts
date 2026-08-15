@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MessagesService } from './messages.service';
+import { ReactionsService } from './reactions.service';
 import { MessagesController } from './messages.controller';
 import { ChannelsModule } from '../channels/channels.module';
 import { SpacesModule } from '../spaces/spaces.module';
@@ -16,7 +17,7 @@ import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
 @Module({
   imports: [forwardRef(() => ChannelsModule), SpacesModule, RealtimeEmitterModule],
   controllers: [MessagesController],
-  providers: [MessagesService],
-  exports: [MessagesService],
+  providers: [MessagesService, ReactionsService],
+  exports: [MessagesService, ReactionsService],
 })
 export class MessagesModule {}

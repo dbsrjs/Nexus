@@ -11,6 +11,7 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
 import { hasAtLeast } from '../spaces/space-role';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
+import { ReactionsService } from './reactions.service';
 
 /** 메시지에 함께 실어 보내는 작성자 정보. 이메일은 내보내지 않는다. */
 const AUTHOR_SELECT = {
@@ -23,6 +24,7 @@ export class MessagesService {
     private readonly prisma: PrismaService,
     private readonly channels: ChannelsService,
     private readonly realtime: RealtimeEmitter,
+    private readonly reactions: ReactionsService,
   ) {}
 
   /**
@@ -53,8 +55,17 @@ export class MessagesService {
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
 
+    // 리액션은 한 번에 접어 붙인다. 메시지마다 따로 조회하면 N+1 이 된다.
+    const reactions = await this.reactions.summarizeMany(
+      page.map((m) => m.id),
+      member,
+    );
+
     return {
-      items: page.map(redactIfDeleted),
+      items: page.map((message) => ({
+        ...redactIfDeleted(message),
+        reactions: reactions.get(message.id) ?? [],
+      })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
     };
   }

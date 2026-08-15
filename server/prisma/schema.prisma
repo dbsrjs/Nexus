@@ -220,6 +220,8 @@ model Space {
   categories  Category[]
   channels    Channel[]
   messages    Message[]
+  reactions   Reaction[]
+  mentions    Mention[]
   attachments Attachment[]
   sprints     Sprint[]
   labels      IssueLabel[]
@@ -390,26 +392,35 @@ model MessageEdit {
 }
 
 model Reaction {
+  /// 부모 메시지를 타고 유추할 수 있지만 비정규화한다 — 모든 쿼리 WHERE 에
+  /// 강제로 넣기 위함이다 (설계 §2 테넌트 격리 규칙 1).
+  spaceId   String   @map("space_id")
   messageId String   @map("message_id")
   userId    String   @map("user_id")
   emoji     String
   createdAt DateTime @default(now()) @map("created_at")
 
+  space   Space   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  /// 같은 사람이 같은 이모지를 두 번 달 수 없다.
   @@id([messageId, userId, emoji])
+  @@index([spaceId])
   @@map("reactions")
 }
 
 model Mention {
   id        String      @id @default(uuid())
+  /// Reaction 과 같은 이유로 비정규화한다 (설계 §2 규칙 1).
+  spaceId   String      @map("space_id")
   messageId String      @map("message_id")
   /// @channel · @everyone 은 대상 사용자가 없다.
   userId    String?     @map("user_id")
   type      MentionType @default(user)
   createdAt DateTime    @default(now()) @map("created_at")
 
+  space   Space   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 

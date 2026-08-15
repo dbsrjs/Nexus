@@ -17,6 +17,7 @@
     "db:migrate": "npm --prefix server run prisma:migrate",
     "db:studio": "npm --prefix server run prisma:studio",
     "db:seed": "npm --prefix server run seed",
-    "check:realtime": "node server/scripts/check-realtime.mjs"
+    "check:realtime": "node server/scripts/check-realtime.mjs",
+    "check:reactions": "node server/scripts/check-reactions.mjs"
   }
 }

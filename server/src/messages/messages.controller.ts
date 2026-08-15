@@ -6,11 +6,14 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { SpaceMember } from '@prisma/client';
 import { MessagesService } from './messages.service';
+import { ReactionsService } from './reactions.service';
 import { UpdateMessageDto } from './dto/update-message.dto';
+import { CreateReactionDto } from './dto/create-reaction.dto';
 import { SpaceGuard } from '../spaces/guards/space.guard';
 import { CurrentSpaceMember } from '../spaces/decorators/current-space-member.decorator';
 
@@ -21,7 +24,10 @@ import { CurrentSpaceMember } from '../spaces/decorators/current-space-member.de
 @Controller('spaces/:spaceId/messages')
 @UseGuards(SpaceGuard)
 export class MessagesController {
-  constructor(private readonly messages: MessagesService) {}
+  constructor(
+    private readonly messages: MessagesService,
+    private readonly reactions: ReactionsService,
+  ) {}
 
   @Patch(':messageId')
   update(
@@ -47,5 +53,29 @@ export class MessagesController {
     @CurrentSpaceMember() member: SpaceMember,
   ) {
     return this.messages.listEdits(messageId, member);
+  }
+
+  /** 리액션 추가. 이미 누른 것을 다시 눌러도 같은 결과다(멱등). */
+  @Post(':messageId/reactions')
+  addReaction(
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @Body() dto: CreateReactionDto,
+    @CurrentSpaceMember() member: SpaceMember,
+  ) {
+    return this.reactions.add(messageId, member, dto.emoji);
+  }
+
+  /**
+   * 리액션 제거. 이모지는 경로에 실리므로 클라이언트가 인코딩해 보낸다.
+   *
+   * DELETE 에 본문을 싣지 않는 이유: 프록시·클라이언트에 따라 조용히 버려진다.
+   */
+  @Delete(':messageId/reactions/:emoji')
+  removeReaction(
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @Param('emoji') emoji: string,
+    @CurrentSpaceMember() member: SpaceMember,
+  ) {
+    return this.reactions.remove(messageId, member, emoji);
   }
 }
