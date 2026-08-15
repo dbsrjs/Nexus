@@ -108,7 +108,9 @@ final realtimeChannelSyncProvider = Provider<void>((ref) {
 
       case MessageEdited():
       case MessageDeleted():
+      case ReactionChanged():
       case SocketDisconnected():
+        // 목록·뱃지에 영향이 없다. 리액션은 열려 있는 채널의 컨트롤러가 받는다.
         break;
     }
   });

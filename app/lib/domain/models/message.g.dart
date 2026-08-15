@@ -20,6 +20,20 @@ Map<String, dynamic> _$MessageAuthorToJson(_MessageAuthor instance) =>
       'avatarUrl': instance.avatarUrl,
     };
 
+_MessageReaction _$MessageReactionFromJson(Map<String, dynamic> json) =>
+    _MessageReaction(
+      emoji: json['emoji'] as String,
+      count: (json['count'] as num).toInt(),
+      mine: json['mine'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$MessageReactionToJson(_MessageReaction instance) =>
+    <String, dynamic>{
+      'emoji': instance.emoji,
+      'count': instance.count,
+      'mine': instance.mine,
+    };
+
 _Message _$MessageFromJson(Map<String, dynamic> json) => _Message(
   id: json['id'] as String,
   channelId: json['channelId'] as String,
@@ -32,6 +46,11 @@ _Message _$MessageFromJson(Map<String, dynamic> json) => _Message(
   deletedAt: json['deletedAt'] == null
       ? null
       : DateTime.parse(json['deletedAt'] as String),
+  reactions:
+      (json['reactions'] as List<dynamic>?)
+          ?.map((e) => MessageReaction.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const <MessageReaction>[],
   pending: json['pending'] as bool? ?? false,
   failed: json['failed'] as bool? ?? false,
 );
@@ -44,6 +63,7 @@ Map<String, dynamic> _$MessageToJson(_Message instance) => <String, dynamic>{
   'author': instance.author,
   'editedAt': instance.editedAt?.toIso8601String(),
   'deletedAt': instance.deletedAt?.toIso8601String(),
+  'reactions': instance.reactions,
   'pending': instance.pending,
   'failed': instance.failed,
 };

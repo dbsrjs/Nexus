@@ -6,6 +6,7 @@ import '../../domain/models/message.dart';
 import '../api/api_failure.dart';
 import '../api/messages_api.dart';
 import '../local/app_database.dart';
+import '../socket/socket_event.dart';
 
 /// 자동 재시도를 포기하는 시도 횟수.
 ///
@@ -82,6 +83,43 @@ class MessageRepository {
 
   Future<void> applyDeleted(String messageId) =>
       _db.markMessageDeleted(messageId, DateTime.now());
+
+  // ── 리액션 ───────────────────────────────────
+
+  /// 이모지를 켜고 끈다. **먼저 캐시를 고치고 서버에 알린다.**
+  ///
+  /// 리액션은 누르자마자 반응해야 하는 조작이라 왕복을 기다리지 않는다.
+  /// 실패하면 서버가 준 값으로 되돌린다 — 메시지 전송과 달리 큐에 쌓지 않는
+  /// 이유는, 리액션은 **지금 이 순간의 반응**이라 나중에 몰아 보낼 값이
+  /// 아니기 때문이다. 실패하면 조용히 원래대로 돌아가는 편이 낫다.
+  Future<void> toggleReaction({
+    required String spaceId,
+    required String messageId,
+    required String emoji,
+    required bool add,
+  }) async {
+    final before = await _db.reactionsOf(messageId);
+    await _db.setReactions(messageId, _applyLocally(before, emoji, add: add));
+
+    try {
+      final settled = add
+          ? await _api.addReaction(
+              spaceId: spaceId, messageId: messageId, emoji: emoji)
+          : await _api.removeReaction(
+              spaceId: spaceId, messageId: messageId, emoji: emoji);
+      await _db.setReactions(messageId, settled);
+    } on ApiException {
+      await _db.setReactions(messageId, before);
+    }
+  }
+
+  /// 소켓이 알려 준 변화. `(emoji, userId)` 쌍을 **내 기준으로** 접는다.
+  Future<void> applyReactionChanged(
+    String messageId,
+    List<ReactionEntry> entries,
+    String myUserId,
+  ) =>
+      _db.setReactions(messageId, foldReactions(entries, myUserId));
 
   // ── 전송 큐 ──────────────────────────────────
 
@@ -195,4 +233,74 @@ class MessageRepository {
 
   static String _localId() =>
       'local-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 32)}';
+}
+
+/// 낙관적 토글. 서버 응답이 오기 전 화면에 보일 값을 만든다.
+///
+/// **순서를 유지한다** — 개수 순으로 재정렬하면 남이 리액션을 달 때마다 버튼이
+/// 움직여 누르기 어려워진다. 서버의 요약 규칙과 같은 원칙이다.
+List<MessageReaction> _applyLocally(
+  List<MessageReaction> current,
+  String emoji, {
+  required bool add,
+}) {
+  final result = <MessageReaction>[];
+  var found = false;
+
+  for (final reaction in current) {
+    if (reaction.emoji != emoji) {
+      result.add(reaction);
+      continue;
+    }
+    found = true;
+
+    if (add) {
+      // 이미 내가 누른 상태면 그대로 둔다(멱등).
+      result.add(reaction.mine
+          ? reaction
+          : reaction.copyWith(count: reaction.count + 1, mine: true));
+    } else if (reaction.mine && reaction.count > 1) {
+      result.add(reaction.copyWith(count: reaction.count - 1, mine: false));
+    } else if (!reaction.mine) {
+      result.add(reaction);
+    }
+    // 내가 마지막 한 명이었으면 항목 자체가 사라진다.
+  }
+
+  if (add && !found) {
+    result.add(MessageReaction(emoji: emoji, count: 1, mine: true));
+  }
+  return result;
+}
+
+/// `(emoji, userId)` 쌍 → 이모지별 요약. 서버의 fold 와 같은 규칙이다.
+///
+/// 앱에도 같은 계산이 필요한 이유: 소켓 브로드캐스트에는 `mine` 이 실려 오지
+/// 않는다(받는 사람마다 답이 다르다). 내 userId 로 여기서 접는다.
+List<MessageReaction> foldReactions(
+  List<ReactionEntry> entries,
+  String myUserId,
+) {
+  final order = <String>[];
+  final counts = <String, int>{};
+  final mine = <String, bool>{};
+
+  for (final entry in entries) {
+    if (!counts.containsKey(entry.emoji)) {
+      order.add(entry.emoji);
+      counts[entry.emoji] = 0;
+      mine[entry.emoji] = false;
+    }
+    counts[entry.emoji] = counts[entry.emoji]! + 1;
+    if (entry.userId == myUserId) mine[entry.emoji] = true;
+  }
+
+  return [
+    for (final emoji in order)
+      MessageReaction(
+        emoji: emoji,
+        count: counts[emoji]!,
+        mine: mine[emoji]!,
+      ),
+  ];
 }

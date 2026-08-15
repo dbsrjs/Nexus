@@ -283,4 +283,21 @@ class _FakeMessagesApi implements MessagesApi {
     int limit = 30,
   }) async =>
       const MessagePage(items: []);
+
+  // 리액션은 이 파일의 관심사가 아니다. 큐 규칙만 태운다.
+  @override
+  Future<List<MessageReaction>> addReaction({
+    required String spaceId,
+    required String messageId,
+    required String emoji,
+  }) async =>
+      const [];
+
+  @override
+  Future<List<MessageReaction>> removeReaction({
+    required String spaceId,
+    required String messageId,
+    required String emoji,
+  }) async =>
+      const [];
 }

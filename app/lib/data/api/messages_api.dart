@@ -48,6 +48,51 @@ class MessagesApi {
     }
   }
 
+  /// POST /api/spaces/:spaceId/messages/:messageId/reactions
+  ///
+  /// **멱등이다.** 이미 누른 것을 다시 눌러도 서버가 같은 요약을 돌려준다.
+  Future<List<MessageReaction>> addReaction({
+    required String spaceId,
+    required String messageId,
+    required String emoji,
+  }) async {
+    try {
+      final res = await _client.dio.post<List<dynamic>>(
+        '/spaces/$spaceId/messages/$messageId/reactions',
+        data: {'emoji': emoji},
+      );
+      return _parseReactions(res.data);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// DELETE /api/spaces/:spaceId/messages/:messageId/reactions/:emoji
+  ///
+  /// 이모지를 경로에 싣는다 — DELETE 본문은 프록시·클라이언트에 따라 조용히
+  /// 버려진다. 서버가 인코딩된 값을 받으므로 여기서 감싸 준다.
+  Future<List<MessageReaction>> removeReaction({
+    required String spaceId,
+    required String messageId,
+    required String emoji,
+  }) async {
+    try {
+      final res = await _client.dio.delete<List<dynamic>>(
+        '/spaces/$spaceId/messages/$messageId/reactions/'
+        '${Uri.encodeComponent(emoji)}',
+      );
+      return _parseReactions(res.data);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  static List<MessageReaction> _parseReactions(List<dynamic>? data) =>
+      (data ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(MessageReaction.fromJson)
+          .toList(growable: false);
+
   /// POST /api/spaces/:spaceId/channels/:channelId/messages
   Future<Message> send({
     required String spaceId,

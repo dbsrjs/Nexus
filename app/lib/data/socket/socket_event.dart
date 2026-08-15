@@ -60,6 +60,33 @@ class MessageDeleted extends SocketEvent {
   final String messageId;
 }
 
+/// 리액션이 바뀌었다(추가·제거 둘 다).
+///
+/// **서버는 접힌 요약이 아니라 `(emoji, userId)` 쌍을 보낸다.** "내가 눌렀는지"
+/// 는 받는 사람마다 답이 다른 값이라 브로드캐스트에 실을 수 없기 때문이다.
+/// 접는 것은 앱의 일이다.
+class ReactionChanged extends SocketEvent {
+  const ReactionChanged({
+    required this.spaceId,
+    required this.channelId,
+    required this.messageId,
+    required this.entries,
+  });
+
+  final String spaceId;
+  final String channelId;
+  final String messageId;
+  final List<ReactionEntry> entries;
+}
+
+/// 누가 어떤 이모지를 눌렀는지. 접기 전의 날 것이다.
+class ReactionEntry {
+  const ReactionEntry({required this.emoji, required this.userId});
+
+  final String emoji;
+  final String userId;
+}
+
 /// 다른 기기에서 읽음 위치가 바뀌었다. 룸은 `user:{id}` 라 내 모든 기기에 온다.
 class ReadSynced extends SocketEvent {
   const ReadSynced({

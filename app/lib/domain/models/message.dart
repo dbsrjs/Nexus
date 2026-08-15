@@ -17,6 +17,23 @@ abstract class MessageAuthor with _$MessageAuthor {
       _$MessageAuthorFromJson(json);
 }
 
+/// 이모지 하나에 대한 요약. 서버가 접어서 준다 — 개수와 "내가 눌렀는지" 를
+/// 클라이언트마다 다시 세지 않기 위해서다.
+@freezed
+abstract class MessageReaction with _$MessageReaction {
+  const factory MessageReaction({
+    required String emoji,
+    required int count,
+
+    /// **보는 사람 기준**이다. 그래서 소켓 브로드캐스트에는 실려 오지 않고,
+    /// 앱이 자기 userId 로 계산한다.
+    @Default(false) bool mine,
+  }) = _MessageReaction;
+
+  factory MessageReaction.fromJson(Map<String, dynamic> json) =>
+      _$MessageReactionFromJson(json);
+}
+
 @freezed
 abstract class Message with _$Message {
   const factory Message({
@@ -31,6 +48,9 @@ abstract class Message with _$Message {
     /// (docs/백엔드-설계.md §3 보관 정책). 목록에서 빼지 않는 이유는,
     /// 빼 버리면 클라이언트가 이미 그린 메시지를 지울 근거가 없어서다.
     DateTime? deletedAt,
+
+    /// 이모지별 요약. 서버가 목록에 함께 실어 준다.
+    @Default(<MessageReaction>[]) List<MessageReaction> reactions,
 
     /// 낙관적 갱신용 — 서버 응답을 기다리는 중.
     /// 서버 응답에는 없는 필드라 기본값 false 로 들어온다.

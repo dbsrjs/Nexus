@@ -98,6 +98,17 @@ void _listenToSocket(
       case MessageDeleted() when event.channelId == channelId:
         repository.applyDeleted(event.messageId);
 
+      case ReactionChanged() when event.channelId == channelId:
+        // 서버는 mine 을 싣지 않는다 — 내 userId 로 여기서 접는다.
+        final auth = ref.read(authControllerProvider);
+        if (auth is AuthSignedIn) {
+          repository.applyReactionChanged(
+            event.messageId,
+            event.entries,
+            auth.user.id,
+          );
+        }
+
       case SocketConnected():
         // 끊겨 있는 동안 놓친 메시지를 따라잡는다.
         // (큐를 내보내는 것은 realtimeChannelSyncProvider 가 한다 — 채널을
@@ -162,6 +173,25 @@ class MessageActions {
   Future<void> retry(Message failed) => _repository.retry(failed.id);
 
   Future<void> discard(Message failed) => _repository.discard(failed.id);
+
+  /// 리액션을 켜고 끈다. 아직 보내지 못한 메시지에는 달 수 없다 —
+  /// 서버에 없는 id 로 요청하면 404 다.
+  Future<void> toggleReaction(Message message, String emoji) async {
+    if (message.isLocal) return;
+
+    final spaceId = _ref.read(currentSpaceIdProvider);
+    if (spaceId == null) return;
+
+    final already =
+        message.reactions.any((r) => r.emoji == emoji && r.mine);
+
+    await _repository.toggleReaction(
+      spaceId: spaceId,
+      messageId: message.id,
+      emoji: emoji,
+      add: !already,
+    );
+  }
 
   Future<void> loadOlder() async {
     if (_loadingOlder) return;

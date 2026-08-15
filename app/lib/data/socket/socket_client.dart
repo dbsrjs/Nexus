@@ -52,6 +52,7 @@ class SocketClient {
       ..on('message:new', (data) => _emitMessage(data, _MessageKind.created))
       ..on('message:edited', (data) => _emitMessage(data, _MessageKind.edited))
       ..on('message:deleted', _onMessageDeleted)
+      ..on('reaction:changed', _onReactionChanged)
       ..on('read:synced', _onReadSynced)
       ..on('rooms:invalidate', _onRoomsInvalidate);
 
@@ -141,6 +142,32 @@ class SocketClient {
       spaceId: map['spaceId'] as String? ?? '',
       channelId: map['channelId'] as String? ?? '',
       messageId: messageId,
+    ));
+  }
+
+  void _onReactionChanged(dynamic data) {
+    final map = _asMap(data);
+    final messageId = map?['messageId'];
+    if (map == null || messageId is! String) return;
+
+    final raw = map['reactions'];
+    if (raw is! List) return;
+
+    final entries = <ReactionEntry>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final emoji = item['emoji'];
+      final userId = item['userId'];
+      if (emoji is String && userId is String) {
+        entries.add(ReactionEntry(emoji: emoji, userId: userId));
+      }
+    }
+
+    _emit(ReactionChanged(
+      spaceId: map['spaceId'] as String? ?? '',
+      channelId: map['channelId'] as String? ?? '',
+      messageId: messageId,
+      entries: entries,
     ));
   }
 

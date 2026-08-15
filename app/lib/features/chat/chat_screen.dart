@@ -198,7 +198,14 @@ class _MessageTile extends ConsumerWidget {
       );
     }
 
-    return Padding(
+    return GestureDetector(
+      // 리액션을 다는 입구. 탭은 이미 다른 뜻으로 쓰일 여지가 있어(스레드 등)
+      // 길게 누르기로 둔다.
+      behavior: HitTestBehavior.opaque,
+      onLongPress: message.isLocal
+          ? null
+          : () => _pickReaction(context, ref, message),
+      child: Padding(
       padding: EdgeInsets.fromLTRB(
         NexusSpacing.sp5,
         grouped ? 1 : NexusSpacing.sp3,
@@ -239,12 +246,15 @@ class _MessageTile extends ConsumerWidget {
                   Text(message.body, style: theme.textTheme.bodyMedium),
                   if (message.editedAt != null)
                     Text('(수정됨)', style: theme.textTheme.labelSmall),
+                  if (message.reactions.isNotEmpty)
+                    _ReactionBar(message: message),
                   if (message.failed) _FailedActions(message: message),
                 ],
               ),
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -253,6 +263,107 @@ class _MessageTile extends ConsumerWidget {
     final local = at.toLocal();
     return '${local.hour.toString().padLeft(2, '0')}:'
         '${local.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+/// 자주 쓰는 이모지. 전체 이모지 검색은 나중 일이고, 지금은 **한 번에 손이
+/// 닿는 것**이 목적이라 짧게 둔다.
+const _quickEmojis = ['👍', '🎉', '😄', '👀', '🙏', '🔥', '❤️', '😢'];
+
+/// 길게 눌렀을 때 뜨는 이모지 고르기. 이미 누른 것은 표시해 둔다.
+Future<void> _pickReaction(
+  BuildContext context,
+  WidgetRef ref,
+  Message message,
+) async {
+  final mine = {
+    for (final r in message.reactions)
+      if (r.mine) r.emoji,
+  };
+
+  final picked = await showModalBottomSheet<String>(
+    context: context,
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(NexusSpacing.sp4),
+        child: Wrap(
+          spacing: NexusSpacing.sp2,
+          runSpacing: NexusSpacing.sp2,
+          children: [
+            for (final emoji in _quickEmojis)
+              InkWell(
+                onTap: () => Navigator.of(sheetContext).pop(emoji),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(NexusSpacing.sp3),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    // 이미 누른 것은 테두리로 표시한다 — 다시 누르면 취소다.
+                    border: mine.contains(emoji)
+                        ? Border.all(
+                            color: Theme.of(sheetContext).colorScheme.primary)
+                        : null,
+                  ),
+                  child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  if (picked != null) {
+    await ref.read(messageActionsProvider).toggleReaction(message, picked);
+  }
+}
+
+/// 메시지에 달린 이모지들. 누르면 켜고 꺼진다.
+class _ReactionBar extends ConsumerWidget {
+  const _ReactionBar({required this.message});
+
+  final Message message;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: NexusSpacing.sp1),
+      child: Wrap(
+        spacing: NexusSpacing.sp2,
+        runSpacing: NexusSpacing.sp1,
+        children: [
+          for (final reaction in message.reactions)
+            InkWell(
+              onTap: () => ref
+                  .read(messageActionsProvider)
+                  .toggleReaction(message, reaction.emoji),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: NexusSpacing.sp2,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  // 내가 누른 것은 강조한다. 개수만 보여서는 내가 눌렀는지 알 수 없다.
+                  color: reaction.mine
+                      ? theme.colorScheme.primary.withValues(alpha: 0.18)
+                      : theme.colorScheme.surfaceContainerHighest,
+                  border: reaction.mine
+                      ? Border.all(color: theme.colorScheme.primary)
+                      : null,
+                ),
+                child: Text(
+                  '${reaction.emoji} ${reaction.count}',
+                  style: theme.textTheme.labelSmall,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 

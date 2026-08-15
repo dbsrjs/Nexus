@@ -110,6 +110,19 @@ class $CachedMessagesTable extends CachedMessages
     requiredDuringInsert: false,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<List<MessageReaction>, String>
+  reactions =
+      GeneratedColumn<String>(
+        'reactions',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('[]'),
+      ).withConverter<List<MessageReaction>>(
+        $CachedMessagesTable.$converterreactions,
+      );
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     spaceId,
@@ -121,6 +134,7 @@ class $CachedMessagesTable extends CachedMessages
     authorId,
     authorName,
     authorAvatarUrl,
+    reactions,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -243,6 +257,12 @@ class $CachedMessagesTable extends CachedMessages
         DriftSqlType.string,
         data['${effectivePrefix}author_avatar_url'],
       ),
+      reactions: $CachedMessagesTable.$converterreactions.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}reactions'],
+        )!,
+      ),
     );
   }
 
@@ -258,6 +278,8 @@ class $CachedMessagesTable extends CachedMessages
   static TypeConverter<DateTime, int> $converterdeletedAt = const _UtcMicros();
   static TypeConverter<DateTime?, int?> $converterdeletedAtn =
       NullAwareTypeConverter.wrap($converterdeletedAt);
+  static TypeConverter<List<MessageReaction>, String> $converterreactions =
+      const _ReactionsJson();
 }
 
 class CachedMessage extends DataClass implements Insertable<CachedMessage> {
@@ -271,6 +293,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
   final String authorId;
   final String authorName;
   final String? authorAvatarUrl;
+  final List<MessageReaction> reactions;
   const CachedMessage({
     required this.id,
     required this.spaceId,
@@ -282,6 +305,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     required this.authorId,
     required this.authorName,
     this.authorAvatarUrl,
+    required this.reactions,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -310,6 +334,11 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     if (!nullToAbsent || authorAvatarUrl != null) {
       map['author_avatar_url'] = Variable<String>(authorAvatarUrl);
     }
+    {
+      map['reactions'] = Variable<String>(
+        $CachedMessagesTable.$converterreactions.toSql(reactions),
+      );
+    }
     return map;
   }
 
@@ -331,6 +360,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       authorAvatarUrl: authorAvatarUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(authorAvatarUrl),
+      reactions: Value(reactions),
     );
   }
 
@@ -350,6 +380,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       authorId: serializer.fromJson<String>(json['authorId']),
       authorName: serializer.fromJson<String>(json['authorName']),
       authorAvatarUrl: serializer.fromJson<String?>(json['authorAvatarUrl']),
+      reactions: serializer.fromJson<List<MessageReaction>>(json['reactions']),
     );
   }
   @override
@@ -366,6 +397,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       'authorId': serializer.toJson<String>(authorId),
       'authorName': serializer.toJson<String>(authorName),
       'authorAvatarUrl': serializer.toJson<String?>(authorAvatarUrl),
+      'reactions': serializer.toJson<List<MessageReaction>>(reactions),
     };
   }
 
@@ -380,6 +412,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     String? authorId,
     String? authorName,
     Value<String?> authorAvatarUrl = const Value.absent(),
+    List<MessageReaction>? reactions,
   }) => CachedMessage(
     id: id ?? this.id,
     spaceId: spaceId ?? this.spaceId,
@@ -393,6 +426,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     authorAvatarUrl: authorAvatarUrl.present
         ? authorAvatarUrl.value
         : this.authorAvatarUrl,
+    reactions: reactions ?? this.reactions,
   );
   CachedMessage copyWithCompanion(CachedMessagesCompanion data) {
     return CachedMessage(
@@ -410,6 +444,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       authorAvatarUrl: data.authorAvatarUrl.present
           ? data.authorAvatarUrl.value
           : this.authorAvatarUrl,
+      reactions: data.reactions.present ? data.reactions.value : this.reactions,
     );
   }
 
@@ -425,7 +460,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           ..write('deletedAt: $deletedAt, ')
           ..write('authorId: $authorId, ')
           ..write('authorName: $authorName, ')
-          ..write('authorAvatarUrl: $authorAvatarUrl')
+          ..write('authorAvatarUrl: $authorAvatarUrl, ')
+          ..write('reactions: $reactions')
           ..write(')'))
         .toString();
   }
@@ -442,6 +478,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     authorId,
     authorName,
     authorAvatarUrl,
+    reactions,
   );
   @override
   bool operator ==(Object other) =>
@@ -456,7 +493,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           other.deletedAt == this.deletedAt &&
           other.authorId == this.authorId &&
           other.authorName == this.authorName &&
-          other.authorAvatarUrl == this.authorAvatarUrl);
+          other.authorAvatarUrl == this.authorAvatarUrl &&
+          other.reactions == this.reactions);
 }
 
 class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
@@ -470,6 +508,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
   final Value<String> authorId;
   final Value<String> authorName;
   final Value<String?> authorAvatarUrl;
+  final Value<List<MessageReaction>> reactions;
   final Value<int> rowid;
   const CachedMessagesCompanion({
     this.id = const Value.absent(),
@@ -482,6 +521,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.authorId = const Value.absent(),
     this.authorName = const Value.absent(),
     this.authorAvatarUrl = const Value.absent(),
+    this.reactions = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedMessagesCompanion.insert({
@@ -495,6 +535,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     required String authorId,
     required String authorName,
     this.authorAvatarUrl = const Value.absent(),
+    this.reactions = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        spaceId = Value(spaceId),
@@ -514,6 +555,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Expression<String>? authorId,
     Expression<String>? authorName,
     Expression<String>? authorAvatarUrl,
+    Expression<String>? reactions,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -527,6 +569,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       if (authorId != null) 'author_id': authorId,
       if (authorName != null) 'author_name': authorName,
       if (authorAvatarUrl != null) 'author_avatar_url': authorAvatarUrl,
+      if (reactions != null) 'reactions': reactions,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -542,6 +585,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Value<String>? authorId,
     Value<String>? authorName,
     Value<String?>? authorAvatarUrl,
+    Value<List<MessageReaction>>? reactions,
     Value<int>? rowid,
   }) {
     return CachedMessagesCompanion(
@@ -555,6 +599,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       authorId: authorId ?? this.authorId,
       authorName: authorName ?? this.authorName,
       authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
+      reactions: reactions ?? this.reactions,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -598,6 +643,11 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     if (authorAvatarUrl.present) {
       map['author_avatar_url'] = Variable<String>(authorAvatarUrl.value);
     }
+    if (reactions.present) {
+      map['reactions'] = Variable<String>(
+        $CachedMessagesTable.$converterreactions.toSql(reactions.value),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -617,6 +667,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
           ..write('authorId: $authorId, ')
           ..write('authorName: $authorName, ')
           ..write('authorAvatarUrl: $authorAvatarUrl, ')
+          ..write('reactions: $reactions, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2601,6 +2652,7 @@ typedef $$CachedMessagesTableCreateCompanionBuilder =
       required String authorId,
       required String authorName,
       Value<String?> authorAvatarUrl,
+      Value<List<MessageReaction>> reactions,
       Value<int> rowid,
     });
 typedef $$CachedMessagesTableUpdateCompanionBuilder =
@@ -2615,6 +2667,7 @@ typedef $$CachedMessagesTableUpdateCompanionBuilder =
       Value<String> authorId,
       Value<String> authorName,
       Value<String?> authorAvatarUrl,
+      Value<List<MessageReaction>> reactions,
       Value<int> rowid,
     });
 
@@ -2679,6 +2732,16 @@ class $$CachedMessagesTableFilterComposer
     column: $table.authorAvatarUrl,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<
+    List<MessageReaction>,
+    List<MessageReaction>,
+    String
+  >
+  get reactions => $composableBuilder(
+    column: $table.reactions,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 }
 
 class $$CachedMessagesTableOrderingComposer
@@ -2739,6 +2802,11 @@ class $$CachedMessagesTableOrderingComposer
     column: $table.authorAvatarUrl,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get reactions => $composableBuilder(
+    column: $table.reactions,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedMessagesTableAnnotationComposer
@@ -2783,6 +2851,10 @@ class $$CachedMessagesTableAnnotationComposer
     column: $table.authorAvatarUrl,
     builder: (column) => column,
   );
+
+  GeneratedColumnWithTypeConverter<List<MessageReaction>, String>
+  get reactions =>
+      $composableBuilder(column: $table.reactions, builder: (column) => column);
 }
 
 class $$CachedMessagesTableTableManager
@@ -2828,6 +2900,7 @@ class $$CachedMessagesTableTableManager
                 Value<String> authorId = const Value.absent(),
                 Value<String> authorName = const Value.absent(),
                 Value<String?> authorAvatarUrl = const Value.absent(),
+                Value<List<MessageReaction>> reactions = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion(
                 id: id,
@@ -2840,6 +2913,7 @@ class $$CachedMessagesTableTableManager
                 authorId: authorId,
                 authorName: authorName,
                 authorAvatarUrl: authorAvatarUrl,
+                reactions: reactions,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2854,6 +2928,7 @@ class $$CachedMessagesTableTableManager
                 required String authorId,
                 required String authorName,
                 Value<String?> authorAvatarUrl = const Value.absent(),
+                Value<List<MessageReaction>> reactions = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion.insert(
                 id: id,
@@ -2866,6 +2941,7 @@ class $$CachedMessagesTableTableManager
                 authorId: authorId,
                 authorName: authorName,
                 authorAvatarUrl: authorAvatarUrl,
+                reactions: reactions,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

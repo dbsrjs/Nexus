@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
@@ -28,6 +30,29 @@ class _UtcMicros extends TypeConverter<DateTime, int> {
   int toSql(DateTime value) => value.toUtc().microsecondsSinceEpoch;
 }
 
+/// 리액션 요약을 JSON 한 칸에 담는다.
+///
+/// 작성자(author)는 컬럼으로 펼쳐 놓고 이것만 JSON 인 이유는 **쓰임이 다르기
+/// 때문이다.** 목록의 정렬·필터는 전부 SQL 에서 일어나야 하지만, 리액션은
+/// 정렬 대상이 아니고 항상 서버가 준 요약으로 **통째로 갈아 끼운다**.
+/// 부분 갱신이 없으므로 테이블을 나눠 조인할 값이 없다.
+class _ReactionsJson extends TypeConverter<List<MessageReaction>, String> {
+  const _ReactionsJson();
+
+  @override
+  List<MessageReaction> fromSql(String fromDb) {
+    final decoded = jsonDecode(fromDb) as List<dynamic>;
+    return decoded
+        .cast<Map<String, dynamic>>()
+        .map(MessageReaction.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  String toSql(List<MessageReaction> value) =>
+      jsonEncode([for (final r in value) r.toJson()]);
+}
+
 /// 메시지 캐시. **서버에 있는 것만** 담는다.
 ///
 /// 서버 모델을 그대로 펼쳐 담는다. 중첩(author)을 JSON 으로 넣지 않는 이유는,
@@ -48,6 +73,9 @@ class CachedMessages extends Table {
   TextColumn get authorId => text()();
   TextColumn get authorName => text()();
   TextColumn get authorAvatarUrl => text().nullable()();
+
+  TextColumn get reactions =>
+      text().map(const _ReactionsJson()).withDefault(const Constant('[]'))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -162,7 +190,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus'));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -230,13 +258,13 @@ class AppDatabase extends _$AppDatabase {
     return customSelect(
       '''
       SELECT id, channel_id, body, created_at, edited_at, deleted_at,
-             author_id, author_name, author_avatar_url,
+             author_id, author_name, author_avatar_url, reactions,
              0 AS queued, 0 AS failed, 0 AS seq
         FROM cached_messages
        WHERE channel_id = ?1
       UNION ALL
       SELECT id, channel_id, body, created_at, NULL, NULL,
-             author_id, author_name, author_avatar_url,
+             author_id, author_name, author_avatar_url, '[]' AS reactions,
              1 AS queued, failed, seq
         FROM outbox_messages
        WHERE channel_id = ?1
@@ -268,6 +296,25 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteMessage(String id) =>
       (delete(cachedMessages)..where((m) => m.id.equals(id))).go();
+
+  /// 리액션만 갈아 끼운다.
+  ///
+  /// 메시지 행 전체를 다시 쓰지 않는 이유: 소켓으로 오는 리액션 이벤트에는
+  /// 본문·작성자가 없다. 통째로 upsert 하면 그 값들을 잃는다.
+  ///
+  /// 캐시에 없는 메시지면 아무 일도 하지 않는다 — 아직 받지 못한 메시지의
+  /// 리액션은 다음 새로고침 때 함께 온다.
+  /// 지금 캐시에 있는 리액션. 낙관적 토글이 실패했을 때 되돌릴 값이다.
+  Future<List<MessageReaction>> reactionsOf(String messageId) async {
+    final row = await (select(cachedMessages)
+          ..where((m) => m.id.equals(messageId)))
+        .getSingleOrNull();
+    return row?.reactions ?? const [];
+  }
+
+  Future<void> setReactions(String messageId, List<MessageReaction> reactions) =>
+      (update(cachedMessages)..where((m) => m.id.equals(messageId)))
+          .write(CachedMessagesCompanion(reactions: Value(reactions)));
 
   /// 서버가 소프트 삭제한 메시지. 행은 남기고 본문만 비운다 — 서버와 같은 규칙이다.
   Future<void> markMessageDeleted(String id, DateTime at) =>
@@ -465,6 +512,7 @@ Message _rowToMessage(QueryRow row) {
       name: row.read<String>('author_name'),
       avatarUrl: row.readNullable<String>('author_avatar_url'),
     ),
+    reactions: const _ReactionsJson().fromSql(row.read<String>('reactions')),
     // 큐에 있으면서 아직 포기하지 않은 것이 '보내는 중'이다.
     pending: queued && !failed,
     failed: failed,
@@ -483,4 +531,5 @@ CachedMessagesCompanion _toRow(String spaceId, Message message) =>
       authorId: message.author.id,
       authorName: message.author.name,
       authorAvatarUrl: Value(message.author.avatarUrl),
+      reactions: Value(message.reactions),
     );
