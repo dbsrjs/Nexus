@@ -21,7 +21,7 @@
 ## 1. 셋업
 
 ```bash
-git clone https://github.com/dbsrjs/nexus.git && cd nexus
+git clone https://github.com/dbsrjs/Nexus.git && cd Nexus
 git checkout feat/pivot-nexus
 
 npm --prefix server install

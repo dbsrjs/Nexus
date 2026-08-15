@@ -42,7 +42,7 @@ server/  NestJS + Prisma
 작업 브랜치는 **`feat/pivot-nexus`** 다. `main` 은 아직 전환 이전 코드다.
 
 ```bash
-git clone https://github.com/dbsrjs/nexus.git && cd nexus
+git clone https://github.com/dbsrjs/Nexus.git && cd Nexus
 git checkout feat/pivot-nexus
 
 npm --prefix server install
