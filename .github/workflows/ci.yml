@@ -1,0 +1,70 @@
+name: CI
+
+# 서버와 앱을 **병렬로** 돌린다. 둘은 서로를 필요로 하지 않고,
+# 한쪽이 깨져도 다른 쪽 결과를 봐야 원인을 좁힐 수 있다.
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  server:
+    name: 서버 (lint · build · test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - run: npm ci
+
+      # Prisma Client 는 생성물이라 저장소에 없다. 이걸 빠뜨리면 타입이 전부
+      # 깨지므로 lint·build·test 보다 먼저 돌린다.
+      - name: Prisma Client 생성
+        run: npm run prisma:generate
+
+      - run: npm run lint
+
+      - run: npm run build
+
+      - run: npm test
+
+  app:
+    name: 앱 (analyze · test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # freezed · json_serializable 산출물은 커밋돼 있지만, 모델을 고치고
+      # 재생성을 빠뜨린 경우를 여기서 잡는다.
+      - name: 코드 생성 결과가 최신인지 확인
+        run: |
+          dart run build_runner build --delete-conflicting-outputs
+          git diff --exit-code -- lib || {
+            echo "::error::생성 코드가 최신이 아닙니다. 'dart run build_runner build' 후 커밋하십시오."
+            exit 1
+          }
+
+      - run: flutter analyze
+
+      - run: flutter test

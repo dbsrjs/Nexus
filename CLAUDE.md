@@ -110,6 +110,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run db:seed` · `db:studio` | 시드 · Prisma Studio |
 | `npm run server:dev` · `server:build` | 개발 서버 · 빌드 |
 | `npm --prefix server run typecheck` | 타입 검사만 |
+| `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint |
 | `npm run check:realtime -- <시드비밀번호>` | 실서버 · 실DB · 실소켓으로 소켓 계약 검증 (`db:up` · `server:dev` 실행 중이어야 함) |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
 | `cd app && dart run build_runner build` | freezed · json_serializable 재생성 |
@@ -371,7 +372,7 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 
 ### 알려진 빚
 
-- **테스트 · 린트 · CI 가 전혀 없다.** 루트의 `server:test` · `server:lint` 는 `server/package.json` 에 대상 스크립트가 없어 **실행하면 실패한다.** Jest · ESLint 셋업은 전환 계획 §5 에 있다. 4단계에서 `npm run check:realtime` 이 생겼지만, 이건 실서버 · 실DB · 실소켓으로 동작을 확인하는 스크립트일 뿐 단위 테스트 · CI 를 대신하지 않는다.
+- **테스트 범위가 얕다.** 서버 단위 테스트 44개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 컨트롤러 · 서비스의 **실 DB 통합 테스트는 없고**, 그 층은 여전히 `npm run check:realtime` 이 담당한다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다.
 - `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다.
 - GitHub OAuth 는 스키마(`oauth_accounts`)만 있고 미구현. 저장소 연동 단계에서 만든다.
 - **`updateMemberRole` 의 `rooms:invalidate`(`member.role`)는 자동 검증되지 않는다.** 두 번째 admin 계정과 역할 왕복이 필요해 `check:realtime` 에서 뺐다. 코드 리뷰로만 확인.
