@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { SpaceMember } from '@prisma/client';
@@ -14,6 +15,7 @@ import { MessagesService } from './messages.service';
 import { ReactionsService } from './reactions.service';
 import { UpdateMessageDto } from './dto/update-message.dto';
 import { CreateReactionDto } from './dto/create-reaction.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { SpaceGuard } from '../spaces/guards/space.guard';
 import { CurrentSpaceMember } from '../spaces/decorators/current-space-member.decorator';
 
@@ -53,6 +55,22 @@ export class MessagesController {
     @CurrentSpaceMember() member: SpaceMember,
   ) {
     return this.messages.listEdits(messageId, member);
+  }
+
+  /**
+   * 스레드 답글. 부모도 함께 돌려준다 — 스레드 화면은 부모부터 그린다.
+   *
+   * 답글 **전송**은 채널 라우트(`POST /channels/:id/messages`)에 `parentId` 를
+   * 실어 보낸다. 목록만 여기 있는 이유는, 답글도 결국 그 채널의 메시지라
+   * 전송 경로(권한 검사 · 소켓)를 하나로 두는 편이 낫기 때문이다.
+   */
+  @Get(':messageId/replies')
+  replies(
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @Query() query: PaginationDto,
+    @CurrentSpaceMember() member: SpaceMember,
+  ) {
+    return this.messages.listReplies(messageId, member, query);
   }
 
   /** 리액션 추가. 이미 누른 것을 다시 눌러도 같은 결과다(멱등). */

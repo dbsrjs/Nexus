@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateMessageDto {
   @IsString()
@@ -6,6 +6,13 @@ export class CreateMessageDto {
   @MaxLength(10000)
   body!: string;
 
-  // NOTE: 스레드 답글(parentId)은 스레드 기능과 함께 뒤 단계에서 추가한다.
-  // 스키마에는 이미 Message.parentId 가 있다.
+  /**
+   * 스레드 답글이면 부모 메시지 id.
+   *
+   * 답글의 답글은 받지 않는다(서비스에서 400). 스레드를 한 겹으로 두면 목록이
+   * 언제나 `parent_id IS NULL` 한 줄로 갈리고, 화면도 채널 · 스레드 둘로 끝난다.
+   */
+  @IsOptional()
+  @IsUUID()
+  parentId?: string;
 }

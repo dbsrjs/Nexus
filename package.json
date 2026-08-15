@@ -18,6 +18,7 @@
     "db:studio": "npm --prefix server run prisma:studio",
     "db:seed": "npm --prefix server run seed",
     "check:realtime": "node server/scripts/check-realtime.mjs",
-    "check:reactions": "node server/scripts/check-reactions.mjs"
+    "check:reactions": "node server/scripts/check-reactions.mjs",
+    "check:threads": "node server/scripts/check-threads.mjs"
   }
 }

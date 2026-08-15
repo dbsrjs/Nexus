@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -70,9 +71,18 @@ export class MessagesService {
     };
   }
 
-  /** POST /api/spaces/:spaceId/channels/:id/messages */
+  /**
+   * POST /api/spaces/:spaceId/channels/:id/messages
+   *
+   * `parentId` 가 있으면 스레드 답글이다. 답글은 채널 타임라인에 섞이지 않고
+   * 부모의 `replyCount` · `lastReplyAt` 을 올린다.
+   */
   async create(channelId: string, member: SpaceMember, dto: CreateMessageDto) {
     await this.channels.assertCanSend(channelId, member);
+
+    if (dto.parentId) {
+      return this.createReply(channelId, member, dto.parentId, dto.body);
+    }
 
     const message = await this.prisma.message.create({
       data: {
@@ -92,6 +102,117 @@ export class MessagesService {
 
     // NOTE: 멘션 알림 팬아웃은 7단계(mentions)에서 붙인다.
     return message;
+  }
+
+  /**
+   * 스레드 답글. 답글 저장과 부모 갱신은 **한 트랜잭션**이다 —
+   * 사이에서 끊기면 답글은 있는데 개수가 0인 상태가 남는다.
+   */
+  private async createReply(
+    channelId: string,
+    member: SpaceMember,
+    parentId: string,
+    body: string,
+  ) {
+    const parent = await this.prisma.message.findFirst({
+      where: { id: parentId, spaceId: member.spaceId },
+      select: { id: true, channelId: true, parentId: true, deletedAt: true },
+    });
+
+    // 다른 스페이스의 id 는 여기서 404 가 된다.
+    if (!parent) {
+      throw new NotFoundException('메시지를 찾을 수 없습니다');
+    }
+    // 부모가 다른 채널이면 스레드가 채널 경계를 넘는다.
+    if (parent.channelId !== channelId) {
+      throw new NotFoundException('메시지를 찾을 수 없습니다');
+    }
+    if (parent.parentId) {
+      throw new BadRequestException('답글에는 답글을 달 수 없습니다');
+    }
+    if (parent.deletedAt) {
+      throw new BadRequestException('삭제된 메시지에는 답글을 달 수 없습니다');
+    }
+
+    const now = new Date();
+    const [reply, updatedParent] = await this.prisma.$transaction([
+      this.prisma.message.create({
+        data: {
+          spaceId: member.spaceId,
+          channelId,
+          authorId: member.userId,
+          body,
+          parentId,
+        },
+        include: { author: AUTHOR_SELECT },
+      }),
+      this.prisma.message.update({
+        where: { id: parentId },
+        data: { replyCount: { increment: 1 }, lastReplyAt: now },
+        select: { id: true, replyCount: true, lastReplyAt: true },
+      }),
+    ]);
+
+    // **채널 룸으로 보낸다.** 스레드를 연 사람만 받는 룸(thread:{id})을 따로
+    // 두면, 채널을 보고 있는 사람에게 답글 수를 알릴 경로가 하나 더 필요해진다.
+    // 지금 규모에서는 한 이벤트로 둘 다 처리하는 편이 단순하다.
+    this.realtime.toChannel(channelId, 'thread:reply', {
+      spaceId: member.spaceId,
+      channelId,
+      parentId,
+      message: reply,
+      replyCount: updatedParent.replyCount,
+      lastReplyAt: updatedParent.lastReplyAt,
+    });
+
+    return reply;
+  }
+
+  /**
+   * GET /api/spaces/:spaceId/messages/:id/replies — 스레드 답글.
+   *
+   * 채널 목록과 **같은 방향(최신순)** 이다. 화면이 `reverse: true` 로 그리는
+   * 규칙과 커서 이어붙이기를 한 벌로 유지하기 위해서다.
+   */
+  async listReplies(
+    parentId: string,
+    member: SpaceMember,
+    query: PaginationDto,
+  ) {
+    const parent = await this.requireVisibleMessage(parentId, member);
+    if (parent.parentId) {
+      throw new BadRequestException('답글에는 스레드가 없습니다');
+    }
+
+    const limit = query.limit ?? 30;
+    const rows = await this.prisma.message.findMany({
+      where: { parentId, spaceId: member.spaceId },
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      include: { author: AUTHOR_SELECT },
+    });
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    const reactions = await this.reactions.summarizeMany(
+      page.map((m) => m.id),
+      member,
+    );
+
+    return {
+      parent: {
+        ...redactIfDeleted(parent),
+        reactions: (await this.reactions.summarizeMany([parent.id], member))
+          .get(parent.id) ?? [],
+      },
+      items: page.map((message) => ({
+        ...redactIfDeleted(message),
+        reactions: reactions.get(message.id) ?? [],
+      })),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+    };
   }
 
   /**
