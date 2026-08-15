@@ -4,6 +4,7 @@ import '../../data/api/api_client.dart';
 import '../../data/api/auth_api.dart';
 import '../../data/auth_storage.dart';
 import '../../domain/models/user.dart';
+import '../space/space_controller.dart';
 
 /// 인증 상태. 셋을 구분하는 이유는 **앱 시작 직후**가 "로그아웃"과 다르기
 /// 때문이다. 저장된 토큰을 확인하는 동안 로그인 화면을 깜빡 보여주면 안 된다.
@@ -66,15 +67,20 @@ class AuthController extends Notifier<AuthState> {
     try {
       // 토큰이 아직 쓸 수 있는지 서버에 물어본다. 만료됐으면 인터셉터가
       // 리프레시를 한 번 시도하고, 그것도 실패하면 예외가 온다.
-      state = AuthSignedIn(await _api.me());
+      final user = await _api.me();
+      await ref.read(authStorageProvider).writeUser(user);
+      state = AuthSignedIn(user);
     } on AuthException catch (e) {
       if (e.failure == AuthFailure.network) {
-        // 서버에 못 닿은 것이지 토큰이 죽은 것이 아니다. 토큰을 지우면
-        // 오프라인으로 켤 때마다 로그아웃되므로 그대로 두고 로그인 화면으로만
-        // 보낸다. (오프라인 읽기는 drift 캐시가 들어오는 6단계의 몫이다.)
-        state = const AuthSignedOut();
+        // **서버에 못 닿은 것이지 토큰이 죽은 것이 아니다.**
+        // 여기서 로그인 화면으로 보내면 오프라인에서는 캐시된 대화를 볼 방법이
+        // 없다 — 6단계에서 drift 캐시를 넣은 의미가 사라진다.
+        // 마지막으로 확인된 계정으로 로그인 상태를 유지하고, 화면은 캐시를 그린다.
+        final cached = await ref.read(authStorageProvider).readUser();
+        state = cached != null ? AuthSignedIn(cached) : const AuthSignedOut();
         return;
       }
+      // 401 등 — 토큰이 실제로 못 쓰게 됐다. 흔적을 지운다.
       await _client.clearTokens();
       state = const AuthSignedOut();
     }
@@ -88,6 +94,8 @@ class AuthController extends Notifier<AuthState> {
     try {
       final result = await _api.login(email: email, password: password);
       await _client.setTokens(result.tokens);
+      // 오프라인으로 켤 때 쓸 수 있도록 계정을 함께 저장한다.
+      await ref.read(authStorageProvider).writeUser(result.user);
       state = AuthSignedIn(result.user);
       return null;
     } on AuthException catch (e) {
@@ -99,6 +107,9 @@ class AuthController extends Notifier<AuthState> {
     final tokens = await ref.read(authStorageProvider).read();
     await _api.logout(tokens?.refreshToken);
     await _client.clearTokens();
+    // 로컬 캐시도 비운다. 다른 계정으로 로그인했을 때 이전 계정의 대화가
+    // 남아 있으면 안 된다.
+    await ref.read(appDatabaseProvider).clearAll();
     state = const AuthSignedOut();
   }
 

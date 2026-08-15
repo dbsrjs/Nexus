@@ -1,0 +1,2918 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'app_database.dart';
+
+// ignore_for_file: type=lint
+class $CachedMessagesTable extends CachedMessages
+    with TableInfo<$CachedMessagesTable, CachedMessage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedMessagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _spaceIdMeta = const VerificationMeta(
+    'spaceId',
+  );
+  @override
+  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
+    'space_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _channelIdMeta = const VerificationMeta(
+    'channelId',
+  );
+  @override
+  late final GeneratedColumn<String> channelId = GeneratedColumn<String>(
+    'channel_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _editedAtMeta = const VerificationMeta(
+    'editedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> editedAt = GeneratedColumn<DateTime>(
+    'edited_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _authorIdMeta = const VerificationMeta(
+    'authorId',
+  );
+  @override
+  late final GeneratedColumn<String> authorId = GeneratedColumn<String>(
+    'author_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorNameMeta = const VerificationMeta(
+    'authorName',
+  );
+  @override
+  late final GeneratedColumn<String> authorName = GeneratedColumn<String>(
+    'author_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorAvatarUrlMeta = const VerificationMeta(
+    'authorAvatarUrl',
+  );
+  @override
+  late final GeneratedColumn<String> authorAvatarUrl = GeneratedColumn<String>(
+    'author_avatar_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<SendState, int> sendState =
+      GeneratedColumn<int>(
+        'send_state',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      ).withConverter<SendState>($CachedMessagesTable.$convertersendState);
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    spaceId,
+    channelId,
+    body,
+    createdAt,
+    editedAt,
+    deletedAt,
+    authorId,
+    authorName,
+    authorAvatarUrl,
+    sendState,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_messages';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedMessage> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('space_id')) {
+      context.handle(
+        _spaceIdMeta,
+        spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_spaceIdMeta);
+    }
+    if (data.containsKey('channel_id')) {
+      context.handle(
+        _channelIdMeta,
+        channelId.isAcceptableOrUnknown(data['channel_id']!, _channelIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_channelIdMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('edited_at')) {
+      context.handle(
+        _editedAtMeta,
+        editedAt.isAcceptableOrUnknown(data['edited_at']!, _editedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('author_id')) {
+      context.handle(
+        _authorIdMeta,
+        authorId.isAcceptableOrUnknown(data['author_id']!, _authorIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_authorIdMeta);
+    }
+    if (data.containsKey('author_name')) {
+      context.handle(
+        _authorNameMeta,
+        authorName.isAcceptableOrUnknown(data['author_name']!, _authorNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_authorNameMeta);
+    }
+    if (data.containsKey('author_avatar_url')) {
+      context.handle(
+        _authorAvatarUrlMeta,
+        authorAvatarUrl.isAcceptableOrUnknown(
+          data['author_avatar_url']!,
+          _authorAvatarUrlMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedMessage(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      spaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}space_id'],
+      )!,
+      channelId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}channel_id'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      editedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}edited_at'],
+      ),
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      authorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_id'],
+      )!,
+      authorName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_name'],
+      )!,
+      authorAvatarUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_avatar_url'],
+      ),
+      sendState: $CachedMessagesTable.$convertersendState.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}send_state'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $CachedMessagesTable createAlias(String alias) {
+    return $CachedMessagesTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<SendState, int, int> $convertersendState =
+      const EnumIndexConverter<SendState>(SendState.values);
+}
+
+class CachedMessage extends DataClass implements Insertable<CachedMessage> {
+  /// 서버 id, 또는 아직 보내지 못한 메시지의 로컬 id(`local-…`).
+  final String id;
+  final String spaceId;
+  final String channelId;
+  final String body;
+  final DateTime createdAt;
+  final DateTime? editedAt;
+  final DateTime? deletedAt;
+  final String authorId;
+  final String authorName;
+  final String? authorAvatarUrl;
+  final SendState sendState;
+  const CachedMessage({
+    required this.id,
+    required this.spaceId,
+    required this.channelId,
+    required this.body,
+    required this.createdAt,
+    this.editedAt,
+    this.deletedAt,
+    required this.authorId,
+    required this.authorName,
+    this.authorAvatarUrl,
+    required this.sendState,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['space_id'] = Variable<String>(spaceId);
+    map['channel_id'] = Variable<String>(channelId);
+    map['body'] = Variable<String>(body);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || editedAt != null) {
+      map['edited_at'] = Variable<DateTime>(editedAt);
+    }
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['author_id'] = Variable<String>(authorId);
+    map['author_name'] = Variable<String>(authorName);
+    if (!nullToAbsent || authorAvatarUrl != null) {
+      map['author_avatar_url'] = Variable<String>(authorAvatarUrl);
+    }
+    {
+      map['send_state'] = Variable<int>(
+        $CachedMessagesTable.$convertersendState.toSql(sendState),
+      );
+    }
+    return map;
+  }
+
+  CachedMessagesCompanion toCompanion(bool nullToAbsent) {
+    return CachedMessagesCompanion(
+      id: Value(id),
+      spaceId: Value(spaceId),
+      channelId: Value(channelId),
+      body: Value(body),
+      createdAt: Value(createdAt),
+      editedAt: editedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(editedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      authorId: Value(authorId),
+      authorName: Value(authorName),
+      authorAvatarUrl: authorAvatarUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(authorAvatarUrl),
+      sendState: Value(sendState),
+    );
+  }
+
+  factory CachedMessage.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedMessage(
+      id: serializer.fromJson<String>(json['id']),
+      spaceId: serializer.fromJson<String>(json['spaceId']),
+      channelId: serializer.fromJson<String>(json['channelId']),
+      body: serializer.fromJson<String>(json['body']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      editedAt: serializer.fromJson<DateTime?>(json['editedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      authorId: serializer.fromJson<String>(json['authorId']),
+      authorName: serializer.fromJson<String>(json['authorName']),
+      authorAvatarUrl: serializer.fromJson<String?>(json['authorAvatarUrl']),
+      sendState: $CachedMessagesTable.$convertersendState.fromJson(
+        serializer.fromJson<int>(json['sendState']),
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'spaceId': serializer.toJson<String>(spaceId),
+      'channelId': serializer.toJson<String>(channelId),
+      'body': serializer.toJson<String>(body),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'editedAt': serializer.toJson<DateTime?>(editedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'authorId': serializer.toJson<String>(authorId),
+      'authorName': serializer.toJson<String>(authorName),
+      'authorAvatarUrl': serializer.toJson<String?>(authorAvatarUrl),
+      'sendState': serializer.toJson<int>(
+        $CachedMessagesTable.$convertersendState.toJson(sendState),
+      ),
+    };
+  }
+
+  CachedMessage copyWith({
+    String? id,
+    String? spaceId,
+    String? channelId,
+    String? body,
+    DateTime? createdAt,
+    Value<DateTime?> editedAt = const Value.absent(),
+    Value<DateTime?> deletedAt = const Value.absent(),
+    String? authorId,
+    String? authorName,
+    Value<String?> authorAvatarUrl = const Value.absent(),
+    SendState? sendState,
+  }) => CachedMessage(
+    id: id ?? this.id,
+    spaceId: spaceId ?? this.spaceId,
+    channelId: channelId ?? this.channelId,
+    body: body ?? this.body,
+    createdAt: createdAt ?? this.createdAt,
+    editedAt: editedAt.present ? editedAt.value : this.editedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    authorId: authorId ?? this.authorId,
+    authorName: authorName ?? this.authorName,
+    authorAvatarUrl: authorAvatarUrl.present
+        ? authorAvatarUrl.value
+        : this.authorAvatarUrl,
+    sendState: sendState ?? this.sendState,
+  );
+  CachedMessage copyWithCompanion(CachedMessagesCompanion data) {
+    return CachedMessage(
+      id: data.id.present ? data.id.value : this.id,
+      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
+      channelId: data.channelId.present ? data.channelId.value : this.channelId,
+      body: data.body.present ? data.body.value : this.body,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      editedAt: data.editedAt.present ? data.editedAt.value : this.editedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      authorId: data.authorId.present ? data.authorId.value : this.authorId,
+      authorName: data.authorName.present
+          ? data.authorName.value
+          : this.authorName,
+      authorAvatarUrl: data.authorAvatarUrl.present
+          ? data.authorAvatarUrl.value
+          : this.authorAvatarUrl,
+      sendState: data.sendState.present ? data.sendState.value : this.sendState,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedMessage(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('channelId: $channelId, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('editedAt: $editedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('authorId: $authorId, ')
+          ..write('authorName: $authorName, ')
+          ..write('authorAvatarUrl: $authorAvatarUrl, ')
+          ..write('sendState: $sendState')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    spaceId,
+    channelId,
+    body,
+    createdAt,
+    editedAt,
+    deletedAt,
+    authorId,
+    authorName,
+    authorAvatarUrl,
+    sendState,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedMessage &&
+          other.id == this.id &&
+          other.spaceId == this.spaceId &&
+          other.channelId == this.channelId &&
+          other.body == this.body &&
+          other.createdAt == this.createdAt &&
+          other.editedAt == this.editedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.authorId == this.authorId &&
+          other.authorName == this.authorName &&
+          other.authorAvatarUrl == this.authorAvatarUrl &&
+          other.sendState == this.sendState);
+}
+
+class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
+  final Value<String> id;
+  final Value<String> spaceId;
+  final Value<String> channelId;
+  final Value<String> body;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> editedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String> authorId;
+  final Value<String> authorName;
+  final Value<String?> authorAvatarUrl;
+  final Value<SendState> sendState;
+  final Value<int> rowid;
+  const CachedMessagesCompanion({
+    this.id = const Value.absent(),
+    this.spaceId = const Value.absent(),
+    this.channelId = const Value.absent(),
+    this.body = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.editedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.authorId = const Value.absent(),
+    this.authorName = const Value.absent(),
+    this.authorAvatarUrl = const Value.absent(),
+    this.sendState = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedMessagesCompanion.insert({
+    required String id,
+    required String spaceId,
+    required String channelId,
+    required String body,
+    required DateTime createdAt,
+    this.editedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    required String authorId,
+    required String authorName,
+    this.authorAvatarUrl = const Value.absent(),
+    this.sendState = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       spaceId = Value(spaceId),
+       channelId = Value(channelId),
+       body = Value(body),
+       createdAt = Value(createdAt),
+       authorId = Value(authorId),
+       authorName = Value(authorName);
+  static Insertable<CachedMessage> custom({
+    Expression<String>? id,
+    Expression<String>? spaceId,
+    Expression<String>? channelId,
+    Expression<String>? body,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? editedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? authorId,
+    Expression<String>? authorName,
+    Expression<String>? authorAvatarUrl,
+    Expression<int>? sendState,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (spaceId != null) 'space_id': spaceId,
+      if (channelId != null) 'channel_id': channelId,
+      if (body != null) 'body': body,
+      if (createdAt != null) 'created_at': createdAt,
+      if (editedAt != null) 'edited_at': editedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (authorId != null) 'author_id': authorId,
+      if (authorName != null) 'author_name': authorName,
+      if (authorAvatarUrl != null) 'author_avatar_url': authorAvatarUrl,
+      if (sendState != null) 'send_state': sendState,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedMessagesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? spaceId,
+    Value<String>? channelId,
+    Value<String>? body,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? editedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String>? authorId,
+    Value<String>? authorName,
+    Value<String?>? authorAvatarUrl,
+    Value<SendState>? sendState,
+    Value<int>? rowid,
+  }) {
+    return CachedMessagesCompanion(
+      id: id ?? this.id,
+      spaceId: spaceId ?? this.spaceId,
+      channelId: channelId ?? this.channelId,
+      body: body ?? this.body,
+      createdAt: createdAt ?? this.createdAt,
+      editedAt: editedAt ?? this.editedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
+      authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
+      sendState: sendState ?? this.sendState,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (spaceId.present) {
+      map['space_id'] = Variable<String>(spaceId.value);
+    }
+    if (channelId.present) {
+      map['channel_id'] = Variable<String>(channelId.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (editedAt.present) {
+      map['edited_at'] = Variable<DateTime>(editedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (authorId.present) {
+      map['author_id'] = Variable<String>(authorId.value);
+    }
+    if (authorName.present) {
+      map['author_name'] = Variable<String>(authorName.value);
+    }
+    if (authorAvatarUrl.present) {
+      map['author_avatar_url'] = Variable<String>(authorAvatarUrl.value);
+    }
+    if (sendState.present) {
+      map['send_state'] = Variable<int>(
+        $CachedMessagesTable.$convertersendState.toSql(sendState.value),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedMessagesCompanion(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('channelId: $channelId, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('editedAt: $editedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('authorId: $authorId, ')
+          ..write('authorName: $authorName, ')
+          ..write('authorAvatarUrl: $authorAvatarUrl, ')
+          ..write('sendState: $sendState, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedChannelsTable extends CachedChannels
+    with TableInfo<$CachedChannelsTable, CachedChannel> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedChannelsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _spaceIdMeta = const VerificationMeta(
+    'spaceId',
+  );
+  @override
+  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
+    'space_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _topicMeta = const VerificationMeta('topic');
+  @override
+  late final GeneratedColumn<String> topic = GeneratedColumn<String>(
+    'topic',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+    'category_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isPrivateMeta = const VerificationMeta(
+    'isPrivate',
+  );
+  @override
+  late final GeneratedColumn<bool> isPrivate = GeneratedColumn<bool>(
+    'is_private',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_private" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _unreadCountMeta = const VerificationMeta(
+    'unreadCount',
+  );
+  @override
+  late final GeneratedColumn<int> unreadCount = GeneratedColumn<int>(
+    'unread_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    spaceId,
+    key,
+    name,
+    topic,
+    categoryId,
+    isPrivate,
+    position,
+    unreadCount,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_channels';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedChannel> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('space_id')) {
+      context.handle(
+        _spaceIdMeta,
+        spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_spaceIdMeta);
+    }
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('topic')) {
+      context.handle(
+        _topicMeta,
+        topic.isAcceptableOrUnknown(data['topic']!, _topicMeta),
+      );
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('is_private')) {
+      context.handle(
+        _isPrivateMeta,
+        isPrivate.isAcceptableOrUnknown(data['is_private']!, _isPrivateMeta),
+      );
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    }
+    if (data.containsKey('unread_count')) {
+      context.handle(
+        _unreadCountMeta,
+        unreadCount.isAcceptableOrUnknown(
+          data['unread_count']!,
+          _unreadCountMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedChannel map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedChannel(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      spaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}space_id'],
+      )!,
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      topic: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}topic'],
+      ),
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_id'],
+      ),
+      isPrivate: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_private'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      unreadCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}unread_count'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedChannelsTable createAlias(String alias) {
+    return $CachedChannelsTable(attachedDatabase, alias);
+  }
+}
+
+class CachedChannel extends DataClass implements Insertable<CachedChannel> {
+  final String id;
+  final String spaceId;
+  final String key;
+  final String name;
+  final String? topic;
+  final String? categoryId;
+  final bool isPrivate;
+  final int position;
+  final int unreadCount;
+  const CachedChannel({
+    required this.id,
+    required this.spaceId,
+    required this.key,
+    required this.name,
+    this.topic,
+    this.categoryId,
+    required this.isPrivate,
+    required this.position,
+    required this.unreadCount,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['space_id'] = Variable<String>(spaceId);
+    map['key'] = Variable<String>(key);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || topic != null) {
+      map['topic'] = Variable<String>(topic);
+    }
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<String>(categoryId);
+    }
+    map['is_private'] = Variable<bool>(isPrivate);
+    map['position'] = Variable<int>(position);
+    map['unread_count'] = Variable<int>(unreadCount);
+    return map;
+  }
+
+  CachedChannelsCompanion toCompanion(bool nullToAbsent) {
+    return CachedChannelsCompanion(
+      id: Value(id),
+      spaceId: Value(spaceId),
+      key: Value(key),
+      name: Value(name),
+      topic: topic == null && nullToAbsent
+          ? const Value.absent()
+          : Value(topic),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
+      isPrivate: Value(isPrivate),
+      position: Value(position),
+      unreadCount: Value(unreadCount),
+    );
+  }
+
+  factory CachedChannel.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedChannel(
+      id: serializer.fromJson<String>(json['id']),
+      spaceId: serializer.fromJson<String>(json['spaceId']),
+      key: serializer.fromJson<String>(json['key']),
+      name: serializer.fromJson<String>(json['name']),
+      topic: serializer.fromJson<String?>(json['topic']),
+      categoryId: serializer.fromJson<String?>(json['categoryId']),
+      isPrivate: serializer.fromJson<bool>(json['isPrivate']),
+      position: serializer.fromJson<int>(json['position']),
+      unreadCount: serializer.fromJson<int>(json['unreadCount']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'spaceId': serializer.toJson<String>(spaceId),
+      'key': serializer.toJson<String>(key),
+      'name': serializer.toJson<String>(name),
+      'topic': serializer.toJson<String?>(topic),
+      'categoryId': serializer.toJson<String?>(categoryId),
+      'isPrivate': serializer.toJson<bool>(isPrivate),
+      'position': serializer.toJson<int>(position),
+      'unreadCount': serializer.toJson<int>(unreadCount),
+    };
+  }
+
+  CachedChannel copyWith({
+    String? id,
+    String? spaceId,
+    String? key,
+    String? name,
+    Value<String?> topic = const Value.absent(),
+    Value<String?> categoryId = const Value.absent(),
+    bool? isPrivate,
+    int? position,
+    int? unreadCount,
+  }) => CachedChannel(
+    id: id ?? this.id,
+    spaceId: spaceId ?? this.spaceId,
+    key: key ?? this.key,
+    name: name ?? this.name,
+    topic: topic.present ? topic.value : this.topic,
+    categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    isPrivate: isPrivate ?? this.isPrivate,
+    position: position ?? this.position,
+    unreadCount: unreadCount ?? this.unreadCount,
+  );
+  CachedChannel copyWithCompanion(CachedChannelsCompanion data) {
+    return CachedChannel(
+      id: data.id.present ? data.id.value : this.id,
+      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
+      key: data.key.present ? data.key.value : this.key,
+      name: data.name.present ? data.name.value : this.name,
+      topic: data.topic.present ? data.topic.value : this.topic,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      isPrivate: data.isPrivate.present ? data.isPrivate.value : this.isPrivate,
+      position: data.position.present ? data.position.value : this.position,
+      unreadCount: data.unreadCount.present
+          ? data.unreadCount.value
+          : this.unreadCount,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedChannel(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('key: $key, ')
+          ..write('name: $name, ')
+          ..write('topic: $topic, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('isPrivate: $isPrivate, ')
+          ..write('position: $position, ')
+          ..write('unreadCount: $unreadCount')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    spaceId,
+    key,
+    name,
+    topic,
+    categoryId,
+    isPrivate,
+    position,
+    unreadCount,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedChannel &&
+          other.id == this.id &&
+          other.spaceId == this.spaceId &&
+          other.key == this.key &&
+          other.name == this.name &&
+          other.topic == this.topic &&
+          other.categoryId == this.categoryId &&
+          other.isPrivate == this.isPrivate &&
+          other.position == this.position &&
+          other.unreadCount == this.unreadCount);
+}
+
+class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
+  final Value<String> id;
+  final Value<String> spaceId;
+  final Value<String> key;
+  final Value<String> name;
+  final Value<String?> topic;
+  final Value<String?> categoryId;
+  final Value<bool> isPrivate;
+  final Value<int> position;
+  final Value<int> unreadCount;
+  final Value<int> rowid;
+  const CachedChannelsCompanion({
+    this.id = const Value.absent(),
+    this.spaceId = const Value.absent(),
+    this.key = const Value.absent(),
+    this.name = const Value.absent(),
+    this.topic = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.isPrivate = const Value.absent(),
+    this.position = const Value.absent(),
+    this.unreadCount = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedChannelsCompanion.insert({
+    required String id,
+    required String spaceId,
+    required String key,
+    required String name,
+    this.topic = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.isPrivate = const Value.absent(),
+    this.position = const Value.absent(),
+    this.unreadCount = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       spaceId = Value(spaceId),
+       key = Value(key),
+       name = Value(name);
+  static Insertable<CachedChannel> custom({
+    Expression<String>? id,
+    Expression<String>? spaceId,
+    Expression<String>? key,
+    Expression<String>? name,
+    Expression<String>? topic,
+    Expression<String>? categoryId,
+    Expression<bool>? isPrivate,
+    Expression<int>? position,
+    Expression<int>? unreadCount,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (spaceId != null) 'space_id': spaceId,
+      if (key != null) 'key': key,
+      if (name != null) 'name': name,
+      if (topic != null) 'topic': topic,
+      if (categoryId != null) 'category_id': categoryId,
+      if (isPrivate != null) 'is_private': isPrivate,
+      if (position != null) 'position': position,
+      if (unreadCount != null) 'unread_count': unreadCount,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedChannelsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? spaceId,
+    Value<String>? key,
+    Value<String>? name,
+    Value<String?>? topic,
+    Value<String?>? categoryId,
+    Value<bool>? isPrivate,
+    Value<int>? position,
+    Value<int>? unreadCount,
+    Value<int>? rowid,
+  }) {
+    return CachedChannelsCompanion(
+      id: id ?? this.id,
+      spaceId: spaceId ?? this.spaceId,
+      key: key ?? this.key,
+      name: name ?? this.name,
+      topic: topic ?? this.topic,
+      categoryId: categoryId ?? this.categoryId,
+      isPrivate: isPrivate ?? this.isPrivate,
+      position: position ?? this.position,
+      unreadCount: unreadCount ?? this.unreadCount,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (spaceId.present) {
+      map['space_id'] = Variable<String>(spaceId.value);
+    }
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (topic.present) {
+      map['topic'] = Variable<String>(topic.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (isPrivate.present) {
+      map['is_private'] = Variable<bool>(isPrivate.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (unreadCount.present) {
+      map['unread_count'] = Variable<int>(unreadCount.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedChannelsCompanion(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('key: $key, ')
+          ..write('name: $name, ')
+          ..write('topic: $topic, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('isPrivate: $isPrivate, ')
+          ..write('position: $position, ')
+          ..write('unreadCount: $unreadCount, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedCategoriesTable extends CachedCategories
+    with TableInfo<$CachedCategoriesTable, CachedCategory> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedCategoriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _spaceIdMeta = const VerificationMeta(
+    'spaceId',
+  );
+  @override
+  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
+    'space_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, spaceId, name, position];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_categories';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedCategory> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('space_id')) {
+      context.handle(
+        _spaceIdMeta,
+        spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_spaceIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedCategory map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedCategory(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      spaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}space_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedCategoriesTable createAlias(String alias) {
+    return $CachedCategoriesTable(attachedDatabase, alias);
+  }
+}
+
+class CachedCategory extends DataClass implements Insertable<CachedCategory> {
+  final String id;
+  final String spaceId;
+  final String name;
+  final int position;
+  const CachedCategory({
+    required this.id,
+    required this.spaceId,
+    required this.name,
+    required this.position,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['space_id'] = Variable<String>(spaceId);
+    map['name'] = Variable<String>(name);
+    map['position'] = Variable<int>(position);
+    return map;
+  }
+
+  CachedCategoriesCompanion toCompanion(bool nullToAbsent) {
+    return CachedCategoriesCompanion(
+      id: Value(id),
+      spaceId: Value(spaceId),
+      name: Value(name),
+      position: Value(position),
+    );
+  }
+
+  factory CachedCategory.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedCategory(
+      id: serializer.fromJson<String>(json['id']),
+      spaceId: serializer.fromJson<String>(json['spaceId']),
+      name: serializer.fromJson<String>(json['name']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'spaceId': serializer.toJson<String>(spaceId),
+      'name': serializer.toJson<String>(name),
+      'position': serializer.toJson<int>(position),
+    };
+  }
+
+  CachedCategory copyWith({
+    String? id,
+    String? spaceId,
+    String? name,
+    int? position,
+  }) => CachedCategory(
+    id: id ?? this.id,
+    spaceId: spaceId ?? this.spaceId,
+    name: name ?? this.name,
+    position: position ?? this.position,
+  );
+  CachedCategory copyWithCompanion(CachedCategoriesCompanion data) {
+    return CachedCategory(
+      id: data.id.present ? data.id.value : this.id,
+      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
+      name: data.name.present ? data.name.value : this.name,
+      position: data.position.present ? data.position.value : this.position,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedCategory(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('name: $name, ')
+          ..write('position: $position')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, spaceId, name, position);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedCategory &&
+          other.id == this.id &&
+          other.spaceId == this.spaceId &&
+          other.name == this.name &&
+          other.position == this.position);
+}
+
+class CachedCategoriesCompanion extends UpdateCompanion<CachedCategory> {
+  final Value<String> id;
+  final Value<String> spaceId;
+  final Value<String> name;
+  final Value<int> position;
+  final Value<int> rowid;
+  const CachedCategoriesCompanion({
+    this.id = const Value.absent(),
+    this.spaceId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedCategoriesCompanion.insert({
+    required String id,
+    required String spaceId,
+    required String name,
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       spaceId = Value(spaceId),
+       name = Value(name);
+  static Insertable<CachedCategory> custom({
+    Expression<String>? id,
+    Expression<String>? spaceId,
+    Expression<String>? name,
+    Expression<int>? position,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (spaceId != null) 'space_id': spaceId,
+      if (name != null) 'name': name,
+      if (position != null) 'position': position,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedCategoriesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? spaceId,
+    Value<String>? name,
+    Value<int>? position,
+    Value<int>? rowid,
+  }) {
+    return CachedCategoriesCompanion(
+      id: id ?? this.id,
+      spaceId: spaceId ?? this.spaceId,
+      name: name ?? this.name,
+      position: position ?? this.position,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (spaceId.present) {
+      map['space_id'] = Variable<String>(spaceId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedCategoriesCompanion(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('name: $name, ')
+          ..write('position: $position, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CachedSpacesTable extends CachedSpaces
+    with TableInfo<$CachedSpacesTable, CachedSpace> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedSpacesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _slugMeta = const VerificationMeta('slug');
+  @override
+  late final GeneratedColumn<String> slug = GeneratedColumn<String>(
+    'slug',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _iconUrlMeta = const VerificationMeta(
+    'iconUrl',
+  );
+  @override
+  late final GeneratedColumn<String> iconUrl = GeneratedColumn<String>(
+    'icon_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, slug, name, role, iconUrl];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_spaces';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedSpace> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('slug')) {
+      context.handle(
+        _slugMeta,
+        slug.isAcceptableOrUnknown(data['slug']!, _slugMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_slugMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('icon_url')) {
+      context.handle(
+        _iconUrlMeta,
+        iconUrl.isAcceptableOrUnknown(data['icon_url']!, _iconUrlMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedSpace map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedSpace(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      slug: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}slug'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+      iconUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon_url'],
+      ),
+    );
+  }
+
+  @override
+  $CachedSpacesTable createAlias(String alias) {
+    return $CachedSpacesTable(attachedDatabase, alias);
+  }
+}
+
+class CachedSpace extends DataClass implements Insertable<CachedSpace> {
+  final String id;
+  final String slug;
+  final String name;
+  final String role;
+  final String? iconUrl;
+  const CachedSpace({
+    required this.id,
+    required this.slug,
+    required this.name,
+    required this.role,
+    this.iconUrl,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['slug'] = Variable<String>(slug);
+    map['name'] = Variable<String>(name);
+    map['role'] = Variable<String>(role);
+    if (!nullToAbsent || iconUrl != null) {
+      map['icon_url'] = Variable<String>(iconUrl);
+    }
+    return map;
+  }
+
+  CachedSpacesCompanion toCompanion(bool nullToAbsent) {
+    return CachedSpacesCompanion(
+      id: Value(id),
+      slug: Value(slug),
+      name: Value(name),
+      role: Value(role),
+      iconUrl: iconUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(iconUrl),
+    );
+  }
+
+  factory CachedSpace.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedSpace(
+      id: serializer.fromJson<String>(json['id']),
+      slug: serializer.fromJson<String>(json['slug']),
+      name: serializer.fromJson<String>(json['name']),
+      role: serializer.fromJson<String>(json['role']),
+      iconUrl: serializer.fromJson<String?>(json['iconUrl']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'slug': serializer.toJson<String>(slug),
+      'name': serializer.toJson<String>(name),
+      'role': serializer.toJson<String>(role),
+      'iconUrl': serializer.toJson<String?>(iconUrl),
+    };
+  }
+
+  CachedSpace copyWith({
+    String? id,
+    String? slug,
+    String? name,
+    String? role,
+    Value<String?> iconUrl = const Value.absent(),
+  }) => CachedSpace(
+    id: id ?? this.id,
+    slug: slug ?? this.slug,
+    name: name ?? this.name,
+    role: role ?? this.role,
+    iconUrl: iconUrl.present ? iconUrl.value : this.iconUrl,
+  );
+  CachedSpace copyWithCompanion(CachedSpacesCompanion data) {
+    return CachedSpace(
+      id: data.id.present ? data.id.value : this.id,
+      slug: data.slug.present ? data.slug.value : this.slug,
+      name: data.name.present ? data.name.value : this.name,
+      role: data.role.present ? data.role.value : this.role,
+      iconUrl: data.iconUrl.present ? data.iconUrl.value : this.iconUrl,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedSpace(')
+          ..write('id: $id, ')
+          ..write('slug: $slug, ')
+          ..write('name: $name, ')
+          ..write('role: $role, ')
+          ..write('iconUrl: $iconUrl')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, slug, name, role, iconUrl);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedSpace &&
+          other.id == this.id &&
+          other.slug == this.slug &&
+          other.name == this.name &&
+          other.role == this.role &&
+          other.iconUrl == this.iconUrl);
+}
+
+class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
+  final Value<String> id;
+  final Value<String> slug;
+  final Value<String> name;
+  final Value<String> role;
+  final Value<String?> iconUrl;
+  final Value<int> rowid;
+  const CachedSpacesCompanion({
+    this.id = const Value.absent(),
+    this.slug = const Value.absent(),
+    this.name = const Value.absent(),
+    this.role = const Value.absent(),
+    this.iconUrl = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedSpacesCompanion.insert({
+    required String id,
+    required String slug,
+    required String name,
+    required String role,
+    this.iconUrl = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       slug = Value(slug),
+       name = Value(name),
+       role = Value(role);
+  static Insertable<CachedSpace> custom({
+    Expression<String>? id,
+    Expression<String>? slug,
+    Expression<String>? name,
+    Expression<String>? role,
+    Expression<String>? iconUrl,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (slug != null) 'slug': slug,
+      if (name != null) 'name': name,
+      if (role != null) 'role': role,
+      if (iconUrl != null) 'icon_url': iconUrl,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedSpacesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? slug,
+    Value<String>? name,
+    Value<String>? role,
+    Value<String?>? iconUrl,
+    Value<int>? rowid,
+  }) {
+    return CachedSpacesCompanion(
+      id: id ?? this.id,
+      slug: slug ?? this.slug,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      iconUrl: iconUrl ?? this.iconUrl,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (slug.present) {
+      map['slug'] = Variable<String>(slug.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (iconUrl.present) {
+      map['icon_url'] = Variable<String>(iconUrl.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedSpacesCompanion(')
+          ..write('id: $id, ')
+          ..write('slug: $slug, ')
+          ..write('name: $name, ')
+          ..write('role: $role, ')
+          ..write('iconUrl: $iconUrl, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+abstract class _$AppDatabase extends GeneratedDatabase {
+  _$AppDatabase(QueryExecutor e) : super(e);
+  $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $CachedMessagesTable cachedMessages = $CachedMessagesTable(this);
+  late final $CachedChannelsTable cachedChannels = $CachedChannelsTable(this);
+  late final $CachedCategoriesTable cachedCategories = $CachedCategoriesTable(
+    this,
+  );
+  late final $CachedSpacesTable cachedSpaces = $CachedSpacesTable(this);
+  @override
+  Iterable<TableInfo<Table, Object?>> get allTables =>
+      allSchemaEntities.whereType<TableInfo<Table, Object?>>();
+  @override
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    cachedMessages,
+    cachedChannels,
+    cachedCategories,
+    cachedSpaces,
+  ];
+}
+
+typedef $$CachedMessagesTableCreateCompanionBuilder =
+    CachedMessagesCompanion Function({
+      required String id,
+      required String spaceId,
+      required String channelId,
+      required String body,
+      required DateTime createdAt,
+      Value<DateTime?> editedAt,
+      Value<DateTime?> deletedAt,
+      required String authorId,
+      required String authorName,
+      Value<String?> authorAvatarUrl,
+      Value<SendState> sendState,
+      Value<int> rowid,
+    });
+typedef $$CachedMessagesTableUpdateCompanionBuilder =
+    CachedMessagesCompanion Function({
+      Value<String> id,
+      Value<String> spaceId,
+      Value<String> channelId,
+      Value<String> body,
+      Value<DateTime> createdAt,
+      Value<DateTime?> editedAt,
+      Value<DateTime?> deletedAt,
+      Value<String> authorId,
+      Value<String> authorName,
+      Value<String?> authorAvatarUrl,
+      Value<SendState> sendState,
+      Value<int> rowid,
+    });
+
+class $$CachedMessagesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedMessagesTable> {
+  $$CachedMessagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get channelId => $composableBuilder(
+    column: $table.channelId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get editedAt => $composableBuilder(
+    column: $table.editedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorAvatarUrl => $composableBuilder(
+    column: $table.authorAvatarUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<SendState, SendState, int> get sendState =>
+      $composableBuilder(
+        column: $table.sendState,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+}
+
+class $$CachedMessagesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedMessagesTable> {
+  $$CachedMessagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get channelId => $composableBuilder(
+    column: $table.channelId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get editedAt => $composableBuilder(
+    column: $table.editedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorAvatarUrl => $composableBuilder(
+    column: $table.authorAvatarUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sendState => $composableBuilder(
+    column: $table.sendState,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedMessagesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedMessagesTable> {
+  $$CachedMessagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get spaceId =>
+      $composableBuilder(column: $table.spaceId, builder: (column) => column);
+
+  GeneratedColumn<String> get channelId =>
+      $composableBuilder(column: $table.channelId, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get editedAt =>
+      $composableBuilder(column: $table.editedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get authorId =>
+      $composableBuilder(column: $table.authorId, builder: (column) => column);
+
+  GeneratedColumn<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get authorAvatarUrl => $composableBuilder(
+    column: $table.authorAvatarUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<SendState, int> get sendState =>
+      $composableBuilder(column: $table.sendState, builder: (column) => column);
+}
+
+class $$CachedMessagesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedMessagesTable,
+          CachedMessage,
+          $$CachedMessagesTableFilterComposer,
+          $$CachedMessagesTableOrderingComposer,
+          $$CachedMessagesTableAnnotationComposer,
+          $$CachedMessagesTableCreateCompanionBuilder,
+          $$CachedMessagesTableUpdateCompanionBuilder,
+          (
+            CachedMessage,
+            BaseReferences<_$AppDatabase, $CachedMessagesTable, CachedMessage>,
+          ),
+          CachedMessage,
+          PrefetchHooks Function()
+        > {
+  $$CachedMessagesTableTableManager(
+    _$AppDatabase db,
+    $CachedMessagesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedMessagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedMessagesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedMessagesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> spaceId = const Value.absent(),
+                Value<String> channelId = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> editedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> authorId = const Value.absent(),
+                Value<String> authorName = const Value.absent(),
+                Value<String?> authorAvatarUrl = const Value.absent(),
+                Value<SendState> sendState = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedMessagesCompanion(
+                id: id,
+                spaceId: spaceId,
+                channelId: channelId,
+                body: body,
+                createdAt: createdAt,
+                editedAt: editedAt,
+                deletedAt: deletedAt,
+                authorId: authorId,
+                authorName: authorName,
+                authorAvatarUrl: authorAvatarUrl,
+                sendState: sendState,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String spaceId,
+                required String channelId,
+                required String body,
+                required DateTime createdAt,
+                Value<DateTime?> editedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required String authorId,
+                required String authorName,
+                Value<String?> authorAvatarUrl = const Value.absent(),
+                Value<SendState> sendState = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedMessagesCompanion.insert(
+                id: id,
+                spaceId: spaceId,
+                channelId: channelId,
+                body: body,
+                createdAt: createdAt,
+                editedAt: editedAt,
+                deletedAt: deletedAt,
+                authorId: authorId,
+                authorName: authorName,
+                authorAvatarUrl: authorAvatarUrl,
+                sendState: sendState,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedMessagesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedMessagesTable,
+      CachedMessage,
+      $$CachedMessagesTableFilterComposer,
+      $$CachedMessagesTableOrderingComposer,
+      $$CachedMessagesTableAnnotationComposer,
+      $$CachedMessagesTableCreateCompanionBuilder,
+      $$CachedMessagesTableUpdateCompanionBuilder,
+      (
+        CachedMessage,
+        BaseReferences<_$AppDatabase, $CachedMessagesTable, CachedMessage>,
+      ),
+      CachedMessage,
+      PrefetchHooks Function()
+    >;
+typedef $$CachedChannelsTableCreateCompanionBuilder =
+    CachedChannelsCompanion Function({
+      required String id,
+      required String spaceId,
+      required String key,
+      required String name,
+      Value<String?> topic,
+      Value<String?> categoryId,
+      Value<bool> isPrivate,
+      Value<int> position,
+      Value<int> unreadCount,
+      Value<int> rowid,
+    });
+typedef $$CachedChannelsTableUpdateCompanionBuilder =
+    CachedChannelsCompanion Function({
+      Value<String> id,
+      Value<String> spaceId,
+      Value<String> key,
+      Value<String> name,
+      Value<String?> topic,
+      Value<String?> categoryId,
+      Value<bool> isPrivate,
+      Value<int> position,
+      Value<int> unreadCount,
+      Value<int> rowid,
+    });
+
+class $$CachedChannelsTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedChannelsTable> {
+  $$CachedChannelsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get topic => $composableBuilder(
+    column: $table.topic,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPrivate => $composableBuilder(
+    column: $table.isPrivate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get unreadCount => $composableBuilder(
+    column: $table.unreadCount,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedChannelsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedChannelsTable> {
+  $$CachedChannelsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get topic => $composableBuilder(
+    column: $table.topic,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isPrivate => $composableBuilder(
+    column: $table.isPrivate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get unreadCount => $composableBuilder(
+    column: $table.unreadCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedChannelsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedChannelsTable> {
+  $$CachedChannelsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get spaceId =>
+      $composableBuilder(column: $table.spaceId, builder: (column) => column);
+
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get topic =>
+      $composableBuilder(column: $table.topic, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryId => $composableBuilder(
+    column: $table.categoryId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isPrivate =>
+      $composableBuilder(column: $table.isPrivate, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<int> get unreadCount => $composableBuilder(
+    column: $table.unreadCount,
+    builder: (column) => column,
+  );
+}
+
+class $$CachedChannelsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedChannelsTable,
+          CachedChannel,
+          $$CachedChannelsTableFilterComposer,
+          $$CachedChannelsTableOrderingComposer,
+          $$CachedChannelsTableAnnotationComposer,
+          $$CachedChannelsTableCreateCompanionBuilder,
+          $$CachedChannelsTableUpdateCompanionBuilder,
+          (
+            CachedChannel,
+            BaseReferences<_$AppDatabase, $CachedChannelsTable, CachedChannel>,
+          ),
+          CachedChannel,
+          PrefetchHooks Function()
+        > {
+  $$CachedChannelsTableTableManager(
+    _$AppDatabase db,
+    $CachedChannelsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedChannelsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedChannelsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedChannelsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> spaceId = const Value.absent(),
+                Value<String> key = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> topic = const Value.absent(),
+                Value<String?> categoryId = const Value.absent(),
+                Value<bool> isPrivate = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> unreadCount = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedChannelsCompanion(
+                id: id,
+                spaceId: spaceId,
+                key: key,
+                name: name,
+                topic: topic,
+                categoryId: categoryId,
+                isPrivate: isPrivate,
+                position: position,
+                unreadCount: unreadCount,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String spaceId,
+                required String key,
+                required String name,
+                Value<String?> topic = const Value.absent(),
+                Value<String?> categoryId = const Value.absent(),
+                Value<bool> isPrivate = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> unreadCount = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedChannelsCompanion.insert(
+                id: id,
+                spaceId: spaceId,
+                key: key,
+                name: name,
+                topic: topic,
+                categoryId: categoryId,
+                isPrivate: isPrivate,
+                position: position,
+                unreadCount: unreadCount,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedChannelsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedChannelsTable,
+      CachedChannel,
+      $$CachedChannelsTableFilterComposer,
+      $$CachedChannelsTableOrderingComposer,
+      $$CachedChannelsTableAnnotationComposer,
+      $$CachedChannelsTableCreateCompanionBuilder,
+      $$CachedChannelsTableUpdateCompanionBuilder,
+      (
+        CachedChannel,
+        BaseReferences<_$AppDatabase, $CachedChannelsTable, CachedChannel>,
+      ),
+      CachedChannel,
+      PrefetchHooks Function()
+    >;
+typedef $$CachedCategoriesTableCreateCompanionBuilder =
+    CachedCategoriesCompanion Function({
+      required String id,
+      required String spaceId,
+      required String name,
+      Value<int> position,
+      Value<int> rowid,
+    });
+typedef $$CachedCategoriesTableUpdateCompanionBuilder =
+    CachedCategoriesCompanion Function({
+      Value<String> id,
+      Value<String> spaceId,
+      Value<String> name,
+      Value<int> position,
+      Value<int> rowid,
+    });
+
+class $$CachedCategoriesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedCategoriesTable> {
+  $$CachedCategoriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedCategoriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedCategoriesTable> {
+  $$CachedCategoriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedCategoriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedCategoriesTable> {
+  $$CachedCategoriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get spaceId =>
+      $composableBuilder(column: $table.spaceId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+}
+
+class $$CachedCategoriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedCategoriesTable,
+          CachedCategory,
+          $$CachedCategoriesTableFilterComposer,
+          $$CachedCategoriesTableOrderingComposer,
+          $$CachedCategoriesTableAnnotationComposer,
+          $$CachedCategoriesTableCreateCompanionBuilder,
+          $$CachedCategoriesTableUpdateCompanionBuilder,
+          (
+            CachedCategory,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedCategoriesTable,
+              CachedCategory
+            >,
+          ),
+          CachedCategory,
+          PrefetchHooks Function()
+        > {
+  $$CachedCategoriesTableTableManager(
+    _$AppDatabase db,
+    $CachedCategoriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedCategoriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedCategoriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedCategoriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> spaceId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedCategoriesCompanion(
+                id: id,
+                spaceId: spaceId,
+                name: name,
+                position: position,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String spaceId,
+                required String name,
+                Value<int> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedCategoriesCompanion.insert(
+                id: id,
+                spaceId: spaceId,
+                name: name,
+                position: position,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedCategoriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedCategoriesTable,
+      CachedCategory,
+      $$CachedCategoriesTableFilterComposer,
+      $$CachedCategoriesTableOrderingComposer,
+      $$CachedCategoriesTableAnnotationComposer,
+      $$CachedCategoriesTableCreateCompanionBuilder,
+      $$CachedCategoriesTableUpdateCompanionBuilder,
+      (
+        CachedCategory,
+        BaseReferences<_$AppDatabase, $CachedCategoriesTable, CachedCategory>,
+      ),
+      CachedCategory,
+      PrefetchHooks Function()
+    >;
+typedef $$CachedSpacesTableCreateCompanionBuilder =
+    CachedSpacesCompanion Function({
+      required String id,
+      required String slug,
+      required String name,
+      required String role,
+      Value<String?> iconUrl,
+      Value<int> rowid,
+    });
+typedef $$CachedSpacesTableUpdateCompanionBuilder =
+    CachedSpacesCompanion Function({
+      Value<String> id,
+      Value<String> slug,
+      Value<String> name,
+      Value<String> role,
+      Value<String?> iconUrl,
+      Value<int> rowid,
+    });
+
+class $$CachedSpacesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedSpacesTable> {
+  $$CachedSpacesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get slug => $composableBuilder(
+    column: $table.slug,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get iconUrl => $composableBuilder(
+    column: $table.iconUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedSpacesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedSpacesTable> {
+  $$CachedSpacesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get slug => $composableBuilder(
+    column: $table.slug,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get iconUrl => $composableBuilder(
+    column: $table.iconUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedSpacesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedSpacesTable> {
+  $$CachedSpacesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get slug =>
+      $composableBuilder(column: $table.slug, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get iconUrl =>
+      $composableBuilder(column: $table.iconUrl, builder: (column) => column);
+}
+
+class $$CachedSpacesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedSpacesTable,
+          CachedSpace,
+          $$CachedSpacesTableFilterComposer,
+          $$CachedSpacesTableOrderingComposer,
+          $$CachedSpacesTableAnnotationComposer,
+          $$CachedSpacesTableCreateCompanionBuilder,
+          $$CachedSpacesTableUpdateCompanionBuilder,
+          (
+            CachedSpace,
+            BaseReferences<_$AppDatabase, $CachedSpacesTable, CachedSpace>,
+          ),
+          CachedSpace,
+          PrefetchHooks Function()
+        > {
+  $$CachedSpacesTableTableManager(_$AppDatabase db, $CachedSpacesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedSpacesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedSpacesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedSpacesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> slug = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String?> iconUrl = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedSpacesCompanion(
+                id: id,
+                slug: slug,
+                name: name,
+                role: role,
+                iconUrl: iconUrl,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String slug,
+                required String name,
+                required String role,
+                Value<String?> iconUrl = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedSpacesCompanion.insert(
+                id: id,
+                slug: slug,
+                name: name,
+                role: role,
+                iconUrl: iconUrl,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedSpacesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedSpacesTable,
+      CachedSpace,
+      $$CachedSpacesTableFilterComposer,
+      $$CachedSpacesTableOrderingComposer,
+      $$CachedSpacesTableAnnotationComposer,
+      $$CachedSpacesTableCreateCompanionBuilder,
+      $$CachedSpacesTableUpdateCompanionBuilder,
+      (
+        CachedSpace,
+        BaseReferences<_$AppDatabase, $CachedSpacesTable, CachedSpace>,
+      ),
+      CachedSpace,
+      PrefetchHooks Function()
+    >;
+
+class $AppDatabaseManager {
+  final _$AppDatabase _db;
+  $AppDatabaseManager(this._db);
+  $$CachedMessagesTableTableManager get cachedMessages =>
+      $$CachedMessagesTableTableManager(_db, _db.cachedMessages);
+  $$CachedChannelsTableTableManager get cachedChannels =>
+      $$CachedChannelsTableTableManager(_db, _db.cachedChannels);
+  $$CachedCategoriesTableTableManager get cachedCategories =>
+      $$CachedCategoriesTableTableManager(_db, _db.cachedCategories);
+  $$CachedSpacesTableTableManager get cachedSpaces =>
+      $$CachedSpacesTableTableManager(_db, _db.cachedSpaces);
+}

@@ -145,7 +145,7 @@ class _MessageListState extends ConsumerState<_MessageList> {
     if (!_controller.hasClients) return;
     final position = _controller.position;
     if (position.pixels >= position.maxScrollExtent - 300) {
-      ref.read(messagesProvider.notifier).loadMore();
+      ref.read(messageActionsProvider).loadOlder();
     }
   }
 
@@ -265,7 +265,7 @@ class _FailedActions extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final notifier = ref.read(messagesProvider.notifier);
+    final actions = ref.read(messageActionsProvider);
 
     return Row(
       children: [
@@ -273,11 +273,11 @@ class _FailedActions extends ConsumerWidget {
             style: theme.textTheme.labelSmall
                 ?.copyWith(color: theme.colorScheme.error)),
         TextButton(
-          onPressed: () => notifier.retry(message),
+          onPressed: () => actions.retry(message),
           child: const Text('재시도'),
         ),
         TextButton(
-          onPressed: () => notifier.discard(message),
+          onPressed: () => actions.discard(message),
           child: const Text('삭제'),
         ),
       ],
@@ -312,7 +312,7 @@ class _ComposerState extends ConsumerState<_Composer> {
     final text = _controller.text;
     if (text.trim().isEmpty) return;
     // 낙관적 전송이라 기다리지 않는다. 입력창은 즉시 비운다.
-    ref.read(messagesProvider.notifier).send(text);
+    ref.read(messageActionsProvider).send(text);
     _controller.clear();
     _focus.requestFocus();
   }

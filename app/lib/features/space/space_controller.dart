@@ -1,21 +1,45 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/api/channels_api.dart';
 import '../../data/api/spaces_api.dart';
+import '../../data/local/app_database.dart';
+import '../../data/repositories/workspace_repository.dart';
 import '../../domain/models/space.dart';
 import '../auth/auth_controller.dart';
+
+/// 로컬 DB. 앱 전체에 하나뿐이다.
+final appDatabaseProvider = Provider<AppDatabase>((ref) {
+  final db = AppDatabase();
+  ref.onDispose(db.close);
+  return db;
+});
+
+final workspaceRepositoryProvider = Provider<WorkspaceRepository>((ref) {
+  return WorkspaceRepository(
+    spacesApi: ref.watch(spacesApiProvider),
+    channelsApi: ChannelsApi(ref.watch(apiClientProvider)),
+    db: ref.watch(appDatabaseProvider),
+  );
+});
 
 final spacesApiProvider =
     Provider<SpacesApi>((ref) => SpacesApi(ref.watch(apiClientProvider)));
 
 /// 내가 속한 스페이스 목록.
 ///
+/// **캐시(drift)를 구독하고 서버는 뒤에서 갱신한다.** 오프라인으로 켜도 목록이
+/// 보이고, 그래야 캐시된 대화까지 도달할 수 있다 (docs/앱-설계.md §6).
+///
 /// 인증 상태를 지켜본다 — 로그아웃했다가 다른 계정으로 들어오면 이전 계정의
-/// 목록이 남아 있으면 안 된다. authControllerProvider 를 watch 하므로
-/// 상태가 바뀌면 이 provider 가 자동으로 다시 만들어진다.
-final spacesProvider = FutureProvider<List<Space>>((ref) async {
+/// 목록이 남아 있으면 안 된다.
+final spacesProvider = StreamProvider<List<Space>>((ref) {
   final auth = ref.watch(authControllerProvider);
-  if (auth is! AuthSignedIn) return const [];
-  return ref.watch(spacesApiProvider).list();
+  if (auth is! AuthSignedIn) return Stream.value(const []);
+
+  final repository = ref.watch(workspaceRepositoryProvider);
+  // 캐시를 먼저 흘려보내고, 갱신은 뒤에서 한다. 기다리면 캐시가 있어도 늦어진다.
+  Future.microtask(repository.refreshSpaces);
+  return repository.watchSpaces();
 });
 
 /// 현재 열려 있는 스페이스 id.
