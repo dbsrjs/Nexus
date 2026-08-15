@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **작업 브랜치** | `feat/pivot-nexus` — **`main` 은 전환 이전의 옛 코드다.** 헷갈리지 말 것 |
-| **상태** | 사내 메신저 → 개인 프로젝트로 **전환 중**. 서버 4단계(실시간 최소) 완료. **앱은 5단계 슬라이스 2(스페이스 선택 + 반응형 셸)까지 — `app/` 에 있다** |
+| **상태** | 사내 메신저 → 개인 프로젝트로 **전환 중**. 서버 4단계(실시간 최소) 완료. **앱은 5단계 슬라이스 3(채널·메시지 REST)까지 — `app/` 에 있다** |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
 
@@ -198,7 +198,7 @@ prisma/       PrismaModule(@Global) + PrismaService
 common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug · bigint 직렬화
 ```
 
-### 앱 구조 (`app/lib/`) — 슬라이스 2 시점
+### 앱 구조 (`app/lib/`) — 슬라이스 3 시점
 
 [앱-설계.md §3](docs/앱-설계.md) 의 구조를 따르되 **쓰는 것만 만든다.** 빈 디렉터리를
 미리 파 두지 않는다.
@@ -211,11 +211,15 @@ core/breakpoints.dart    Layout(mobile/tablet/desktop) + 고정 폭 상수
 data/api/api_client.dart dio + 401 → 리프레시 1회 재시도
 data/api/auth_api.dart   login · me · logout, 실패를 AuthFailure 로 분류
 data/api/api_failure.dart 그 밖의 요청 실패 분류(ApiFailure) + 문구
-data/api/spaces_api.dart GET /spaces
+data/api/spaces_api.dart  GET /spaces
+data/api/channels_api.dart 채널 · 카테고리 목록, 읽음 저장
+data/api/messages_api.dart 메시지 목록(커서) · 전송
 data/auth_storage.dart   flutter_secure_storage 래퍼
-domain/models/           freezed + json_serializable (User · AuthTokens · Space)
+domain/models/           freezed (User · AuthTokens · Space · Channel · Category · Message)
 features/auth/           로그인 화면 + Riverpod 컨트롤러
 features/space/          스페이스 선택 화면 + 목록/현재 스페이스 provider
+features/channel/        채널 목록 + 카테고리 묶기(channelGroupsProvider)
+features/chat/           메시지 리스트 · 입력창 · 낙관적 전송(MessagesNotifier)
 features/shell/          반응형 셸 — app_shell(분기) · space_rail · channel_pane
 shared/widgets/          NexusAvatar 등 공용 위젯
 ```
@@ -226,6 +230,9 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 - **디자인 토큰 이름을 바꾸지 않는다.** `--bg-surface` → `bgSurface` 처럼 표기만 바꿔 1:1 대응시킨다. 갈라지면 디자인 문서와 코드를 대조할 수 없다.
 - **서버 오류 문구를 화면에 그대로 쓰지 않는다.** 실패 종류(`AuthFailure` · `ApiFailure`)만 받아 앱이 자기 문구를 쓴다. 서버 문구가 바뀔 때마다 앱 UX 가 흔들리면 안 된다.
 - **반응형 폭 분기는 `features/shell/app_shell.dart` 한 곳에서만 한다.** 안쪽 위젯은 자기가 어떤 폭에 있는지 모른다. 분기가 화면마다 흩어지면 손댈 수 없게 된다.
+- **메시지 목록은 서버가 주는 최신순 그대로 둔다.** 화면은 `reverse: true` 로 그린다. 뒤집어 보관하면 페이지를 이어붙일 때마다 다시 뒤집어야 한다.
+- **전송 실패한 메시지를 조용히 지우지 않는다.** `failed` 로 표시해 재시도·삭제를 남긴다. 사라지면 사용자는 보냈다고 믿는다.
+- **Enter 전송은 물리 키보드에서만 동작한다.** 모바일 소프트 키보드는 Enter 를 IME 가 줄바꿈으로 소비하므로 전송 버튼을 쓴다. Shift+Enter 는 어디서나 줄바꿈이다.
 - **401 재시도는 1회뿐.** 무한 재시도는 서버의 리프레시 재사용 탐지에 걸려 세션 family 가 끊긴다.
 - **모델을 고치면 `dart run build_runner build`** 를 돌린다. `.freezed.dart` · `.g.dart` 는 커밋한다 — 체크아웃 직후 코드젠 없이 빌드되게 하기 위함이다.
 
@@ -300,7 +307,25 @@ shared/widgets/          NexusAvatar 등 공용 위젯
   레일 첫 아바타·채널 헤더가 겹쳤다. 데스크톱 OS 에는 상태 표시줄이 없지만
   **Android 태블릿이 1024dp 를 넘으면 desktop 분기를 탄다**
 
-**아직 없는 것**: 채널 목록 · 메시지(슬라이스 3), 소켓 연동(슬라이스 4),
+### 앱 — 슬라이스 3 완료 (채널 목록 + 메시지 REST)
+
+`/s/:spaceId/c/:channelId` 까지 라우트가 이어진다. **대화가 처음으로 보인다.**
+
+- 채널 목록은 카테고리로 묶어 그린다. `categoryId` 가 없는 채널은 **기타**로 모은다 —
+  카테고리를 지워도 채널은 남기 때문이다(서버 `onDelete: SetNull`)
+- **낙관적 전송**: 서버 응답을 기다리지 않고 먼저 그리고, 성공하면 교체한다.
+  실패하면 지우지 않고 `failed` 로 표시해 재시도·삭제를 남긴다
+- 안 읽은 수는 서버가 계산해 주고(raw SQL 한 방), 채널을 열면 읽음을 저장한 뒤
+  `channelsProvider` 를 invalidate 해 뱃지를 즉시 없앤다
+
+**에뮬레이터로 확인한 것**: 채널 목록(카테고리 2개·채널 5개) · 채널 헤더와 토픽 ·
+같은 작성자 연속 메시지 그룹핑 · 전송 버튼으로 전송 → 목록 반영 · 입력창 비워짐 ·
+**IME 를 끄면 하드웨어 Enter 로 전송**. `flutter analyze` 0건, `flutter test` 10/10.
+
+**확인하지 못한 것**: 커서 페이지네이션(다음 페이지)은 메시지가 30건을 넘지 않아
+타지 않았다. 전송 실패 UI(재시도·삭제)도 서버를 죽여 가며 태우지 않았다.
+
+**아직 없는 것**: 소켓 연동(슬라이스 4) — 지금은 새로고침해야 남의 메시지가 보인다.
 스레드 · 리액션 · 멘션 · 핀 · DM, 첨부, 이슈, 저장소 연동, AI, 린트 · CI.
 (실시간 서버는 `typing` · `presence:changed` · `thread:*` 룸만 남았다 — §5 참고)
 
@@ -321,8 +346,8 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 |---|---|---|
 | 5-1 | 스캐폴드 · 스택 배선 · 테마 · 라우터 · **인증** | ✅ `ce70d56` |
 | 5-2 | **스페이스 선택 + 반응형 셸** (3단 ↔ 모바일 탭) | ✅ |
-| **5-3** ← 다음 | 채널 목록 + 메시지 리스트/전송 (REST, 낙관적 갱신) | |
-| 5-4 | 소켓 연결 · 실시간 갱신 · catch-up | |
+| 5-3 | 채널 목록 + 메시지 리스트/전송 (REST, 낙관적 갱신) | ✅ |
+| **5-4** ← 다음 | 소켓 연결 · 실시간 갱신 · catch-up | |
 | **6** | drift 캐시 → 단일 진실 공급원 전환 → Phase 0 달성(실사용 가능) | |
 | **7~** | **기능 단위로 서버 + 앱을 함께**: 스레드 · 리액션 · 멘션 · 핀 → 첨부 → 이슈 · 스프린트 → repos(웹훅 · 열람 프록시) → PR → 인덱싱 → AI | |
 | 마지막 | 푸시 · 트레이 · 딥링크 · CI · 테넌트 격리 통합 테스트 | |
@@ -340,7 +365,7 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 - GitHub OAuth 는 스키마(`oauth_accounts`)만 있고 미구현. 저장소 연동 단계에서 만든다.
 - **`updateMemberRole` 의 `rooms:invalidate`(`member.role`)는 자동 검증되지 않는다.** 두 번째 admin 계정과 역할 왕복이 필요해 `check:realtime` 에서 뺐다. 코드 리뷰로만 확인.
 - **비공개 채널에 다른 사람을 넣는 방법이 없다.** 생성자는 채널 생성 시 자동으로 멤버가 되지만(`ChannelsService.create()`), 채널 멤버 추가·제거 API 가 아직 없어 비공개 채널은 사실상 "나만 보는 채널"이다. 여럿이 쓰는 비공개 채널이 필요해지는 단계에서 함께 설계한다.
-- **앱에 자동 테스트가 거의 없다.** `app/test/` 에는 `Env` 불변식 2개 + 반응형 경계 4개뿐이다. 위젯 테스트는 화면이 하나뿐이라 얻는 것이 적었고, 통합 테스트(로그인 → 채널 → 전송)는 슬라이스 3 이 끝나야 의미가 있다. **슬라이스 3 에서 갚기로 한 빚이다.**
+- **앱 테스트가 아직 얇다.** `app/test/` 에 10개 — `Env` 2 · 반응형 경계 4 · 채널 묶기 4. 순수 로직 위주이고, **위젯 · 통합 테스트는 아직 없다.** 낙관적 전송(MessagesNotifier)은 실기기로만 확인했다.
 - **소켓 CORS 화이트리스트가 검증되지 않았다.** `SocketIoAdapter` 가 `CORS_ORIGINS` 를 적용하지만, 검증 스크립트는 Node 소켓 클라이언트라 브라우저 SOP 를 따르지 않아 실제로 막히는지 확인된 적이 없다. Flutter 웹으로 소켓을 붙이는 슬라이스 4 에서 드러난다.
 - ~~Windows 데스크톱 빌드 불가~~ — **해결됐다.** Flutter 3.47 + VS 2026 + 개발자 모드로 빌드된다(`flutter build windows --debug` 확인). 검증 경로는 Windows 데스크톱 · Chrome · Android 에뮬레이터 셋 다 열려 있다.
 

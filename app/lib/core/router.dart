@@ -50,6 +50,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/s/:spaceId',
         builder: (_, state) =>
             AppShell(spaceId: state.pathParameters['spaceId']!),
+        routes: [
+          // 채널을 연 상태. 셸은 같고 본문만 대화로 바뀐다.
+          GoRoute(
+            path: 'c/:channelId',
+            builder: (_, state) => AppShell(
+              spaceId: state.pathParameters['spaceId']!,
+              channelId: state.pathParameters['channelId'],
+            ),
+          ),
+        ],
       ),
     ],
   );

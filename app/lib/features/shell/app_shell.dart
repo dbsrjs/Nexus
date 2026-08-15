@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/breakpoints.dart';
 import '../../core/theme.dart';
+import '../channel/channel_controller.dart';
+import '../chat/chat_screen.dart';
 import '../space/space_controller.dart';
 import 'channel_pane.dart';
 import 'space_rail.dart';
 
-/// `/s/:spaceId` — 반응형 셸.
+/// `/s/:spaceId` · `/s/:spaceId/c/:channelId` — 반응형 셸.
 ///
 /// **폭 분기는 여기 한 곳에서만 한다** (docs/앱-설계.md §4). 안쪽 위젯
 /// (SpaceRail · ChannelPane · 본문)은 셋이 공유하고 자기가 어떤 폭에 있는지
@@ -19,9 +21,10 @@ import 'space_rail.dart';
 /// | 600~1023 | 본문만. 레일+채널은 드로어 |
 /// | <600 | 본문 + 하단 탭. 채널은 드로어 |
 class AppShell extends ConsumerStatefulWidget {
-  const AppShell({super.key, required this.spaceId});
+  const AppShell({super.key, required this.spaceId, this.channelId});
 
   final String spaceId;
+  final String? channelId;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
@@ -33,21 +36,25 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
-    _syncSpaceId();
+    _syncRoute();
   }
 
   @override
   void didUpdateWidget(AppShell oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.spaceId != widget.spaceId) _syncSpaceId();
+    if (oldWidget.spaceId != widget.spaceId ||
+        oldWidget.channelId != widget.channelId) {
+      _syncRoute();
+    }
   }
 
   /// 라우트가 진실의 원천이다. 셸이 그 값을 컨트롤러에 실어 준다.
   /// build 안에서 하면 build 중 상태 변경이라 예외가 난다.
-  void _syncSpaceId() {
+  void _syncRoute() {
     Future.microtask(() {
       if (!mounted) return;
       ref.read(currentSpaceIdProvider.notifier).set(widget.spaceId);
+      ref.read(currentChannelIdProvider.notifier).set(widget.channelId);
     });
   }
 
@@ -85,7 +92,7 @@ class _DesktopShell extends StatelessWidget {
             VerticalDivider(width: 1),
             ChannelPane(),
             VerticalDivider(width: 1),
-            Expanded(child: _ContentPlaceholder()),
+            Expanded(child: _Content()),
           ],
         ),
       ),
@@ -108,28 +115,37 @@ class _CompactShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final space = ref.watch(currentSpaceProvider);
+    final channel = ref.watch(currentChannelProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(space?.name ?? '…'),
-        // Drawer 가 있으면 Flutter 가 햄버거 버튼을 자동으로 넣는다.
+        // 채널이 열려 있으면 채널 이름이 더 유용하다. 스페이스 이름은 드로어에 있다.
+        title: Text(channel?.name ?? space?.name ?? '…'),
       ),
-      drawer: Drawer(
-        width: NexusPaneWidth.rail + NexusPaneWidth.channels + 1,
-        // Drawer 는 상태 표시줄 아래까지 그린다. SafeArea 가 없으면 레일의 첫
-        // 아바타와 채널 헤더가 시계·배터리와 겹친다.
-        child: const SafeArea(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SpaceRail(),
-              VerticalDivider(width: 1),
-              Expanded(child: ChannelPane(showCloseButton: true)),
-            ],
+      drawer: Builder(
+        builder: (drawerContext) => Drawer(
+          width: NexusPaneWidth.rail + NexusPaneWidth.channels + 1,
+          // Drawer 는 상태 표시줄 아래까지 그린다. SafeArea 가 없으면 레일의 첫
+          // 아바타와 채널 헤더가 시계·배터리와 겹친다.
+          child: SafeArea(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SpaceRail(),
+                const VerticalDivider(width: 1),
+                Expanded(
+                  child: ChannelPane(
+                    showCloseButton: true,
+                    // 채널을 고르면 드로어를 닫는다. 안 닫으면 고른 대화가 가려진다.
+                    onChannelTap: () => Navigator.of(drawerContext).maybePop(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
-      body: const _ContentPlaceholder(),
+      body: const _Content(),
       bottomNavigationBar: showBottomTabs
           ? NavigationBar(
               selectedIndex: tab,
@@ -162,33 +178,27 @@ class _CompactShell extends ConsumerWidget {
   }
 }
 
-/// 메시지 리스트가 들어갈 자리. 슬라이스 3 에서 대체된다.
-class _ContentPlaceholder extends ConsumerWidget {
-  const _ContentPlaceholder();
+/// 본문 — 채널이 열려 있으면 대화, 아니면 안내.
+class _Content extends ConsumerWidget {
+  const _Content();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final space = ref.watch(currentSpaceProvider);
-    final layout = Layout.ofContext(context);
+    final channelId = ref.watch(currentChannelIdProvider);
+
+    if (channelId != null) return const ChatScreen();
 
     return ColoredBox(
       color: theme.scaffoldBackgroundColor,
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              space?.name ?? '스페이스를 불러오는 중',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: NexusSpacing.sp2),
-            Text('메시지는 슬라이스 3 에서', style: theme.textTheme.bodySmall),
-            const SizedBox(height: NexusSpacing.sp8),
-            // 반응형이 실제로 동작하는지 눈으로 확인하기 위한 표시.
-            // 슬라이스 3 에서 메시지 리스트로 대체되며 함께 사라진다.
-            Text('레이아웃: ${layout.name}', style: theme.textTheme.labelSmall),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(NexusSpacing.sp6),
+          child: Text(
+            '채널을 선택하세요',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium,
+          ),
         ),
       ),
     );
