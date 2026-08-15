@@ -49,39 +49,33 @@ class $CachedMessagesTable extends CachedMessages
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
-  );
   @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-    'created_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _editedAtMeta = const VerificationMeta(
-    'editedAt',
-  );
+  late final GeneratedColumnWithTypeConverter<DateTime, int> createdAt =
+      GeneratedColumn<int>(
+        'created_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($CachedMessagesTable.$convertercreatedAt);
   @override
-  late final GeneratedColumn<DateTime> editedAt = GeneratedColumn<DateTime>(
-    'edited_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
-    'deletedAt',
-  );
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> editedAt =
+      GeneratedColumn<int>(
+        'edited_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($CachedMessagesTable.$convertereditedAtn);
   @override
-  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
-    'deleted_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> deletedAt =
+      GeneratedColumn<int>(
+        'deleted_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($CachedMessagesTable.$converterdeletedAtn);
   static const VerificationMeta _authorIdMeta = const VerificationMeta(
     'authorId',
   );
@@ -169,26 +163,6 @@ class $CachedMessagesTable extends CachedMessages
     } else if (isInserting) {
       context.missing(_bodyMeta);
     }
-    if (data.containsKey('created_at')) {
-      context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_createdAtMeta);
-    }
-    if (data.containsKey('edited_at')) {
-      context.handle(
-        _editedAtMeta,
-        editedAt.isAcceptableOrUnknown(data['edited_at']!, _editedAtMeta),
-      );
-    }
-    if (data.containsKey('deleted_at')) {
-      context.handle(
-        _deletedAtMeta,
-        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
-      );
-    }
     if (data.containsKey('author_id')) {
       context.handle(
         _authorIdMeta,
@@ -239,17 +213,23 @@ class $CachedMessagesTable extends CachedMessages
         DriftSqlType.string,
         data['${effectivePrefix}body'],
       )!,
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
-      )!,
-      editedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}edited_at'],
+      createdAt: $CachedMessagesTable.$convertercreatedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}created_at'],
+        )!,
       ),
-      deletedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}deleted_at'],
+      editedAt: $CachedMessagesTable.$convertereditedAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}edited_at'],
+        ),
+      ),
+      deletedAt: $CachedMessagesTable.$converterdeletedAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}deleted_at'],
+        ),
       ),
       authorId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -270,6 +250,14 @@ class $CachedMessagesTable extends CachedMessages
   $CachedMessagesTable createAlias(String alias) {
     return $CachedMessagesTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<DateTime, int> $convertercreatedAt = const _UtcMicros();
+  static TypeConverter<DateTime, int> $convertereditedAt = const _UtcMicros();
+  static TypeConverter<DateTime?, int?> $convertereditedAtn =
+      NullAwareTypeConverter.wrap($convertereditedAt);
+  static TypeConverter<DateTime, int> $converterdeletedAt = const _UtcMicros();
+  static TypeConverter<DateTime?, int?> $converterdeletedAtn =
+      NullAwareTypeConverter.wrap($converterdeletedAt);
 }
 
 class CachedMessage extends DataClass implements Insertable<CachedMessage> {
@@ -302,12 +290,20 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     map['space_id'] = Variable<String>(spaceId);
     map['channel_id'] = Variable<String>(channelId);
     map['body'] = Variable<String>(body);
-    map['created_at'] = Variable<DateTime>(createdAt);
+    {
+      map['created_at'] = Variable<int>(
+        $CachedMessagesTable.$convertercreatedAt.toSql(createdAt),
+      );
+    }
     if (!nullToAbsent || editedAt != null) {
-      map['edited_at'] = Variable<DateTime>(editedAt);
+      map['edited_at'] = Variable<int>(
+        $CachedMessagesTable.$convertereditedAtn.toSql(editedAt),
+      );
     }
     if (!nullToAbsent || deletedAt != null) {
-      map['deleted_at'] = Variable<DateTime>(deletedAt);
+      map['deleted_at'] = Variable<int>(
+        $CachedMessagesTable.$converterdeletedAtn.toSql(deletedAt),
+      );
     }
     map['author_id'] = Variable<String>(authorId);
     map['author_name'] = Variable<String>(authorName);
@@ -512,9 +508,9 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Expression<String>? spaceId,
     Expression<String>? channelId,
     Expression<String>? body,
-    Expression<DateTime>? createdAt,
-    Expression<DateTime>? editedAt,
-    Expression<DateTime>? deletedAt,
+    Expression<int>? createdAt,
+    Expression<int>? editedAt,
+    Expression<int>? deletedAt,
     Expression<String>? authorId,
     Expression<String>? authorName,
     Expression<String>? authorAvatarUrl,
@@ -579,13 +575,19 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       map['body'] = Variable<String>(body.value);
     }
     if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
+      map['created_at'] = Variable<int>(
+        $CachedMessagesTable.$convertercreatedAt.toSql(createdAt.value),
+      );
     }
     if (editedAt.present) {
-      map['edited_at'] = Variable<DateTime>(editedAt.value);
+      map['edited_at'] = Variable<int>(
+        $CachedMessagesTable.$convertereditedAtn.toSql(editedAt.value),
+      );
     }
     if (deletedAt.present) {
-      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+      map['deleted_at'] = Variable<int>(
+        $CachedMessagesTable.$converterdeletedAtn.toSql(deletedAt.value),
+      );
     }
     if (authorId.present) {
       map['author_id'] = Variable<String>(authorId.value);
@@ -1884,16 +1886,24 @@ class $OutboxMessagesTable extends OutboxMessages
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
-  );
   @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-    'created_at',
+  late final GeneratedColumnWithTypeConverter<DateTime, int> createdAt =
+      GeneratedColumn<int>(
+        'created_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($OutboxMessagesTable.$convertercreatedAt);
+  static const VerificationMeta _seqMeta = const VerificationMeta('seq');
+  @override
+  late final GeneratedColumn<int> seq = GeneratedColumn<int>(
+    'seq',
     aliasedName,
     false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
   );
   static const VerificationMeta _authorIdMeta = const VerificationMeta(
     'authorId',
@@ -1971,6 +1981,7 @@ class $OutboxMessagesTable extends OutboxMessages
     channelId,
     body,
     createdAt,
+    seq,
     authorId,
     authorName,
     authorAvatarUrl,
@@ -2019,13 +2030,11 @@ class $OutboxMessagesTable extends OutboxMessages
     } else if (isInserting) {
       context.missing(_bodyMeta);
     }
-    if (data.containsKey('created_at')) {
+    if (data.containsKey('seq')) {
       context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+        _seqMeta,
+        seq.isAcceptableOrUnknown(data['seq']!, _seqMeta),
       );
-    } else if (isInserting) {
-      context.missing(_createdAtMeta);
     }
     if (data.containsKey('author_id')) {
       context.handle(
@@ -2098,9 +2107,15 @@ class $OutboxMessagesTable extends OutboxMessages
         DriftSqlType.string,
         data['${effectivePrefix}body'],
       )!,
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
+      createdAt: $OutboxMessagesTable.$convertercreatedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}created_at'],
+        )!,
+      ),
+      seq: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seq'],
       )!,
       authorId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -2133,6 +2148,8 @@ class $OutboxMessagesTable extends OutboxMessages
   $OutboxMessagesTable createAlias(String alias) {
     return $OutboxMessagesTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<DateTime, int> $convertercreatedAt = const _UtcMicros();
 }
 
 class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
@@ -2142,8 +2159,16 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
   final String channelId;
   final String body;
 
-  /// 사용자가 **쓴** 시각. 서버 도착 시각이 아니다. 큐는 이 순서로 나간다.
+  /// 사용자가 **쓴** 시각. 서버 도착 시각이 아니다.
   final DateTime createdAt;
+
+  /// 큐에 들어온 순서. **전송 순서는 시각이 아니라 이 값이 정한다.**
+  ///
+  /// 시각으로 정렬하면 안 되는 이유: Windows 의 `DateTime.now()` 는 밀리초
+  /// 해상도라, 연속으로 보낸 메시지 여러 건이 **완전히 같은 값**을 갖는다.
+  /// 그러면 순서가 tie-break 에 맡겨지고 실제로 뒤집혔다(테스트가 15회 중
+  /// 5회 실패했다). 삽입 순서는 저장해 두어야 확실하다.
+  final int seq;
   final String authorId;
   final String authorName;
   final String? authorAvatarUrl;
@@ -2161,6 +2186,7 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     required this.channelId,
     required this.body,
     required this.createdAt,
+    required this.seq,
     required this.authorId,
     required this.authorName,
     this.authorAvatarUrl,
@@ -2175,7 +2201,12 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     map['space_id'] = Variable<String>(spaceId);
     map['channel_id'] = Variable<String>(channelId);
     map['body'] = Variable<String>(body);
-    map['created_at'] = Variable<DateTime>(createdAt);
+    {
+      map['created_at'] = Variable<int>(
+        $OutboxMessagesTable.$convertercreatedAt.toSql(createdAt),
+      );
+    }
+    map['seq'] = Variable<int>(seq);
     map['author_id'] = Variable<String>(authorId);
     map['author_name'] = Variable<String>(authorName);
     if (!nullToAbsent || authorAvatarUrl != null) {
@@ -2196,6 +2227,7 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
       channelId: Value(channelId),
       body: Value(body),
       createdAt: Value(createdAt),
+      seq: Value(seq),
       authorId: Value(authorId),
       authorName: Value(authorName),
       authorAvatarUrl: authorAvatarUrl == null && nullToAbsent
@@ -2220,6 +2252,7 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
       channelId: serializer.fromJson<String>(json['channelId']),
       body: serializer.fromJson<String>(json['body']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      seq: serializer.fromJson<int>(json['seq']),
       authorId: serializer.fromJson<String>(json['authorId']),
       authorName: serializer.fromJson<String>(json['authorName']),
       authorAvatarUrl: serializer.fromJson<String?>(json['authorAvatarUrl']),
@@ -2237,6 +2270,7 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
       'channelId': serializer.toJson<String>(channelId),
       'body': serializer.toJson<String>(body),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'seq': serializer.toJson<int>(seq),
       'authorId': serializer.toJson<String>(authorId),
       'authorName': serializer.toJson<String>(authorName),
       'authorAvatarUrl': serializer.toJson<String?>(authorAvatarUrl),
@@ -2252,6 +2286,7 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     String? channelId,
     String? body,
     DateTime? createdAt,
+    int? seq,
     String? authorId,
     String? authorName,
     Value<String?> authorAvatarUrl = const Value.absent(),
@@ -2264,6 +2299,7 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     channelId: channelId ?? this.channelId,
     body: body ?? this.body,
     createdAt: createdAt ?? this.createdAt,
+    seq: seq ?? this.seq,
     authorId: authorId ?? this.authorId,
     authorName: authorName ?? this.authorName,
     authorAvatarUrl: authorAvatarUrl.present
@@ -2280,6 +2316,7 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
       channelId: data.channelId.present ? data.channelId.value : this.channelId,
       body: data.body.present ? data.body.value : this.body,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      seq: data.seq.present ? data.seq.value : this.seq,
       authorId: data.authorId.present ? data.authorId.value : this.authorId,
       authorName: data.authorName.present
           ? data.authorName.value
@@ -2303,6 +2340,7 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
           ..write('channelId: $channelId, ')
           ..write('body: $body, ')
           ..write('createdAt: $createdAt, ')
+          ..write('seq: $seq, ')
           ..write('authorId: $authorId, ')
           ..write('authorName: $authorName, ')
           ..write('authorAvatarUrl: $authorAvatarUrl, ')
@@ -2320,6 +2358,7 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     channelId,
     body,
     createdAt,
+    seq,
     authorId,
     authorName,
     authorAvatarUrl,
@@ -2336,6 +2375,7 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
           other.channelId == this.channelId &&
           other.body == this.body &&
           other.createdAt == this.createdAt &&
+          other.seq == this.seq &&
           other.authorId == this.authorId &&
           other.authorName == this.authorName &&
           other.authorAvatarUrl == this.authorAvatarUrl &&
@@ -2350,6 +2390,7 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
   final Value<String> channelId;
   final Value<String> body;
   final Value<DateTime> createdAt;
+  final Value<int> seq;
   final Value<String> authorId;
   final Value<String> authorName;
   final Value<String?> authorAvatarUrl;
@@ -2363,6 +2404,7 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     this.channelId = const Value.absent(),
     this.body = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.seq = const Value.absent(),
     this.authorId = const Value.absent(),
     this.authorName = const Value.absent(),
     this.authorAvatarUrl = const Value.absent(),
@@ -2377,6 +2419,7 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     required String channelId,
     required String body,
     required DateTime createdAt,
+    this.seq = const Value.absent(),
     required String authorId,
     required String authorName,
     this.authorAvatarUrl = const Value.absent(),
@@ -2396,7 +2439,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     Expression<String>? spaceId,
     Expression<String>? channelId,
     Expression<String>? body,
-    Expression<DateTime>? createdAt,
+    Expression<int>? createdAt,
+    Expression<int>? seq,
     Expression<String>? authorId,
     Expression<String>? authorName,
     Expression<String>? authorAvatarUrl,
@@ -2411,6 +2455,7 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
       if (channelId != null) 'channel_id': channelId,
       if (body != null) 'body': body,
       if (createdAt != null) 'created_at': createdAt,
+      if (seq != null) 'seq': seq,
       if (authorId != null) 'author_id': authorId,
       if (authorName != null) 'author_name': authorName,
       if (authorAvatarUrl != null) 'author_avatar_url': authorAvatarUrl,
@@ -2427,6 +2472,7 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     Value<String>? channelId,
     Value<String>? body,
     Value<DateTime>? createdAt,
+    Value<int>? seq,
     Value<String>? authorId,
     Value<String>? authorName,
     Value<String?>? authorAvatarUrl,
@@ -2441,6 +2487,7 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
       channelId: channelId ?? this.channelId,
       body: body ?? this.body,
       createdAt: createdAt ?? this.createdAt,
+      seq: seq ?? this.seq,
       authorId: authorId ?? this.authorId,
       authorName: authorName ?? this.authorName,
       authorAvatarUrl: authorAvatarUrl ?? this.authorAvatarUrl,
@@ -2467,7 +2514,12 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
       map['body'] = Variable<String>(body.value);
     }
     if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
+      map['created_at'] = Variable<int>(
+        $OutboxMessagesTable.$convertercreatedAt.toSql(createdAt.value),
+      );
+    }
+    if (seq.present) {
+      map['seq'] = Variable<int>(seq.value);
     }
     if (authorId.present) {
       map['author_id'] = Variable<String>(authorId.value);
@@ -2501,6 +2553,7 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
           ..write('channelId: $channelId, ')
           ..write('body: $body, ')
           ..write('createdAt: $createdAt, ')
+          ..write('seq: $seq, ')
           ..write('authorId: $authorId, ')
           ..write('authorName: $authorName, ')
           ..write('authorAvatarUrl: $authorAvatarUrl, ')
@@ -2594,20 +2647,23 @@ class $$CachedMessagesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get createdAt =>
+      $composableBuilder(
+        column: $table.createdAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
-  ColumnFilters<DateTime> get editedAt => $composableBuilder(
-    column: $table.editedAt,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get editedAt =>
+      $composableBuilder(
+        column: $table.editedAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
-  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
-    column: $table.deletedAt,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get deletedAt =>
+      $composableBuilder(
+        column: $table.deletedAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   ColumnFilters<String> get authorId => $composableBuilder(
     column: $table.authorId,
@@ -2654,17 +2710,17 @@ class $$CachedMessagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+  ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get editedAt => $composableBuilder(
+  ColumnOrderings<int> get editedAt => $composableBuilder(
     column: $table.editedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
     column: $table.deletedAt,
     builder: (column) => ColumnOrderings(column),
   );
@@ -2706,13 +2762,13 @@ class $$CachedMessagesTableAnnotationComposer
   GeneratedColumn<String> get body =>
       $composableBuilder(column: $table.body, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get createdAt =>
+  GeneratedColumnWithTypeConverter<DateTime, int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get editedAt =>
+  GeneratedColumnWithTypeConverter<DateTime?, int> get editedAt =>
       $composableBuilder(column: $table.editedAt, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get deletedAt =>
+  GeneratedColumnWithTypeConverter<DateTime?, int> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
   GeneratedColumn<String> get authorId =>
@@ -3513,6 +3569,7 @@ typedef $$OutboxMessagesTableCreateCompanionBuilder =
       required String channelId,
       required String body,
       required DateTime createdAt,
+      Value<int> seq,
       required String authorId,
       required String authorName,
       Value<String?> authorAvatarUrl,
@@ -3528,6 +3585,7 @@ typedef $$OutboxMessagesTableUpdateCompanionBuilder =
       Value<String> channelId,
       Value<String> body,
       Value<DateTime> createdAt,
+      Value<int> seq,
       Value<String> authorId,
       Value<String> authorName,
       Value<String?> authorAvatarUrl,
@@ -3566,8 +3624,14 @@ class $$OutboxMessagesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get createdAt =>
+      $composableBuilder(
+        column: $table.createdAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get seq => $composableBuilder(
+    column: $table.seq,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3631,8 +3695,13 @@ class $$OutboxMessagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+  ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get seq => $composableBuilder(
+    column: $table.seq,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3688,8 +3757,11 @@ class $$OutboxMessagesTableAnnotationComposer
   GeneratedColumn<String> get body =>
       $composableBuilder(column: $table.body, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get createdAt =>
+  GeneratedColumnWithTypeConverter<DateTime, int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get seq =>
+      $composableBuilder(column: $table.seq, builder: (column) => column);
 
   GeneratedColumn<String> get authorId =>
       $composableBuilder(column: $table.authorId, builder: (column) => column);
@@ -3754,6 +3826,7 @@ class $$OutboxMessagesTableTableManager
                 Value<String> channelId = const Value.absent(),
                 Value<String> body = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<int> seq = const Value.absent(),
                 Value<String> authorId = const Value.absent(),
                 Value<String> authorName = const Value.absent(),
                 Value<String?> authorAvatarUrl = const Value.absent(),
@@ -3767,6 +3840,7 @@ class $$OutboxMessagesTableTableManager
                 channelId: channelId,
                 body: body,
                 createdAt: createdAt,
+                seq: seq,
                 authorId: authorId,
                 authorName: authorName,
                 authorAvatarUrl: authorAvatarUrl,
@@ -3782,6 +3856,7 @@ class $$OutboxMessagesTableTableManager
                 required String channelId,
                 required String body,
                 required DateTime createdAt,
+                Value<int> seq = const Value.absent(),
                 required String authorId,
                 required String authorName,
                 Value<String?> authorAvatarUrl = const Value.absent(),
@@ -3795,6 +3870,7 @@ class $$OutboxMessagesTableTableManager
                 channelId: channelId,
                 body: body,
                 createdAt: createdAt,
+                seq: seq,
                 authorId: authorId,
                 authorName: authorName,
                 authorAvatarUrl: authorAvatarUrl,

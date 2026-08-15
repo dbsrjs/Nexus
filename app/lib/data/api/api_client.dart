@@ -77,6 +77,41 @@ class ApiClient {
     await _storage.clear();
   }
 
+  /// 진행 중인 리프레시. **동시에 두 번 보내면 안 된다** — 서버가 재사용
+  /// 탐지로 세션 family 를 통째로 끊는다(docs/백엔드-설계.md §4).
+  Future<bool>? _refreshing;
+
+  /// 액세스 토큰을 한 번 갱신한다. 성공하면 true.
+  ///
+  /// 인터셉터(401)와 **소켓 핸드셰이크 거부** 양쪽에서 쓴다. 소켓은 dio 를
+  /// 지나지 않아 인터셉터가 도와줄 수 없는데, 핸드셰이크는 연결 시점의 토큰으로
+  /// 한 번만 검증된다 — 액세스 토큰이 15분이라 앱을 오래 켜 두면 재연결이
+  /// 계속 거부된다. 실제로 30분 켜 둔 앱에서 소켓이 영영 붙지 않았다.
+  Future<bool> refreshAccessToken() {
+    return _refreshing ??= _performRefresh().whenComplete(() {
+      _refreshing = null;
+    });
+  }
+
+  Future<bool> _performRefresh() async {
+    final refreshToken = _tokens?.refreshToken;
+    if (refreshToken == null) return false;
+
+    try {
+      final refreshed = await _refreshDio.post<Map<String, dynamic>>(
+        '/auth/refresh',
+        data: {'refreshToken': refreshToken, 'client': 'native'},
+      );
+      await setTokens(AuthTokens.fromJson(refreshed.data!));
+      return true;
+    } catch (_) {
+      // 만료됐거나 재사용으로 끊긴 토큰이다. 흔적을 지우고 세션 종료를 알린다.
+      await clearTokens();
+      onSessionExpired?.call();
+      return false;
+    }
+  }
+
   Future<void> _onError(
     DioException error,
     ErrorInterceptorHandler handler,
@@ -99,16 +134,8 @@ class ApiClient {
       return;
     }
 
-    try {
-      final refreshed = await _refreshDio.post<Map<String, dynamic>>(
-        '/auth/refresh',
-        data: {'refreshToken': refreshToken, 'client': 'native'},
-      );
-      await setTokens(AuthTokens.fromJson(refreshed.data!));
-    } catch (_) {
-      // 만료됐거나 재사용으로 끊긴 토큰이다. 흔적을 지우고 세션 종료를 알린다.
-      await clearTokens();
-      onSessionExpired?.call();
+    // 소켓도 같은 경로를 쓴다. 동시에 두 번 나가지 않도록 한 곳에 모아 뒀다.
+    if (!await refreshAccessToken()) {
       handler.next(error);
       return;
     }

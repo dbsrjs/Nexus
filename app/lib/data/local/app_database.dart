@@ -5,6 +5,29 @@ import '../../domain/models/message.dart';
 
 part 'app_database.g.dart';
 
+/// 시각을 **UTC 마이크로초 정수**로 저장한다.
+///
+/// drift 의 `DateTimeColumn` 은 둘 다 문제가 있었다.
+/// - 기본값(Unix **초**)은 밀리초를 잘라, 같은 초에 도착한 메시지가 정렬에서
+///   동률이 되고 순서가 뒤집혔다.
+/// - `storeDateTimeAsText` 는 `toIso8601String()` 을 그대로 쓰는데, Dart 는
+///   **마이크로초가 0이면 소수점 3자리, 아니면 6자리**로 자릿수를 바꾸고
+///   로컬 시각에는 ` +09:00`, UTC 에는 `Z` 를 붙인다. 문자열 정렬이 곧 시간
+///   순서라는 전제가 깨진다 — 캐시(서버 UTC)와 큐(로컬)를 함께 정렬하는
+///   이 앱에서는 특히 그렇다.
+///
+/// 정수로 두면 정렬이 정수 비교라 형식 문제가 아예 없고, 마이크로초까지 남는다.
+class _UtcMicros extends TypeConverter<DateTime, int> {
+  const _UtcMicros();
+
+  @override
+  DateTime fromSql(int fromDb) =>
+      DateTime.fromMicrosecondsSinceEpoch(fromDb, isUtc: true).toLocal();
+
+  @override
+  int toSql(DateTime value) => value.toUtc().microsecondsSinceEpoch;
+}
+
 /// 메시지 캐시. **서버에 있는 것만** 담는다.
 ///
 /// 서버 모델을 그대로 펼쳐 담는다. 중첩(author)을 JSON 으로 넣지 않는 이유는,
@@ -18,9 +41,9 @@ class CachedMessages extends Table {
   TextColumn get spaceId => text()();
   TextColumn get channelId => text()();
   TextColumn get body => text()();
-  DateTimeColumn get createdAt => dateTime()();
-  DateTimeColumn get editedAt => dateTime().nullable()();
-  DateTimeColumn get deletedAt => dateTime().nullable()();
+  IntColumn get createdAt => integer().map(const _UtcMicros())();
+  IntColumn get editedAt => integer().map(const _UtcMicros()).nullable()();
+  IntColumn get deletedAt => integer().map(const _UtcMicros()).nullable()();
 
   TextColumn get authorId => text()();
   TextColumn get authorName => text()();
@@ -46,8 +69,16 @@ class OutboxMessages extends Table {
   TextColumn get channelId => text()();
   TextColumn get body => text()();
 
-  /// 사용자가 **쓴** 시각. 서버 도착 시각이 아니다. 큐는 이 순서로 나간다.
-  DateTimeColumn get createdAt => dateTime()();
+  /// 사용자가 **쓴** 시각. 서버 도착 시각이 아니다.
+  IntColumn get createdAt => integer().map(const _UtcMicros())();
+
+  /// 큐에 들어온 순서. **전송 순서는 시각이 아니라 이 값이 정한다.**
+  ///
+  /// 시각으로 정렬하면 안 되는 이유: Windows 의 `DateTime.now()` 는 밀리초
+  /// 해상도라, 연속으로 보낸 메시지 여러 건이 **완전히 같은 값**을 갖는다.
+  /// 그러면 순서가 tie-break 에 맡겨지고 실제로 뒤집혔다(테스트가 15회 중
+  /// 5회 실패했다). 삽입 순서는 저장해 두어야 확실하다.
+  IntColumn get seq => integer().withDefault(const Constant(0))();
 
   // 화면에 그리려면 작성자가 필요하다. 지금은 늘 '나'지만, 목록 조회가
   // 캐시와 같은 모양이어야 한 쿼리로 합칠 수 있다.
@@ -130,21 +161,8 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
       : super(executor ?? driftDatabase(name: 'nexus'));
 
-  /// **시각을 초가 아니라 밀리초까지 보존한다.**
-  ///
-  /// drift 의 기본값은 Unix **초**라 밀리초가 잘린다. 그래서 같은 초에 도착한
-  /// 메시지 둘이 정렬에서 동률이 되고 순서가 불안정해진다 — 오프라인에 쌓아 둔
-  /// 메시지를 한꺼번에 내보낼 때 실제로 뒤집혔다(서버 기록은 .192 · .397 로
-  /// 멀쩡했는데 화면만 뒤집혔다).
-  ///
-  /// 텍스트(ISO-8601 UTC)로 저장하면 밀리초가 남고, 문자열 정렬 순서가 곧
-  /// 시간 순서라 `ORDER BY` 도 그대로 쓸 수 있다.
   @override
-  DriftDatabaseOptions get options =>
-      const DriftDatabaseOptions(storeDateTimeAsText: true);
-
-  @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -165,16 +183,27 @@ class AppDatabase extends _$AppDatabase {
           // 이미 있는 테이블은 건너뛴다(큐가 여기 해당한다).
           await m.createAll();
 
-          // 5 에서 시각 저장 형식을 정수(초) → 텍스트(ISO-8601)로 바꿨다.
-          // 캐시는 방금 다시 만들었으니 상관없지만, **큐는 남겨 두므로**
-          // 옛 형식으로 저장된 행을 직접 옮겨 준다. 이미 잘린 밀리초는
-          // 되살릴 수 없어 .000 으로 둔다 — 큐의 순서는 밀리초가 아니라
-          // 삽입 순서로 정하므로 영향이 없다.
-          if (from < 5) {
+          // 시각 저장 형식이 두 번 바뀌었다(초 → 텍스트 → UTC 마이크로초).
+          // 캐시는 방금 다시 만들었으니 상관없지만 **큐는 남겨 두므로**
+          // 옛 형식으로 저장된 행을 직접 옮긴다.
+          if (from < 6) {
+            // 순번 컬럼이 없던 시절의 행에는 삽입 순서(rowid)를 넣어 준다.
+            await m.addColumn(outboxMessages, outboxMessages.seq);
+            await customStatement(
+              'UPDATE outbox_messages SET seq = rowid WHERE seq = 0',
+            );
+
+            // 5 에서 쓰던 ISO-8601 텍스트.
             await customStatement(
               "UPDATE outbox_messages "
-              "SET created_at = strftime('%Y-%m-%dT%H:%M:%S.000Z', created_at, 'unixepoch') "
-              "WHERE typeof(created_at) = 'integer'",
+              "SET created_at = CAST(strftime('%s', created_at) AS INTEGER) * 1000000 "
+              "WHERE typeof(created_at) = 'text'",
+            );
+            // 4 이하에서 쓰던 Unix 초. 마이크로초 값(~1.7e15)과는 자릿수로
+            // 구분된다 — 초는 ~1.7e9 다.
+            await customStatement(
+              'UPDATE outbox_messages SET created_at = created_at * 1000000 '
+              "WHERE typeof(created_at) = 'integer' AND created_at < 100000000000",
             );
           }
         },
@@ -201,15 +230,17 @@ class AppDatabase extends _$AppDatabase {
     return customSelect(
       '''
       SELECT id, channel_id, body, created_at, edited_at, deleted_at,
-             author_id, author_name, author_avatar_url, 0 AS queued, 0 AS failed
+             author_id, author_name, author_avatar_url,
+             0 AS queued, 0 AS failed, 0 AS seq
         FROM cached_messages
        WHERE channel_id = ?1
       UNION ALL
       SELECT id, channel_id, body, created_at, NULL, NULL,
-             author_id, author_name, author_avatar_url, 1 AS queued, failed
+             author_id, author_name, author_avatar_url,
+             1 AS queued, failed, seq
         FROM outbox_messages
        WHERE channel_id = ?1
-       ORDER BY created_at DESC, id DESC
+       ORDER BY created_at DESC, seq DESC
        LIMIT ?2
       ''',
       variables: [Variable<String>(channelId), Variable<int>(limit)],
@@ -264,20 +295,25 @@ class AppDatabase extends _$AppDatabase {
   // 전송 큐
   // ──────────────────────────────────────────────
 
-  /// 큐 전체를 **쓴 순서대로**. 재연결 시 이 순서로 흘려보낸다.
-  ///
-  /// id 로 한 번 더 정렬하는 이유는 같은 시각에 두 개가 들어왔을 때 순서가
-  /// 흔들리지 않게 하기 위해서다. 로컬 id 는 `local-<마이크로초>-<난수>` 라
-  /// 문자열 정렬이 곧 작성 순서다.
-  Future<List<OutboxMessage>> queuedMessages() => (select(outboxMessages)
-        ..orderBy([
-          (o) => OrderingTerm.asc(o.createdAt),
-          (o) => OrderingTerm.asc(o.id),
-        ]))
-      .get();
+  /// 큐 전체를 **넣은 순서대로**. 재연결 시 이 순서로 흘려보낸다.
+  Future<List<OutboxMessage>> queuedMessages() =>
+      (select(outboxMessages)..orderBy([(o) => OrderingTerm.asc(o.seq)])).get();
 
-  Future<void> enqueue(OutboxMessagesCompanion entry) =>
-      into(outboxMessages).insert(entry);
+  /// 큐에 넣는다. 순번은 **여기서만** 매긴다.
+  ///
+  /// `MAX(seq) + 1` 을 읽고 쓰는 사이에 다른 삽입이 끼면 번호가 겹치므로
+  /// 한 트랜잭션으로 묶는다.
+  Future<void> enqueue(OutboxMessagesCompanion entry) async {
+    await transaction(() async {
+      final row = await customSelect(
+        'SELECT COALESCE(MAX(seq), 0) AS next FROM outbox_messages',
+        readsFrom: {outboxMessages},
+      ).getSingle();
+      await into(outboxMessages).insert(
+        entry.copyWith(seq: Value(row.read<int>('next') + 1)),
+      );
+    });
+  }
 
   /// 전송 성공. **큐에서 빼는 것과 캐시에 넣는 것은 한 트랜잭션이어야 한다** —
   /// 사이에서 끊기면 메시지가 화면에서 사라지거나 두 번 보인다.
@@ -409,13 +445,21 @@ Message _rowToMessage(QueryRow row) {
   final queued = row.read<int>('queued') == 1;
   final failed = row.read<int>('failed') == 1;
 
+  // 시각 컬럼은 정수(UTC 마이크로초)다 — customSelect 는 컨버터를 지나지 않아
+  // 여기서 직접 되돌린다.
+  const micros = _UtcMicros();
+  DateTime? at(String column) {
+    final value = row.readNullable<int>(column);
+    return value == null ? null : micros.fromSql(value);
+  }
+
   return Message(
     id: row.read<String>('id'),
     channelId: row.read<String>('channel_id'),
     body: row.read<String>('body'),
-    createdAt: row.read<DateTime>('created_at'),
-    editedAt: row.readNullable<DateTime>('edited_at'),
-    deletedAt: row.readNullable<DateTime>('deleted_at'),
+    createdAt: at('created_at')!,
+    editedAt: at('edited_at'),
+    deletedAt: at('deleted_at'),
     author: MessageAuthor(
       id: row.read<String>('author_id'),
       name: row.read<String>('author_name'),

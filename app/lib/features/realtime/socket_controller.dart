@@ -49,6 +49,10 @@ final socketConnectedProvider = Provider<bool>((ref) {
 /// 메시지 자체는 MessagesNotifier 가 받는다. 여기서는 목록·뱃지만 갱신한다.
 /// `main.dart` 에서 한 번 watch 해 살려 둔다.
 final realtimeChannelSyncProvider = Provider<void>((ref) {
+  // 핸드셰이크 거부에 대응해 토큰을 갱신한 적이 있는지. 새 토큰으로도 거부당하면
+  // 서버 쪽 문제라 계속 시도해 봐야 재사용 탐지에 걸릴 뿐이다.
+  var authRetried = false;
+
   ref.listen<AsyncValue<SocketEvent>>(socketEventsProvider, (previous, next) {
     final event = next.value;
     if (event == null) return;
@@ -74,6 +78,7 @@ final realtimeChannelSyncProvider = Provider<void>((ref) {
         // 채널을 열지 않아도 살아 있기 때문이다 — 오프라인으로 여러 채널에
         // 써 두고 스페이스 화면에 머물러 있어도 재연결 시 전부 나가야 한다.
         ref.read(messageRepositoryProvider).flush();
+        authRetried = false;
 
       case ReadSynced():
         // 다른 기기에서 읽었다. 뱃지를 맞춘다.
@@ -86,10 +91,24 @@ final realtimeChannelSyncProvider = Provider<void>((ref) {
           ref.invalidate(channelsProvider);
         }
 
+      case SocketUnauthorized():
+        // **핸드셰이크는 연결 시점의 토큰으로 한 번만 검증된다.** 액세스 토큰이
+        // 15분이라 앱을 오래 켜 두면 재연결이 계속 거부되고, 소켓이 영영 붙지
+        // 않는다 — 실제로 30분 켜 둔 앱에서 겪었다. 그러면 전송 큐를 내보낼
+        // 계기도 사라져 오프라인에 쓴 메시지가 나가지 못한다.
+        //
+        // REST 는 인터셉터가 401 을 리프레시로 처리하지만 소켓은 그 경로를
+        // 지나지 않으므로 여기서 직접 갱신하고 다시 붙는다.
+        if (authRetried) break;
+        authRetried = true;
+        ref.read(apiClientProvider).refreshAccessToken().then((ok) {
+          // 실패하면 ApiClient 가 세션 만료를 알려 로그인 화면으로 간다.
+          if (ok) ref.read(socketClientProvider).reconnectWithFreshToken();
+        });
+
       case MessageEdited():
       case MessageDeleted():
       case SocketDisconnected():
-      case SocketUnauthorized():
         break;
     }
   });

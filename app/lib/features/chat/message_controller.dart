@@ -64,10 +64,14 @@ void _refreshInBackground(
   Future.microtask(() async {
     ref.read(messagesRefreshingProvider.notifier).set(true);
     await repository.refresh(spaceId: spaceId, channelId: channelId);
-    if (ref.mounted) {
-      ref.read(messagesRefreshingProvider.notifier).set(false);
-      ref.read(messageActionsProvider).markReadToLatest();
-    }
+    if (!ref.mounted) return;
+
+    ref.read(messagesRefreshingProvider.notifier).set(false);
+    // **채널에 들어올 때도 큐를 내보낸다.** 평소에는 소켓 재연결이 계기가
+    // 되지만, 소켓이 늦거나 붙지 못하는 동안에도 대화를 열면 나가야 한다.
+    // 계기가 하나뿐이면 그것이 막히는 순간 큐가 통째로 멈춘다.
+    await ref.read(messageActionsProvider).flushOutbox();
+    if (ref.mounted) ref.read(messageActionsProvider).markReadToLatest();
   });
 }
 

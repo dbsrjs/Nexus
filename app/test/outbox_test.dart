@@ -86,6 +86,37 @@ void main() {
     expect(await db.queuedMessages(), isEmpty);
   });
 
+  test('★ 시각이 완전히 같아도 넣은 순서대로 나간다', () async {
+    // 순서를 시각에 맡기면 안 되는 이유를 고정한다.
+    //
+    // Windows 의 `DateTime.now()` 는 밀리초 해상도라, 연속으로 보낸 메시지
+    // 여러 건이 **완전히 같은 값**을 갖는다. 그때 순서가 tie-break 로 넘어가면
+    // 뒤집힌다 — 이 테스트를 넣기 전에 15회 중 5회 실패했다.
+    // 그래서 큐는 삽입 순번(seq)으로 정렬한다.
+    final same = DateTime.utc(2026, 8, 15, 14, 20, 48);
+    for (final body in ['첫째', '둘째', '셋째', '넷째', '다섯째']) {
+      await db.enqueue(
+        OutboxMessagesCompanion.insert(
+          id: 'local-$body',
+          spaceId: 's1',
+          channelId: 'c1',
+          body: body,
+          createdAt: same,
+          authorId: author.id,
+          authorName: author.name,
+        ),
+      );
+    }
+
+    expect(
+      (await db.queuedMessages()).map((m) => m.body),
+      ['첫째', '둘째', '셋째', '넷째', '다섯째'],
+    );
+
+    await repository.flush();
+    expect(api.sentBodies, ['첫째', '둘째', '셋째', '넷째', '다섯째']);
+  });
+
   test('★ 앞이 실패하면 같은 채널의 뒤는 나가지 않는다 — 순서가 뒤집히면 안 된다', () async {
     await enqueue('첫째');
     await enqueue('둘째');
