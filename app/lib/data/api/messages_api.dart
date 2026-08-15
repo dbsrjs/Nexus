@@ -15,6 +15,19 @@ class MessagePage {
   final String? nextCursor;
 }
 
+/// 스레드 한 장. 답글 목록에 **부모가 함께 온다** — 화면이 부모부터 그린다.
+class ThreadPage {
+  const ThreadPage({
+    required this.parent,
+    required this.items,
+    this.nextCursor,
+  });
+
+  final Message parent;
+  final List<Message> items;
+  final String? nextCursor;
+}
+
 class MessagesApi {
   MessagesApi(this._client);
 
@@ -37,6 +50,32 @@ class MessagesApi {
       );
       final body = res.data!;
       return MessagePage(
+        items: (body['items'] as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .map(Message.fromJson)
+            .toList(growable: false),
+        nextCursor: body['nextCursor'] as String?,
+      );
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// GET /api/spaces/:spaceId/messages/:messageId/replies
+  Future<ThreadPage> listReplies({
+    required String spaceId,
+    required String messageId,
+    String? cursor,
+    int limit = 50,
+  }) async {
+    try {
+      final res = await _client.dio.get<Map<String, dynamic>>(
+        '/spaces/$spaceId/messages/$messageId/replies',
+        queryParameters: {'limit': limit, 'cursor': ?cursor},
+      );
+      final body = res.data!;
+      return ThreadPage(
+        parent: Message.fromJson(body['parent'] as Map<String, dynamic>),
         items: (body['items'] as List<dynamic>)
             .cast<Map<String, dynamic>>()
             .map(Message.fromJson)
@@ -94,15 +133,18 @@ class MessagesApi {
           .toList(growable: false);
 
   /// POST /api/spaces/:spaceId/channels/:channelId/messages
+  ///
+  /// `parentId` 를 주면 스레드 답글이다 — 전송 경로는 채널 메시지와 하나다.
   Future<Message> send({
     required String spaceId,
     required String channelId,
     required String body,
+    String? parentId,
   }) async {
     try {
       final res = await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/channels/$channelId/messages',
-        data: {'body': body},
+        data: {'body': body, 'parentId': ?parentId},
       );
       return Message.fromJson(res.data!);
     } on DioException catch (e) {

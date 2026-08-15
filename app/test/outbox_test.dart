@@ -261,6 +261,7 @@ class _FakeMessagesApi implements MessagesApi {
     required String spaceId,
     required String channelId,
     required String body,
+    String? parentId,
   }) async {
     if (failWith != null || failOnBody == body) {
       throw ApiException(failWith ?? ApiFailure.server);
@@ -283,6 +284,15 @@ class _FakeMessagesApi implements MessagesApi {
     int limit = 30,
   }) async =>
       const MessagePage(items: []);
+
+  @override
+  Future<ThreadPage> listReplies({
+    required String spaceId,
+    required String messageId,
+    String? cursor,
+    int limit = 50,
+  }) async =>
+      throw UnimplementedError();
 
   // 리액션은 이 파일의 관심사가 아니다. 큐 규칙만 태운다.
   @override

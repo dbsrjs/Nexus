@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth_controller.dart';
+import '../features/chat/thread_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/space/space_picker_screen.dart';
@@ -58,6 +59,19 @@ final routerProvider = Provider<GoRouter>((ref) {
               spaceId: state.pathParameters['spaceId']!,
               channelId: state.pathParameters['channelId'],
             ),
+            routes: [
+              // 스레드는 셸 위에 **덮어서** 연다. 채널 목록·레일을 유지한 채
+              // 본문만 바꾸면 좁은 화면에서 뒤로 가기가 애매해지고, 스레드는
+              // 대화의 곁가지라 채널로 돌아오는 길이 분명한 편이 낫다.
+              GoRoute(
+                path: 't/:messageId',
+                builder: (_, state) => ThreadScreen(
+                  spaceId: state.pathParameters['spaceId']!,
+                  channelId: state.pathParameters['channelId']!,
+                  messageId: state.pathParameters['messageId']!,
+                ),
+              ),
+            ],
           ),
         ],
       ),

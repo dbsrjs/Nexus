@@ -52,6 +52,7 @@ class SocketClient {
       ..on('message:new', (data) => _emitMessage(data, _MessageKind.created))
       ..on('message:edited', (data) => _emitMessage(data, _MessageKind.edited))
       ..on('message:deleted', _onMessageDeleted)
+      ..on('thread:reply', _onThreadReply)
       ..on('reaction:changed', _onReactionChanged)
       ..on('read:synced', _onReadSynced)
       ..on('rooms:invalidate', _onRoomsInvalidate);
@@ -143,6 +144,32 @@ class SocketClient {
       channelId: map['channelId'] as String? ?? '',
       messageId: messageId,
     ));
+  }
+
+  void _onThreadReply(dynamic data) {
+    final map = _asMap(data);
+    if (map == null) return;
+
+    final rawMessage = map['message'];
+    final parentId = map['parentId'];
+    if (rawMessage is! Map || parentId is! String) return;
+
+    try {
+      final message = Message.fromJson(Map<String, dynamic>.from(rawMessage));
+      final lastReplyAt = map['lastReplyAt'];
+
+      _emit(ThreadReply(
+        spaceId: map['spaceId'] as String? ?? '',
+        channelId: map['channelId'] as String? ?? message.channelId,
+        parentId: parentId,
+        message: message,
+        replyCount: (map['replyCount'] as num?)?.toInt() ?? 0,
+        lastReplyAt:
+            lastReplyAt is String ? DateTime.tryParse(lastReplyAt) : null,
+      ));
+    } catch (e) {
+      debugPrint('소켓 스레드 답글 파싱 실패: $e');
+    }
   }
 
   void _onReactionChanged(dynamic data) {

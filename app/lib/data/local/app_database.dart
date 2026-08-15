@@ -77,6 +77,13 @@ class CachedMessages extends Table {
   TextColumn get reactions =>
       text().map(const _ReactionsJson()).withDefault(const Constant('[]'))();
 
+  /// 값이 있으면 스레드 답글이다. **채널 타임라인 조회는 이것이 NULL 인 것만
+  /// 본다** — 서버가 그렇게 나누므로 캐시도 같은 규칙이어야 한다.
+  TextColumn get parentId => text().nullable()();
+  IntColumn get replyCount => integer().withDefault(const Constant(0))();
+  IntColumn get lastReplyAt =>
+      integer().map(const _UtcMicros()).nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -96,6 +103,9 @@ class OutboxMessages extends Table {
   TextColumn get spaceId => text()();
   TextColumn get channelId => text()();
   TextColumn get body => text()();
+
+  /// 스레드 답글이면 부모 id. 오프라인에서 쓴 답글도 답글로 나가야 한다.
+  TextColumn get parentId => text().nullable()();
 
   /// 사용자가 **쓴** 시각. 서버 도착 시각이 아니다.
   IntColumn get createdAt => integer().map(const _UtcMicros())();
@@ -190,7 +200,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus'));
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -214,6 +224,12 @@ class AppDatabase extends _$AppDatabase {
           // 시각 저장 형식이 두 번 바뀌었다(초 → 텍스트 → UTC 마이크로초).
           // 캐시는 방금 다시 만들었으니 상관없지만 **큐는 남겨 두므로**
           // 옛 형식으로 저장된 행을 직접 옮긴다.
+          // 8 에서 큐에 스레드 답글이 들어올 수 있게 됐다. 캐시와 달리 큐는
+          // 남겨 두므로 컬럼을 직접 붙인다.
+          if (from < 8) {
+            await m.addColumn(outboxMessages, outboxMessages.parentId);
+          }
+
           if (from < 6) {
             // 순번 컬럼이 없던 시절의 행에는 삽입 순서(rowid)를 넣어 준다.
             await m.addColumn(outboxMessages, outboxMessages.seq);
@@ -255,23 +271,56 @@ class AppDatabase extends _$AppDatabase {
   /// 정렬·개수 제한을 메모리에서 다시 해야 하고, 한쪽만 갱신됐을 때 순서가
   /// 잠깐 어긋난다. `readsFrom` 을 주면 어느 쪽이 바뀌어도 이 스트림이 다시 흐른다.
   Stream<List<Message>> watchChannelMessages(String channelId, {int limit = 100}) {
+    return _watchMessages(
+      channelId: channelId,
+      // 채널 타임라인은 **최상위만** 본다. 답글은 스레드 화면에만 나온다.
+      cachedWhere: 'parent_id IS NULL',
+      outboxWhere: 'parent_id IS NULL',
+      limit: limit,
+    );
+  }
+
+  /// 한 스레드의 답글. 부모는 포함하지 않는다 — 화면이 따로 그린다.
+  Stream<List<Message>> watchThreadReplies(String parentId, {int limit = 200}) {
+    return _watchMessages(
+      channelId: null,
+      cachedWhere: 'parent_id = ?1',
+      outboxWhere: 'parent_id = ?1',
+      key: parentId,
+      limit: limit,
+    );
+  }
+
+  /// 캐시와 큐를 합쳐 읽는 공통 경로. 조건만 갈아 끼운다.
+  Stream<List<Message>> _watchMessages({
+    required String? channelId,
+    required String cachedWhere,
+    required String outboxWhere,
+    required int limit,
+    String? key,
+  }) {
+    final match = channelId ?? key!;
     return customSelect(
       '''
       SELECT id, channel_id, body, created_at, edited_at, deleted_at,
              author_id, author_name, author_avatar_url, reactions,
+             parent_id, reply_count, last_reply_at,
              0 AS queued, 0 AS failed, 0 AS seq
         FROM cached_messages
-       WHERE channel_id = ?1
+       WHERE ${channelId != null ? 'channel_id = ?1' : cachedWhere}
+         ${channelId != null ? 'AND $cachedWhere' : ''}
       UNION ALL
       SELECT id, channel_id, body, created_at, NULL, NULL,
              author_id, author_name, author_avatar_url, '[]' AS reactions,
+             parent_id, 0 AS reply_count, NULL AS last_reply_at,
              1 AS queued, failed, seq
         FROM outbox_messages
-       WHERE channel_id = ?1
+       WHERE ${channelId != null ? 'channel_id = ?1' : outboxWhere}
+         ${channelId != null ? 'AND $outboxWhere' : ''}
        ORDER BY created_at DESC, seq DESC
        LIMIT ?2
       ''',
-      variables: [Variable<String>(channelId), Variable<int>(limit)],
+      variables: [Variable<String>(match), Variable<int>(limit)],
       readsFrom: {cachedMessages, outboxMessages},
     ).watch().map(
           (rows) => rows.map(_rowToMessage).toList(growable: false),
@@ -304,6 +353,34 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// 캐시에 없는 메시지면 아무 일도 하지 않는다 — 아직 받지 못한 메시지의
   /// 리액션은 다음 새로고침 때 함께 온다.
+  /// 메시지 하나를 구독한다. 스레드 화면이 부모를 그릴 때 쓴다 —
+  /// 답글이 달리면 `replyCount` 가 바뀌므로 한 번 읽고 마는 대신 구독한다.
+  Stream<Message?> watchMessage(String id) => customSelect(
+        '''
+        SELECT id, channel_id, body, created_at, edited_at, deleted_at,
+               author_id, author_name, author_avatar_url, reactions,
+               parent_id, reply_count, last_reply_at,
+               0 AS queued, 0 AS failed, 0 AS seq
+          FROM cached_messages
+         WHERE id = ?1
+        ''',
+        variables: [Variable<String>(id)],
+        readsFrom: {cachedMessages},
+      ).watch().map((rows) => rows.isEmpty ? null : _rowToMessage(rows.first));
+
+  /// 답글이 달렸을 때 부모의 요약만 고친다. 본문·작성자는 건드리지 않는다.
+  Future<void> setThreadSummary(
+    String messageId, {
+    required int replyCount,
+    DateTime? lastReplyAt,
+  }) =>
+      (update(cachedMessages)..where((m) => m.id.equals(messageId))).write(
+        CachedMessagesCompanion(
+          replyCount: Value(replyCount),
+          lastReplyAt: Value(lastReplyAt),
+        ),
+      );
+
   /// 지금 캐시에 있는 리액션. 낙관적 토글이 실패했을 때 되돌릴 값이다.
   Future<List<MessageReaction>> reactionsOf(String messageId) async {
     final row = await (select(cachedMessages)
@@ -326,15 +403,32 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// 전송 큐는 다른 테이블이라 **자동으로 살아남는다.** 예전에는 이 테이블에
   /// 로컬 메시지가 섞여 있어 지울 대상을 골라내야 했다.
+  ///
+  /// **최상위만 지운다.** 답글은 이 응답에 들어 있지 않으므로(서버가 타임라인을
+  /// `parent_id IS NULL` 로 자른다) 함께 지우면 열어 둔 스레드가 빈다.
   Future<void> replaceServerMessages(
     String spaceId,
     String channelId,
     List<Message> messages,
   ) async {
     await transaction(() async {
-      await (delete(cachedMessages)..where((m) => m.channelId.equals(channelId)))
+      await (delete(cachedMessages)
+            ..where((m) => m.channelId.equals(channelId) & m.parentId.isNull()))
           .go();
       await upsertMessages(spaceId, messages);
+    });
+  }
+
+  /// 한 스레드의 답글을 통째로 교체한다. 부모 행은 건드리지 않는다.
+  Future<void> replaceThreadReplies(
+    String spaceId,
+    String parentId,
+    List<Message> replies,
+  ) async {
+    await transaction(() async {
+      await (delete(cachedMessages)..where((m) => m.parentId.equals(parentId)))
+          .go();
+      await upsertMessages(spaceId, replies);
     });
   }
 
@@ -513,6 +607,9 @@ Message _rowToMessage(QueryRow row) {
       avatarUrl: row.readNullable<String>('author_avatar_url'),
     ),
     reactions: const _ReactionsJson().fromSql(row.read<String>('reactions')),
+    parentId: row.readNullable<String>('parent_id'),
+    replyCount: row.read<int>('reply_count'),
+    lastReplyAt: at('last_reply_at'),
     // 큐에 있으면서 아직 포기하지 않은 것이 '보내는 중'이다.
     pending: queued && !failed,
     failed: failed,
@@ -532,4 +629,7 @@ CachedMessagesCompanion _toRow(String spaceId, Message message) =>
       authorName: message.author.name,
       authorAvatarUrl: Value(message.author.avatarUrl),
       reactions: Value(message.reactions),
+      parentId: Value(message.parentId),
+      replyCount: Value(message.replyCount),
+      lastReplyAt: Value(message.lastReplyAt),
     );

@@ -201,10 +201,20 @@ class _FakeApi implements MessagesApi {
       const MessagePage(items: []);
 
   @override
+  Future<ThreadPage> listReplies({
+    required String spaceId,
+    required String messageId,
+    String? cursor,
+    int limit = 50,
+  }) async =>
+      throw UnimplementedError();
+
+  @override
   Future<Message> send({
     required String spaceId,
     required String channelId,
     required String body,
+    String? parentId,
   }) async =>
       throw UnimplementedError();
 }

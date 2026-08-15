@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 import '../../data/api/api_failure.dart';
@@ -8,6 +9,7 @@ import '../../domain/models/message.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import '../channel/channel_controller.dart';
 import '../realtime/socket_controller.dart';
+import '../space/space_controller.dart';
 import 'message_controller.dart';
 
 /// 채널 하나의 대화. 메시지 리스트 + 입력창.
@@ -31,10 +33,10 @@ class ChatScreen extends ConsumerWidget {
             ),
             data: (items) => items.isEmpty
                 ? const _EmptyBlock()
-                : _MessageList(items: items),
+                : MessageList(items: items),
           ),
         ),
-        const _Composer(),
+        const MessageComposer(),
       ],
     );
   }
@@ -115,16 +117,16 @@ class _ConnectionDot extends ConsumerWidget {
   }
 }
 
-class _MessageList extends ConsumerStatefulWidget {
-  const _MessageList({required this.items});
+class MessageList extends ConsumerStatefulWidget {
+  const MessageList({super.key, required this.items});
 
   final List<Message> items;
 
   @override
-  ConsumerState<_MessageList> createState() => _MessageListState();
+  ConsumerState<MessageList> createState() => MessageListState();
 }
 
-class _MessageListState extends ConsumerState<_MessageList> {
+class MessageListState extends ConsumerState<MessageList> {
   final _controller = ScrollController();
 
   @override
@@ -167,14 +169,14 @@ class _MessageListState extends ConsumerState<_MessageList> {
             !next.isDeleted &&
             message.createdAt.difference(next.createdAt).inMinutes.abs() < 5;
 
-        return _MessageTile(message: message, grouped: grouped);
+        return MessageTile(message: message, grouped: grouped);
       },
     );
   }
 }
 
-class _MessageTile extends ConsumerWidget {
-  const _MessageTile({required this.message, required this.grouped});
+class MessageTile extends ConsumerWidget {
+  const MessageTile({super.key, required this.message, required this.grouped});
 
   final Message message;
   final bool grouped;
@@ -248,6 +250,7 @@ class _MessageTile extends ConsumerWidget {
                     Text('(수정됨)', style: theme.textTheme.labelSmall),
                   if (message.reactions.isNotEmpty)
                     _ReactionBar(message: message),
+                  if (message.hasThread) _ThreadSummary(message: message),
                   if (message.failed) _FailedActions(message: message),
                 ],
               ),
@@ -264,6 +267,43 @@ class _MessageTile extends ConsumerWidget {
     return '${local.hour.toString().padLeft(2, '0')}:'
         '${local.minute.toString().padLeft(2, '0')}';
   }
+}
+
+/// "답글 3개" — 스레드로 들어가는 입구.
+///
+/// 답글 수가 0 이면 그리지 않는다. 스레드를 시작하는 것은 길게 누르기 메뉴다.
+class _ThreadSummary extends ConsumerWidget {
+  const _ThreadSummary({required this.message});
+
+  final Message message;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: NexusSpacing.sp1),
+      child: InkWell(
+        onTap: () => _openThread(context, ref, message),
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Text(
+            '답글 ${message.replyCount}개',
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: theme.colorScheme.primary),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 스레드 화면으로. 라우트가 진실의 원천이라 push 로 연다.
+void _openThread(BuildContext context, WidgetRef ref, Message message) {
+  final spaceId = ref.read(currentSpaceIdProvider);
+  if (spaceId == null) return;
+  context.push('/s/$spaceId/c/${message.channelId}/t/${message.id}');
 }
 
 /// 자주 쓰는 이모지. 전체 이모지 검색은 나중 일이고, 지금은 **한 번에 손이
@@ -286,37 +326,59 @@ Future<void> _pickReaction(
     builder: (sheetContext) => SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(NexusSpacing.sp4),
-        child: Wrap(
-          spacing: NexusSpacing.sp2,
-          runSpacing: NexusSpacing.sp2,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final emoji in _quickEmojis)
-              InkWell(
-                onTap: () => Navigator.of(sheetContext).pop(emoji),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.all(NexusSpacing.sp3),
-                  decoration: BoxDecoration(
+            Wrap(
+              spacing: NexusSpacing.sp2,
+              runSpacing: NexusSpacing.sp2,
+              children: [
+                for (final emoji in _quickEmojis)
+                  InkWell(
+                    onTap: () => Navigator.of(sheetContext).pop(emoji),
                     borderRadius: BorderRadius.circular(8),
-                    // 이미 누른 것은 테두리로 표시한다 — 다시 누르면 취소다.
-                    border: mine.contains(emoji)
-                        ? Border.all(
-                            color: Theme.of(sheetContext).colorScheme.primary)
-                        : null,
+                    child: Container(
+                      padding: const EdgeInsets.all(NexusSpacing.sp3),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        // 이미 누른 것은 테두리로 표시한다 — 다시 누르면 취소다.
+                        border: mine.contains(emoji)
+                            ? Border.all(
+                                color:
+                                    Theme.of(sheetContext).colorScheme.primary)
+                            : null,
+                      ),
+                      child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                    ),
                   ),
-                  child: Text(emoji, style: const TextStyle(fontSize: 24)),
-                ),
-              ),
+              ],
+            ),
+            const Divider(height: NexusSpacing.sp5),
+            // 스레드를 **시작하는** 입구. 답글이 이미 있으면 메시지 아래
+            // "답글 N개"로도 들어갈 수 있다.
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.forum_outlined),
+              title: const Text('스레드로 답글'),
+              onTap: () => Navigator.of(sheetContext).pop(_threadAction),
+            ),
           ],
         ),
       ),
     ),
   );
 
-  if (picked != null) {
-    await ref.read(messageActionsProvider).toggleReaction(message, picked);
+  if (picked == null) return;
+  if (picked == _threadAction) {
+    if (context.mounted) _openThread(context, ref, message);
+    return;
   }
+  await ref.read(messageActionsProvider).toggleReaction(message, picked);
 }
+
+/// 이모지가 아닌 선택지를 같은 시트에서 돌려주기 위한 표식.
+const _threadAction = ' thread';
 
 /// 메시지에 달린 이모지들. 누르면 켜고 꺼진다.
 class _ReactionBar extends ConsumerWidget {
@@ -401,14 +463,21 @@ class _SendIntent extends Intent {
   const _SendIntent();
 }
 
-class _Composer extends ConsumerStatefulWidget {
-  const _Composer();
+/// 입력창. 채널과 스레드가 함께 쓴다 — Enter 전송·IME 처리가 한 벌이어야 한다.
+class MessageComposer extends ConsumerStatefulWidget {
+  const MessageComposer({super.key, this.onSend, this.hint});
+
+  /// 비우면 채널 전송. 스레드는 답글 전송을 넘긴다.
+  final void Function(String body)? onSend;
+
+  /// 비우면 현재 채널 이름으로 만든다.
+  final String? hint;
 
   @override
-  ConsumerState<_Composer> createState() => _ComposerState();
+  ConsumerState<MessageComposer> createState() => MessageComposerState();
 }
 
-class _ComposerState extends ConsumerState<_Composer> {
+class MessageComposerState extends ConsumerState<MessageComposer> {
   final _controller = TextEditingController();
   final _focus = FocusNode();
 
@@ -423,7 +492,8 @@ class _ComposerState extends ConsumerState<_Composer> {
     final text = _controller.text;
     if (text.trim().isEmpty) return;
     // 낙관적 전송이라 기다리지 않는다. 입력창은 즉시 비운다.
-    ref.read(messageActionsProvider).send(text);
+    final send = widget.onSend ?? ref.read(messageActionsProvider).send;
+    send(text);
     _controller.clear();
     _focus.requestFocus();
   }
@@ -468,9 +538,10 @@ class _ComposerState extends ConsumerState<_Composer> {
                     minLines: 1,
                     maxLines: 5,
                     decoration: InputDecoration(
-                      hintText: channel == null
-                          ? '채널을 선택하세요'
-                          : '#${channel.name} 에 메시지 보내기',
+                      hintText: widget.hint ??
+                          (channel == null
+                              ? '채널을 선택하세요'
+                              : '#${channel.name} 에 메시지 보내기'),
                     ),
                   ),
                 ),

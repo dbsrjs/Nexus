@@ -98,6 +98,15 @@ void _listenToSocket(
       case MessageDeleted() when event.channelId == channelId:
         repository.applyDeleted(event.messageId);
 
+      case ThreadReply() when event.channelId == channelId:
+        // 답글 본문은 스레드 화면이 받는다. 여기서는 **부모의 요약만** 고친다 —
+        // 스레드를 열지 않은 사람도 "답글 3개"가 늘어나는 것은 봐야 한다.
+        repository.applyThreadSummary(
+          event.parentId,
+          replyCount: event.replyCount,
+          lastReplyAt: event.lastReplyAt,
+        );
+
       case ReactionChanged() when event.channelId == channelId:
         // 서버는 mine 을 싣지 않는다 — 내 userId 로 여기서 접는다.
         final auth = ref.read(authControllerProvider);

@@ -52,6 +52,15 @@ abstract class Message with _$Message {
     /// 이모지별 요약. 서버가 목록에 함께 실어 준다.
     @Default(<MessageReaction>[]) List<MessageReaction> reactions,
 
+    /// 값이 있으면 스레드 답글이다. 채널 타임라인에는 나오지 않는다.
+    String? parentId,
+
+    /// 이 메시지에 달린 답글 수. 답글 자신은 늘 0 이다.
+    @Default(0) int replyCount,
+
+    /// 마지막 답글 시각. 스레드 요약을 그릴 때 쓴다.
+    DateTime? lastReplyAt,
+
     /// 낙관적 갱신용 — 서버 응답을 기다리는 중.
     /// 서버 응답에는 없는 필드라 기본값 false 로 들어온다.
     @Default(false) bool pending,
@@ -65,6 +74,9 @@ abstract class Message with _$Message {
   factory Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
 
   bool get isDeleted => deletedAt != null;
+
+  /// 스레드가 달린 최상위 메시지인지. 답글 요약을 그릴지 결정한다.
+  bool get hasThread => parentId == null && replyCount > 0;
 
   /// 아직 서버에 닿지 않은 메시지. id 가 로컬에서 만든 임시 값이다.
   bool get isLocal => pending || failed;

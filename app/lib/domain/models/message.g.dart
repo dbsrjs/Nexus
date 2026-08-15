@@ -51,6 +51,11 @@ _Message _$MessageFromJson(Map<String, dynamic> json) => _Message(
           ?.map((e) => MessageReaction.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const <MessageReaction>[],
+  parentId: json['parentId'] as String?,
+  replyCount: (json['replyCount'] as num?)?.toInt() ?? 0,
+  lastReplyAt: json['lastReplyAt'] == null
+      ? null
+      : DateTime.parse(json['lastReplyAt'] as String),
   pending: json['pending'] as bool? ?? false,
   failed: json['failed'] as bool? ?? false,
 );
@@ -64,6 +69,9 @@ Map<String, dynamic> _$MessageToJson(_Message instance) => <String, dynamic>{
   'editedAt': instance.editedAt?.toIso8601String(),
   'deletedAt': instance.deletedAt?.toIso8601String(),
   'reactions': instance.reactions,
+  'parentId': instance.parentId,
+  'replyCount': instance.replyCount,
+  'lastReplyAt': instance.lastReplyAt?.toIso8601String(),
   'pending': instance.pending,
   'failed': instance.failed,
 };

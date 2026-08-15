@@ -38,6 +38,28 @@ class MessageRepository {
   Stream<List<Message>> watch(String channelId) =>
       _db.watchChannelMessages(channelId);
 
+  /// 한 스레드의 답글. 부모는 채널 캐시에 이미 있으므로 따로 구독한다.
+  Stream<List<Message>> watchThread(String parentId) =>
+      _db.watchThreadReplies(parentId);
+
+  /// 스레드 답글을 서버에서 받아 캐시를 맞춘다.
+  ///
+  /// 부모도 함께 저장한다 — 채널을 거치지 않고 스레드로 바로 들어온 경우
+  /// (딥링크 · 알림) 부모가 캐시에 없을 수 있다.
+  Future<bool> refreshThread({
+    required String spaceId,
+    required String parentId,
+  }) async {
+    try {
+      final page = await _api.listReplies(spaceId: spaceId, messageId: parentId);
+      await _db.upsertMessage(spaceId, page.parent);
+      await _db.replaceThreadReplies(spaceId, parentId, page.items);
+      return true;
+    } on ApiException {
+      return false;
+    }
+  }
+
   /// 서버에서 최신 페이지를 받아 캐시를 맞춘다.
   ///
   /// 실패해도 예외를 밖으로 내보내지 않는다 — **캐시로 이미 화면이 그려져 있으므로**
@@ -83,6 +105,18 @@ class MessageRepository {
 
   Future<void> applyDeleted(String messageId) =>
       _db.markMessageDeleted(messageId, DateTime.now());
+
+  /// 답글이 달렸을 때 부모의 요약만 갱신한다.
+  Future<void> applyThreadSummary(
+    String parentId, {
+    required int replyCount,
+    DateTime? lastReplyAt,
+  }) =>
+      _db.setThreadSummary(
+        parentId,
+        replyCount: replyCount,
+        lastReplyAt: lastReplyAt,
+      );
 
   // ── 리액션 ───────────────────────────────────
 
@@ -132,6 +166,7 @@ class MessageRepository {
     required String channelId,
     required String body,
     required MessageAuthor author,
+    String? parentId,
   }) async {
     final id = _localId();
     await _db.enqueue(
@@ -140,6 +175,7 @@ class MessageRepository {
         spaceId: spaceId,
         channelId: channelId,
         body: body,
+        parentId: Value(parentId),
         createdAt: DateTime.now(),
         authorId: author.id,
         authorName: author.name,
@@ -179,6 +215,7 @@ class MessageRepository {
             spaceId: item.spaceId,
             channelId: item.channelId,
             body: item.body,
+            parentId: item.parentId,
           );
           await _db.settleQueued(item.id, item.spaceId, sent);
           sentCount++;

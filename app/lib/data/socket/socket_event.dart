@@ -60,6 +60,29 @@ class MessageDeleted extends SocketEvent {
   final String messageId;
 }
 
+/// 스레드에 답글이 달렸다.
+///
+/// **채널 룸으로 온다.** 스레드를 연 사람만 받는 룸을 따로 두면, 채널을 보고
+/// 있는 사람에게 답글 수를 알릴 경로가 하나 더 필요해진다. 갱신된 `replyCount`
+/// 를 함께 실어 보내므로 채널 화면이 목록을 다시 받을 필요가 없다.
+class ThreadReply extends SocketEvent {
+  const ThreadReply({
+    required this.spaceId,
+    required this.channelId,
+    required this.parentId,
+    required this.message,
+    required this.replyCount,
+    this.lastReplyAt,
+  });
+
+  final String spaceId;
+  final String channelId;
+  final String parentId;
+  final Message message;
+  final int replyCount;
+  final DateTime? lastReplyAt;
+}
+
 /// 리액션이 바뀌었다(추가·제거 둘 다).
 ///
 /// **서버는 접힌 요약이 아니라 `(emoji, userId)` 쌍을 보낸다.** "내가 눌렀는지"
