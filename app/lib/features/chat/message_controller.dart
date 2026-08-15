@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/api/api_failure.dart';
 import '../../data/api/messages_api.dart';
+import '../../data/socket/socket_event.dart';
 import '../../domain/models/message.dart';
 import '../auth/auth_controller.dart';
 import '../channel/channel_controller.dart';
+import '../realtime/socket_controller.dart';
 import '../space/space_controller.dart';
 
 final messagesApiProvider =
@@ -32,6 +34,8 @@ class MessagesNotifier extends AsyncNotifier<List<Message>> {
     final channelId = ref.watch(currentChannelIdProvider);
     if (spaceId == null || channelId == null) return const [];
 
+    _listenToSocket(spaceId, channelId);
+
     final page = await ref.watch(messagesApiProvider).list(
           spaceId: spaceId,
           channelId: channelId,
@@ -44,6 +48,79 @@ class MessagesNotifier extends AsyncNotifier<List<Message>> {
     }
 
     return page.items;
+  }
+
+  /// 실시간 반영.
+  ///
+  /// **지금 보고 있는 채널의 이벤트만** 처리한다. 다른 채널의 메시지는
+  /// 안 읽은 수만 바뀌면 되고 그것은 realtimeChannelSyncProvider 가 맡는다.
+  void _listenToSocket(String spaceId, String channelId) {
+    ref.listen<AsyncValue<SocketEvent>>(socketEventsProvider, (previous, next) {
+      final event = next.value;
+      if (event == null) return;
+
+      switch (event) {
+        case MessageNew() when event.channelId == channelId:
+          _insertFromServer(event.message);
+          // 보고 있는 채널이므로 읽은 것으로 친다.
+          _markRead(spaceId, channelId, event.message.id);
+
+        case MessageEdited() when event.channelId == channelId:
+          _replace(event.message.id, event.message);
+
+        case MessageDeleted() when event.channelId == channelId:
+          _applyDeleted(event.messageId);
+
+        case SocketConnected():
+          // 끊겨 있는 동안 놓친 메시지가 있다. 첫 페이지를 다시 받아 맞춘다.
+          // 커서를 이어 받는 대신 통째로 다시 받는 이유는, 놓친 구간의 길이를
+          // 알 수 없고 첫 페이지 재조회가 가장 단순하기 때문이다.
+          _catchUp(spaceId, channelId);
+
+        default:
+          break;
+      }
+    });
+  }
+
+  /// 서버가 브로드캐스트한 메시지를 목록에 넣는다.
+  ///
+  /// **내가 보낸 메시지도 나에게 돌아온다.** 이미 있는 id 면 무시해 중복을 막는다.
+  /// 낙관적 항목(로컬 id)은 HTTP 응답이 오면 정리되므로 여기서 건드리지 않는다.
+  void _insertFromServer(Message message) {
+    final list = state.value;
+    if (list == null) return;
+    if (list.any((m) => m.id == message.id)) return;
+
+    state = AsyncData([message, ...list]);
+  }
+
+  void _applyDeleted(String messageId) {
+    final list = state.value;
+    if (list == null) return;
+    state = AsyncData([
+      for (final m in list)
+        if (m.id == messageId)
+          m.copyWith(deletedAt: m.deletedAt ?? DateTime.now(), body: '')
+        else
+          m,
+    ]);
+  }
+
+  Future<void> _catchUp(String spaceId, String channelId) async {
+    try {
+      final page = await ref
+          .read(messagesApiProvider)
+          .list(spaceId: spaceId, channelId: channelId);
+      _nextCursor = page.nextCursor;
+
+      // 아직 서버에 닿지 못한 로컬 항목(전송 중·실패)은 살려 둔다.
+      final pendingLocal =
+          (state.value ?? const <Message>[]).where((m) => m.isLocal).toList();
+      state = AsyncData([...pendingLocal, ...page.items]);
+    } on ApiException {
+      // 재연결 직후 서버가 아직 준비되지 않았을 수 있다. 보고 있던 목록을 유지한다.
+    }
   }
 
   /// 위로 스크롤했을 때 다음 페이지. 커서는 마지막(가장 오래된) 항목의 id 다.
@@ -108,7 +185,7 @@ class MessagesNotifier extends AsyncNotifier<List<Message>> {
             channelId: channelId,
             body: trimmed,
           );
-      _replace(localId, sent);
+      _settleSent(localId, sent);
       // 내가 보낸 메시지까지 읽은 것으로 친다.
       _markRead(spaceId, channelId, sent.id);
     } on ApiException {
@@ -124,6 +201,22 @@ class MessagesNotifier extends AsyncNotifier<List<Message>> {
 
   /// 실패한 메시지 버리기.
   void discard(Message failedMessage) => _remove(failedMessage.id);
+
+  /// 낙관적 항목을 서버가 준 메시지로 확정한다.
+  ///
+  /// **소켓 브로드캐스트가 HTTP 응답보다 먼저 도착할 수 있다.** 그 경우 목록에는
+  /// 이미 실제 메시지가 들어 있으므로, 자리를 바꾸는 대신 로컬 항목만 지운다.
+  /// 그러지 않으면 같은 메시지가 두 번 보인다.
+  void _settleSent(String localId, Message sent) {
+    final list = state.value;
+    if (list == null) return;
+
+    if (list.any((m) => m.id == sent.id)) {
+      _remove(localId);
+      return;
+    }
+    _replace(localId, sent);
+  }
 
   void _replace(String id, Message next) {
     final list = state.value;

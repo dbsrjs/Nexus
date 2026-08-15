@@ -8,10 +8,13 @@ import '../space/space_controller.dart';
 
 /// 가운데 240px — 스페이스 이름 헤더 + 카테고리/채널 목록.
 class ChannelPane extends ConsumerWidget {
-  const ChannelPane({super.key, this.showCloseButton = false, this.onChannelTap});
+  const ChannelPane({super.key, this.onClose, this.onChannelTap});
 
-  /// 드로어로 열렸을 때 닫기 버튼을 보여 준다.
-  final bool showCloseButton;
+  /// 드로어로 열렸을 때 닫는 방법. null 이면 닫기 버튼을 감춘다(데스크톱 3단).
+  ///
+  /// 닫는 동작을 위젯 안에서 하지 않고 밖에서 받는 이유: Scaffold 의 drawer 는
+  /// **라우트가 아니라서** `Navigator.pop` 이 드로어가 아니라 현재 페이지를 닫는다.
+  final VoidCallback? onClose;
 
   /// 드로어에서 채널을 고르면 드로어를 닫기 위한 콜백.
   final VoidCallback? onChannelTap;
@@ -44,10 +47,10 @@ class ChannelPane extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (showCloseButton)
+                if (onClose != null)
                   IconButton(
                     icon: const Icon(Icons.close, size: 18),
-                    onPressed: () => Navigator.of(context).maybePop(),
+                    onPressed: onClose,
                   ),
               ],
             ),

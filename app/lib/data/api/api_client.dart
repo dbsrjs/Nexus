@@ -52,6 +52,11 @@ class ApiClient {
 
   bool get hasTokens => _tokens != null;
 
+  /// 소켓 핸드셰이크에 쓴다. 서버는 `handshake.auth.token` 만 받으므로
+  /// dio 인터셉터를 지나지 않는 이 경로에서 토큰을 직접 읽어야 한다
+  /// (docs/superpowers/specs/2026-08-14-실시간-최소-design.md §3).
+  String? get accessToken => _tokens?.accessToken;
+
   /// 앱 시작 시 한 번. 저장소의 토큰을 메모리로 올린다.
   Future<void> restore() async {
     _tokens = await _storage.read();

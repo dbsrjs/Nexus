@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **작업 브랜치** | `feat/pivot-nexus` — **`main` 은 전환 이전의 옛 코드다.** 헷갈리지 말 것 |
-| **상태** | 사내 메신저 → 개인 프로젝트로 **전환 중**. 서버 4단계(실시간 최소) 완료. **앱은 5단계 슬라이스 3(채널·메시지 REST)까지 — `app/` 에 있다** |
+| **상태** | 사내 메신저 → 개인 프로젝트로 **전환 중**. 서버 4단계(실시간 최소) 완료. **앱은 5단계 완료(실시간 채팅 동작) — `app/` 에 있다** |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
 
@@ -198,7 +198,7 @@ prisma/       PrismaModule(@Global) + PrismaService
 common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug · bigint 직렬화
 ```
 
-### 앱 구조 (`app/lib/`) — 슬라이스 3 시점
+### 앱 구조 (`app/lib/`) — 5단계 완료 시점
 
 [앱-설계.md §3](docs/앱-설계.md) 의 구조를 따르되 **쓰는 것만 만든다.** 빈 디렉터리를
 미리 파 두지 않는다.
@@ -214,12 +214,14 @@ data/api/api_failure.dart 그 밖의 요청 실패 분류(ApiFailure) + 문구
 data/api/spaces_api.dart  GET /spaces
 data/api/channels_api.dart 채널 · 카테고리 목록, 읽음 저장
 data/api/messages_api.dart 메시지 목록(커서) · 전송
+data/socket/             Socket.IO 연결 + 이벤트(sealed SocketEvent)
 data/auth_storage.dart   flutter_secure_storage 래퍼
 domain/models/           freezed (User · AuthTokens · Space · Channel · Category · Message)
 features/auth/           로그인 화면 + Riverpod 컨트롤러
 features/space/          스페이스 선택 화면 + 목록/현재 스페이스 provider
 features/channel/        채널 목록 + 카테고리 묶기(channelGroupsProvider)
-features/chat/           메시지 리스트 · 입력창 · 낙관적 전송(MessagesNotifier)
+features/chat/           메시지 리스트 · 입력창 · 낙관적 전송 · 실시간 반영
+features/realtime/       소켓 수명 관리 + 채널 목록 동기화
 features/shell/          반응형 셸 — app_shell(분기) · space_rail · channel_pane
 shared/widgets/          NexusAvatar 등 공용 위젯
 ```
@@ -325,8 +327,17 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 **확인하지 못한 것**: 커서 페이지네이션(다음 페이지)은 메시지가 30건을 넘지 않아
 타지 않았다. 전송 실패 UI(재시도·삭제)도 서버를 죽여 가며 태우지 않았다.
 
-**아직 없는 것**: 소켓 연동(슬라이스 4) — 지금은 새로고침해야 남의 메시지가 보인다.
-스레드 · 리액션 · 멘션 · 핀 · DM, 첨부, 이슈, 저장소 연동, AI, 린트 · CI.
+### 앱 — 슬라이스 4 완료 (실시간) → **5단계 완료**
+
+연결 하나가 사용자의 **모든 스페이스**를 담당한다. 스페이스를 옮겨도 재연결하지 않는다.
+
+- **내가 보낸 메시지도 소켓으로 돌아온다.** id 가 이미 있으면 무시해 중복을 막고,
+  소켓이 HTTP 응답보다 먼저 도착하면 낙관적 항목만 제거한다(`_settleSent`)
+- 재연결 시 첫 페이지를 다시 받아 catch-up 한다. 놓친 구간의 길이를 알 수 없어
+  커서를 잇는 대신 통째로 다시 받는다. 전송 중·실패한 로컬 항목은 살려 둔다
+- **연결이 끊기면 헤더에 표시한다.** 조용히 멈춘 채팅은 버그로 오인된다
+
+**아직 없는 것**: 스레드 · 리액션 · 멘션 · 핀 · DM, 첨부, 이슈, 저장소 연동, AI, 린트 · CI.
 (실시간 서버는 `typing` · `presence:changed` · `thread:*` 룸만 남았다 — §5 참고)
 
 ---
@@ -347,8 +358,8 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 | 5-1 | 스캐폴드 · 스택 배선 · 테마 · 라우터 · **인증** | ✅ `ce70d56` |
 | 5-2 | **스페이스 선택 + 반응형 셸** (3단 ↔ 모바일 탭) | ✅ |
 | 5-3 | 채널 목록 + 메시지 리스트/전송 (REST, 낙관적 갱신) | ✅ |
-| **5-4** ← 다음 | 소켓 연결 · 실시간 갱신 · catch-up | |
-| **6** | drift 캐시 → 단일 진실 공급원 전환 → Phase 0 달성(실사용 가능) | |
+| 5-4 | 소켓 연결 · 실시간 갱신 · catch-up | ✅ **5단계 완료** |
+| **6** ← 다음 | drift 캐시 → 단일 진실 공급원 전환 → Phase 0 달성(실사용 가능) | |
 | **7~** | **기능 단위로 서버 + 앱을 함께**: 스레드 · 리액션 · 멘션 · 핀 → 첨부 → 이슈 · 스프린트 → repos(웹훅 · 열람 프록시) → PR → 인덱싱 → AI | |
 | 마지막 | 푸시 · 트레이 · 딥링크 · CI · 테넌트 격리 통합 테스트 | |
 

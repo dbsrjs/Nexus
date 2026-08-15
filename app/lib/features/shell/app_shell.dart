@@ -135,9 +135,14 @@ class _CompactShell extends ConsumerWidget {
                 const VerticalDivider(width: 1),
                 Expanded(
                   child: ChannelPane(
-                    showCloseButton: true,
+                    onClose: () => Scaffold.of(drawerContext).closeDrawer(),
                     // 채널을 고르면 드로어를 닫는다. 안 닫으면 고른 대화가 가려진다.
-                    onChannelTap: () => Navigator.of(drawerContext).maybePop(),
+                    //
+                    // **Navigator.pop 을 쓰면 안 된다.** Scaffold 의 drawer 는
+                    // 라우트가 아니라서 pop 이 드로어가 아니라 현재 페이지를 닫는다.
+                    // 채널 탭이 context.go 로 라우트를 민 직후라, pop 하면 방금 연
+                    // 채널 라우트가 닫혀 선택이 취소된다.
+                    onChannelTap: () => Scaffold.of(drawerContext).closeDrawer(),
                   ),
                 ),
               ],

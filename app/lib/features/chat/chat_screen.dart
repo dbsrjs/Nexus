@@ -7,6 +7,7 @@ import '../../data/api/api_failure.dart';
 import '../../domain/models/message.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import '../channel/channel_controller.dart';
+import '../realtime/socket_controller.dart';
 import 'message_controller.dart';
 
 /// 채널 하나의 대화. 메시지 리스트 + 입력창.
@@ -68,6 +69,45 @@ class _ChannelHeader extends StatelessWidget {
                 style: theme.textTheme.bodySmall,
               ),
             ),
+          ] else
+            const Spacer(),
+          const _ConnectionDot(),
+        ],
+      ),
+    );
+  }
+}
+
+/// 실시간 연결 표시.
+///
+/// 끊겨 있으면 화면은 그대로 보이지만 **새 메시지가 오지 않는다.** 그 상태를
+/// 사용자가 알 수 있어야 한다 — 조용히 멈춘 채팅은 버그로 오인된다.
+class _ConnectionDot extends ConsumerWidget {
+  const _ConnectionDot();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connected = ref.watch(socketConnectedProvider);
+    final theme = Theme.of(context);
+
+    return Tooltip(
+      message: connected ? '실시간 연결됨' : '연결 끊김 — 새 메시지가 오지 않습니다',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: connected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.error,
+            ),
+          ),
+          if (!connected) ...[
+            const SizedBox(width: NexusSpacing.sp2),
+            Text('연결 끊김', style: theme.textTheme.labelSmall),
           ],
         ],
       ),
