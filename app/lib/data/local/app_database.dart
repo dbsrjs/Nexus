@@ -301,9 +301,22 @@ class CachedSpaces extends Table {
     OutboxMessages,
   ],
 )
+/// 웹에서 drift 를 열려면 **자산이 어디 있는지 알려 줘야 한다.**
+///
+/// 네이티브는 파일 하나면 끝이지만 웹은 sqlite3 를 WebAssembly 로 싣고 작업을
+/// 워커에 넘긴다. 이 옵션을 빼면 `app/web/` 에 자산을 넣어 두어도 drift 가
+/// 찾지 못해 **로그인 직후 DB 열기가 실패한다** — 실제로 그렇게 되어 있었고,
+/// 스페이스 화면이 오류로 떨어졌다.
+///
+/// 상대 경로인 이유는 자산을 `app/web/` 에 두었기 때문이다(빌드 산출물 루트).
+final _webOptions = DriftWebOptions(
+  sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+  driftWorker: Uri.parse('drift_worker.js'),
+);
+
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
-      : super(executor ?? driftDatabase(name: 'nexus'));
+      : super(executor ?? driftDatabase(name: 'nexus', web: _webOptions));
 
   @override
   int get schemaVersion => 12;

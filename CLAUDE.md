@@ -143,6 +143,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | Android 빌드가 `Run this build using a Java 11 or newer JVM` 으로 실패 | 이 PC 의 시스템 기본 java 가 **8** 이라 Gradle 이 그걸 집는다. `flutter config --jdk-dir <JDK21 경로>` 로 고정한다(이미 설정돼 있다) |
 | `flutter` 명령이 전부 `애플리케이션 제어 정책에서 이 파일을 차단했습니다` 로 실패 | **Smart App Control** 이 적용 상태가 됐다. Flutter SDK 가 `bin/cache/` 에 직접 내려받는 `dartvm.exe` 는 서명이 없어 로드가 차단된다. Windows 11 은 이 기능을 **평가 모드로 시작해 스스로 적용으로 넘어가므로** 어느 날 재부팅하면 갑자기 걸린다. 확인은 `HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy` 의 `VerifiedAndReputablePolicyState`(1=적용) 와 `Microsoft-Windows-CodeIntegrity/Operational` 로그. **끄는 것은 사용자만 할 수 있고 되돌릴 수 없다**(`start windowsdefender://smartappcontrol`). 참고로 **표준 `dart` 는 막히지 않아 `dart analyze` 는 그대로 돈다** — 차단 중에도 정적 검사는 살아 있다 |
 | `flutter run` 이 시작하자마자 조용히 종료 | `flutter run` 은 stdin 으로 키 명령(r · R · q)을 받는데, 백그라운드로 띄우면 stdin 이 EOF 라 종료로 해석한다. 사람이 직접 터미널에서 돌리거나, 검증 자동화는 `flutter build web` 후 정적 서버로 띄울 것 |
+| `flutter run` 을 백그라운드로 띄우고 싶다 | stdin 이 EOF 라 죽는 것이므로 **stdin 을 열어 두면 산다**: `tail -f /dev/null \| flutter run -d web-server --web-port=5173 …`. 디버그 웹 빌드는 난독화되지 않아 **예외 원문과 Dart 스택이 그대로 보인다** — 릴리스 빌드(`flutter build web`)로는 `dartException: Sk` 같은 축약만 나와 원인을 못 찾는다 |
 | 브라우저 자동화로 Flutter 웹 입력이 안 먹음 | Flutter 웹은 캔버스로 그려 접근성 트리가 비어 있다. `flutter-semantics-placeholder` 를 클릭해 시맨틱스를 켜면 입력 요소가 노출된다. 그래도 **BackSpace · 값 직접 대입은 컨트롤러까지 전달되지 않고 타이핑만 append 된다** — 폼을 비우려면 페이지를 새로고침할 것 |
 
 ---
@@ -666,8 +667,12 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 - **`prisma migrate dev` 는 이 환경(비대화형)에서 거부된다.** 위 HNSW 드리프트를 감지해 확인을 물으려 하기 때문이다. `npx prisma migrate diff --from-schema-datasource ... --to-schema-datamodel ... --script` 로 SQL 을 만들어 손질한 뒤 `prisma:deploy` 로 적용한다.
 - **`adb shell input text` 는 한글을 넣지 못한다**(NullPointerException). 실기기 검증 문구는 영문으로 쓸 것.
 - **소켓 토큰 갱신 경로가 자동 검증되지 않는다.** 액세스 토큰 만료(15분)를 기다려야 재현되므로 테스트에 넣지 않았다. 실기기로 한 번 확인했다.
-- **drift 웹 자산은 넣었지만 웹에서 실제로 열어 보지 못했다.** `sqlite3.wasm` · `drift_worker.js` 를 `app/web/` 에 두었고 빌드 산출물에 포함되는 것까지 확인했다(둘 다 200 으로 서빙됨). 다만 **Flutter 웹은 캔버스라** 브라우저 자동화로 로그인을 통과하지 못했고, drift 는 로그인 후에야 열리므로 캐시가 실제로 열리는지는 미확인이다. 사람이 `flutter run -d chrome --web-port=5173` 로 한 번 로그인해 보면 즉시 드러난다.
-- **소켓 CORS 화이트리스트가 검증되지 않았다.** `SocketIoAdapter` 가 `CORS_ORIGINS` 를 적용하지만, 검증 스크립트는 Node 소켓 클라이언트라 브라우저 SOP 를 따르지 않아 실제로 막히는지 확인된 적이 없다. Flutter 웹으로 소켓을 붙이는 슬라이스 4 에서 드러난다.
+- ~~drift 웹 자산을 넣고도 실제로 열어 보지 못했다~~ — **웹으로 열어 봤고, 그 덕에 진짜 버그를 잡았다.** `driftDatabase(name:)` 에 **`web:` 옵션을 준 적이 없어** 자산을 `app/web/` 에 두어도 drift 가 찾지 못했다. 로그인 직후 DB 열기가 실패해 스페이스 화면이 오류로 떨어졌다. `DriftWebOptions(sqlite3Wasm: …, driftWorker: …)` 를 넘겨 고쳤고, 워커가 로드되어 drift 가 구현을 고르는 것(`sharedIndexedDb`)까지 확인했다.
+- **REST CORS 는 검증됐다** — `http://localhost:5173` 에서 preflight 204 → `/api/me` 200 을 실제 브라우저로 확인했다. 다만 **소켓 CORS 는 아직이다**(앱이 drift 단계에서 멈춰 소켓까지 가지 못했다).
+- **웹에서 대화 화면까지는 아직 못 갔다.** 남은 장애물은 앱이 아니라 검증 환경이다 — 내장 브라우저가 **SharedWorker 안에서의 `fetch` 를 막는다**(전용 Worker 는 되는데 SharedWorker 는 모든 URL 에서 `TypeError: Failed to fetch`). drift 가 하필 `sharedIndexedDb` 구현을 고르는 바람에 DB 를 못 연다. **일반 Chrome 에서는 다를 가능성이 높으니** 사람이 한 번 확인하면 끝난다:
+  ```bash
+  cd app && flutter run -d chrome --web-port=5173 --dart-define=API_BASE=http://127.0.0.1:3000
+  ```
 - ~~Windows 데스크톱 빌드 불가~~ — **해결됐다.** Flutter 3.47 + VS 2026 + 개발자 모드로 빌드된다(`flutter build windows --debug` 확인). 검증 경로는 Windows 데스크톱 · Chrome · Android 에뮬레이터 셋 다 열려 있다.
 
 ---
