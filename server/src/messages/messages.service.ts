@@ -13,6 +13,7 @@ import { UpdateMessageDto } from './dto/update-message.dto';
 import { hasAtLeast } from '../spaces/space-role';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { ReactionsService } from './reactions.service';
+import { MentionsService } from './mentions.service';
 
 /** 메시지에 함께 실어 보내는 작성자 정보. 이메일은 내보내지 않는다. */
 const AUTHOR_SELECT = {
@@ -39,6 +40,7 @@ export class MessagesService {
     private readonly channels: ChannelsService,
     private readonly realtime: RealtimeEmitter,
     private readonly reactions: ReactionsService,
+    private readonly mentions: MentionsService,
   ) {}
 
   /**
@@ -72,12 +74,13 @@ export class MessagesService {
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
 
-    // 리액션·인용은 한 번에 모아 붙인다. 메시지마다 따로 조회하면 N+1 이 된다.
-    const reactions = await this.reactions.summarizeMany(
-      page.map((m) => m.id),
-      member,
-    );
-    const quoted = await this.loadQuoted(page, member);
+    // 리액션 · 인용 · 멘션은 한 번에 모아 붙인다. 메시지마다 조회하면 N+1 이 된다.
+    const ids = page.map((m) => m.id);
+    const [reactions, quoted, mentions] = await Promise.all([
+      this.reactions.summarizeMany(ids, member),
+      this.loadQuoted(page, member),
+      this.mentions.summarizeMany(ids, member),
+    ]);
 
     return {
       items: page.map((message) => ({
@@ -86,6 +89,7 @@ export class MessagesService {
         quoted: message.quotedMessageId
           ? (quoted.get(message.quotedMessageId) ?? null)
           : null,
+        mentions: mentions.get(message.id) ?? [],
       })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
     };
@@ -160,18 +164,31 @@ export class MessagesService {
       );
     }
 
-    const created = await this.prisma.message.create({
-      data: {
+    // 메시지와 멘션은 **한 트랜잭션**이다. 사이에서 끊기면 멘션 없는 메시지가
+    // 남아 상대의 뱃지가 영영 안 뜬다.
+    const created = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.message.create({
+        data: {
+          spaceId: member.spaceId,
+          channelId,
+          authorId: member.userId,
+          body: dto.body,
+          quotedMessageId,
+        },
+        include: { author: AUTHOR_SELECT },
+      });
+
+      await this.mentions.createFor(tx, {
+        messageId: row.id,
         spaceId: member.spaceId,
-        channelId,
-        authorId: member.userId,
         body: dto.body,
-        quotedMessageId,
-      },
-      include: { author: AUTHOR_SELECT },
+        authorId: member.userId,
+      });
+
+      return row;
     });
 
-    const message = await this.withQuoted(created, member);
+    const message = await this.withExtras(created, member);
 
     this.realtime.toChannel(channelId, 'message:new', {
       spaceId: member.spaceId,
@@ -179,7 +196,6 @@ export class MessagesService {
       message,
     });
 
-    // NOTE: 멘션 알림 팬아웃은 7단계(mentions)에서 붙인다.
     return message;
   }
 
@@ -209,18 +225,28 @@ export class MessagesService {
     return quoted.id;
   }
 
-  /** 방금 만든 메시지에 인용 요약을 붙인다. 전송 응답과 소켓이 같은 모양이어야 한다. */
-  private async withQuoted<T extends { quotedMessageId: string | null }>(
+  /**
+   * 방금 만든 메시지에 인용·멘션 요약을 붙인다.
+   *
+   * 전송 응답과 소켓 페이로드와 목록이 **같은 모양**이어야 한다. 다르면 앱이
+   * 어디서 온 메시지인지에 따라 다르게 그리게 된다.
+   */
+  private async withExtras<T extends { id: string; quotedMessageId: string | null }>(
     message: T,
     member: SpaceMember,
   ) {
-    const quoted = await this.loadQuoted([message], member);
+    const [quoted, mentions] = await Promise.all([
+      this.loadQuoted([message], member),
+      this.mentions.summarizeMany([message.id], member),
+    ]);
+
     return {
       ...message,
       reactions: [],
       quoted: message.quotedMessageId
         ? (quoted.get(message.quotedMessageId) ?? null)
         : null,
+      mentions: mentions.get(message.id) ?? [],
     };
   }
 
@@ -256,26 +282,39 @@ export class MessagesService {
     }
 
     const now = new Date();
-    const [created, updatedParent] = await this.prisma.$transaction([
-      this.prisma.message.create({
-        data: {
-          spaceId: member.spaceId,
-          channelId,
-          authorId: member.userId,
-          body,
-          parentId,
-          quotedMessageId,
-        },
-        include: { author: AUTHOR_SELECT },
-      }),
-      this.prisma.message.update({
-        where: { id: parentId },
-        data: { replyCount: { increment: 1 }, lastReplyAt: now },
-        select: { id: true, replyCount: true, lastReplyAt: true },
-      }),
-    ]);
+    const { created, updatedParent } = await this.prisma.$transaction(
+      async (tx) => {
+        const row = await tx.message.create({
+          data: {
+            spaceId: member.spaceId,
+            channelId,
+            authorId: member.userId,
+            body,
+            parentId,
+            quotedMessageId,
+          },
+          include: { author: AUTHOR_SELECT },
+        });
 
-    const reply = await this.withQuoted(created, member);
+        const parentRow = await tx.message.update({
+          where: { id: parentId },
+          data: { replyCount: { increment: 1 }, lastReplyAt: now },
+          select: { id: true, replyCount: true, lastReplyAt: true },
+        });
+
+        // 답글에서 멘션당해도 알아야 한다. 채널 메시지와 같은 처리를 탄다.
+        await this.mentions.createFor(tx, {
+          messageId: row.id,
+          spaceId: member.spaceId,
+          body,
+          authorId: member.userId,
+        });
+
+        return { created: row, updatedParent: parentRow };
+      },
+    );
+
+    const reply = await this.withExtras(created, member);
 
     // **채널 룸으로 보낸다.** 스레드를 연 사람만 받는 룸(thread:{id})을 따로
     // 두면, 채널을 보고 있는 사람에게 답글 수를 알릴 경로가 하나 더 필요해진다.
@@ -320,13 +359,14 @@ export class MessagesService {
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
 
-    const reactions = await this.reactions.summarizeMany(
-      [...page.map((m) => m.id), parent.id],
-      member,
-    );
-    const quoted = await this.loadQuoted([...page, parent], member);
+    const ids = [...page.map((m) => m.id), parent.id];
+    const [reactions, quoted, mentions] = await Promise.all([
+      this.reactions.summarizeMany(ids, member),
+      this.loadQuoted([...page, parent], member),
+      this.mentions.summarizeMany(ids, member),
+    ]);
 
-    const withExtras = <T extends { id: string; quotedMessageId: string | null }>(
+    const decorate = <T extends { id: string; quotedMessageId: string | null }>(
       message: T,
     ) => ({
       ...redactIfDeleted(message as never),
@@ -334,11 +374,12 @@ export class MessagesService {
       quoted: message.quotedMessageId
         ? (quoted.get(message.quotedMessageId) ?? null)
         : null,
+      mentions: mentions.get(message.id) ?? [],
     });
 
     return {
-      parent: withExtras(parent),
-      items: page.map(withExtras),
+      parent: decorate(parent),
+      items: page.map(decorate),
       nextCursor: hasMore ? page[page.length - 1].id : null,
     };
   }

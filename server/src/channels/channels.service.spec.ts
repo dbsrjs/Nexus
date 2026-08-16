@@ -2,6 +2,7 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { SpaceMember, SpaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
+import { MentionsService } from '../messages/mentions.service';
 import { ChannelsService } from './channels.service';
 
 /**
@@ -42,7 +43,13 @@ function serviceWith(options: {
     toChannel: jest.fn(),
   } as unknown as RealtimeEmitter;
 
-  return new ChannelsService(prisma, realtime);
+  // 이 스펙은 가시성 규칙만 태운다. 멘션 수는 채널 목록에만 쓰이고 그 계산은
+  // 실 DB 검증(npm run check:mentions)이 담당하므로 빈 Map 을 돌려주면 된다.
+  const mentions = {
+    unreadCounts: jest.fn().mockResolvedValue(new Map<string, number>()),
+  } as unknown as MentionsService;
+
+  return new ChannelsService(prisma, realtime, mentions);
 }
 
 const member: SpaceMember = {

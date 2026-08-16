@@ -1,8 +1,10 @@
 import {
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { Channel, Prisma, SpaceMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,6 +13,7 @@ import { slugify } from '../common/slug';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
+import { MentionsService } from '../messages/mentions.service';
 
 /** 채널 목록 한 줄. 사이드바가 필요로 하는 것만 담는다. */
 export interface ChannelListItem extends Channel {
@@ -18,6 +21,11 @@ export interface ChannelListItem extends Channel {
   lastReadMessageId: string | null;
   muted: boolean;
   unreadCount: number;
+  /**
+   * 안 읽은 **멘션** 수. 일반 안 읽은 수와 따로 센다 - 멘션은 "나를 불렀다"는
+   * 뜻이라 무게가 다르고, 화면에서도 다른 색으로 표시한다.
+   */
+  mentionCount: number;
 }
 
 @Injectable()
@@ -25,6 +33,10 @@ export class ChannelsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeEmitter,
+    // MessagesModule 과는 이미 서로를 참조한다(모듈 주석 참고). 멘션 수는
+    // 채널 목록의 일부라 여기서 붙이는 편이 자연스럽다.
+    @Inject(forwardRef(() => MentionsService))
+    private readonly mentions: MentionsService,
   ) {}
 
   // ──────────────────────────────────────────────
@@ -125,7 +137,7 @@ export class ChannelsService {
     const ids = await this.viewableChannelIds(member);
     if (ids.length === 0) return [];
 
-    const [channels, memberships, unread] = await Promise.all([
+    const [channels, memberships, unread, mentions] = await Promise.all([
       this.prisma.channel.findMany({
         where: { id: { in: ids }, spaceId: member.spaceId },
         orderBy: [{ position: 'asc' }, { name: 'asc' }],
@@ -134,6 +146,7 @@ export class ChannelsService {
         where: { userId: member.userId, channelId: { in: ids } },
       }),
       this.unreadCounts(member.userId, ids),
+      this.mentions.unreadCounts(member, ids),
     ]);
 
     const membershipByChannel = new Map(memberships.map((m) => [m.channelId, m]));
@@ -146,6 +159,7 @@ export class ChannelsService {
         lastReadMessageId: own?.lastReadMessageId ?? null,
         muted: own?.muted ?? false,
         unreadCount: unread.get(channel.id) ?? 0,
+        mentionCount: mentions.get(channel.id) ?? 0,
       };
     });
   }
