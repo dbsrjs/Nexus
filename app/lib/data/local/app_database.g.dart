@@ -177,6 +177,19 @@ class $CachedMessagesTable extends CachedMessages
       ).withConverter<List<MessageMention>>(
         $CachedMessagesTable.$convertermentions,
       );
+  static const VerificationMeta _pinnedMeta = const VerificationMeta('pinned');
+  @override
+  late final GeneratedColumn<bool> pinned = GeneratedColumn<bool>(
+    'pinned',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("pinned" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -195,6 +208,7 @@ class $CachedMessagesTable extends CachedMessages
     lastReplyAt,
     quoted,
     mentions,
+    pinned,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -272,6 +286,12 @@ class $CachedMessagesTable extends CachedMessages
       context.handle(
         _replyCountMeta,
         replyCount.isAcceptableOrUnknown(data['reply_count']!, _replyCountMeta),
+      );
+    }
+    if (data.containsKey('pinned')) {
+      context.handle(
+        _pinnedMeta,
+        pinned.isAcceptableOrUnknown(data['pinned']!, _pinnedMeta),
       );
     }
     return context;
@@ -361,6 +381,10 @@ class $CachedMessagesTable extends CachedMessages
           data['${effectivePrefix}mentions'],
         )!,
       ),
+      pinned: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}pinned'],
+      )!,
     );
   }
 
@@ -412,6 +436,9 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
 
   /// 본문의 `<@id>` 를 이름으로 바꾸는 데 쓰는 멘션 목록.
   final List<MessageMention> mentions;
+
+  /// 채널 상단에 고정됐는지.
+  final bool pinned;
   const CachedMessage({
     required this.id,
     required this.spaceId,
@@ -429,6 +456,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     this.lastReplyAt,
     this.quoted,
     required this.mentions,
+    required this.pinned,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -481,6 +509,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
         $CachedMessagesTable.$convertermentions.toSql(mentions),
       );
     }
+    map['pinned'] = Variable<bool>(pinned);
     return map;
   }
 
@@ -514,6 +543,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           ? const Value.absent()
           : Value(quoted),
       mentions: Value(mentions),
+      pinned: Value(pinned),
     );
   }
 
@@ -539,6 +569,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       lastReplyAt: serializer.fromJson<DateTime?>(json['lastReplyAt']),
       quoted: serializer.fromJson<QuotedMessage?>(json['quoted']),
       mentions: serializer.fromJson<List<MessageMention>>(json['mentions']),
+      pinned: serializer.fromJson<bool>(json['pinned']),
     );
   }
   @override
@@ -561,6 +592,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       'lastReplyAt': serializer.toJson<DateTime?>(lastReplyAt),
       'quoted': serializer.toJson<QuotedMessage?>(quoted),
       'mentions': serializer.toJson<List<MessageMention>>(mentions),
+      'pinned': serializer.toJson<bool>(pinned),
     };
   }
 
@@ -581,6 +613,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     Value<DateTime?> lastReplyAt = const Value.absent(),
     Value<QuotedMessage?> quoted = const Value.absent(),
     List<MessageMention>? mentions,
+    bool? pinned,
   }) => CachedMessage(
     id: id ?? this.id,
     spaceId: spaceId ?? this.spaceId,
@@ -600,6 +633,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     lastReplyAt: lastReplyAt.present ? lastReplyAt.value : this.lastReplyAt,
     quoted: quoted.present ? quoted.value : this.quoted,
     mentions: mentions ?? this.mentions,
+    pinned: pinned ?? this.pinned,
   );
   CachedMessage copyWithCompanion(CachedMessagesCompanion data) {
     return CachedMessage(
@@ -627,6 +661,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           : this.lastReplyAt,
       quoted: data.quoted.present ? data.quoted.value : this.quoted,
       mentions: data.mentions.present ? data.mentions.value : this.mentions,
+      pinned: data.pinned.present ? data.pinned.value : this.pinned,
     );
   }
 
@@ -648,7 +683,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           ..write('replyCount: $replyCount, ')
           ..write('lastReplyAt: $lastReplyAt, ')
           ..write('quoted: $quoted, ')
-          ..write('mentions: $mentions')
+          ..write('mentions: $mentions, ')
+          ..write('pinned: $pinned')
           ..write(')'))
         .toString();
   }
@@ -671,6 +707,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     lastReplyAt,
     quoted,
     mentions,
+    pinned,
   );
   @override
   bool operator ==(Object other) =>
@@ -691,7 +728,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           other.replyCount == this.replyCount &&
           other.lastReplyAt == this.lastReplyAt &&
           other.quoted == this.quoted &&
-          other.mentions == this.mentions);
+          other.mentions == this.mentions &&
+          other.pinned == this.pinned);
 }
 
 class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
@@ -711,6 +749,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
   final Value<DateTime?> lastReplyAt;
   final Value<QuotedMessage?> quoted;
   final Value<List<MessageMention>> mentions;
+  final Value<bool> pinned;
   final Value<int> rowid;
   const CachedMessagesCompanion({
     this.id = const Value.absent(),
@@ -729,6 +768,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.lastReplyAt = const Value.absent(),
     this.quoted = const Value.absent(),
     this.mentions = const Value.absent(),
+    this.pinned = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedMessagesCompanion.insert({
@@ -748,6 +788,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.lastReplyAt = const Value.absent(),
     this.quoted = const Value.absent(),
     this.mentions = const Value.absent(),
+    this.pinned = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        spaceId = Value(spaceId),
@@ -773,6 +814,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Expression<int>? lastReplyAt,
     Expression<String>? quoted,
     Expression<String>? mentions,
+    Expression<bool>? pinned,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -792,6 +834,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       if (lastReplyAt != null) 'last_reply_at': lastReplyAt,
       if (quoted != null) 'quoted': quoted,
       if (mentions != null) 'mentions': mentions,
+      if (pinned != null) 'pinned': pinned,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -813,6 +856,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Value<DateTime?>? lastReplyAt,
     Value<QuotedMessage?>? quoted,
     Value<List<MessageMention>>? mentions,
+    Value<bool>? pinned,
     Value<int>? rowid,
   }) {
     return CachedMessagesCompanion(
@@ -832,6 +876,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       lastReplyAt: lastReplyAt ?? this.lastReplyAt,
       quoted: quoted ?? this.quoted,
       mentions: mentions ?? this.mentions,
+      pinned: pinned ?? this.pinned,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -901,6 +946,9 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
         $CachedMessagesTable.$convertermentions.toSql(mentions.value),
       );
     }
+    if (pinned.present) {
+      map['pinned'] = Variable<bool>(pinned.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -926,6 +974,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
           ..write('lastReplyAt: $lastReplyAt, ')
           ..write('quoted: $quoted, ')
           ..write('mentions: $mentions, ')
+          ..write('pinned: $pinned, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3131,6 +3180,7 @@ typedef $$CachedMessagesTableCreateCompanionBuilder =
       Value<DateTime?> lastReplyAt,
       Value<QuotedMessage?> quoted,
       Value<List<MessageMention>> mentions,
+      Value<bool> pinned,
       Value<int> rowid,
     });
 typedef $$CachedMessagesTableUpdateCompanionBuilder =
@@ -3151,6 +3201,7 @@ typedef $$CachedMessagesTableUpdateCompanionBuilder =
       Value<DateTime?> lastReplyAt,
       Value<QuotedMessage?> quoted,
       Value<List<MessageMention>> mentions,
+      Value<bool> pinned,
       Value<int> rowid,
     });
 
@@ -3257,6 +3308,11 @@ class $$CachedMessagesTableFilterComposer
     column: $table.mentions,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnFilters<bool> get pinned => $composableBuilder(
+    column: $table.pinned,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$CachedMessagesTableOrderingComposer
@@ -3347,6 +3403,11 @@ class $$CachedMessagesTableOrderingComposer
     column: $table.mentions,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get pinned => $composableBuilder(
+    column: $table.pinned,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedMessagesTableAnnotationComposer
@@ -3415,6 +3476,9 @@ class $$CachedMessagesTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<List<MessageMention>, String> get mentions =>
       $composableBuilder(column: $table.mentions, builder: (column) => column);
+
+  GeneratedColumn<bool> get pinned =>
+      $composableBuilder(column: $table.pinned, builder: (column) => column);
 }
 
 class $$CachedMessagesTableTableManager
@@ -3466,6 +3530,7 @@ class $$CachedMessagesTableTableManager
                 Value<DateTime?> lastReplyAt = const Value.absent(),
                 Value<QuotedMessage?> quoted = const Value.absent(),
                 Value<List<MessageMention>> mentions = const Value.absent(),
+                Value<bool> pinned = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion(
                 id: id,
@@ -3484,6 +3549,7 @@ class $$CachedMessagesTableTableManager
                 lastReplyAt: lastReplyAt,
                 quoted: quoted,
                 mentions: mentions,
+                pinned: pinned,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3504,6 +3570,7 @@ class $$CachedMessagesTableTableManager
                 Value<DateTime?> lastReplyAt = const Value.absent(),
                 Value<QuotedMessage?> quoted = const Value.absent(),
                 Value<List<MessageMention>> mentions = const Value.absent(),
+                Value<bool> pinned = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion.insert(
                 id: id,
@@ -3522,6 +3589,7 @@ class $$CachedMessagesTableTableManager
                 lastReplyAt: lastReplyAt,
                 quoted: quoted,
                 mentions: mentions,
+                pinned: pinned,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

@@ -53,6 +53,7 @@ class SocketClient {
       ..on('message:edited', (data) => _emitMessage(data, _MessageKind.edited))
       ..on('message:deleted', _onMessageDeleted)
       ..on('thread:reply', _onThreadReply)
+      ..on('pin:changed', _onPinChanged)
       ..on('reaction:changed', _onReactionChanged)
       ..on('read:synced', _onReadSynced)
       ..on('rooms:invalidate', _onRoomsInvalidate);
@@ -170,6 +171,19 @@ class SocketClient {
     } catch (e) {
       debugPrint('소켓 스레드 답글 파싱 실패: $e');
     }
+  }
+
+  void _onPinChanged(dynamic data) {
+    final map = _asMap(data);
+    final messageId = map?['messageId'];
+    if (map == null || messageId is! String) return;
+
+    _emit(PinChanged(
+      spaceId: map['spaceId'] as String? ?? '',
+      channelId: map['channelId'] as String? ?? '',
+      messageId: messageId,
+      pinned: map['pinned'] == true,
+    ));
   }
 
   void _onReactionChanged(dynamic data) {

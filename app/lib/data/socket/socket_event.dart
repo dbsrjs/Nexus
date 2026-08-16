@@ -83,6 +83,23 @@ class ThreadReply extends SocketEvent {
   final DateTime? lastReplyAt;
 }
 
+/// 메시지 고정 상태가 바뀌었다.
+///
+/// 메시지 전체가 아니라 상태만 온다 - 본문은 이미 캐시에 있다.
+class PinChanged extends SocketEvent {
+  const PinChanged({
+    required this.spaceId,
+    required this.channelId,
+    required this.messageId,
+    required this.pinned,
+  });
+
+  final String spaceId;
+  final String channelId;
+  final String messageId;
+  final bool pinned;
+}
+
 /// 리액션이 바뀌었다(추가·제거 둘 다).
 ///
 /// **서버는 접힌 요약이 아니라 `(emoji, userId)` 쌍을 보낸다.** "내가 눌렀는지"

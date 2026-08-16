@@ -128,6 +128,9 @@ class CachedMessages extends Table {
   TextColumn get mentions =>
       text().map(const _MentionsJson()).withDefault(const Constant(''))();
 
+  /// 채널 상단에 고정됐는지.
+  BoolColumn get pinned => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -255,7 +258,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus'));
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -363,6 +366,7 @@ class AppDatabase extends _$AppDatabase {
       '''
       SELECT id, channel_id, body, created_at, edited_at, deleted_at,
              author_id, author_name, author_avatar_url, reactions, quoted, mentions,
+             pinned,
              parent_id, reply_count, last_reply_at,
              0 AS queued, 0 AS failed, 0 AS seq
         FROM cached_messages
@@ -371,7 +375,7 @@ class AppDatabase extends _$AppDatabase {
       UNION ALL
       SELECT id, channel_id, body, created_at, NULL, NULL,
              author_id, author_name, author_avatar_url, '[]' AS reactions, quoted,
-             '' AS mentions,
+             '' AS mentions, 0 AS pinned,
              parent_id, 0 AS reply_count, NULL AS last_reply_at,
              1 AS queued, failed, seq
         FROM outbox_messages
@@ -419,6 +423,7 @@ class AppDatabase extends _$AppDatabase {
         '''
         SELECT id, channel_id, body, created_at, edited_at, deleted_at,
                author_id, author_name, author_avatar_url, reactions, quoted, mentions,
+             pinned,
                parent_id, reply_count, last_reply_at,
                0 AS queued, 0 AS failed, 0 AS seq
           FROM cached_messages
@@ -440,6 +445,11 @@ class AppDatabase extends _$AppDatabase {
           lastReplyAt: Value(lastReplyAt),
         ),
       );
+
+  /// 고정 상태만 갈아 끼운다. 소켓 이벤트에는 본문이 없다.
+  Future<void> setPinned(String messageId, bool pinned) =>
+      (update(cachedMessages)..where((m) => m.id.equals(messageId)))
+          .write(CachedMessagesCompanion(pinned: Value(pinned)));
 
   /// 지금 캐시에 있는 리액션. 낙관적 토글이 실패했을 때 되돌릴 값이다.
   Future<List<MessageReaction>> reactionsOf(String messageId) async {
@@ -672,6 +682,7 @@ Message _rowToMessage(QueryRow row) {
     lastReplyAt: at('last_reply_at'),
     quoted: const _QuotedJson().fromSql(row.read<String>('quoted')),
     mentions: const _MentionsJson().fromSql(row.read<String>('mentions')),
+    pinned: row.read<int>('pinned') == 1,
     // 큐에 있으면서 아직 포기하지 않은 것이 '보내는 중'이다.
     pending: queued && !failed,
     failed: failed,
@@ -696,4 +707,5 @@ CachedMessagesCompanion _toRow(String spaceId, Message message) =>
       lastReplyAt: Value(message.lastReplyAt),
       quoted: Value(message.quoted),
       mentions: Value(message.mentions),
+      pinned: Value(message.pinned),
     );

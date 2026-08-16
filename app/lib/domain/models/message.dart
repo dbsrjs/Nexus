@@ -103,6 +103,9 @@ abstract class Message with _$Message {
     /// 이 메시지에 걸린 멘션. 본문의 `<@id>` 를 이름으로 바꾸는 데 쓴다.
     @Default(<MessageMention>[]) List<MessageMention> mentions,
 
+    /// 채널 상단에 고정됐는지. 답글은 고정할 수 없어 늘 false 다.
+    @Default(false) bool pinned,
+
     /// 답장이면 가리키는 원본. **`parentId` 와 다른 축이다** — 답장은
     /// 타임라인에 남고, 스레드 답글은 빠진다. 둘을 함께 쓸 수도 있다.
     QuotedMessage? quoted,

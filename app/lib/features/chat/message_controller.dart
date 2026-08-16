@@ -107,6 +107,9 @@ void _listenToSocket(
           lastReplyAt: event.lastReplyAt,
         );
 
+      case PinChanged() when event.channelId == channelId:
+        repository.applyPinChanged(event.messageId, event.pinned);
+
       case ReactionChanged() when event.channelId == channelId:
         // 서버는 mine 을 싣지 않는다 — 내 userId 로 여기서 접는다.
         final auth = ref.read(authControllerProvider);
@@ -209,6 +212,29 @@ class MessageActions {
   Future<void> retry(Message failed) => _repository.retry(failed.id);
 
   Future<void> discard(Message failed) => _repository.discard(failed.id);
+
+  /// 고정 · 해제. 아직 보내지 못한 메시지는 서버에 없어 고정할 수 없다.
+  Future<void> togglePin(Message message) async {
+    if (message.isLocal) return;
+
+    final spaceId = _ref.read(currentSpaceIdProvider);
+    if (spaceId == null) return;
+
+    await _repository.setPinned(
+      spaceId: spaceId,
+      messageId: message.id,
+      pinned: !message.pinned,
+    );
+  }
+
+  /// 채널의 고정 목록. 시트를 열 때만 부른다.
+  Future<List<Message>> pinnedMessages() async {
+    final spaceId = _ref.read(currentSpaceIdProvider);
+    final channelId = _ref.read(currentChannelIdProvider);
+    if (spaceId == null || channelId == null) return const [];
+
+    return _repository.pinnedMessages(spaceId: spaceId, channelId: channelId);
+  }
 
   /// 리액션을 켜고 끈다. 아직 보내지 못한 메시지에는 달 수 없다 —
   /// 서버에 없는 id 로 요청하면 404 다.

@@ -118,6 +118,44 @@ class MessageRepository {
         lastReplyAt: lastReplyAt,
       );
 
+  // ── 핀 ──────────────────────────────────────
+
+  /// 고정 · 해제. 리액션과 같이 **낙관적**이다 - 누르는 즉시 반영하고
+  /// 실패하면 되돌린다.
+  Future<void> setPinned({
+    required String spaceId,
+    required String messageId,
+    required bool pinned,
+  }) async {
+    await _db.setPinned(messageId, pinned);
+    try {
+      await _api.setPinned(
+        spaceId: spaceId,
+        messageId: messageId,
+        pinned: pinned,
+      );
+    } on ApiException {
+      await _db.setPinned(messageId, !pinned);
+    }
+  }
+
+  /// 소켓이 알려 준 고정 상태.
+  Future<void> applyPinChanged(String messageId, bool pinned) =>
+      _db.setPinned(messageId, pinned);
+
+  /// 채널의 고정 목록. 캐시를 거치지 않고 서버에서 바로 받는다 -
+  /// 시트를 열 때만 필요하고, 없다고 대화를 읽는 데 지장이 없다.
+  Future<List<Message>> pinnedMessages({
+    required String spaceId,
+    required String channelId,
+  }) async {
+    try {
+      return await _api.listPinned(spaceId: spaceId, channelId: channelId);
+    } on ApiException {
+      return const [];
+    }
+  }
+
   // ── 리액션 ───────────────────────────────────
 
   /// 이모지를 켜고 끈다. **먼저 캐시를 고치고 서버에 알린다.**

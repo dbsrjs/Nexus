@@ -78,6 +78,7 @@ class _ChannelHeader extends StatelessWidget {
             ),
           ] else
             const Spacer(),
+          const _PinnedButton(),
           const _ConnectionDot(),
         ],
       ),
@@ -256,6 +257,7 @@ class MessageTile extends ConsumerWidget {
                     Text('(수정됨)', style: theme.textTheme.labelSmall),
                   if (message.reactions.isNotEmpty)
                     _ReactionBar(message: message),
+                  if (message.pinned) const _PinnedMark(),
                   if (message.hasThread) _ThreadSummary(message: message),
                   if (message.failed) _FailedActions(message: message),
                 ],
@@ -458,6 +460,18 @@ Future<void> _pickReaction(
               subtitle: const Text('대화에서 빼내어 따로 이어 간다'),
               onTap: () => Navigator.of(sheetContext).pop(_threadAction),
             ),
+            // 답글은 고정할 수 없다(서버가 400). 항목 자체를 감춘다 -
+            // 눌러 봐야 실패하는 버튼은 없느니만 못하다.
+            if (message.parentId == null)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  message.pinned ? Icons.push_pin : Icons.push_pin_outlined,
+                ),
+                title: Text(message.pinned ? '고정 해제' : '고정'),
+                subtitle: const Text('채널 상단에서 언제든 찾을 수 있다'),
+                onTap: () => Navigator.of(sheetContext).pop(_pinAction),
+              ),
           ],
         ),
       ),
@@ -473,6 +487,10 @@ Future<void> _pickReaction(
     ref.read(replyTargetProvider.notifier).set(message);
     return;
   }
+  if (picked == _pinAction) {
+    await ref.read(messageActionsProvider).togglePin(message);
+    return;
+  }
   await ref.read(messageActionsProvider).toggleReaction(message, picked);
 }
 
@@ -480,6 +498,7 @@ Future<void> _pickReaction(
 /// 앞의 공백 덕분에 실제 이모지와 겹칠 일이 없다 — 이모지는 공백을 못 쓴다.
 const _threadAction = ' thread';
 const _replyAction = ' reply';
+const _pinAction = ' pin';
 
 /// 메시지에 달린 이모지들. 누르면 켜고 꺼진다.
 class _ReactionBar extends ConsumerWidget {
@@ -710,6 +729,91 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
       ),
     );
   }
+}
+
+/// 고정된 메시지 표시. 목록에서도 한눈에 갈리게 한다.
+class _PinnedMark extends StatelessWidget {
+  const _PinnedMark();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: NexusSpacing.sp1),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.push_pin, size: 12, color: theme.textTheme.bodySmall?.color),
+          const SizedBox(width: 4),
+          Text('고정됨', style: theme.textTheme.labelSmall),
+        ],
+      ),
+    );
+  }
+}
+
+/// 채널 헤더의 고정 목록 버튼. 누르면 시트로 목록을 연다.
+class _PinnedButton extends ConsumerWidget {
+  const _PinnedButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return IconButton(
+      tooltip: '고정된 메시지',
+      icon: const Icon(Icons.push_pin_outlined, size: 18),
+      onPressed: () => _showPinned(context, ref),
+    );
+  }
+}
+
+/// 고정 목록 시트.
+///
+/// 캐시를 거치지 않고 열 때마다 서버에서 받는다 - 자주 여는 화면이 아니고,
+/// 없다고 대화를 읽는 데 지장이 없다.
+Future<void> _showPinned(BuildContext context, WidgetRef ref) async {
+  final messages = await ref.read(messageActionsProvider).pinnedMessages();
+  if (!context.mounted) return;
+
+  await showModalBottomSheet<void>(
+    context: context,
+    builder: (sheetContext) {
+      final theme = Theme.of(sheetContext);
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(NexusSpacing.sp4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('고정된 메시지', style: theme.textTheme.titleSmall),
+              const SizedBox(height: NexusSpacing.sp3),
+              if (messages.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: NexusSpacing.sp5,
+                  ),
+                  child: Text(
+                    '아직 고정된 메시지가 없습니다.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: messages.length,
+                    itemBuilder: (_, i) => MessageTile(
+                      message: messages[i],
+                      grouped: false,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 /// 멘션 후보 목록. 입력창 위에 뜬다.

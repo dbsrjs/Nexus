@@ -87,6 +87,41 @@ class MessagesApi {
     }
   }
 
+  /// 고정 · 해제. **멱등이다** - 이미 그 상태여도 같은 결과가 온다.
+  Future<Message> setPinned({
+    required String spaceId,
+    required String messageId,
+    required bool pinned,
+  }) async {
+    try {
+      final path = '/spaces/$spaceId/messages/$messageId/pin';
+      final res = pinned
+          ? await _client.dio.post<Map<String, dynamic>>(path)
+          : await _client.dio.delete<Map<String, dynamic>>(path);
+      return Message.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// GET /api/spaces/:spaceId/channels/:channelId/pins
+  Future<List<Message>> listPinned({
+    required String spaceId,
+    required String channelId,
+  }) async {
+    try {
+      final res = await _client.dio.get<List<dynamic>>(
+        '/spaces/$spaceId/channels/$channelId/pins',
+      );
+      return (res.data ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(Message.fromJson)
+          .toList(growable: false);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
   /// POST /api/spaces/:spaceId/messages/:messageId/reactions
   ///
   /// **멱등이다.** 이미 누른 것을 다시 눌러도 서버가 같은 요약을 돌려준다.

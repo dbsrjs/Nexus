@@ -200,6 +200,21 @@ class _FakeApi implements MessagesApi {
   }) async =>
       const MessagePage(items: []);
 
+@override
+  Future<Message> setPinned({
+    required String spaceId,
+    required String messageId,
+    required bool pinned,
+  }) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<Message>> listPinned({
+    required String spaceId,
+    required String channelId,
+  }) async =>
+      const [];
+
   @override
   Future<ThreadPage> listReplies({
     required String spaceId,

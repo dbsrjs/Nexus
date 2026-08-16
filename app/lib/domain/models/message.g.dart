@@ -91,6 +91,7 @@ _Message _$MessageFromJson(Map<String, dynamic> json) => _Message(
           ?.map((e) => MessageMention.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const <MessageMention>[],
+  pinned: json['pinned'] as bool? ?? false,
   quoted: json['quoted'] == null
       ? null
       : QuotedMessage.fromJson(json['quoted'] as Map<String, dynamic>),
@@ -111,6 +112,7 @@ Map<String, dynamic> _$MessageToJson(_Message instance) => <String, dynamic>{
   'replyCount': instance.replyCount,
   'lastReplyAt': instance.lastReplyAt?.toIso8601String(),
   'mentions': instance.mentions,
+  'pinned': instance.pinned,
   'quoted': instance.quoted,
   'pending': instance.pending,
   'failed': instance.failed,
