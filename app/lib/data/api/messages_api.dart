@@ -176,6 +176,7 @@ class MessagesApi {
     required String body,
     String? parentId,
     String? quotedMessageId,
+    List<String> attachmentIds = const [],
   }) async {
     try {
       final res = await _client.dio.post<Map<String, dynamic>>(
@@ -184,6 +185,7 @@ class MessagesApi {
           'body': body,
           'parentId': ?parentId,
           'quotedMessageId': ?quotedMessageId,
+          if (attachmentIds.isNotEmpty) 'attachmentIds': attachmentIds,
         },
       );
       return Message.fromJson(res.data!);

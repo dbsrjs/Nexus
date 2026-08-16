@@ -8,6 +8,11 @@
 # The following line activates a set of recommended lints for Flutter apps,
 # packages, and plugins designed to encourage good coding practices.
 analyzer:
+  errors:
+    # freezed 는 생성자 인자에 붙인 @JsonKey 를 생성 코드의 필드로 옮긴다.
+    # 분석기는 그 사실을 모르고 "필드에만 붙일 수 있다"고 경고한다 —
+    # freezed 문서가 안내하는 회피책이다.
+    invalid_annotation_target: ignore
   exclude:
     - build/**
     - android/**

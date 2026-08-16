@@ -207,6 +207,7 @@ class MessageRepository {
     String? parentId,
     String? quotedMessageId,
     QuotedMessage? quoted,
+    List<MessageAttachment> attachments = const [],
   }) async {
     final id = _localId();
     await _db.enqueue(
@@ -220,6 +221,10 @@ class MessageRepository {
         // 요약도 함께 넣는다 — 큐에 있는 동안에는 서버에서 원본을 받아올 수
         // 없으므로, 이 값이 없으면 인용문이 빈 채로 보인다.
         quoted: Value(quoted),
+        // 첨부는 **이미 서버에 올라가 있다.** 큐가 들고 있는 것은 id 와,
+        // 큐에 있는 동안 파일 이름을 그리기 위한 요약뿐이다.
+        attachmentIds: Value([for (final a in attachments) a.id]),
+        attachments: Value(attachments),
         createdAt: DateTime.now(),
         authorId: author.id,
         authorName: author.name,
@@ -261,6 +266,7 @@ class MessageRepository {
             body: item.body,
             parentId: item.parentId,
             quotedMessageId: item.quotedMessageId,
+            attachmentIds: item.attachmentIds,
           );
           await _db.settleQueued(item.id, item.spaceId, sent);
           sentCount++;

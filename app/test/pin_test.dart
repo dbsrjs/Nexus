@@ -170,6 +170,7 @@ class _FakeApi implements MessagesApi {
     required String body,
     String? parentId,
     String? quotedMessageId,
+    List<String> attachmentIds = const [],
   }) async =>
       throw UnimplementedError();
 }

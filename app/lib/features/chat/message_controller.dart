@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/api/attachments_api.dart';
 import '../../data/api/messages_api.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../data/socket/socket_event.dart';
@@ -11,6 +12,10 @@ import '../space/space_controller.dart';
 
 final messagesApiProvider =
     Provider<MessagesApi>((ref) => MessagesApi(ref.watch(apiClientProvider)));
+
+final attachmentsApiProvider = Provider<AttachmentsApi>(
+  (ref) => AttachmentsApi(ref.watch(apiClientProvider)),
+);
 
 final messageRepositoryProvider = Provider<MessageRepository>((ref) {
   return MessageRepository(
@@ -171,9 +176,13 @@ class MessageActions {
   /// 네트워크 상태를 묻지 않는다. 큐에 들어간 순간 화면에 보이고(캐시와 큐를
   /// 합쳐 구독하므로), 온라인이면 곧바로 나가고 오프라인이면 재연결 때 나간다.
   /// 사용자 입장에서 두 경우가 구분되지 않는 것이 목표다.
-  Future<void> send(String body) async {
+  Future<void> send(
+    String body, {
+    List<MessageAttachment> attachments = const [],
+  }) async {
     final trimmed = body.trim();
-    if (trimmed.isEmpty) return;
+    // **첨부만 보내는 경우가 있다.** 서버도 둘 다 없을 때만 거부한다.
+    if (trimmed.isEmpty && attachments.isEmpty) return;
 
     final spaceId = _ref.read(currentSpaceIdProvider);
     final channelId = _ref.read(currentChannelIdProvider);
@@ -193,6 +202,7 @@ class MessageActions {
       body: trimmed,
       quotedMessageId: replyTo?.id,
       quoted: replyTo == null ? null : quotedFrom(replyTo),
+      attachments: attachments,
       author: MessageAuthor(
         id: auth.user.id,
         name: auth.user.name,

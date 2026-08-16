@@ -13,6 +13,8 @@ import '../space/space_controller.dart';
 import '../../domain/models/space_member.dart';
 import '../auth/auth_controller.dart';
 import '../space/members_controller.dart';
+import 'attachment_draft.dart';
+import 'attachment_widgets.dart';
 import 'mention_autocomplete.dart';
 import 'mention_composer_controller.dart';
 import 'mention_text.dart';
@@ -253,7 +255,11 @@ class MessageTile extends ConsumerWidget {
                       ],
                     ),
                   if (message.quoted != null) _QuoteBlock(quoted: message.quoted!),
-                  _MessageBody(message: message),
+                  // 본문이 비어 있을 수 있다 — 첨부만 보낸 메시지다.
+                  if (message.body.isNotEmpty || message.attachments.isEmpty)
+                    _MessageBody(message: message),
+                  for (final attachment in message.attachments)
+                    AttachmentRow(attachment: attachment, message: message),
                   if (message.editedAt != null)
                     Text('(수정됨)', style: theme.textTheme.labelSmall),
                   if (message.reactions.isNotEmpty)
@@ -604,7 +610,7 @@ class MessageComposer extends ConsumerStatefulWidget {
   const MessageComposer({super.key, this.onSend, this.hint});
 
   /// 비우면 채널 전송. 스레드는 답글 전송을 넘긴다.
-  final void Function(String body)? onSend;
+  final void Function(String body, List<MessageAttachment> attachments)? onSend;
 
   /// 비우면 현재 채널 이름으로 만든다.
   final String? hint;
@@ -621,6 +627,12 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
   /// 지금 치고 있는 멘션. null 이면 후보를 띄우지 않는다.
   MentionQuery? _mentionQuery;
 
+  /// 담아 둔 첨부. 고르는 즉시 올라간다.
+  AttachmentDraftController? _attachments;
+
+  /// 첨부를 담아 둔 채로 채널을 옮겼는지 보기 위해 들고 있는다.
+  String? _channelId;
+
   @override
   void initState() {
     super.initState();
@@ -633,8 +645,36 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
   void dispose() {
     _controller.removeListener(_onTextChanged);
     _controller.dispose();
+    _attachments?.dispose();
     _focus.dispose();
     super.dispose();
+  }
+
+  /// 첨부 컨트롤러를 늦게 만든다 — `ref` 를 initState 에서 읽을 수 없다.
+  ///
+  /// **`??=` 와 캐스케이드를 한 줄에 쓰지 않는다.** Dart 에서 `..` 는 대입보다
+  /// 느슨해서 `a ??= B()..listen()` 이 `(a ??= B())..listen()` 으로 묶인다 —
+  /// 이 getter 를 읽을 때마다 리스너가 하나씩 더 붙는다.
+  AttachmentDraftController get _drafts {
+    final existing = _attachments;
+    if (existing != null) return existing;
+
+    final created = AttachmentDraftController(ref.read(attachmentsApiProvider));
+    created.addListener(_onDraftsChanged);
+    return _attachments = created;
+  }
+
+  void _onDraftsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _pickFiles() async {
+    final spaceId = ref.read(currentSpaceIdProvider);
+    final channelId = ref.read(currentChannelIdProvider);
+    if (spaceId == null || channelId == null) return;
+
+    await _drafts.pick(spaceId: spaceId, channelId: channelId);
+    _focus.requestFocus();
   }
 
   void _onTextChanged() {
@@ -660,12 +700,22 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
   }
 
   void _send() {
-    if (_controller.text.trim().isEmpty) return;
+    // **올라가는 중에는 보내지 않는다.** 아직 id 가 없는 첨부는 실을 수 없고,
+    // 빼고 보내면 사용자가 붙인 파일이 조용히 사라진다.
+    if (_attachments?.isUploading ?? false) return;
+
+    final attachments = _attachments?.uploaded ?? const <MessageAttachment>[];
+    // 첨부만 보내는 경우가 있어 본문이 비어도 된다.
+    if (_controller.text.trim().isEmpty && attachments.isEmpty) return;
+
     // 보내는 것은 보이는 글자가 아니라 id 로 되돌린 본문이다.
     final body = _controller.body;
     // 낙관적 전송이라 기다리지 않는다. 입력창은 즉시 비운다.
-    final send = widget.onSend ?? ref.read(messageActionsProvider).send;
-    send(body);
+    final send = widget.onSend ??
+        (String b, List<MessageAttachment> a) =>
+            ref.read(messageActionsProvider).send(b, attachments: a);
+    send(body, attachments);
+    _attachments?.clear();
     _controller.clear();
     setState(() => _mentionQuery = null);
     _focus.requestFocus();
@@ -675,6 +725,23 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final channel = ref.watch(currentChannelProvider);
+
+    // **채널을 옮기면 담아 둔 첨부를 버린다.** 업로드 주소에 채널이 들어 있어,
+    // 들고 옮기면 엉뚱한 채널에 올라간 파일을 붙이게 된다.
+    //
+    // 비우는 일을 **프레임이 끝난 뒤로 미룬다.** `clear()` 는 리스너를 통해
+    // `setState` 를 부르는데, build 안에서 그러면 Flutter 가 예외를 던진다.
+    final channelId = ref.watch(currentChannelIdProvider);
+    if (_channelId != channelId) {
+      _channelId = channelId;
+      final pending = _attachments;
+      if (pending != null && !pending.isEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => pending.clear());
+      }
+    }
+
+    final drafts = _attachments?.drafts ?? const <AttachmentDraft>[];
+    final uploading = _attachments?.isUploading ?? false;
 
     return Container(
       padding: const EdgeInsets.all(NexusSpacing.sp4),
@@ -694,9 +761,25 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
             // 답장 대상이 있으면 입력창 위에 띄운다. 무엇에 답하는지 보이지
             // 않으면 엉뚱한 메시지에 답하기 쉽다.
             if (widget.onSend == null) const _ReplyPreview(),
+            if (drafts.isNotEmpty)
+              AttachmentDraftBar(
+                drafts: drafts,
+                onRemove: (id) => _drafts.remove(id),
+                onRetry: (id) {
+                  final spaceId = ref.read(currentSpaceIdProvider);
+                  final channel = ref.read(currentChannelIdProvider);
+                  if (spaceId == null || channel == null) return;
+                  _drafts.retry(id, spaceId: spaceId, channelId: channel);
+                },
+              ),
             Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            IconButton(
+              onPressed: channel == null ? null : _pickFiles,
+              icon: const Icon(Icons.attach_file, size: 20),
+              tooltip: '파일 첨부',
+            ),
             Expanded(
               // 여러 줄 입력이라 Enter 가 기본적으로 줄바꿈이 된다. 채팅에서는
               // Enter 가 전송이어야 하므로 가로챈다. **Shift+Enter 는 그대로
@@ -733,7 +816,8 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
             ),
             const SizedBox(width: NexusSpacing.sp3),
             IconButton.filled(
-              onPressed: channel == null ? null : _send,
+              // 올라가는 중에는 막는다 — 아직 id 가 없는 첨부는 실을 수 없다.
+              onPressed: channel == null || uploading ? null : _send,
               icon: const Icon(Icons.send, size: 18),
             ),
           ],

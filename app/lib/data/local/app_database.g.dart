@@ -191,6 +191,19 @@ class $CachedMessagesTable extends CachedMessages
     defaultValue: const Constant(false),
   );
   @override
+  late final GeneratedColumnWithTypeConverter<List<MessageAttachment>, String>
+  attachments =
+      GeneratedColumn<String>(
+        'attachments',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      ).withConverter<List<MessageAttachment>>(
+        $CachedMessagesTable.$converterattachments,
+      );
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     spaceId,
@@ -209,6 +222,7 @@ class $CachedMessagesTable extends CachedMessages
     quoted,
     mentions,
     pinned,
+    attachments,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -385,6 +399,12 @@ class $CachedMessagesTable extends CachedMessages
         DriftSqlType.bool,
         data['${effectivePrefix}pinned'],
       )!,
+      attachments: $CachedMessagesTable.$converterattachments.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}attachments'],
+        )!,
+      ),
     );
   }
 
@@ -410,6 +430,8 @@ class $CachedMessagesTable extends CachedMessages
       const _QuotedJson();
   static TypeConverter<List<MessageMention>, String> $convertermentions =
       const _MentionsJson();
+  static TypeConverter<List<MessageAttachment>, String> $converterattachments =
+      const _AttachmentsJson();
 }
 
 class CachedMessage extends DataClass implements Insertable<CachedMessage> {
@@ -439,6 +461,9 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
 
   /// 채널 상단에 고정됐는지.
   final bool pinned;
+
+  /// 붙은 파일 요약. 바이트는 여기 없다 — 볼 때 서버에서 받는다.
+  final List<MessageAttachment> attachments;
   const CachedMessage({
     required this.id,
     required this.spaceId,
@@ -457,6 +482,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     this.quoted,
     required this.mentions,
     required this.pinned,
+    required this.attachments,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -510,6 +536,11 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       );
     }
     map['pinned'] = Variable<bool>(pinned);
+    {
+      map['attachments'] = Variable<String>(
+        $CachedMessagesTable.$converterattachments.toSql(attachments),
+      );
+    }
     return map;
   }
 
@@ -544,6 +575,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           : Value(quoted),
       mentions: Value(mentions),
       pinned: Value(pinned),
+      attachments: Value(attachments),
     );
   }
 
@@ -570,6 +602,9 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       quoted: serializer.fromJson<QuotedMessage?>(json['quoted']),
       mentions: serializer.fromJson<List<MessageMention>>(json['mentions']),
       pinned: serializer.fromJson<bool>(json['pinned']),
+      attachments: serializer.fromJson<List<MessageAttachment>>(
+        json['attachments'],
+      ),
     );
   }
   @override
@@ -593,6 +628,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       'quoted': serializer.toJson<QuotedMessage?>(quoted),
       'mentions': serializer.toJson<List<MessageMention>>(mentions),
       'pinned': serializer.toJson<bool>(pinned),
+      'attachments': serializer.toJson<List<MessageAttachment>>(attachments),
     };
   }
 
@@ -614,6 +650,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     Value<QuotedMessage?> quoted = const Value.absent(),
     List<MessageMention>? mentions,
     bool? pinned,
+    List<MessageAttachment>? attachments,
   }) => CachedMessage(
     id: id ?? this.id,
     spaceId: spaceId ?? this.spaceId,
@@ -634,6 +671,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     quoted: quoted.present ? quoted.value : this.quoted,
     mentions: mentions ?? this.mentions,
     pinned: pinned ?? this.pinned,
+    attachments: attachments ?? this.attachments,
   );
   CachedMessage copyWithCompanion(CachedMessagesCompanion data) {
     return CachedMessage(
@@ -662,6 +700,9 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       quoted: data.quoted.present ? data.quoted.value : this.quoted,
       mentions: data.mentions.present ? data.mentions.value : this.mentions,
       pinned: data.pinned.present ? data.pinned.value : this.pinned,
+      attachments: data.attachments.present
+          ? data.attachments.value
+          : this.attachments,
     );
   }
 
@@ -684,7 +725,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           ..write('lastReplyAt: $lastReplyAt, ')
           ..write('quoted: $quoted, ')
           ..write('mentions: $mentions, ')
-          ..write('pinned: $pinned')
+          ..write('pinned: $pinned, ')
+          ..write('attachments: $attachments')
           ..write(')'))
         .toString();
   }
@@ -708,6 +750,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     quoted,
     mentions,
     pinned,
+    attachments,
   );
   @override
   bool operator ==(Object other) =>
@@ -729,7 +772,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           other.lastReplyAt == this.lastReplyAt &&
           other.quoted == this.quoted &&
           other.mentions == this.mentions &&
-          other.pinned == this.pinned);
+          other.pinned == this.pinned &&
+          other.attachments == this.attachments);
 }
 
 class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
@@ -750,6 +794,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
   final Value<QuotedMessage?> quoted;
   final Value<List<MessageMention>> mentions;
   final Value<bool> pinned;
+  final Value<List<MessageAttachment>> attachments;
   final Value<int> rowid;
   const CachedMessagesCompanion({
     this.id = const Value.absent(),
@@ -769,6 +814,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.quoted = const Value.absent(),
     this.mentions = const Value.absent(),
     this.pinned = const Value.absent(),
+    this.attachments = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedMessagesCompanion.insert({
@@ -789,6 +835,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.quoted = const Value.absent(),
     this.mentions = const Value.absent(),
     this.pinned = const Value.absent(),
+    this.attachments = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        spaceId = Value(spaceId),
@@ -815,6 +862,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Expression<String>? quoted,
     Expression<String>? mentions,
     Expression<bool>? pinned,
+    Expression<String>? attachments,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -835,6 +883,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       if (quoted != null) 'quoted': quoted,
       if (mentions != null) 'mentions': mentions,
       if (pinned != null) 'pinned': pinned,
+      if (attachments != null) 'attachments': attachments,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -857,6 +906,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Value<QuotedMessage?>? quoted,
     Value<List<MessageMention>>? mentions,
     Value<bool>? pinned,
+    Value<List<MessageAttachment>>? attachments,
     Value<int>? rowid,
   }) {
     return CachedMessagesCompanion(
@@ -877,6 +927,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       quoted: quoted ?? this.quoted,
       mentions: mentions ?? this.mentions,
       pinned: pinned ?? this.pinned,
+      attachments: attachments ?? this.attachments,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -949,6 +1000,11 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     if (pinned.present) {
       map['pinned'] = Variable<bool>(pinned.value);
     }
+    if (attachments.present) {
+      map['attachments'] = Variable<String>(
+        $CachedMessagesTable.$converterattachments.toSql(attachments.value),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -975,6 +1031,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
           ..write('quoted: $quoted, ')
           ..write('mentions: $mentions, ')
           ..write('pinned: $pinned, ')
+          ..write('attachments: $attachments, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2330,6 +2387,29 @@ class $OutboxMessagesTable extends OutboxMessages
         defaultValue: const Constant(''),
       ).withConverter<QuotedMessage?>($OutboxMessagesTable.$converterquoted);
   @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String>
+  attachmentIds = GeneratedColumn<String>(
+    'attachment_ids',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  ).withConverter<List<String>>($OutboxMessagesTable.$converterattachmentIds);
+  @override
+  late final GeneratedColumnWithTypeConverter<List<MessageAttachment>, String>
+  attachments =
+      GeneratedColumn<String>(
+        'attachments',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      ).withConverter<List<MessageAttachment>>(
+        $OutboxMessagesTable.$converterattachments,
+      );
+  @override
   late final GeneratedColumnWithTypeConverter<DateTime, int> createdAt =
       GeneratedColumn<int>(
         'created_at',
@@ -2426,6 +2506,8 @@ class $OutboxMessagesTable extends OutboxMessages
     parentId,
     quotedMessageId,
     quoted,
+    attachmentIds,
+    attachments,
     createdAt,
     seq,
     authorId,
@@ -2582,6 +2664,18 @@ class $OutboxMessagesTable extends OutboxMessages
           data['${effectivePrefix}quoted'],
         )!,
       ),
+      attachmentIds: $OutboxMessagesTable.$converterattachmentIds.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}attachment_ids'],
+        )!,
+      ),
+      attachments: $OutboxMessagesTable.$converterattachments.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}attachments'],
+        )!,
+      ),
       createdAt: $OutboxMessagesTable.$convertercreatedAt.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.int,
@@ -2626,6 +2720,10 @@ class $OutboxMessagesTable extends OutboxMessages
 
   static TypeConverter<QuotedMessage?, String> $converterquoted =
       const _QuotedJson();
+  static TypeConverter<List<String>, String> $converterattachmentIds =
+      const _IdListJson();
+  static TypeConverter<List<MessageAttachment>, String> $converterattachments =
+      const _AttachmentsJson();
   static TypeConverter<DateTime, int> $convertercreatedAt = const _UtcMicros();
 }
 
@@ -2645,6 +2743,17 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
   /// 인용 요약. 큐에 있는 동안 화면에 인용문을 그리려면 필요하다 —
   /// 서버에 닿기 전에는 원본을 서버에서 받아올 수 없다.
   final QuotedMessage? quoted;
+
+  /// 붙일 첨부의 id. **파일 자체는 큐에 없다** — 이미 서버에 올라가 있다.
+  ///
+  /// 업로드는 온라인에서만 되지만, 한 번 올라가면 그 뒤 오프라인이 되어도
+  /// 이 메시지는 큐에서 기다렸다 나갈 수 있다. 다만 **24시간 안에 나가야
+  /// 한다** — 그 전에 연결되지 못한 첨부는 서버가 고아로 보고 지운다.
+  final List<String> attachmentIds;
+
+  /// 첨부 요약. 큐에 있는 동안 화면에 파일 이름을 그리려면 필요하다 —
+  /// 인용 요약을 함께 담아 두는 것과 같은 이유다.
+  final List<MessageAttachment> attachments;
 
   /// 사용자가 **쓴** 시각. 서버 도착 시각이 아니다.
   final DateTime createdAt;
@@ -2675,6 +2784,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     this.parentId,
     this.quotedMessageId,
     this.quoted,
+    required this.attachmentIds,
+    required this.attachments,
     required this.createdAt,
     required this.seq,
     required this.authorId,
@@ -2700,6 +2811,16 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     if (!nullToAbsent || quoted != null) {
       map['quoted'] = Variable<String>(
         $OutboxMessagesTable.$converterquoted.toSql(quoted),
+      );
+    }
+    {
+      map['attachment_ids'] = Variable<String>(
+        $OutboxMessagesTable.$converterattachmentIds.toSql(attachmentIds),
+      );
+    }
+    {
+      map['attachments'] = Variable<String>(
+        $OutboxMessagesTable.$converterattachments.toSql(attachments),
       );
     }
     {
@@ -2736,6 +2857,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
       quoted: quoted == null && nullToAbsent
           ? const Value.absent()
           : Value(quoted),
+      attachmentIds: Value(attachmentIds),
+      attachments: Value(attachments),
       createdAt: Value(createdAt),
       seq: Value(seq),
       authorId: Value(authorId),
@@ -2764,6 +2887,10 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
       parentId: serializer.fromJson<String?>(json['parentId']),
       quotedMessageId: serializer.fromJson<String?>(json['quotedMessageId']),
       quoted: serializer.fromJson<QuotedMessage?>(json['quoted']),
+      attachmentIds: serializer.fromJson<List<String>>(json['attachmentIds']),
+      attachments: serializer.fromJson<List<MessageAttachment>>(
+        json['attachments'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       seq: serializer.fromJson<int>(json['seq']),
       authorId: serializer.fromJson<String>(json['authorId']),
@@ -2785,6 +2912,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
       'parentId': serializer.toJson<String?>(parentId),
       'quotedMessageId': serializer.toJson<String?>(quotedMessageId),
       'quoted': serializer.toJson<QuotedMessage?>(quoted),
+      'attachmentIds': serializer.toJson<List<String>>(attachmentIds),
+      'attachments': serializer.toJson<List<MessageAttachment>>(attachments),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'seq': serializer.toJson<int>(seq),
       'authorId': serializer.toJson<String>(authorId),
@@ -2804,6 +2933,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     Value<String?> parentId = const Value.absent(),
     Value<String?> quotedMessageId = const Value.absent(),
     Value<QuotedMessage?> quoted = const Value.absent(),
+    List<String>? attachmentIds,
+    List<MessageAttachment>? attachments,
     DateTime? createdAt,
     int? seq,
     String? authorId,
@@ -2822,6 +2953,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
         ? quotedMessageId.value
         : this.quotedMessageId,
     quoted: quoted.present ? quoted.value : this.quoted,
+    attachmentIds: attachmentIds ?? this.attachmentIds,
+    attachments: attachments ?? this.attachments,
     createdAt: createdAt ?? this.createdAt,
     seq: seq ?? this.seq,
     authorId: authorId ?? this.authorId,
@@ -2844,6 +2977,12 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
           ? data.quotedMessageId.value
           : this.quotedMessageId,
       quoted: data.quoted.present ? data.quoted.value : this.quoted,
+      attachmentIds: data.attachmentIds.present
+          ? data.attachmentIds.value
+          : this.attachmentIds,
+      attachments: data.attachments.present
+          ? data.attachments.value
+          : this.attachments,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       seq: data.seq.present ? data.seq.value : this.seq,
       authorId: data.authorId.present ? data.authorId.value : this.authorId,
@@ -2871,6 +3010,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
           ..write('parentId: $parentId, ')
           ..write('quotedMessageId: $quotedMessageId, ')
           ..write('quoted: $quoted, ')
+          ..write('attachmentIds: $attachmentIds, ')
+          ..write('attachments: $attachments, ')
           ..write('createdAt: $createdAt, ')
           ..write('seq: $seq, ')
           ..write('authorId: $authorId, ')
@@ -2892,6 +3033,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
     parentId,
     quotedMessageId,
     quoted,
+    attachmentIds,
+    attachments,
     createdAt,
     seq,
     authorId,
@@ -2912,6 +3055,8 @@ class OutboxMessage extends DataClass implements Insertable<OutboxMessage> {
           other.parentId == this.parentId &&
           other.quotedMessageId == this.quotedMessageId &&
           other.quoted == this.quoted &&
+          other.attachmentIds == this.attachmentIds &&
+          other.attachments == this.attachments &&
           other.createdAt == this.createdAt &&
           other.seq == this.seq &&
           other.authorId == this.authorId &&
@@ -2930,6 +3075,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
   final Value<String?> parentId;
   final Value<String?> quotedMessageId;
   final Value<QuotedMessage?> quoted;
+  final Value<List<String>> attachmentIds;
+  final Value<List<MessageAttachment>> attachments;
   final Value<DateTime> createdAt;
   final Value<int> seq;
   final Value<String> authorId;
@@ -2947,6 +3094,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     this.parentId = const Value.absent(),
     this.quotedMessageId = const Value.absent(),
     this.quoted = const Value.absent(),
+    this.attachmentIds = const Value.absent(),
+    this.attachments = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.seq = const Value.absent(),
     this.authorId = const Value.absent(),
@@ -2965,6 +3114,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     this.parentId = const Value.absent(),
     this.quotedMessageId = const Value.absent(),
     this.quoted = const Value.absent(),
+    this.attachmentIds = const Value.absent(),
+    this.attachments = const Value.absent(),
     required DateTime createdAt,
     this.seq = const Value.absent(),
     required String authorId,
@@ -2989,6 +3140,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     Expression<String>? parentId,
     Expression<String>? quotedMessageId,
     Expression<String>? quoted,
+    Expression<String>? attachmentIds,
+    Expression<String>? attachments,
     Expression<int>? createdAt,
     Expression<int>? seq,
     Expression<String>? authorId,
@@ -3007,6 +3160,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
       if (parentId != null) 'parent_id': parentId,
       if (quotedMessageId != null) 'quoted_message_id': quotedMessageId,
       if (quoted != null) 'quoted': quoted,
+      if (attachmentIds != null) 'attachment_ids': attachmentIds,
+      if (attachments != null) 'attachments': attachments,
       if (createdAt != null) 'created_at': createdAt,
       if (seq != null) 'seq': seq,
       if (authorId != null) 'author_id': authorId,
@@ -3027,6 +3182,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     Value<String?>? parentId,
     Value<String?>? quotedMessageId,
     Value<QuotedMessage?>? quoted,
+    Value<List<String>>? attachmentIds,
+    Value<List<MessageAttachment>>? attachments,
     Value<DateTime>? createdAt,
     Value<int>? seq,
     Value<String>? authorId,
@@ -3045,6 +3202,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
       parentId: parentId ?? this.parentId,
       quotedMessageId: quotedMessageId ?? this.quotedMessageId,
       quoted: quoted ?? this.quoted,
+      attachmentIds: attachmentIds ?? this.attachmentIds,
+      attachments: attachments ?? this.attachments,
       createdAt: createdAt ?? this.createdAt,
       seq: seq ?? this.seq,
       authorId: authorId ?? this.authorId,
@@ -3081,6 +3240,16 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
     if (quoted.present) {
       map['quoted'] = Variable<String>(
         $OutboxMessagesTable.$converterquoted.toSql(quoted.value),
+      );
+    }
+    if (attachmentIds.present) {
+      map['attachment_ids'] = Variable<String>(
+        $OutboxMessagesTable.$converterattachmentIds.toSql(attachmentIds.value),
+      );
+    }
+    if (attachments.present) {
+      map['attachments'] = Variable<String>(
+        $OutboxMessagesTable.$converterattachments.toSql(attachments.value),
       );
     }
     if (createdAt.present) {
@@ -3125,6 +3294,8 @@ class OutboxMessagesCompanion extends UpdateCompanion<OutboxMessage> {
           ..write('parentId: $parentId, ')
           ..write('quotedMessageId: $quotedMessageId, ')
           ..write('quoted: $quoted, ')
+          ..write('attachmentIds: $attachmentIds, ')
+          ..write('attachments: $attachments, ')
           ..write('createdAt: $createdAt, ')
           ..write('seq: $seq, ')
           ..write('authorId: $authorId, ')
@@ -3181,6 +3352,7 @@ typedef $$CachedMessagesTableCreateCompanionBuilder =
       Value<QuotedMessage?> quoted,
       Value<List<MessageMention>> mentions,
       Value<bool> pinned,
+      Value<List<MessageAttachment>> attachments,
       Value<int> rowid,
     });
 typedef $$CachedMessagesTableUpdateCompanionBuilder =
@@ -3202,6 +3374,7 @@ typedef $$CachedMessagesTableUpdateCompanionBuilder =
       Value<QuotedMessage?> quoted,
       Value<List<MessageMention>> mentions,
       Value<bool> pinned,
+      Value<List<MessageAttachment>> attachments,
       Value<int> rowid,
     });
 
@@ -3313,6 +3486,16 @@ class $$CachedMessagesTableFilterComposer
     column: $table.pinned,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<
+    List<MessageAttachment>,
+    List<MessageAttachment>,
+    String
+  >
+  get attachments => $composableBuilder(
+    column: $table.attachments,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 }
 
 class $$CachedMessagesTableOrderingComposer
@@ -3408,6 +3591,11 @@ class $$CachedMessagesTableOrderingComposer
     column: $table.pinned,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get attachments => $composableBuilder(
+    column: $table.attachments,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedMessagesTableAnnotationComposer
@@ -3479,6 +3667,12 @@ class $$CachedMessagesTableAnnotationComposer
 
   GeneratedColumn<bool> get pinned =>
       $composableBuilder(column: $table.pinned, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<MessageAttachment>, String>
+  get attachments => $composableBuilder(
+    column: $table.attachments,
+    builder: (column) => column,
+  );
 }
 
 class $$CachedMessagesTableTableManager
@@ -3531,6 +3725,8 @@ class $$CachedMessagesTableTableManager
                 Value<QuotedMessage?> quoted = const Value.absent(),
                 Value<List<MessageMention>> mentions = const Value.absent(),
                 Value<bool> pinned = const Value.absent(),
+                Value<List<MessageAttachment>> attachments =
+                    const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion(
                 id: id,
@@ -3550,6 +3746,7 @@ class $$CachedMessagesTableTableManager
                 quoted: quoted,
                 mentions: mentions,
                 pinned: pinned,
+                attachments: attachments,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3571,6 +3768,8 @@ class $$CachedMessagesTableTableManager
                 Value<QuotedMessage?> quoted = const Value.absent(),
                 Value<List<MessageMention>> mentions = const Value.absent(),
                 Value<bool> pinned = const Value.absent(),
+                Value<List<MessageAttachment>> attachments =
+                    const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion.insert(
                 id: id,
@@ -3590,6 +3789,7 @@ class $$CachedMessagesTableTableManager
                 quoted: quoted,
                 mentions: mentions,
                 pinned: pinned,
+                attachments: attachments,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -4316,6 +4516,8 @@ typedef $$OutboxMessagesTableCreateCompanionBuilder =
       Value<String?> parentId,
       Value<String?> quotedMessageId,
       Value<QuotedMessage?> quoted,
+      Value<List<String>> attachmentIds,
+      Value<List<MessageAttachment>> attachments,
       required DateTime createdAt,
       Value<int> seq,
       required String authorId,
@@ -4335,6 +4537,8 @@ typedef $$OutboxMessagesTableUpdateCompanionBuilder =
       Value<String?> parentId,
       Value<String?> quotedMessageId,
       Value<QuotedMessage?> quoted,
+      Value<List<String>> attachmentIds,
+      Value<List<MessageAttachment>> attachments,
       Value<DateTime> createdAt,
       Value<int> seq,
       Value<String> authorId,
@@ -4388,6 +4592,22 @@ class $$OutboxMessagesTableFilterComposer
   ColumnWithTypeConverterFilters<QuotedMessage?, QuotedMessage, String>
   get quoted => $composableBuilder(
     column: $table.quoted,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+  get attachmentIds => $composableBuilder(
+    column: $table.attachmentIds,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    List<MessageAttachment>,
+    List<MessageAttachment>,
+    String
+  >
+  get attachments => $composableBuilder(
+    column: $table.attachments,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
@@ -4477,6 +4697,16 @@ class $$OutboxMessagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get attachmentIds => $composableBuilder(
+    column: $table.attachmentIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get attachments => $composableBuilder(
+    column: $table.attachments,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4550,6 +4780,18 @@ class $$OutboxMessagesTableAnnotationComposer
   GeneratedColumnWithTypeConverter<QuotedMessage?, String> get quoted =>
       $composableBuilder(column: $table.quoted, builder: (column) => column);
 
+  GeneratedColumnWithTypeConverter<List<String>, String> get attachmentIds =>
+      $composableBuilder(
+        column: $table.attachmentIds,
+        builder: (column) => column,
+      );
+
+  GeneratedColumnWithTypeConverter<List<MessageAttachment>, String>
+  get attachments => $composableBuilder(
+    column: $table.attachments,
+    builder: (column) => column,
+  );
+
   GeneratedColumnWithTypeConverter<DateTime, int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -4621,6 +4863,9 @@ class $$OutboxMessagesTableTableManager
                 Value<String?> parentId = const Value.absent(),
                 Value<String?> quotedMessageId = const Value.absent(),
                 Value<QuotedMessage?> quoted = const Value.absent(),
+                Value<List<String>> attachmentIds = const Value.absent(),
+                Value<List<MessageAttachment>> attachments =
+                    const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> seq = const Value.absent(),
                 Value<String> authorId = const Value.absent(),
@@ -4638,6 +4883,8 @@ class $$OutboxMessagesTableTableManager
                 parentId: parentId,
                 quotedMessageId: quotedMessageId,
                 quoted: quoted,
+                attachmentIds: attachmentIds,
+                attachments: attachments,
                 createdAt: createdAt,
                 seq: seq,
                 authorId: authorId,
@@ -4657,6 +4904,9 @@ class $$OutboxMessagesTableTableManager
                 Value<String?> parentId = const Value.absent(),
                 Value<String?> quotedMessageId = const Value.absent(),
                 Value<QuotedMessage?> quoted = const Value.absent(),
+                Value<List<String>> attachmentIds = const Value.absent(),
+                Value<List<MessageAttachment>> attachments =
+                    const Value.absent(),
                 required DateTime createdAt,
                 Value<int> seq = const Value.absent(),
                 required String authorId,
@@ -4674,6 +4924,8 @@ class $$OutboxMessagesTableTableManager
                 parentId: parentId,
                 quotedMessageId: quotedMessageId,
                 quoted: quoted,
+                attachmentIds: attachmentIds,
+                attachments: attachments,
                 createdAt: createdAt,
                 seq: seq,
                 authorId: authorId,

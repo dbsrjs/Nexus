@@ -16,6 +16,9 @@ enum ApiFailure {
   /// 서버에 닿지 못했다 — 꺼져 있거나 주소가 틀렸다.
   network,
 
+  /// 파일이 서버 한도를 넘었다 (413). 재시도해도 같으므로 다른 문구가 필요하다.
+  tooLarge,
+
   /// 그 밖의 서버 오류.
   server,
 }
@@ -37,6 +40,8 @@ ApiFailure classifyDioException(DioException e) {
     case 403:
     case 404:
       return ApiFailure.notFound;
+    case 413:
+      return ApiFailure.tooLarge;
   }
 
   switch (e.type) {
@@ -55,5 +60,6 @@ String messageFor(ApiFailure failure) => switch (failure) {
       ApiFailure.unauthorized => '다시 로그인해 주세요.',
       ApiFailure.notFound => '찾을 수 없습니다.',
       ApiFailure.network => '서버에 연결할 수 없습니다.',
+      ApiFailure.tooLarge => '파일이 너무 큽니다.',
       ApiFailure.server => '문제가 생겼습니다. 잠시 후 다시 시도해 주세요.',
     };

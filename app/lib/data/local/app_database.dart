@@ -89,6 +89,37 @@ class _MentionsJson extends TypeConverter<List<MessageMention>, String> {
       value.isEmpty ? '' : jsonEncode([for (final m in value) m.toJson()]);
 }
 
+class _AttachmentsJson extends TypeConverter<List<MessageAttachment>, String> {
+  const _AttachmentsJson();
+
+  @override
+  List<MessageAttachment> fromSql(String fromDb) {
+    if (fromDb.isEmpty) return const [];
+    return (jsonDecode(fromDb) as List<dynamic>)
+        .cast<Map<String, dynamic>>()
+        .map(MessageAttachment.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  String toSql(List<MessageAttachment> value) =>
+      value.isEmpty ? '' : jsonEncode([for (final a in value) a.toJson()]);
+}
+
+/// 큐에 담아 둔 첨부 id 목록. 전송할 때 서버로 넘긴다.
+class _IdListJson extends TypeConverter<List<String>, String> {
+  const _IdListJson();
+
+  @override
+  List<String> fromSql(String fromDb) {
+    if (fromDb.isEmpty) return const [];
+    return (jsonDecode(fromDb) as List<dynamic>).cast<String>();
+  }
+
+  @override
+  String toSql(List<String> value) => value.isEmpty ? '' : jsonEncode(value);
+}
+
 /// 메시지 캐시. **서버에 있는 것만** 담는다.
 ///
 /// 서버 모델을 그대로 펼쳐 담는다. 중첩(author)을 JSON 으로 넣지 않는 이유는,
@@ -131,6 +162,10 @@ class CachedMessages extends Table {
   /// 채널 상단에 고정됐는지.
   BoolColumn get pinned => boolean().withDefault(const Constant(false))();
 
+  /// 붙은 파일 요약. 바이트는 여기 없다 — 볼 때 서버에서 받는다.
+  TextColumn get attachments =>
+      text().map(const _AttachmentsJson()).withDefault(const Constant(''))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -161,6 +196,19 @@ class OutboxMessages extends Table {
   /// 서버에 닿기 전에는 원본을 서버에서 받아올 수 없다.
   TextColumn get quoted =>
       text().map(const _QuotedJson()).withDefault(const Constant(''))();
+
+  /// 붙일 첨부의 id. **파일 자체는 큐에 없다** — 이미 서버에 올라가 있다.
+  ///
+  /// 업로드는 온라인에서만 되지만, 한 번 올라가면 그 뒤 오프라인이 되어도
+  /// 이 메시지는 큐에서 기다렸다 나갈 수 있다. 다만 **24시간 안에 나가야
+  /// 한다** — 그 전에 연결되지 못한 첨부는 서버가 고아로 보고 지운다.
+  TextColumn get attachmentIds =>
+      text().map(const _IdListJson()).withDefault(const Constant(''))();
+
+  /// 첨부 요약. 큐에 있는 동안 화면에 파일 이름을 그리려면 필요하다 —
+  /// 인용 요약을 함께 담아 두는 것과 같은 이유다.
+  TextColumn get attachments =>
+      text().map(const _AttachmentsJson()).withDefault(const Constant(''))();
 
   /// 사용자가 **쓴** 시각. 서버 도착 시각이 아니다.
   IntColumn get createdAt => integer().map(const _UtcMicros())();
@@ -258,7 +306,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus'));
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -290,6 +338,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 9) {
             await m.addColumn(outboxMessages, outboxMessages.quotedMessageId);
             await m.addColumn(outboxMessages, outboxMessages.quoted);
+          }
+          if (from < 12) {
+            await m.addColumn(outboxMessages, outboxMessages.attachmentIds);
+            await m.addColumn(outboxMessages, outboxMessages.attachments);
           }
 
           if (from < 6) {
@@ -366,7 +418,7 @@ class AppDatabase extends _$AppDatabase {
       '''
       SELECT id, channel_id, body, created_at, edited_at, deleted_at,
              author_id, author_name, author_avatar_url, reactions, quoted, mentions,
-             pinned,
+             pinned, attachments,
              parent_id, reply_count, last_reply_at,
              0 AS queued, 0 AS failed, 0 AS seq
         FROM cached_messages
@@ -375,7 +427,7 @@ class AppDatabase extends _$AppDatabase {
       UNION ALL
       SELECT id, channel_id, body, created_at, NULL, NULL,
              author_id, author_name, author_avatar_url, '[]' AS reactions, quoted,
-             '' AS mentions, 0 AS pinned,
+             '' AS mentions, 0 AS pinned, attachments,
              parent_id, 0 AS reply_count, NULL AS last_reply_at,
              1 AS queued, failed, seq
         FROM outbox_messages
@@ -423,7 +475,7 @@ class AppDatabase extends _$AppDatabase {
         '''
         SELECT id, channel_id, body, created_at, edited_at, deleted_at,
                author_id, author_name, author_avatar_url, reactions, quoted, mentions,
-             pinned,
+             pinned, attachments,
                parent_id, reply_count, last_reply_at,
                0 AS queued, 0 AS failed, 0 AS seq
           FROM cached_messages
@@ -682,6 +734,8 @@ Message _rowToMessage(QueryRow row) {
     lastReplyAt: at('last_reply_at'),
     quoted: const _QuotedJson().fromSql(row.read<String>('quoted')),
     mentions: const _MentionsJson().fromSql(row.read<String>('mentions')),
+    attachments:
+        const _AttachmentsJson().fromSql(row.read<String>('attachments')),
     pinned: row.read<int>('pinned') == 1,
     // 큐에 있으면서 아직 포기하지 않은 것이 '보내는 중'이다.
     pending: queued && !failed,
@@ -707,5 +761,6 @@ CachedMessagesCompanion _toRow(String spaceId, Message message) =>
       lastReplyAt: Value(message.lastReplyAt),
       quoted: Value(message.quoted),
       mentions: Value(message.mentions),
+      attachments: Value(message.attachments),
       pinned: Value(message.pinned),
     );

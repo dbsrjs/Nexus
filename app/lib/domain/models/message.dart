@@ -73,6 +73,42 @@ abstract class MessageMention with _$MessageMention {
       _$MessageMentionFromJson(json);
 }
 
+/// 메시지에 붙은 파일 하나.
+///
+/// 서버가 목록·전송 응답에 함께 실어 준다. **`storageKey` 는 오지 않는다** —
+/// 스토리지 구조가 API 계약이 되면 드라이버를 못 바꾼다.
+@freezed
+abstract class MessageAttachment with _$MessageAttachment {
+  const factory MessageAttachment({
+    required String id,
+    required String name,
+    String? mime,
+
+    /// 바이트 수. **서버가 문자열로 준다** — `bigint` 컬럼이라 숫자로 바꾸면
+    /// 2^53 을 넘는 값이 조용히 뭉개진다. 앱에서는 표시용이라 int 로 받는다.
+    @JsonKey(fromJson: _sizeFromJson) @Default(0) int sizeBytes,
+
+    /// 이미지면 원본 크기. 미리보기 자리를 먼저 잡는 데 쓴다 —
+    /// 없으면 이미지가 로드될 때마다 목록이 튄다.
+    int? width,
+    int? height,
+  }) = _MessageAttachment;
+
+  const MessageAttachment._();
+
+  factory MessageAttachment.fromJson(Map<String, dynamic> json) =>
+      _$MessageAttachmentFromJson(json);
+
+  bool get isImage => mime?.startsWith('image/') ?? false;
+}
+
+int _sizeFromJson(dynamic value) => switch (value) {
+      int v => v,
+      num v => v.toInt(),
+      String v => int.tryParse(v) ?? 0,
+      _ => 0,
+    };
+
 @freezed
 abstract class Message with _$Message {
   const factory Message({
@@ -102,6 +138,9 @@ abstract class Message with _$Message {
 
     /// 이 메시지에 걸린 멘션. 본문의 `<@id>` 를 이름으로 바꾸는 데 쓴다.
     @Default(<MessageMention>[]) List<MessageMention> mentions,
+
+    /// 붙은 파일. **본문이 비어도 이것만 있으면 메시지가 성립한다.**
+    @Default(<MessageAttachment>[]) List<MessageAttachment> attachments,
 
     /// 채널 상단에 고정됐는지. 답글은 고정할 수 없어 늘 false 다.
     @Default(false) bool pinned,

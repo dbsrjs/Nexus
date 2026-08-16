@@ -75,7 +75,9 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
           ),
           MessageComposer(
             hint: '스레드에 답글 달기',
-            onSend: (body) => ref.read(threadActionsProvider).reply(body),
+            onSend: (body, attachments) => ref
+                .read(threadActionsProvider)
+                .reply(body, attachments: attachments),
           ),
         ],
       ),

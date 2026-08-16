@@ -263,6 +263,7 @@ class _FakeMessagesApi implements MessagesApi {
     required String body,
     String? parentId,
     String? quotedMessageId,
+    List<String> attachmentIds = const [],
   }) async {
     if (failWith != null || failOnBody == body) {
       throw ApiException(failWith ?? ApiFailure.server);

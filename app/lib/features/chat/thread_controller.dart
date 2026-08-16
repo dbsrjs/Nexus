@@ -68,9 +68,13 @@ class ThreadActions {
 
   final Ref _ref;
 
-  Future<void> reply(String body) async {
+  Future<void> reply(
+    String body, {
+    List<MessageAttachment> attachments = const [],
+  }) async {
     final trimmed = body.trim();
-    if (trimmed.isEmpty) return;
+    // 답글도 첨부만 보낼 수 있다 — 채널 전송과 같은 규칙이다.
+    if (trimmed.isEmpty && attachments.isEmpty) return;
 
     final parentId = _ref.read(currentThreadIdProvider);
     final spaceId = _ref.read(currentSpaceIdProvider);
@@ -87,6 +91,7 @@ class ThreadActions {
           channelId: parent.channelId,
           body: trimmed,
           parentId: parentId,
+          attachments: attachments,
           author: MessageAuthor(
             id: auth.user.id,
             name: auth.user.name,

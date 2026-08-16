@@ -64,6 +64,28 @@ Map<String, dynamic> _$MessageMentionToJson(_MessageMention instance) =>
       'name': instance.name,
     };
 
+_MessageAttachment _$MessageAttachmentFromJson(Map<String, dynamic> json) =>
+    _MessageAttachment(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      mime: json['mime'] as String?,
+      sizeBytes: json['sizeBytes'] == null
+          ? 0
+          : _sizeFromJson(json['sizeBytes']),
+      width: (json['width'] as num?)?.toInt(),
+      height: (json['height'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$MessageAttachmentToJson(_MessageAttachment instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'mime': instance.mime,
+      'sizeBytes': instance.sizeBytes,
+      'width': instance.width,
+      'height': instance.height,
+    };
+
 _Message _$MessageFromJson(Map<String, dynamic> json) => _Message(
   id: json['id'] as String,
   channelId: json['channelId'] as String,
@@ -91,6 +113,11 @@ _Message _$MessageFromJson(Map<String, dynamic> json) => _Message(
           ?.map((e) => MessageMention.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const <MessageMention>[],
+  attachments:
+      (json['attachments'] as List<dynamic>?)
+          ?.map((e) => MessageAttachment.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const <MessageAttachment>[],
   pinned: json['pinned'] as bool? ?? false,
   quoted: json['quoted'] == null
       ? null
@@ -112,6 +139,7 @@ Map<String, dynamic> _$MessageToJson(_Message instance) => <String, dynamic>{
   'replyCount': instance.replyCount,
   'lastReplyAt': instance.lastReplyAt?.toIso8601String(),
   'mentions': instance.mentions,
+  'attachments': instance.attachments,
   'pinned': instance.pinned,
   'quoted': instance.quoted,
   'pending': instance.pending,

@@ -141,6 +141,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm --prefix server exec prisma ...` 가 `Could not find Prisma Schema` 로 실패 | `--prefix` 는 npm 이 패키지를 찾는 경로만 바꾸고 **실행되는 명령의 cwd 는 그대로**라 `prisma/schema.prisma` 를 못 찾는다. `npm --prefix server run <script>` 를 쓸 것 — `npm run` 은 패키지 디렉터리 안에서 스크립트를 실행한다 |
 | `Building with plugins requires symlink support` | **Windows 개발자 모드**가 꺼져 있다. `flutter_secure_storage` 같은 네이티브 플러그인이 심볼릭 링크를 쓴다. `start ms-settings:developers` 로 켠다. (예전에 이 자리에 있던 `CMake Error ... Visual Studio 16 2019` 는 **Flutter 3.47 로 올라가며 해결됐다** — VS 2026 을 정상 인식하고 데스크톱 빌드가 된다) |
 | Android 빌드가 `Run this build using a Java 11 or newer JVM` 으로 실패 | 이 PC 의 시스템 기본 java 가 **8** 이라 Gradle 이 그걸 집는다. `flutter config --jdk-dir <JDK21 경로>` 로 고정한다(이미 설정돼 있다) |
+| `flutter` 명령이 전부 `애플리케이션 제어 정책에서 이 파일을 차단했습니다` 로 실패 | **Smart App Control** 이 적용 상태가 됐다. Flutter SDK 가 `bin/cache/` 에 직접 내려받는 `dartvm.exe` 는 서명이 없어 로드가 차단된다. Windows 11 은 이 기능을 **평가 모드로 시작해 스스로 적용으로 넘어가므로** 어느 날 재부팅하면 갑자기 걸린다. 확인은 `HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy` 의 `VerifiedAndReputablePolicyState`(1=적용) 와 `Microsoft-Windows-CodeIntegrity/Operational` 로그. **끄는 것은 사용자만 할 수 있고 되돌릴 수 없다**(`start windowsdefender://smartappcontrol`). 참고로 **표준 `dart` 는 막히지 않아 `dart analyze` 는 그대로 돈다** — 차단 중에도 정적 검사는 살아 있다 |
 | `flutter run` 이 시작하자마자 조용히 종료 | `flutter run` 은 stdin 으로 키 명령(r · R · q)을 받는데, 백그라운드로 띄우면 stdin 이 EOF 라 종료로 해석한다. 사람이 직접 터미널에서 돌리거나, 검증 자동화는 `flutter build web` 후 정적 서버로 띄울 것 |
 | 브라우저 자동화로 Flutter 웹 입력이 안 먹음 | Flutter 웹은 캔버스로 그려 접근성 트리가 비어 있다. `flutter-semantics-placeholder` 를 클릭해 시맨틱스를 켜면 입력 요소가 노출된다. 그래도 **BackSpace · 값 직접 대입은 컨트롤러까지 전달되지 않고 타이핑만 append 된다** — 폼을 비우려면 페이지를 새로고침할 것 |
 
@@ -232,6 +233,7 @@ features/auth/           로그인 화면 + Riverpod 컨트롤러
 features/space/          스페이스 선택 화면 + 목록/현재 스페이스 provider
 features/channel/        채널 목록 + 카테고리 묶기(channelGroupsProvider)
 features/chat/           메시지 리스트 · 입력창 · 낙관적 전송 · 실시간 반영
+                         + attachment_draft.dart (고른 즉시 업로드 · 진행률)
 features/realtime/       소켓 수명 관리 + 채널 목록 동기화
 features/shell/          반응형 셸 — app_shell(분기) · space_rail · channel_pane
 shared/widgets/          NexusAvatar 등 공용 위젯
@@ -577,7 +579,40 @@ Prisma 가 표현하지 못해 수동 관리하는 인덱스를 드리프트로 
 `??` 가 빈 문자열을 통과시켜 `resolve('')` 가 작업 디렉터리가 됐다. 첨부가
 `server/` 소스 옆에 흩어졌다. **빈 문자열을 미설정으로 친다**(`||`).
 
-**아직 없는 것**: DM, 첨부 **화면**(8-2), 이슈, 저장소 연동, AI. 멘션 **알림**(푸시 · 알림
+### 8-2 완료 (첨부 — 앱)
+
+**파일을 고르는 즉시 올라간다.** 전송 때 몰아 올리지 않는 것은 서버가 그렇게
+설계돼 있어서다(업로드가 `messageId = null` 로 먼저 끝나고 전송이 이어 붙인다).
+덕분에 큰 파일이 올라가는 동안에도 본문을 계속 쓸 수 있고, 전송 버튼을 누르는
+순간에는 기다릴 것이 없다.
+
+- **올라가는 중에는 전송을 막는다.** 아직 id 가 없는 첨부는 실을 수 없고, 빼고
+  보내면 사용자가 붙인 파일이 조용히 사라진다
+- **큐에는 파일이 아니라 id 를 담는다.** 업로드는 온라인에서만 되지만, 한 번
+  올라가면 그 뒤 오프라인이 되어도 메시지는 큐에서 기다렸다 나간다 — 다만
+  **24시간 안에** 나가야 한다(그 전에 연결되지 못한 첨부는 서버가 고아로 지운다)
+- **채널을 옮기면 담아 둔 첨부를 버린다.** 업로드 주소에 채널이 들어 있어,
+  들고 옮기면 엉뚱한 채널에 올라간 파일을 붙이게 된다
+- **본문 없이 첨부만 보낼 수 있다.** 서버 규칙과 같다 — 둘 다 없을 때만 막는다
+- 크기는 **1024 기준(KiB)** 으로 표기한다. 파일 탐색기와 어긋나면 사용자가 같은
+  파일인지 의심한다
+- 이미지도 지금은 파일 행으로 그린다. **미리보기는 8-3 이다** — `width`·`height`
+  로 자리를 먼저 잡는 일과 함께 해야 목록이 튀지 않는다
+
+**확인한 것**: `flutter analyze` 0건 · `flutter test` **102/102**. 에뮬레이터로
+파일 선택 → 업로드 완료 표시 → 전송 → 메시지에 첨부 행까지 확인했고, **첨부만
+있는 메시지**(본문 없음)도 확인했다. 서버 DB 와 대조해 메시지 하나에 첨부 하나가
+정확히 연결되고 고아가 남지 않는 것까지 봤다.
+
+검증 중 결함 **둘**을 잡았다. 둘 다 **읽어서** 찾았고, 화면으로는 특정 조작에서만
+드러나는 종류다.
+
+| 결함 | 원인 |
+|---|---|
+| 리스너가 접근할 때마다 하나씩 더 붙음 | Dart 에서 `..` 는 대입보다 느슨하다. `a ??= B()..listen()` 이 `(a ??= B())..listen()` 으로 묶여, getter 를 읽을 때마다 `addListener` 가 다시 불렸다 |
+| 채널을 옮기면 예외 | 담아 둔 첨부를 비우는 일을 `build()` 안에서 했다. `clear()` 가 리스너를 통해 `setState` 를 부르는데 build 중에는 금지다. 프레임이 끝난 뒤로 미뤘다 |
+
+**아직 없는 것**: DM, 이미지 미리보기(8-3), 이슈, 저장소 연동, AI. 멘션 **알림**(푸시 · 알림
 센터)은 범위 밖이다 - `notifications` 모듈이 미이관이고 알림 화면도 없다.
 (실시간 서버는 `typing` · `presence:changed` 만 남았다 — §5 참고)
 
@@ -608,8 +643,8 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 | 7-4 | **멘션** — `<@id>` 파싱 · 자동완성 · 멘션 뱃지 | ✅ |
 | 7-5 | **핀** — 고정/해제 API · 채널 상단 목록 | ✅ **7단계 대화 기능 완료** |
 | 8-1 | **첨부(서버)** — 스토리지 추상화 · 업로드 · 스트리밍 다운로드 · 고아 정리 | ✅ |
-| 8-2 ← 다음 | **첨부(앱)** — 파일 선택 · 업로드 진행률 · 메시지에 첨부 표시 | |
-| 8-3 | **이미지 미리보기** · 썸네일 · 스페이스 파일 목록 | |
+| 8-2 | **첨부(앱)** — 파일 선택 · 업로드 진행률 · 메시지에 첨부 표시 | ✅ |
+| 8-3 ← 다음 | **이미지 미리보기** · 썸네일 · 스페이스 파일 목록 | |
 | 9~ | 이슈 · 스프린트 → repos(웹훅 · 열람 프록시) → PR → 인덱싱 → AI | |
 | 마지막 | 푸시 · 트레이 · 딥링크 · CI · 테넌트 격리 통합 테스트 | |
 
@@ -626,7 +661,7 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 - GitHub OAuth 는 스키마(`oauth_accounts`)만 있고 미구현. 저장소 연동 단계에서 만든다.
 - **`updateMemberRole` 의 `rooms:invalidate`(`member.role`)는 자동 검증되지 않는다.** 두 번째 admin 계정과 역할 왕복이 필요해 `check:realtime` 에서 뺐다. 코드 리뷰로만 확인.
 - **비공개 채널에 다른 사람을 넣는 방법이 없다.** 생성자는 채널 생성 시 자동으로 멤버가 되지만(`ChannelsService.create()`), 채널 멤버 추가·제거 API 가 아직 없어 비공개 채널은 사실상 "나만 보는 채널"이다. 여럿이 쓰는 비공개 채널이 필요해지는 단계에서 함께 설계한다.
-- **앱 테스트에 위젯 · 통합 테스트가 없다.** `app/test/` 에 91개 — `Env` 2 · 반응형 경계 4 · 채널 묶기 6 · 전송 큐 14 · 리액션 10 · 스레드 7 · 답장 7 · **멘션 34** · 핀 7. 인메모리 drift 로 실제 DB 동작까지 덮지만, **화면 계층은 여전히 실기기 확인에만 의존한다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)도 실기기 확인에만 기댄다.
+- **앱 테스트에 위젯 · 통합 테스트가 없다.** `app/test/` 에 102개 — `Env` 2 · 반응형 경계 4 · 채널 묶기 6 · 전송 큐 14 · 리액션 10 · 스레드 7 · 답장 7 · **멘션 34** · 핀 7 · **첨부 11**. 인메모리 drift 로 실제 DB 동작까지 덮지만, **화면 계층은 여전히 실기기 확인에만 의존한다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)도 실기기 확인에만 기댄다.
 - **자동 생성된 마이그레이션 SQL 을 그대로 믿으면 안 된다.** pgvector HNSW 인덱스처럼 Prisma 가 표현하지 못해 수동 관리하는 것을 드리프트로 보고 `DROP INDEX` 를 끼워 넣는다. **7-1 과 7-3 에서 두 번 겪었다** — 마이그레이션 파일은 반드시 읽고 커밋할 것.
 - **`prisma migrate dev` 는 이 환경(비대화형)에서 거부된다.** 위 HNSW 드리프트를 감지해 확인을 물으려 하기 때문이다. `npx prisma migrate diff --from-schema-datasource ... --to-schema-datamodel ... --script` 로 SQL 을 만들어 손질한 뒤 `prisma:deploy` 로 적용한다.
 - **`adb shell input text` 는 한글을 넣지 못한다**(NullPointerException). 실기기 검증 문구는 영문으로 쓸 것.
