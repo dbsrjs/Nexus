@@ -829,6 +829,279 @@ as bool,
 
 
 /// @nodoc
+mixin _$MessageMention {
+
+/// `user` · `channel` · `everyone`.
+ String get type;/// `@channel` · `@everyone` 은 대상이 없어 null.
+ String? get userId; String? get name;
+/// Create a copy of MessageMention
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessageMentionCopyWith<MessageMention> get copyWith => _$MessageMentionCopyWithImpl<MessageMention>(this as MessageMention, _$identity);
+
+  /// Serializes this MessageMention to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageMention&&(identical(other.type, type) || other.type == type)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.name, name) || other.name == name));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,type,userId,name);
+
+@override
+String toString() {
+  return 'MessageMention(type: $type, userId: $userId, name: $name)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessageMentionCopyWith<$Res>  {
+  factory $MessageMentionCopyWith(MessageMention value, $Res Function(MessageMention) _then) = _$MessageMentionCopyWithImpl;
+@useResult
+$Res call({
+ String type, String? userId, String? name
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessageMentionCopyWithImpl<$Res>
+    implements $MessageMentionCopyWith<$Res> {
+  _$MessageMentionCopyWithImpl(this._self, this._then);
+
+  final MessageMention _self;
+  final $Res Function(MessageMention) _then;
+
+/// Create a copy of MessageMention
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? userId = freezed,Object? name = freezed,}) {
+  return _then(_self.copyWith(
+type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String,userId: freezed == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [MessageMention].
+extension MessageMentionPatterns on MessageMention {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _MessageMention value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _MessageMention() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _MessageMention value)  $default,){
+final _that = this;
+switch (_that) {
+case _MessageMention():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _MessageMention value)?  $default,){
+final _that = this;
+switch (_that) {
+case _MessageMention() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String type,  String? userId,  String? name)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _MessageMention() when $default != null:
+return $default(_that.type,_that.userId,_that.name);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String type,  String? userId,  String? name)  $default,) {final _that = this;
+switch (_that) {
+case _MessageMention():
+return $default(_that.type,_that.userId,_that.name);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String type,  String? userId,  String? name)?  $default,) {final _that = this;
+switch (_that) {
+case _MessageMention() when $default != null:
+return $default(_that.type,_that.userId,_that.name);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _MessageMention implements MessageMention {
+  const _MessageMention({required this.type, this.userId, this.name});
+  factory _MessageMention.fromJson(Map<String, dynamic> json) => _$MessageMentionFromJson(json);
+
+/// `user` · `channel` · `everyone`.
+@override final  String type;
+/// `@channel` · `@everyone` 은 대상이 없어 null.
+@override final  String? userId;
+@override final  String? name;
+
+/// Create a copy of MessageMention
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$MessageMentionCopyWith<_MessageMention> get copyWith => __$MessageMentionCopyWithImpl<_MessageMention>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessageMentionToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageMention&&(identical(other.type, type) || other.type == type)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.name, name) || other.name == name));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,type,userId,name);
+
+@override
+String toString() {
+  return 'MessageMention(type: $type, userId: $userId, name: $name)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$MessageMentionCopyWith<$Res> implements $MessageMentionCopyWith<$Res> {
+  factory _$MessageMentionCopyWith(_MessageMention value, $Res Function(_MessageMention) _then) = __$MessageMentionCopyWithImpl;
+@override @useResult
+$Res call({
+ String type, String? userId, String? name
+});
+
+
+
+
+}
+/// @nodoc
+class __$MessageMentionCopyWithImpl<$Res>
+    implements _$MessageMentionCopyWith<$Res> {
+  __$MessageMentionCopyWithImpl(this._self, this._then);
+
+  final _MessageMention _self;
+  final $Res Function(_MessageMention) _then;
+
+/// Create a copy of MessageMention
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? userId = freezed,Object? name = freezed,}) {
+  return _then(_MessageMention(
+type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String,userId: freezed == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$Message {
 
  String get id; String get channelId; String get body; DateTime get createdAt; MessageAuthor get author; DateTime? get editedAt;/// 소프트 삭제. 서버는 행을 지우지 않고 **본문만 비워서** 내려보낸다
@@ -838,7 +1111,8 @@ mixin _$Message {
  List<MessageReaction> get reactions;/// 값이 있으면 스레드 답글이다. 채널 타임라인에는 나오지 않는다.
  String? get parentId;/// 이 메시지에 달린 답글 수. 답글 자신은 늘 0 이다.
  int get replyCount;/// 마지막 답글 시각. 스레드 요약을 그릴 때 쓴다.
- DateTime? get lastReplyAt;/// 답장이면 가리키는 원본. **`parentId` 와 다른 축이다** — 답장은
+ DateTime? get lastReplyAt;/// 이 메시지에 걸린 멘션. 본문의 `<@id>` 를 이름으로 바꾸는 데 쓴다.
+ List<MessageMention> get mentions;/// 답장이면 가리키는 원본. **`parentId` 와 다른 축이다** — 답장은
 /// 타임라인에 남고, 스레드 답글은 빠진다. 둘을 함께 쓸 수도 있다.
  QuotedMessage? get quoted;/// 낙관적 갱신용 — 서버 응답을 기다리는 중.
 /// 서버 응답에는 없는 필드라 기본값 false 로 들어온다.
@@ -856,16 +1130,16 @@ $MessageCopyWith<Message> get copyWith => _$MessageCopyWithImpl<Message>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Message&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.author, author) || other.author == author)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt)&&const DeepCollectionEquality().equals(other.reactions, reactions)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.replyCount, replyCount) || other.replyCount == replyCount)&&(identical(other.lastReplyAt, lastReplyAt) || other.lastReplyAt == lastReplyAt)&&(identical(other.quoted, quoted) || other.quoted == quoted)&&(identical(other.pending, pending) || other.pending == pending)&&(identical(other.failed, failed) || other.failed == failed));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Message&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.author, author) || other.author == author)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt)&&const DeepCollectionEquality().equals(other.reactions, reactions)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.replyCount, replyCount) || other.replyCount == replyCount)&&(identical(other.lastReplyAt, lastReplyAt) || other.lastReplyAt == lastReplyAt)&&const DeepCollectionEquality().equals(other.mentions, mentions)&&(identical(other.quoted, quoted) || other.quoted == quoted)&&(identical(other.pending, pending) || other.pending == pending)&&(identical(other.failed, failed) || other.failed == failed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,channelId,body,createdAt,author,editedAt,deletedAt,const DeepCollectionEquality().hash(reactions),parentId,replyCount,lastReplyAt,quoted,pending,failed);
+int get hashCode => Object.hash(runtimeType,id,channelId,body,createdAt,author,editedAt,deletedAt,const DeepCollectionEquality().hash(reactions),parentId,replyCount,lastReplyAt,const DeepCollectionEquality().hash(mentions),quoted,pending,failed);
 
 @override
 String toString() {
-  return 'Message(id: $id, channelId: $channelId, body: $body, createdAt: $createdAt, author: $author, editedAt: $editedAt, deletedAt: $deletedAt, reactions: $reactions, parentId: $parentId, replyCount: $replyCount, lastReplyAt: $lastReplyAt, quoted: $quoted, pending: $pending, failed: $failed)';
+  return 'Message(id: $id, channelId: $channelId, body: $body, createdAt: $createdAt, author: $author, editedAt: $editedAt, deletedAt: $deletedAt, reactions: $reactions, parentId: $parentId, replyCount: $replyCount, lastReplyAt: $lastReplyAt, mentions: $mentions, quoted: $quoted, pending: $pending, failed: $failed)';
 }
 
 
@@ -876,7 +1150,7 @@ abstract mixin class $MessageCopyWith<$Res>  {
   factory $MessageCopyWith(Message value, $Res Function(Message) _then) = _$MessageCopyWithImpl;
 @useResult
 $Res call({
- String id, String channelId, String body, DateTime createdAt, MessageAuthor author, DateTime? editedAt, DateTime? deletedAt, List<MessageReaction> reactions, String? parentId, int replyCount, DateTime? lastReplyAt, QuotedMessage? quoted, bool pending, bool failed
+ String id, String channelId, String body, DateTime createdAt, MessageAuthor author, DateTime? editedAt, DateTime? deletedAt, List<MessageReaction> reactions, String? parentId, int replyCount, DateTime? lastReplyAt, List<MessageMention> mentions, QuotedMessage? quoted, bool pending, bool failed
 });
 
 
@@ -893,7 +1167,7 @@ class _$MessageCopyWithImpl<$Res>
 
 /// Create a copy of Message
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? channelId = null,Object? body = null,Object? createdAt = null,Object? author = null,Object? editedAt = freezed,Object? deletedAt = freezed,Object? reactions = null,Object? parentId = freezed,Object? replyCount = null,Object? lastReplyAt = freezed,Object? quoted = freezed,Object? pending = null,Object? failed = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? channelId = null,Object? body = null,Object? createdAt = null,Object? author = null,Object? editedAt = freezed,Object? deletedAt = freezed,Object? reactions = null,Object? parentId = freezed,Object? replyCount = null,Object? lastReplyAt = freezed,Object? mentions = null,Object? quoted = freezed,Object? pending = null,Object? failed = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,channelId: null == channelId ? _self.channelId : channelId // ignore: cast_nullable_to_non_nullable
@@ -906,7 +1180,8 @@ as DateTime?,reactions: null == reactions ? _self.reactions : reactions // ignor
 as List<MessageReaction>,parentId: freezed == parentId ? _self.parentId : parentId // ignore: cast_nullable_to_non_nullable
 as String?,replyCount: null == replyCount ? _self.replyCount : replyCount // ignore: cast_nullable_to_non_nullable
 as int,lastReplyAt: freezed == lastReplyAt ? _self.lastReplyAt : lastReplyAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,quoted: freezed == quoted ? _self.quoted : quoted // ignore: cast_nullable_to_non_nullable
+as DateTime?,mentions: null == mentions ? _self.mentions : mentions // ignore: cast_nullable_to_non_nullable
+as List<MessageMention>,quoted: freezed == quoted ? _self.quoted : quoted // ignore: cast_nullable_to_non_nullable
 as QuotedMessage?,pending: null == pending ? _self.pending : pending // ignore: cast_nullable_to_non_nullable
 as bool,failed: null == failed ? _self.failed : failed // ignore: cast_nullable_to_non_nullable
 as bool,
@@ -1015,10 +1290,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String channelId,  String body,  DateTime createdAt,  MessageAuthor author,  DateTime? editedAt,  DateTime? deletedAt,  List<MessageReaction> reactions,  String? parentId,  int replyCount,  DateTime? lastReplyAt,  QuotedMessage? quoted,  bool pending,  bool failed)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String channelId,  String body,  DateTime createdAt,  MessageAuthor author,  DateTime? editedAt,  DateTime? deletedAt,  List<MessageReaction> reactions,  String? parentId,  int replyCount,  DateTime? lastReplyAt,  List<MessageMention> mentions,  QuotedMessage? quoted,  bool pending,  bool failed)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Message() when $default != null:
-return $default(_that.id,_that.channelId,_that.body,_that.createdAt,_that.author,_that.editedAt,_that.deletedAt,_that.reactions,_that.parentId,_that.replyCount,_that.lastReplyAt,_that.quoted,_that.pending,_that.failed);case _:
+return $default(_that.id,_that.channelId,_that.body,_that.createdAt,_that.author,_that.editedAt,_that.deletedAt,_that.reactions,_that.parentId,_that.replyCount,_that.lastReplyAt,_that.mentions,_that.quoted,_that.pending,_that.failed);case _:
   return orElse();
 
 }
@@ -1036,10 +1311,10 @@ return $default(_that.id,_that.channelId,_that.body,_that.createdAt,_that.author
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String channelId,  String body,  DateTime createdAt,  MessageAuthor author,  DateTime? editedAt,  DateTime? deletedAt,  List<MessageReaction> reactions,  String? parentId,  int replyCount,  DateTime? lastReplyAt,  QuotedMessage? quoted,  bool pending,  bool failed)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String channelId,  String body,  DateTime createdAt,  MessageAuthor author,  DateTime? editedAt,  DateTime? deletedAt,  List<MessageReaction> reactions,  String? parentId,  int replyCount,  DateTime? lastReplyAt,  List<MessageMention> mentions,  QuotedMessage? quoted,  bool pending,  bool failed)  $default,) {final _that = this;
 switch (_that) {
 case _Message():
-return $default(_that.id,_that.channelId,_that.body,_that.createdAt,_that.author,_that.editedAt,_that.deletedAt,_that.reactions,_that.parentId,_that.replyCount,_that.lastReplyAt,_that.quoted,_that.pending,_that.failed);case _:
+return $default(_that.id,_that.channelId,_that.body,_that.createdAt,_that.author,_that.editedAt,_that.deletedAt,_that.reactions,_that.parentId,_that.replyCount,_that.lastReplyAt,_that.mentions,_that.quoted,_that.pending,_that.failed);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1056,10 +1331,10 @@ return $default(_that.id,_that.channelId,_that.body,_that.createdAt,_that.author
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String channelId,  String body,  DateTime createdAt,  MessageAuthor author,  DateTime? editedAt,  DateTime? deletedAt,  List<MessageReaction> reactions,  String? parentId,  int replyCount,  DateTime? lastReplyAt,  QuotedMessage? quoted,  bool pending,  bool failed)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String channelId,  String body,  DateTime createdAt,  MessageAuthor author,  DateTime? editedAt,  DateTime? deletedAt,  List<MessageReaction> reactions,  String? parentId,  int replyCount,  DateTime? lastReplyAt,  List<MessageMention> mentions,  QuotedMessage? quoted,  bool pending,  bool failed)?  $default,) {final _that = this;
 switch (_that) {
 case _Message() when $default != null:
-return $default(_that.id,_that.channelId,_that.body,_that.createdAt,_that.author,_that.editedAt,_that.deletedAt,_that.reactions,_that.parentId,_that.replyCount,_that.lastReplyAt,_that.quoted,_that.pending,_that.failed);case _:
+return $default(_that.id,_that.channelId,_that.body,_that.createdAt,_that.author,_that.editedAt,_that.deletedAt,_that.reactions,_that.parentId,_that.replyCount,_that.lastReplyAt,_that.mentions,_that.quoted,_that.pending,_that.failed);case _:
   return null;
 
 }
@@ -1071,7 +1346,7 @@ return $default(_that.id,_that.channelId,_that.body,_that.createdAt,_that.author
 @JsonSerializable()
 
 class _Message extends Message {
-  const _Message({required this.id, required this.channelId, required this.body, required this.createdAt, required this.author, this.editedAt, this.deletedAt, final  List<MessageReaction> reactions = const <MessageReaction>[], this.parentId, this.replyCount = 0, this.lastReplyAt, this.quoted, this.pending = false, this.failed = false}): _reactions = reactions,super._();
+  const _Message({required this.id, required this.channelId, required this.body, required this.createdAt, required this.author, this.editedAt, this.deletedAt, final  List<MessageReaction> reactions = const <MessageReaction>[], this.parentId, this.replyCount = 0, this.lastReplyAt, final  List<MessageMention> mentions = const <MessageMention>[], this.quoted, this.pending = false, this.failed = false}): _reactions = reactions,_mentions = mentions,super._();
   factory _Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
 
 @override final  String id;
@@ -1099,6 +1374,15 @@ class _Message extends Message {
 @override@JsonKey() final  int replyCount;
 /// 마지막 답글 시각. 스레드 요약을 그릴 때 쓴다.
 @override final  DateTime? lastReplyAt;
+/// 이 메시지에 걸린 멘션. 본문의 `<@id>` 를 이름으로 바꾸는 데 쓴다.
+ final  List<MessageMention> _mentions;
+/// 이 메시지에 걸린 멘션. 본문의 `<@id>` 를 이름으로 바꾸는 데 쓴다.
+@override@JsonKey() List<MessageMention> get mentions {
+  if (_mentions is EqualUnmodifiableListView) return _mentions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_mentions);
+}
+
 /// 답장이면 가리키는 원본. **`parentId` 와 다른 축이다** — 답장은
 /// 타임라인에 남고, 스레드 답글은 빠진다. 둘을 함께 쓸 수도 있다.
 @override final  QuotedMessage? quoted;
@@ -1121,16 +1405,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Message&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.author, author) || other.author == author)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt)&&const DeepCollectionEquality().equals(other._reactions, _reactions)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.replyCount, replyCount) || other.replyCount == replyCount)&&(identical(other.lastReplyAt, lastReplyAt) || other.lastReplyAt == lastReplyAt)&&(identical(other.quoted, quoted) || other.quoted == quoted)&&(identical(other.pending, pending) || other.pending == pending)&&(identical(other.failed, failed) || other.failed == failed));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Message&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.author, author) || other.author == author)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt)&&const DeepCollectionEquality().equals(other._reactions, _reactions)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.replyCount, replyCount) || other.replyCount == replyCount)&&(identical(other.lastReplyAt, lastReplyAt) || other.lastReplyAt == lastReplyAt)&&const DeepCollectionEquality().equals(other._mentions, _mentions)&&(identical(other.quoted, quoted) || other.quoted == quoted)&&(identical(other.pending, pending) || other.pending == pending)&&(identical(other.failed, failed) || other.failed == failed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,channelId,body,createdAt,author,editedAt,deletedAt,const DeepCollectionEquality().hash(_reactions),parentId,replyCount,lastReplyAt,quoted,pending,failed);
+int get hashCode => Object.hash(runtimeType,id,channelId,body,createdAt,author,editedAt,deletedAt,const DeepCollectionEquality().hash(_reactions),parentId,replyCount,lastReplyAt,const DeepCollectionEquality().hash(_mentions),quoted,pending,failed);
 
 @override
 String toString() {
-  return 'Message(id: $id, channelId: $channelId, body: $body, createdAt: $createdAt, author: $author, editedAt: $editedAt, deletedAt: $deletedAt, reactions: $reactions, parentId: $parentId, replyCount: $replyCount, lastReplyAt: $lastReplyAt, quoted: $quoted, pending: $pending, failed: $failed)';
+  return 'Message(id: $id, channelId: $channelId, body: $body, createdAt: $createdAt, author: $author, editedAt: $editedAt, deletedAt: $deletedAt, reactions: $reactions, parentId: $parentId, replyCount: $replyCount, lastReplyAt: $lastReplyAt, mentions: $mentions, quoted: $quoted, pending: $pending, failed: $failed)';
 }
 
 
@@ -1141,7 +1425,7 @@ abstract mixin class _$MessageCopyWith<$Res> implements $MessageCopyWith<$Res> {
   factory _$MessageCopyWith(_Message value, $Res Function(_Message) _then) = __$MessageCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String channelId, String body, DateTime createdAt, MessageAuthor author, DateTime? editedAt, DateTime? deletedAt, List<MessageReaction> reactions, String? parentId, int replyCount, DateTime? lastReplyAt, QuotedMessage? quoted, bool pending, bool failed
+ String id, String channelId, String body, DateTime createdAt, MessageAuthor author, DateTime? editedAt, DateTime? deletedAt, List<MessageReaction> reactions, String? parentId, int replyCount, DateTime? lastReplyAt, List<MessageMention> mentions, QuotedMessage? quoted, bool pending, bool failed
 });
 
 
@@ -1158,7 +1442,7 @@ class __$MessageCopyWithImpl<$Res>
 
 /// Create a copy of Message
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? channelId = null,Object? body = null,Object? createdAt = null,Object? author = null,Object? editedAt = freezed,Object? deletedAt = freezed,Object? reactions = null,Object? parentId = freezed,Object? replyCount = null,Object? lastReplyAt = freezed,Object? quoted = freezed,Object? pending = null,Object? failed = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? channelId = null,Object? body = null,Object? createdAt = null,Object? author = null,Object? editedAt = freezed,Object? deletedAt = freezed,Object? reactions = null,Object? parentId = freezed,Object? replyCount = null,Object? lastReplyAt = freezed,Object? mentions = null,Object? quoted = freezed,Object? pending = null,Object? failed = null,}) {
   return _then(_Message(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,channelId: null == channelId ? _self.channelId : channelId // ignore: cast_nullable_to_non_nullable
@@ -1171,7 +1455,8 @@ as DateTime?,reactions: null == reactions ? _self._reactions : reactions // igno
 as List<MessageReaction>,parentId: freezed == parentId ? _self.parentId : parentId // ignore: cast_nullable_to_non_nullable
 as String?,replyCount: null == replyCount ? _self.replyCount : replyCount // ignore: cast_nullable_to_non_nullable
 as int,lastReplyAt: freezed == lastReplyAt ? _self.lastReplyAt : lastReplyAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,quoted: freezed == quoted ? _self.quoted : quoted // ignore: cast_nullable_to_non_nullable
+as DateTime?,mentions: null == mentions ? _self._mentions : mentions // ignore: cast_nullable_to_non_nullable
+as List<MessageMention>,quoted: freezed == quoted ? _self.quoted : quoted // ignore: cast_nullable_to_non_nullable
 as QuotedMessage?,pending: null == pending ? _self.pending : pending // ignore: cast_nullable_to_non_nullable
 as bool,failed: null == failed ? _self.failed : failed // ignore: cast_nullable_to_non_nullable
 as bool,

@@ -118,10 +118,43 @@ class _ChannelTile extends ConsumerWidget {
                     ),
                   ),
                 ),
+                // 멘션은 안 읽은 수와 **따로** 보여 준다. 나를 부른 것이라
+                // 무게가 다르고, 숫자에 묻히면 놓친다.
+                if (channel.mentionCount > 0) ...[
+                  _MentionBadge(count: channel.mentionCount),
+                  const SizedBox(width: NexusSpacing.sp1),
+                ],
                 if (unread > 0) _UnreadBadge(count: unread),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 안 읽은 멘션 수. 일반 뱃지와 색을 달리해 한눈에 갈린다.
+class _MentionBadge extends StatelessWidget {
+  const _MentionBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.error,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        // 개수보다 "불렸다"는 사실이 먼저다. 한 건이면 @ 만 보여 준다.
+        count > 1 ? '@$count' : '@',
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onError,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

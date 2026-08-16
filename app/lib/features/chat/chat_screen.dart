@@ -10,6 +10,11 @@ import '../../shared/widgets/nexus_avatar.dart';
 import '../channel/channel_controller.dart';
 import '../realtime/socket_controller.dart';
 import '../space/space_controller.dart';
+import '../../domain/models/space_member.dart';
+import '../auth/auth_controller.dart';
+import '../space/members_controller.dart';
+import 'mention_autocomplete.dart';
+import 'mention_text.dart';
 import 'message_controller.dart';
 
 /// 채널 하나의 대화. 메시지 리스트 + 입력창.
@@ -246,7 +251,7 @@ class MessageTile extends ConsumerWidget {
                       ],
                     ),
                   if (message.quoted != null) _QuoteBlock(quoted: message.quoted!),
-                  Text(message.body, style: theme.textTheme.bodyMedium),
+                  _MessageBody(message: message),
                   if (message.editedAt != null)
                     Text('(수정됨)', style: theme.textTheme.labelSmall),
                   if (message.reactions.isNotEmpty)
@@ -267,6 +272,45 @@ class MessageTile extends ConsumerWidget {
     final local = at.toLocal();
     return '${local.hour.toString().padLeft(2, '0')}:'
         '${local.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+/// 메시지 본문. 멘션을 이름으로 바꿔 그린다.
+///
+/// 본문에는 `<@uuid>` 가 박혀 있고 사람이 읽을 이름은 따로 온다. 이름을 본문에
+/// 저장하지 않는 이유는 사용자가 이름을 바꾸면 지난 메시지가 낡기 때문이다.
+class _MessageBody extends StatelessWidget {
+  const _MessageBody({required this.message});
+
+  final Message message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final base = theme.textTheme.bodyMedium;
+
+    if (message.mentions.isEmpty && !message.body.contains('@')) {
+      // 흔한 경우를 빠르게 지나간다.
+      return Text(message.body, style: base);
+    }
+
+    final spans = buildMentionSpans(message.body, message.mentions);
+    return Text.rich(
+      TextSpan(
+        children: [
+          for (final span in spans)
+            TextSpan(
+              text: span.text,
+              style: span.isMention
+                  ? base?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    )
+                  : base,
+            ),
+        ],
+      ),
+    );
   }
 }
 
@@ -538,11 +582,49 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
   final _controller = TextEditingController();
   final _focus = FocusNode();
 
+  /// 지금 치고 있는 멘션. null 이면 후보를 띄우지 않는다.
+  MentionQuery? _mentionQuery;
+
+  @override
+  void initState() {
+    super.initState();
+    // 선택 영역이 바뀌어도(커서 이동) 다시 판단해야 한다 — 커서를 옮겨 이전
+    // 멘션 자리로 돌아갈 수 있다.
+    _controller.addListener(_onTextChanged);
+  }
+
   @override
   void dispose() {
+    _controller.removeListener(_onTextChanged);
     _controller.dispose();
     _focus.dispose();
     super.dispose();
+  }
+
+  void _onTextChanged() {
+    final selection = _controller.selection;
+    // 범위를 잡고 있으면(드래그) 멘션을 치는 중이 아니다.
+    final query = selection.isValid && selection.isCollapsed
+        ? findMentionQuery(_controller.text, selection.baseOffset)
+        : null;
+
+    if (query?.start != _mentionQuery?.start ||
+        query?.text != _mentionQuery?.text) {
+      setState(() => _mentionQuery = query);
+    }
+  }
+
+  void _insertMention(SpaceMemberProfile member) {
+    final query = _mentionQuery;
+    if (query == null) return;
+
+    final result = applyMention(_controller.text, query, member);
+    _controller.value = TextEditingValue(
+      text: result.text,
+      selection: TextSelection.collapsed(offset: result.cursor),
+    );
+    setState(() => _mentionQuery = null);
+    _focus.requestFocus();
   }
 
   void _send() {
@@ -552,6 +634,7 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
     final send = widget.onSend ?? ref.read(messageActionsProvider).send;
     send(text);
     _controller.clear();
+    setState(() => _mentionQuery = null);
     _focus.requestFocus();
   }
 
@@ -570,6 +653,11 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (_mentionQuery != null)
+              _MentionSuggestions(
+                query: _mentionQuery!,
+                onPick: _insertMention,
+              ),
             // 답장 대상이 있으면 입력창 위에 띄운다. 무엇에 답하는지 보이지
             // 않으면 엉뚱한 메시지에 답하기 쉽다.
             if (widget.onSend == null) const _ReplyPreview(),
@@ -619,6 +707,57 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
         ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 멘션 후보 목록. 입력창 위에 뜬다.
+///
+/// 서버가 본문에 `<@userId>` 형식을 요구하므로 **이것이 없으면 사용자가 멘션을
+/// 만들 방법이 없다.** 자동완성은 편의가 아니라 필수 경로다.
+class _MentionSuggestions extends ConsumerWidget {
+  const _MentionSuggestions({required this.query, required this.onPick});
+
+  final MentionQuery query;
+  final void Function(SpaceMemberProfile) onPick;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final members = ref.watch(spaceMembersProvider).value ?? const [];
+    final auth = ref.watch(authControllerProvider);
+    final myId = auth is AuthSignedIn ? auth.user.id : null;
+
+    final matches =
+        filterMembers(members, query.text, excludeUserId: myId);
+    if (matches.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: NexusSpacing.sp3),
+      constraints: const BoxConstraints(maxHeight: 220),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: ListView.builder(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: matches.length,
+        itemBuilder: (context, i) {
+          final member = matches[i];
+          return ListTile(
+            dense: true,
+            leading: NexusAvatar(
+              seed: member.userId,
+              label: member.displayName,
+              size: 28,
+            ),
+            title: Text(member.displayName, style: theme.textTheme.bodyMedium),
+            onTap: () => onPick(member),
+          );
+        },
       ),
     );
   }

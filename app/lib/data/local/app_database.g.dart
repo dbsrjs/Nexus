@@ -165,6 +165,19 @@ class $CachedMessagesTable extends CachedMessages
         defaultValue: const Constant(''),
       ).withConverter<QuotedMessage?>($CachedMessagesTable.$converterquoted);
   @override
+  late final GeneratedColumnWithTypeConverter<List<MessageMention>, String>
+  mentions =
+      GeneratedColumn<String>(
+        'mentions',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      ).withConverter<List<MessageMention>>(
+        $CachedMessagesTable.$convertermentions,
+      );
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     spaceId,
@@ -181,6 +194,7 @@ class $CachedMessagesTable extends CachedMessages
     replyCount,
     lastReplyAt,
     quoted,
+    mentions,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -341,6 +355,12 @@ class $CachedMessagesTable extends CachedMessages
           data['${effectivePrefix}quoted'],
         )!,
       ),
+      mentions: $CachedMessagesTable.$convertermentions.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}mentions'],
+        )!,
+      ),
     );
   }
 
@@ -364,6 +384,8 @@ class $CachedMessagesTable extends CachedMessages
       NullAwareTypeConverter.wrap($converterlastReplyAt);
   static TypeConverter<QuotedMessage?, String> $converterquoted =
       const _QuotedJson();
+  static TypeConverter<List<MessageMention>, String> $convertermentions =
+      const _MentionsJson();
 }
 
 class CachedMessage extends DataClass implements Insertable<CachedMessage> {
@@ -387,6 +409,9 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
 
   /// 답장이면 인용 요약. 빈 문자열이면 답장이 아니다.
   final QuotedMessage? quoted;
+
+  /// 본문의 `<@id>` 를 이름으로 바꾸는 데 쓰는 멘션 목록.
+  final List<MessageMention> mentions;
   const CachedMessage({
     required this.id,
     required this.spaceId,
@@ -403,6 +428,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     required this.replyCount,
     this.lastReplyAt,
     this.quoted,
+    required this.mentions,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -450,6 +476,11 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
         $CachedMessagesTable.$converterquoted.toSql(quoted),
       );
     }
+    {
+      map['mentions'] = Variable<String>(
+        $CachedMessagesTable.$convertermentions.toSql(mentions),
+      );
+    }
     return map;
   }
 
@@ -482,6 +513,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       quoted: quoted == null && nullToAbsent
           ? const Value.absent()
           : Value(quoted),
+      mentions: Value(mentions),
     );
   }
 
@@ -506,6 +538,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       replyCount: serializer.fromJson<int>(json['replyCount']),
       lastReplyAt: serializer.fromJson<DateTime?>(json['lastReplyAt']),
       quoted: serializer.fromJson<QuotedMessage?>(json['quoted']),
+      mentions: serializer.fromJson<List<MessageMention>>(json['mentions']),
     );
   }
   @override
@@ -527,6 +560,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       'replyCount': serializer.toJson<int>(replyCount),
       'lastReplyAt': serializer.toJson<DateTime?>(lastReplyAt),
       'quoted': serializer.toJson<QuotedMessage?>(quoted),
+      'mentions': serializer.toJson<List<MessageMention>>(mentions),
     };
   }
 
@@ -546,6 +580,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     int? replyCount,
     Value<DateTime?> lastReplyAt = const Value.absent(),
     Value<QuotedMessage?> quoted = const Value.absent(),
+    List<MessageMention>? mentions,
   }) => CachedMessage(
     id: id ?? this.id,
     spaceId: spaceId ?? this.spaceId,
@@ -564,6 +599,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     replyCount: replyCount ?? this.replyCount,
     lastReplyAt: lastReplyAt.present ? lastReplyAt.value : this.lastReplyAt,
     quoted: quoted.present ? quoted.value : this.quoted,
+    mentions: mentions ?? this.mentions,
   );
   CachedMessage copyWithCompanion(CachedMessagesCompanion data) {
     return CachedMessage(
@@ -590,6 +626,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           ? data.lastReplyAt.value
           : this.lastReplyAt,
       quoted: data.quoted.present ? data.quoted.value : this.quoted,
+      mentions: data.mentions.present ? data.mentions.value : this.mentions,
     );
   }
 
@@ -610,7 +647,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           ..write('parentId: $parentId, ')
           ..write('replyCount: $replyCount, ')
           ..write('lastReplyAt: $lastReplyAt, ')
-          ..write('quoted: $quoted')
+          ..write('quoted: $quoted, ')
+          ..write('mentions: $mentions')
           ..write(')'))
         .toString();
   }
@@ -632,6 +670,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     replyCount,
     lastReplyAt,
     quoted,
+    mentions,
   );
   @override
   bool operator ==(Object other) =>
@@ -651,7 +690,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           other.parentId == this.parentId &&
           other.replyCount == this.replyCount &&
           other.lastReplyAt == this.lastReplyAt &&
-          other.quoted == this.quoted);
+          other.quoted == this.quoted &&
+          other.mentions == this.mentions);
 }
 
 class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
@@ -670,6 +710,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
   final Value<int> replyCount;
   final Value<DateTime?> lastReplyAt;
   final Value<QuotedMessage?> quoted;
+  final Value<List<MessageMention>> mentions;
   final Value<int> rowid;
   const CachedMessagesCompanion({
     this.id = const Value.absent(),
@@ -687,6 +728,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.replyCount = const Value.absent(),
     this.lastReplyAt = const Value.absent(),
     this.quoted = const Value.absent(),
+    this.mentions = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedMessagesCompanion.insert({
@@ -705,6 +747,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.replyCount = const Value.absent(),
     this.lastReplyAt = const Value.absent(),
     this.quoted = const Value.absent(),
+    this.mentions = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        spaceId = Value(spaceId),
@@ -729,6 +772,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Expression<int>? replyCount,
     Expression<int>? lastReplyAt,
     Expression<String>? quoted,
+    Expression<String>? mentions,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -747,6 +791,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       if (replyCount != null) 'reply_count': replyCount,
       if (lastReplyAt != null) 'last_reply_at': lastReplyAt,
       if (quoted != null) 'quoted': quoted,
+      if (mentions != null) 'mentions': mentions,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -767,6 +812,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Value<int>? replyCount,
     Value<DateTime?>? lastReplyAt,
     Value<QuotedMessage?>? quoted,
+    Value<List<MessageMention>>? mentions,
     Value<int>? rowid,
   }) {
     return CachedMessagesCompanion(
@@ -785,6 +831,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       replyCount: replyCount ?? this.replyCount,
       lastReplyAt: lastReplyAt ?? this.lastReplyAt,
       quoted: quoted ?? this.quoted,
+      mentions: mentions ?? this.mentions,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -849,6 +896,11 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
         $CachedMessagesTable.$converterquoted.toSql(quoted.value),
       );
     }
+    if (mentions.present) {
+      map['mentions'] = Variable<String>(
+        $CachedMessagesTable.$convertermentions.toSql(mentions.value),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -873,6 +925,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
           ..write('replyCount: $replyCount, ')
           ..write('lastReplyAt: $lastReplyAt, ')
           ..write('quoted: $quoted, ')
+          ..write('mentions: $mentions, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -982,6 +1035,18 @@ class $CachedChannelsTable extends CachedChannels
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _mentionCountMeta = const VerificationMeta(
+    'mentionCount',
+  );
+  @override
+  late final GeneratedColumn<int> mentionCount = GeneratedColumn<int>(
+    'mention_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -993,6 +1058,7 @@ class $CachedChannelsTable extends CachedChannels
     isPrivate,
     position,
     unreadCount,
+    mentionCount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1068,6 +1134,15 @@ class $CachedChannelsTable extends CachedChannels
         ),
       );
     }
+    if (data.containsKey('mention_count')) {
+      context.handle(
+        _mentionCountMeta,
+        mentionCount.isAcceptableOrUnknown(
+          data['mention_count']!,
+          _mentionCountMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1113,6 +1188,10 @@ class $CachedChannelsTable extends CachedChannels
         DriftSqlType.int,
         data['${effectivePrefix}unread_count'],
       )!,
+      mentionCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}mention_count'],
+      )!,
     );
   }
 
@@ -1132,6 +1211,9 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
   final bool isPrivate;
   final int position;
   final int unreadCount;
+
+  /// 안 읽은 **멘션** 수. 안 읽은 수와 따로 센다.
+  final int mentionCount;
   const CachedChannel({
     required this.id,
     required this.spaceId,
@@ -1142,6 +1224,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     required this.isPrivate,
     required this.position,
     required this.unreadCount,
+    required this.mentionCount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1159,6 +1242,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     map['is_private'] = Variable<bool>(isPrivate);
     map['position'] = Variable<int>(position);
     map['unread_count'] = Variable<int>(unreadCount);
+    map['mention_count'] = Variable<int>(mentionCount);
     return map;
   }
 
@@ -1177,6 +1261,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       isPrivate: Value(isPrivate),
       position: Value(position),
       unreadCount: Value(unreadCount),
+      mentionCount: Value(mentionCount),
     );
   }
 
@@ -1195,6 +1280,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       isPrivate: serializer.fromJson<bool>(json['isPrivate']),
       position: serializer.fromJson<int>(json['position']),
       unreadCount: serializer.fromJson<int>(json['unreadCount']),
+      mentionCount: serializer.fromJson<int>(json['mentionCount']),
     );
   }
   @override
@@ -1210,6 +1296,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       'isPrivate': serializer.toJson<bool>(isPrivate),
       'position': serializer.toJson<int>(position),
       'unreadCount': serializer.toJson<int>(unreadCount),
+      'mentionCount': serializer.toJson<int>(mentionCount),
     };
   }
 
@@ -1223,6 +1310,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     bool? isPrivate,
     int? position,
     int? unreadCount,
+    int? mentionCount,
   }) => CachedChannel(
     id: id ?? this.id,
     spaceId: spaceId ?? this.spaceId,
@@ -1233,6 +1321,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     isPrivate: isPrivate ?? this.isPrivate,
     position: position ?? this.position,
     unreadCount: unreadCount ?? this.unreadCount,
+    mentionCount: mentionCount ?? this.mentionCount,
   );
   CachedChannel copyWithCompanion(CachedChannelsCompanion data) {
     return CachedChannel(
@@ -1249,6 +1338,9 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       unreadCount: data.unreadCount.present
           ? data.unreadCount.value
           : this.unreadCount,
+      mentionCount: data.mentionCount.present
+          ? data.mentionCount.value
+          : this.mentionCount,
     );
   }
 
@@ -1263,7 +1355,8 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
           ..write('categoryId: $categoryId, ')
           ..write('isPrivate: $isPrivate, ')
           ..write('position: $position, ')
-          ..write('unreadCount: $unreadCount')
+          ..write('unreadCount: $unreadCount, ')
+          ..write('mentionCount: $mentionCount')
           ..write(')'))
         .toString();
   }
@@ -1279,6 +1372,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     isPrivate,
     position,
     unreadCount,
+    mentionCount,
   );
   @override
   bool operator ==(Object other) =>
@@ -1292,7 +1386,8 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
           other.categoryId == this.categoryId &&
           other.isPrivate == this.isPrivate &&
           other.position == this.position &&
-          other.unreadCount == this.unreadCount);
+          other.unreadCount == this.unreadCount &&
+          other.mentionCount == this.mentionCount);
 }
 
 class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
@@ -1305,6 +1400,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
   final Value<bool> isPrivate;
   final Value<int> position;
   final Value<int> unreadCount;
+  final Value<int> mentionCount;
   final Value<int> rowid;
   const CachedChannelsCompanion({
     this.id = const Value.absent(),
@@ -1316,6 +1412,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     this.isPrivate = const Value.absent(),
     this.position = const Value.absent(),
     this.unreadCount = const Value.absent(),
+    this.mentionCount = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedChannelsCompanion.insert({
@@ -1328,6 +1425,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     this.isPrivate = const Value.absent(),
     this.position = const Value.absent(),
     this.unreadCount = const Value.absent(),
+    this.mentionCount = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        spaceId = Value(spaceId),
@@ -1343,6 +1441,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     Expression<bool>? isPrivate,
     Expression<int>? position,
     Expression<int>? unreadCount,
+    Expression<int>? mentionCount,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1355,6 +1454,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
       if (isPrivate != null) 'is_private': isPrivate,
       if (position != null) 'position': position,
       if (unreadCount != null) 'unread_count': unreadCount,
+      if (mentionCount != null) 'mention_count': mentionCount,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1369,6 +1469,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     Value<bool>? isPrivate,
     Value<int>? position,
     Value<int>? unreadCount,
+    Value<int>? mentionCount,
     Value<int>? rowid,
   }) {
     return CachedChannelsCompanion(
@@ -1381,6 +1482,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
       isPrivate: isPrivate ?? this.isPrivate,
       position: position ?? this.position,
       unreadCount: unreadCount ?? this.unreadCount,
+      mentionCount: mentionCount ?? this.mentionCount,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1415,6 +1517,9 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     if (unreadCount.present) {
       map['unread_count'] = Variable<int>(unreadCount.value);
     }
+    if (mentionCount.present) {
+      map['mention_count'] = Variable<int>(mentionCount.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1433,6 +1538,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
           ..write('isPrivate: $isPrivate, ')
           ..write('position: $position, ')
           ..write('unreadCount: $unreadCount, ')
+          ..write('mentionCount: $mentionCount, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3024,6 +3130,7 @@ typedef $$CachedMessagesTableCreateCompanionBuilder =
       Value<int> replyCount,
       Value<DateTime?> lastReplyAt,
       Value<QuotedMessage?> quoted,
+      Value<List<MessageMention>> mentions,
       Value<int> rowid,
     });
 typedef $$CachedMessagesTableUpdateCompanionBuilder =
@@ -3043,6 +3150,7 @@ typedef $$CachedMessagesTableUpdateCompanionBuilder =
       Value<int> replyCount,
       Value<DateTime?> lastReplyAt,
       Value<QuotedMessage?> quoted,
+      Value<List<MessageMention>> mentions,
       Value<int> rowid,
     });
 
@@ -3139,6 +3247,16 @@ class $$CachedMessagesTableFilterComposer
     column: $table.quoted,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<
+    List<MessageMention>,
+    List<MessageMention>,
+    String
+  >
+  get mentions => $composableBuilder(
+    column: $table.mentions,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 }
 
 class $$CachedMessagesTableOrderingComposer
@@ -3224,6 +3342,11 @@ class $$CachedMessagesTableOrderingComposer
     column: $table.quoted,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get mentions => $composableBuilder(
+    column: $table.mentions,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedMessagesTableAnnotationComposer
@@ -3289,6 +3412,9 @@ class $$CachedMessagesTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<QuotedMessage?, String> get quoted =>
       $composableBuilder(column: $table.quoted, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<List<MessageMention>, String> get mentions =>
+      $composableBuilder(column: $table.mentions, builder: (column) => column);
 }
 
 class $$CachedMessagesTableTableManager
@@ -3339,6 +3465,7 @@ class $$CachedMessagesTableTableManager
                 Value<int> replyCount = const Value.absent(),
                 Value<DateTime?> lastReplyAt = const Value.absent(),
                 Value<QuotedMessage?> quoted = const Value.absent(),
+                Value<List<MessageMention>> mentions = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion(
                 id: id,
@@ -3356,6 +3483,7 @@ class $$CachedMessagesTableTableManager
                 replyCount: replyCount,
                 lastReplyAt: lastReplyAt,
                 quoted: quoted,
+                mentions: mentions,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3375,6 +3503,7 @@ class $$CachedMessagesTableTableManager
                 Value<int> replyCount = const Value.absent(),
                 Value<DateTime?> lastReplyAt = const Value.absent(),
                 Value<QuotedMessage?> quoted = const Value.absent(),
+                Value<List<MessageMention>> mentions = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion.insert(
                 id: id,
@@ -3392,6 +3521,7 @@ class $$CachedMessagesTableTableManager
                 replyCount: replyCount,
                 lastReplyAt: lastReplyAt,
                 quoted: quoted,
+                mentions: mentions,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -3430,6 +3560,7 @@ typedef $$CachedChannelsTableCreateCompanionBuilder =
       Value<bool> isPrivate,
       Value<int> position,
       Value<int> unreadCount,
+      Value<int> mentionCount,
       Value<int> rowid,
     });
 typedef $$CachedChannelsTableUpdateCompanionBuilder =
@@ -3443,6 +3574,7 @@ typedef $$CachedChannelsTableUpdateCompanionBuilder =
       Value<bool> isPrivate,
       Value<int> position,
       Value<int> unreadCount,
+      Value<int> mentionCount,
       Value<int> rowid,
     });
 
@@ -3497,6 +3629,11 @@ class $$CachedChannelsTableFilterComposer
 
   ColumnFilters<int> get unreadCount => $composableBuilder(
     column: $table.unreadCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get mentionCount => $composableBuilder(
+    column: $table.mentionCount,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3554,6 +3691,11 @@ class $$CachedChannelsTableOrderingComposer
     column: $table.unreadCount,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get mentionCount => $composableBuilder(
+    column: $table.mentionCount,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedChannelsTableAnnotationComposer
@@ -3593,6 +3735,11 @@ class $$CachedChannelsTableAnnotationComposer
 
   GeneratedColumn<int> get unreadCount => $composableBuilder(
     column: $table.unreadCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get mentionCount => $composableBuilder(
+    column: $table.mentionCount,
     builder: (column) => column,
   );
 }
@@ -3639,6 +3786,7 @@ class $$CachedChannelsTableTableManager
                 Value<bool> isPrivate = const Value.absent(),
                 Value<int> position = const Value.absent(),
                 Value<int> unreadCount = const Value.absent(),
+                Value<int> mentionCount = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedChannelsCompanion(
                 id: id,
@@ -3650,6 +3798,7 @@ class $$CachedChannelsTableTableManager
                 isPrivate: isPrivate,
                 position: position,
                 unreadCount: unreadCount,
+                mentionCount: mentionCount,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3663,6 +3812,7 @@ class $$CachedChannelsTableTableManager
                 Value<bool> isPrivate = const Value.absent(),
                 Value<int> position = const Value.absent(),
                 Value<int> unreadCount = const Value.absent(),
+                Value<int> mentionCount = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedChannelsCompanion.insert(
                 id: id,
@@ -3674,6 +3824,7 @@ class $$CachedChannelsTableTableManager
                 isPrivate: isPrivate,
                 position: position,
                 unreadCount: unreadCount,
+                mentionCount: mentionCount,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

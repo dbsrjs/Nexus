@@ -50,6 +50,20 @@ Map<String, dynamic> _$QuotedMessageToJson(_QuotedMessage instance) =>
       'deleted': instance.deleted,
     };
 
+_MessageMention _$MessageMentionFromJson(Map<String, dynamic> json) =>
+    _MessageMention(
+      type: json['type'] as String,
+      userId: json['userId'] as String?,
+      name: json['name'] as String?,
+    );
+
+Map<String, dynamic> _$MessageMentionToJson(_MessageMention instance) =>
+    <String, dynamic>{
+      'type': instance.type,
+      'userId': instance.userId,
+      'name': instance.name,
+    };
+
 _Message _$MessageFromJson(Map<String, dynamic> json) => _Message(
   id: json['id'] as String,
   channelId: json['channelId'] as String,
@@ -72,6 +86,11 @@ _Message _$MessageFromJson(Map<String, dynamic> json) => _Message(
   lastReplyAt: json['lastReplyAt'] == null
       ? null
       : DateTime.parse(json['lastReplyAt'] as String),
+  mentions:
+      (json['mentions'] as List<dynamic>?)
+          ?.map((e) => MessageMention.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const <MessageMention>[],
   quoted: json['quoted'] == null
       ? null
       : QuotedMessage.fromJson(json['quoted'] as Map<String, dynamic>),
@@ -91,6 +110,7 @@ Map<String, dynamic> _$MessageToJson(_Message instance) => <String, dynamic>{
   'parentId': instance.parentId,
   'replyCount': instance.replyCount,
   'lastReplyAt': instance.lastReplyAt?.toIso8601String(),
+  'mentions': instance.mentions,
   'quoted': instance.quoted,
   'pending': instance.pending,
   'failed': instance.failed,

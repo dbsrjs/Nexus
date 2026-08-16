@@ -75,6 +75,7 @@ class WorkspaceRepository {
                       isPrivate: r.isPrivate,
                       position: r.position,
                       unreadCount: r.unreadCount,
+                      mentionCount: r.mentionCount,
                     ))
                 .toList(growable: false),
           );
@@ -95,6 +96,7 @@ class WorkspaceRepository {
             isPrivate: Value(c.isPrivate),
             position: Value(c.position),
             unreadCount: Value(c.unreadCount),
+            mentionCount: Value(c.mentionCount),
           ),
       ]);
       return true;

@@ -15,6 +15,7 @@ _Channel _$ChannelFromJson(Map<String, dynamic> json) => _Channel(
   isPrivate: json['isPrivate'] as bool? ?? false,
   position: (json['position'] as num?)?.toInt() ?? 0,
   unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
+  mentionCount: (json['mentionCount'] as num?)?.toInt() ?? 0,
   lastReadMessageId: json['lastReadMessageId'] as String?,
   muted: json['muted'] as bool? ?? false,
 );
@@ -28,6 +29,7 @@ Map<String, dynamic> _$ChannelToJson(_Channel instance) => <String, dynamic>{
   'isPrivate': instance.isPrivate,
   'position': instance.position,
   'unreadCount': instance.unreadCount,
+  'mentionCount': instance.mentionCount,
   'lastReadMessageId': instance.lastReadMessageId,
   'muted': instance.muted,
 };

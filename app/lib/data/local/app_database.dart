@@ -71,6 +71,24 @@ class _QuotedJson extends TypeConverter<QuotedMessage?, String> {
       value == null ? '' : jsonEncode(value.toJson());
 }
 
+/// 멘션 목록을 JSON 한 칸에 담는다. 리액션 · 인용과 같은 이유다.
+class _MentionsJson extends TypeConverter<List<MessageMention>, String> {
+  const _MentionsJson();
+
+  @override
+  List<MessageMention> fromSql(String fromDb) {
+    if (fromDb.isEmpty) return const [];
+    return (jsonDecode(fromDb) as List<dynamic>)
+        .cast<Map<String, dynamic>>()
+        .map(MessageMention.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  String toSql(List<MessageMention> value) =>
+      value.isEmpty ? '' : jsonEncode([for (final m in value) m.toJson()]);
+}
+
 /// 메시지 캐시. **서버에 있는 것만** 담는다.
 ///
 /// 서버 모델을 그대로 펼쳐 담는다. 중첩(author)을 JSON 으로 넣지 않는 이유는,
@@ -105,6 +123,10 @@ class CachedMessages extends Table {
   /// 답장이면 인용 요약. 빈 문자열이면 답장이 아니다.
   TextColumn get quoted =>
       text().map(const _QuotedJson()).withDefault(const Constant(''))();
+
+  /// 본문의 `<@id>` 를 이름으로 바꾸는 데 쓰는 멘션 목록.
+  TextColumn get mentions =>
+      text().map(const _MentionsJson()).withDefault(const Constant(''))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -179,6 +201,9 @@ class CachedChannels extends Table {
   IntColumn get position => integer().withDefault(const Constant(0))();
   IntColumn get unreadCount => integer().withDefault(const Constant(0))();
 
+  /// 안 읽은 **멘션** 수. 안 읽은 수와 따로 센다.
+  IntColumn get mentionCount => integer().withDefault(const Constant(0))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -230,7 +255,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus'));
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -337,7 +362,7 @@ class AppDatabase extends _$AppDatabase {
     return customSelect(
       '''
       SELECT id, channel_id, body, created_at, edited_at, deleted_at,
-             author_id, author_name, author_avatar_url, reactions, quoted,
+             author_id, author_name, author_avatar_url, reactions, quoted, mentions,
              parent_id, reply_count, last_reply_at,
              0 AS queued, 0 AS failed, 0 AS seq
         FROM cached_messages
@@ -346,6 +371,7 @@ class AppDatabase extends _$AppDatabase {
       UNION ALL
       SELECT id, channel_id, body, created_at, NULL, NULL,
              author_id, author_name, author_avatar_url, '[]' AS reactions, quoted,
+             '' AS mentions,
              parent_id, 0 AS reply_count, NULL AS last_reply_at,
              1 AS queued, failed, seq
         FROM outbox_messages
@@ -392,7 +418,7 @@ class AppDatabase extends _$AppDatabase {
   Stream<Message?> watchMessage(String id) => customSelect(
         '''
         SELECT id, channel_id, body, created_at, edited_at, deleted_at,
-               author_id, author_name, author_avatar_url, reactions, quoted,
+               author_id, author_name, author_avatar_url, reactions, quoted, mentions,
                parent_id, reply_count, last_reply_at,
                0 AS queued, 0 AS failed, 0 AS seq
           FROM cached_messages
@@ -645,6 +671,7 @@ Message _rowToMessage(QueryRow row) {
     replyCount: row.read<int>('reply_count'),
     lastReplyAt: at('last_reply_at'),
     quoted: const _QuotedJson().fromSql(row.read<String>('quoted')),
+    mentions: const _MentionsJson().fromSql(row.read<String>('mentions')),
     // 큐에 있으면서 아직 포기하지 않은 것이 '보내는 중'이다.
     pending: queued && !failed,
     failed: failed,
@@ -668,4 +695,5 @@ CachedMessagesCompanion _toRow(String spaceId, Message message) =>
       replyCount: Value(message.replyCount),
       lastReplyAt: Value(message.lastReplyAt),
       quoted: Value(message.quoted),
+      mentions: Value(message.mentions),
     );

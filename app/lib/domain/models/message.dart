@@ -53,6 +53,26 @@ abstract class QuotedMessage with _$QuotedMessage {
       _$QuotedMessageFromJson(json);
 }
 
+/// 메시지에 걸린 멘션 하나.
+///
+/// 본문에는 `<@userId>` 로 박혀 있고, **보이는 이름은 여기서 온다.**
+/// 이름을 본문에 넣지 않는 이유는 사용자가 이름을 바꾸면 지난 메시지가
+/// 낡기 때문이다.
+@freezed
+abstract class MessageMention with _$MessageMention {
+  const factory MessageMention({
+    /// `user` · `channel` · `everyone`.
+    required String type,
+
+    /// `@channel` · `@everyone` 은 대상이 없어 null.
+    String? userId,
+    String? name,
+  }) = _MessageMention;
+
+  factory MessageMention.fromJson(Map<String, dynamic> json) =>
+      _$MessageMentionFromJson(json);
+}
+
 @freezed
 abstract class Message with _$Message {
   const factory Message({
@@ -79,6 +99,9 @@ abstract class Message with _$Message {
 
     /// 마지막 답글 시각. 스레드 요약을 그릴 때 쓴다.
     DateTime? lastReplyAt,
+
+    /// 이 메시지에 걸린 멘션. 본문의 `<@id>` 를 이름으로 바꾸는 데 쓴다.
+    @Default(<MessageMention>[]) List<MessageMention> mentions,
 
     /// 답장이면 가리키는 원본. **`parentId` 와 다른 축이다** — 답장은
     /// 타임라인에 남고, 스레드 답글은 빠진다. 둘을 함께 쓸 수도 있다.

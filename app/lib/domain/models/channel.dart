@@ -20,6 +20,10 @@ abstract class Channel with _$Channel {
     @Default(false) bool isPrivate,
     @Default(0) int position,
     @Default(0) int unreadCount,
+
+    /// 안 읽은 **멘션** 수. 안 읽은 수와 따로 온다 - 나를 부른 것이라
+    /// 무게가 다르고 화면에서도 다른 색으로 그린다.
+    @Default(0) int mentionCount,
     String? lastReadMessageId,
     @Default(false) bool muted,
   }) = _Channel;
