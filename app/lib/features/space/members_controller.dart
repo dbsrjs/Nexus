@@ -26,3 +26,12 @@ final spaceMembersProvider =
     return const [];
   }
 });
+
+/// `userId` → 부르는 이름. **메시지에 이름이 실려 오지 않는 자리**에서 쓴다.
+///
+/// 아직 보내지 못한 큐의 메시지에는 서버가 붙여 주는 멘션 목록이 없고, 인용
+/// 요약에는 본문만 온다. 둘 다 이 표가 없으면 `@알 수 없음` 으로 보인다.
+final memberNamesProvider = Provider<Map<String, String>>((ref) {
+  final members = ref.watch(spaceMembersProvider).value ?? const [];
+  return {for (final m in members) m.userId: m.displayName};
+});

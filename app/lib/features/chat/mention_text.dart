@@ -28,10 +28,15 @@ class MentionSpan {
 ///
 /// 이름을 못 찾으면(멤버가 나갔거나 목록이 아직 없음) `@알 수 없음` 으로 둔다.
 /// 원본 `<@uuid>` 를 그대로 보이면 사용자가 읽을 수 없다.
+///
+/// [fallbackNames] 는 **메시지에 이름이 실려 오지 않는 자리**를 위한 것이다 —
+/// 아직 보내지 못한 큐의 메시지(서버가 멘션을 아직 붙이지 않았다)와 인용
+/// 요약(서버가 본문만 준다)이 그렇다. 스페이스 멤버 목록에서 채운다.
 List<MentionSpan> buildMentionSpans(
   String body,
-  List<MessageMention> mentions,
-) {
+  List<MessageMention> mentions, {
+  Map<String, String> fallbackNames = const {},
+}) {
   final nameById = <String, String>{
     for (final m in mentions)
       if (m.userId != null && m.name != null) m.userId!: m.name!,
@@ -57,7 +62,7 @@ List<MentionSpan> buildMentionSpans(
     if (match.special != null) {
       spans.add(MentionSpan.mention(match.special!));
     } else {
-      final name = nameById[match.userId!];
+      final name = nameById[match.userId!] ?? fallbackNames[match.userId!];
       spans.add(
         MentionSpan.mention(
           name == null ? '@알 수 없음' : '@$name',
@@ -72,6 +77,21 @@ List<MentionSpan> buildMentionSpans(
     spans.add(MentionSpan.text(body.substring(cursor)));
   }
   return spans;
+}
+
+/// 멘션을 이름으로 바꾼 **평문**.
+///
+/// 인용 블록·답장 미리보기처럼 한 줄로 줄여 보여 주는 자리에서 쓴다. 거기에도
+/// `<@uuid>` 가 보이면 무엇에 답하는지 읽을 수 없다.
+String mentionPlainText(
+  String body,
+  List<MessageMention> mentions, {
+  Map<String, String> fallbackNames = const {},
+}) {
+  if (!body.contains('<@')) return body;
+  return buildMentionSpans(body, mentions, fallbackNames: fallbackNames)
+      .map((span) => span.text)
+      .join();
 }
 
 /// 이 메시지가 **나를** 불렀는지. 강조 여부를 정한다.

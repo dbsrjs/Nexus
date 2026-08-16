@@ -14,6 +14,7 @@ import '../../domain/models/space_member.dart';
 import '../auth/auth_controller.dart';
 import '../space/members_controller.dart';
 import 'mention_autocomplete.dart';
+import 'mention_composer_controller.dart';
 import 'mention_text.dart';
 import 'message_controller.dart';
 
@@ -281,13 +282,13 @@ class MessageTile extends ConsumerWidget {
 ///
 /// 본문에는 `<@uuid>` 가 박혀 있고 사람이 읽을 이름은 따로 온다. 이름을 본문에
 /// 저장하지 않는 이유는 사용자가 이름을 바꾸면 지난 메시지가 낡기 때문이다.
-class _MessageBody extends StatelessWidget {
+class _MessageBody extends ConsumerWidget {
   const _MessageBody({required this.message});
 
   final Message message;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final base = theme.textTheme.bodyMedium;
 
@@ -296,7 +297,13 @@ class _MessageBody extends StatelessWidget {
       return Text(message.body, style: base);
     }
 
-    final spans = buildMentionSpans(message.body, message.mentions);
+    // 아직 보내지 못한 메시지에는 서버가 붙여 주는 멘션 목록이 없다. 멤버
+    // 목록으로 이름을 채우지 않으면 큐에 있는 동안만 `@알 수 없음` 으로 보인다.
+    final spans = buildMentionSpans(
+      message.body,
+      message.mentions,
+      fallbackNames: ref.watch(memberNamesProvider),
+    );
     return Text.rich(
       TextSpan(
         children: [
@@ -320,13 +327,13 @@ class _MessageBody extends StatelessWidget {
 ///
 /// 한 겹만 그린다 — 인용의 인용까지 펼치면 화면이 계단이 된다. 서버도 요약을
 /// 한 겹만 준다.
-class _QuoteBlock extends StatelessWidget {
+class _QuoteBlock extends ConsumerWidget {
   const _QuoteBlock({required this.quoted});
 
   final QuotedMessage quoted;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.color;
 
@@ -344,7 +351,16 @@ class _QuoteBlock extends StatelessWidget {
           Text(quoted.authorName, style: theme.textTheme.labelSmall),
           Text(
             // 원본이 지워져도 인용은 남긴다 — 답장의 맥락은 그때도 필요하다.
-            quoted.deleted ? '삭제된 메시지입니다.' : quoted.body,
+            //
+            // 인용 요약에는 멘션 목록이 없다(서버가 본문만 준다). 멤버 목록으로
+            // 이름을 채우지 않으면 인용문에 uuid 가 그대로 보인다.
+            quoted.deleted
+                ? '삭제된 메시지입니다.'
+                : mentionPlainText(
+                    quoted.body,
+                    const [],
+                    fallbackNames: ref.watch(memberNamesProvider),
+                  ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -598,7 +614,8 @@ class MessageComposer extends ConsumerStatefulWidget {
 }
 
 class MessageComposerState extends ConsumerState<MessageComposer> {
-  final _controller = TextEditingController();
+  /// 입력창에는 `@닉네임` 이 보이고 보낼 때만 `<@id>` 로 되돌린다.
+  final _controller = MentionComposerController();
   final _focus = FocusNode();
 
   /// 지금 치고 있는 멘션. null 이면 후보를 띄우지 않는다.
@@ -637,21 +654,18 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
     final query = _mentionQuery;
     if (query == null) return;
 
-    final result = applyMention(_controller.text, query, member);
-    _controller.value = TextEditingValue(
-      text: result.text,
-      selection: TextSelection.collapsed(offset: result.cursor),
-    );
+    _controller.insertMention(query, member);
     setState(() => _mentionQuery = null);
     _focus.requestFocus();
   }
 
   void _send() {
-    final text = _controller.text;
-    if (text.trim().isEmpty) return;
+    if (_controller.text.trim().isEmpty) return;
+    // 보내는 것은 보이는 글자가 아니라 id 로 되돌린 본문이다.
+    final body = _controller.body;
     // 낙관적 전송이라 기다리지 않는다. 입력창은 즉시 비운다.
     final send = widget.onSend ?? ref.read(messageActionsProvider).send;
-    send(text);
+    send(body);
     _controller.clear();
     setState(() => _mentionQuery = null);
     _focus.requestFocus();
@@ -898,7 +912,11 @@ class _ReplyPreview extends ConsumerWidget {
                       ?.copyWith(color: theme.colorScheme.primary),
                 ),
                 Text(
-                  target.body,
+                  mentionPlainText(
+                    target.body,
+                    target.mentions,
+                    fallbackNames: ref.watch(memberNamesProvider),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall,
