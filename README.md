@@ -39,11 +39,10 @@ server/  NestJS + Prisma
 
 ## 개발 시작하기
 
-작업 브랜치는 **`feat/pivot-nexus`** 다. `main` 은 아직 전환 이전 코드다.
+`main` 이 기준 브랜치다. 새 작업은 `feat/*` 를 따서 하고 끝나면 main 으로 합친다.
 
 ```bash
 git clone https://github.com/dbsrjs/Nexus.git && cd Nexus
-git checkout feat/pivot-nexus
 
 npm --prefix server install
 cp server/.env.example server/.env      # JWT_SECRET 을 채워야 부팅된다
@@ -111,7 +110,7 @@ flutter build windows --dart-define=API_BASE=https://api.example.com
 
 ## 현재 상태
 
-이 프로젝트는 **전환 중**이다. 기존 구현(사내 메신저 통합 솔루션)에서 개인 프로젝트로 재기획했고, 구 프론트엔드 자산은 정리를 마쳤다.
+사내 메신저 통합 솔루션에서 개인 프로젝트로의 **전환을 마쳤다.** 대화 · 파일까지 동작하며, 다음은 이슈 · 저장소 연동 · AI 다.
 
 - ✅ 재기획 완료 — 제품 · 백엔드 · 앱 · 인프라 · 전환 계획 문서
 - ✅ 디자인 시스템 — 토큰 · 컴포넌트 8종 · 검증 화면 2종 (`design-system/`)

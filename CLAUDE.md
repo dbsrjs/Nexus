@@ -11,8 +11,8 @@
 
 | | |
 |---|---|
-| **작업 브랜치** | `feat/pivot-nexus` — **`main` 은 전환 이전의 옛 코드다.** 헷갈리지 말 것 |
-| **상태** | 사내 메신저 → 개인 프로젝트로 **전환 중**. 서버 4단계(실시간 최소) 완료. **앱은 6단계 완료 — 오프라인으로 켜도 대화가 보이고, 오프라인에서 쓴 메시지도 재연결 시 나간다(Phase 0)** |
+| **기준 브랜치** | **`main`.** 2026-08-17 에 `feat/pivot-nexus` 를 fast-forward 로 합쳤다 — 이제 main 이 곧 이 프로젝트다. 새 작업은 `feat/*` 를 따 쓰고 끝나면 main 으로 합친다(CI 가 `main` 과 `feat/**` 를 돈다) |
+| **상태** | 사내 메신저 → 개인 프로젝트로의 **전환 완료**. **8단계까지 끝났다** — 오프라인으로 켜도 대화가 보이고(Phase 0), 파일을 주고받고, 이미지가 미리보기로 뜬다. 다음은 9단계(이슈 · 스프린트) |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
 
@@ -22,7 +22,6 @@
 
 ```bash
 git clone https://github.com/dbsrjs/Nexus.git && cd Nexus
-git checkout feat/pivot-nexus
 
 npm --prefix server install
 cp server/.env.example server/.env
