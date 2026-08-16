@@ -73,6 +73,23 @@ export class MessagesController {
     return this.messages.listReplies(messageId, member, query);
   }
 
+  /** 메시지 고정. 이미 고정돼 있어도 같은 결과다(멱등). */
+  @Post(':messageId/pin')
+  pin(
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @CurrentSpaceMember() member: SpaceMember,
+  ) {
+    return this.messages.setPinned(messageId, member, true);
+  }
+
+  @Delete(':messageId/pin')
+  unpin(
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @CurrentSpaceMember() member: SpaceMember,
+  ) {
+    return this.messages.setPinned(messageId, member, false);
+  }
+
   /** 리액션 추가. 이미 누른 것을 다시 눌러도 같은 결과다(멱등). */
   @Post(':messageId/reactions')
   addReaction(

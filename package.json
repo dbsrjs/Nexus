@@ -21,6 +21,7 @@
     "check:reactions": "node server/scripts/check-reactions.mjs",
     "check:threads": "node server/scripts/check-threads.mjs",
     "check:quotes": "node server/scripts/check-quotes.mjs",
-    "check:mentions": "node server/scripts/check-mentions.mjs"
+    "check:mentions": "node server/scripts/check-mentions.mjs",
+    "check:pins": "node server/scripts/check-pins.mjs"
   }
 }

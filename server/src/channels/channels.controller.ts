@@ -93,6 +93,15 @@ export class ChannelsController {
   }
 
   /** POST — 읽음 위치 저장 */
+  /** 고정된 메시지 목록. 커서를 두지 않는다 - 핀은 채널마다 몇 건 수준이다. */
+  @Get(':channelId/pins')
+  pins(
+    @Param('channelId', new ParseUUIDPipe()) channelId: string,
+    @CurrentSpaceMember() member: SpaceMember,
+  ) {
+    return this.messages.listPinned(channelId, member);
+  }
+
   @Post(':channelId/read')
   @HttpCode(HttpStatus.OK)
   markRead(

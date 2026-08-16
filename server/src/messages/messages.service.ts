@@ -466,6 +466,83 @@ export class MessagesService {
   }
 
   /**
+   * 핀 고정 · 해제. **멱등이다** - 이미 고정된 것을 다시 고정해도 오류가 아니다.
+   *
+   * 열람이 아니라 **전송 권한**을 요구한다. 리액션과 다른 이유: 리액션은 내
+   * 반응이지만 핀은 채널 전체에 보이는 것이라 읽기 전용 채널에서 남길 수 없어야
+   * 한다.
+   */
+  async setPinned(messageId: string, member: SpaceMember, pinned: boolean) {
+    const existing = await this.requireVisibleMessage(messageId, member);
+    await this.channels.assertCanSend(existing.channelId, member);
+
+    if (existing.deletedAt) {
+      throw new BadRequestException('삭제된 메시지는 고정할 수 없습니다');
+    }
+    // 스레드 답글을 고정하면 채널 상단 목록에서 맥락 없이 뜬다. 스레드는
+    // 부모를 고정하는 것이 맞다.
+    if (existing.parentId) {
+      throw new BadRequestException('답글은 고정할 수 없습니다');
+    }
+
+    if (existing.pinned === pinned) {
+      return this.withExtras(existing, member);
+    }
+
+    const updated = await this.prisma.message.update({
+      where: { id: messageId },
+      data: { pinned },
+      include: { author: AUTHOR_SELECT },
+    });
+
+    this.realtime.toChannel(existing.channelId, 'pin:changed', {
+      spaceId: member.spaceId,
+      channelId: existing.channelId,
+      messageId,
+      pinned,
+    });
+
+    return this.withExtras(updated, member);
+  }
+
+  /**
+   * GET /api/spaces/:spaceId/channels/:id/pins - 고정된 메시지 목록.
+   *
+   * 커서를 두지 않는다. 핀은 채널마다 몇 건 수준이고, 그 이상 쌓이면 핀의
+   * 뜻이 사라진다. 페이지네이션이 필요해질 만큼 늘어나면 그때 붙인다.
+   */
+  async listPinned(channelId: string, member: SpaceMember) {
+    await this.channels.assertCanView(channelId, member);
+
+    const rows = await this.prisma.message.findMany({
+      where: {
+        channelId,
+        spaceId: member.spaceId,
+        pinned: true,
+        deletedAt: null,
+      },
+      orderBy: { createdAt: 'desc' },
+      include: { author: AUTHOR_SELECT },
+    });
+
+    const ids = rows.map((m) => m.id);
+    const [reactions, quoted, mentions] = await Promise.all([
+      this.reactions.summarizeMany(ids, member),
+      this.loadQuoted(rows, member),
+      this.mentions.summarizeMany(ids, member),
+    ]);
+
+    return rows.map((message) => ({
+      ...message,
+      reactions: reactions.get(message.id) ?? [],
+      quoted: message.quotedMessageId
+        ? (quoted.get(message.quotedMessageId) ?? null)
+        : null,
+      mentions: mentions.get(message.id) ?? [],
+    }));
+  }
+
+  /**
    * 메시지를 찾고, 그 채널을 볼 수 있는지까지 확인한다.
    *
    * spaceId 조건이 먼저 걸리므로 다른 스페이스의 메시지 id 는 여기서 404 가 된다.
