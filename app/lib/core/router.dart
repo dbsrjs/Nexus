@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth_controller.dart';
 import '../features/chat/thread_screen.dart';
+import '../features/files/files_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/space/space_picker_screen.dart';
@@ -52,6 +53,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) =>
             AppShell(spaceId: state.pathParameters['spaceId']!),
         routes: [
+          // 스페이스 파일 목록. 스레드와 같이 셸 위에 덮어서 연다 — 대화의
+          // 곁가지라 돌아오는 길이 분명한 편이 낫다.
+          GoRoute(
+            path: 'files',
+            builder: (_, state) =>
+                FilesScreen(spaceId: state.pathParameters['spaceId']!),
+          ),
           // 채널을 연 상태. 셸은 같고 본문만 대화로 바뀐다.
           GoRoute(
             path: 'c/:channelId',

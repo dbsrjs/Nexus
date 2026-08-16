@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import '../../domain/models/attachment_item.dart';
 import '../../domain/models/message.dart';
 import 'api_client.dart';
 import 'api_failure.dart';
@@ -50,12 +51,50 @@ class AttachmentsApi {
     }
   }
 
+  /// GET /api/spaces/:spaceId/attachments — 스페이스의 파일 목록.
+  ///
+  /// **볼 수 있는 채널의 것만** 서버가 준다. 아직 메시지에 연결되지 않은 것은
+  /// 빠진다 — 남에게는 존재하지 않는 파일이고 24시간 뒤 사라질 수도 있다.
+  Future<List<AttachmentItem>> listForSpace({
+    required String spaceId,
+    String? channelId,
+    String? cursor,
+    int limit = 50,
+  }) async {
+    try {
+      final res = await _client.dio.get<Map<String, dynamic>>(
+        '/spaces/$spaceId/attachments',
+        queryParameters: {
+          'limit': limit,
+          'cursor': ?cursor,
+          'channelId': ?channelId,
+        },
+      );
+      return (res.data!['items'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(AttachmentItem.fromJson)
+          .toList(growable: false);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
   /// 첨부 바이트를 받는 주소.
   ///
   /// `Image.network` 등에 넘길 때는 [authHeaders] 를 함께 줘야 한다 —
   /// 이 주소도 다른 API 와 똑같이 `SpaceGuard` 를 지난다.
-  String urlFor({required String spaceId, required String attachmentId}) =>
-      '${_client.dio.options.baseUrl}/spaces/$spaceId/attachments/$attachmentId';
+  ///
+  /// [thumb] 면 미리보기용 축소본을 받는다. **없으면 서버가 원본으로 떨어뜨린다**
+  /// — 파생본이 없다고 화면이 비지 않는다.
+  String urlFor({
+    required String spaceId,
+    required String attachmentId,
+    bool thumb = false,
+  }) {
+    final base =
+        '${_client.dio.options.baseUrl}/spaces/$spaceId/attachments/$attachmentId';
+    return thumb ? '$base?variant=thumb' : base;
+  }
 
   /// 위 주소에 붙일 헤더. 토큰이 없으면 빈 맵이다.
   Map<String, String> get authHeaders {

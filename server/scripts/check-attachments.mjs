@@ -8,6 +8,8 @@
 // 사전 조건: npm run db:up && npm run server:dev
 // 사용: npm run check:attachments
 
+import zlib from 'zlib';
+
 const BASE = 'http://127.0.0.1:3000/api';
 
 let pass = 0;
@@ -59,12 +61,57 @@ async function upload(spaceId, channelId, token, { name, bytes, type }) {
   return { status: res.status, json };
 }
 
-async function download(spaceId, attachmentId, token) {
-  const res = await fetch(`${BASE}/spaces/${spaceId}/attachments/${attachmentId}`, {
-    headers: { authorization: `Bearer ${token}` },
-  });
+async function download(spaceId, attachmentId, token, variant) {
+  const url =
+    `${BASE}/spaces/${spaceId}/attachments/${attachmentId}` +
+    (variant ? `?variant=${variant}` : '');
+  const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
   const buffer = res.ok ? Buffer.from(await res.arrayBuffer()) : null;
   return { status: res.status, headers: res.headers, buffer };
+}
+
+/** 지정한 크기의 PNG 를 만든다. 썸네일이 실제로 줄어드는지 보려면 큰 그림이 필요하다. */
+function makePng(width, height) {
+  const crc32 = (buf) => {
+    let c = ~0;
+    for (const byte of buf) {
+      c ^= byte;
+      for (let i = 0; i < 8; i++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+    }
+    return ~c >>> 0;
+  };
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(body));
+    return Buffer.concat([len, body, crc]);
+  };
+
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 2; // truecolor
+  // 각 줄 = 필터 바이트 + RGB. 색을 조금씩 바꿔야 압축 후에도 크기가 남는다.
+  const raw = Buffer.alloc(height * (1 + width * 3));
+  let p = 0;
+  for (let y = 0; y < height; y++) {
+    raw[p++] = 0;
+    for (let x = 0; x < width; x++) {
+      raw[p++] = (x * 7) & 0xff;
+      raw[p++] = (y * 13) & 0xff;
+      raw[p++] = (x * y) & 0xff;
+    }
+  }
+  const idat = zlib.deflateSync(raw);
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', idat),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
 }
 
 const stamp = Date.now();
@@ -207,6 +254,69 @@ check(
 
 const missing = await download(spaceId, '00000000-0000-4000-8000-000000000000', alice.token);
 check('없는 첨부는 404', missing.status === 404, `status=${missing.status}`);
+
+// ── 썸네일 ────────────────────────────────────
+console.log('\n[썸네일]');
+
+const BIG_PNG = makePng(1200, 900);
+const big = await upload(spaceId, channel.id, alice.token, {
+  name: 'big.png',
+  bytes: BIG_PNG,
+  type: 'image/png',
+});
+check(
+  '큰 이미지 업로드',
+  big.status === 201 && big.json?.width === 1200 && big.json?.height === 900,
+  JSON.stringify({ w: big.json?.width, h: big.json?.height }),
+);
+
+const thumb = await download(spaceId, big.json.id, alice.token, 'thumb');
+check('썸네일 200', thumb.status === 200, `status=${thumb.status}`);
+check(
+  '★ 썸네일은 WebP 다 — 투명도를 지키면서 작다',
+  thumb.headers.get('content-type') === 'image/webp',
+  thumb.headers.get('content-type'),
+);
+check(
+  '★ 썸네일이 원본보다 작다',
+  thumb.buffer && thumb.buffer.length < BIG_PNG.length,
+  `${thumb.buffer?.length} vs ${BIG_PNG.length}`,
+);
+
+const full = await download(spaceId, big.json.id, alice.token);
+check(
+  '변형을 안 주면 원본이 온다',
+  full.buffer?.equals(BIG_PNG) &&
+    full.headers.get('content-type') === 'image/png',
+  `${full.buffer?.length} vs ${BIG_PNG.length}`,
+);
+
+const smallThumb = await download(spaceId, image.json.id, alice.token, 'thumb');
+check(
+  '★ 작은 이미지는 썸네일 없이 원본으로 떨어진다',
+  smallThumb.status === 200 && smallThumb.buffer?.equals(PNG_1X1),
+  `status=${smallThumb.status} len=${smallThumb.buffer?.length}`,
+);
+
+const textThumb = await download(spaceId, uploaded.json.id, alice.token, 'thumb');
+check(
+  '이미지가 아니면 원본으로 떨어진다',
+  textThumb.status === 200 && textThumb.buffer?.equals(TEXT),
+  `status=${textThumb.status}`,
+);
+
+const badVariant = await fetch(
+  `${BASE}/spaces/${spaceId}/attachments/${big.json.id}?variant=huge`,
+  { headers: { authorization: `Bearer ${alice.token}` } },
+);
+check('모르는 변형은 400', badVariant.status === 400, `status=${badVariant.status}`);
+
+const strangerThumb = await download(spaceId, big.json.id, outsider.token, 'thumb');
+check(
+  '★ 썸네일도 같은 권한 검사를 지난다',
+  strangerThumb.status === 404,
+  `status=${strangerThumb.status}`,
+);
 
 // ── 메시지 연결 ───────────────────────────────
 console.log('\n[메시지 연결]');

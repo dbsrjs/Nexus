@@ -50,6 +50,32 @@ void main() {
     });
   });
 
+  group('AttachmentImage._fit — 미리보기 자리를 먼저 잡는다', () {
+    test('★ 비율을 지키면서 최대 크기 안에 넣는다', () {
+      // 자리를 먼저 잡지 않으면 이미지가 로드될 때마다 목록이 튄다.
+      final size = AttachmentImage.fit(1200, 900);
+      expect(size!.width, AttachmentImage.maxWidth);
+      expect(size.height, closeTo(AttachmentImage.maxWidth * 900 / 1200, 0.01));
+    });
+
+    test('세로가 긴 이미지는 높이에 맞춘다', () {
+      final size = AttachmentImage.fit(400, 1600);
+      expect(size!.height, AttachmentImage.maxHeight);
+      expect(size.width, closeTo(AttachmentImage.maxHeight * 400 / 1600, 0.01));
+    });
+
+    test('★ 작은 이미지를 늘리지 않는다', () {
+      final size = AttachmentImage.fit(80, 60);
+      expect(size!.width, 80);
+      expect(size.height, 60);
+    });
+
+    test('크기를 모르면 null — 로드 뒤에 자리가 정해진다', () {
+      expect(AttachmentImage.fit(null, null), isNull);
+      expect(AttachmentImage.fit(0, 100), isNull);
+    });
+  });
+
   group('formatBytes', () {
     test('1KB 미만은 바이트 그대로', () {
       expect(formatBytes(512), '512 B');

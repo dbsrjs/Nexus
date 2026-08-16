@@ -8,6 +8,7 @@ import {
 import { Prisma, SpaceMember } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { imageSize } from 'image-size';
+import sharp from 'sharp';
 import { Readable } from 'stream';
 import { ChannelsService } from '../channels/channels.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
@@ -22,6 +23,27 @@ export const MAX_ATTACHMENTS_PER_MESSAGE = 10;
 
 /** 연결되지 못한 첨부를 지우기까지의 시간. */
 export const ORPHAN_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 썸네일 긴 변의 최대 길이.
+ *
+ * 목록에서 미리보기로 쓸 크기다. 화면 폭보다 넉넉하되, 원본을 대신할 만큼
+ * 크지는 않게 잡는다 — 대신할 수 있으면 원본을 안 받게 되어 확대가 흐려진다.
+ */
+export const THUMB_MAX_EDGE = 480;
+
+/**
+ * 썸네일의 오브젝트 키. **DB 에 따로 저장하지 않고 원본 키에서 만든다.**
+ *
+ * 컬럼을 늘리지 않아 마이그레이션이 필요 없고, 나중에 규칙을 바꿔도 원본만
+ * 있으면 다시 만들 수 있다. 파생본이므로 없으면 원본으로 떨어지면 그만이다.
+ */
+export function thumbKeyFor(storageKey: string): string {
+  return `${storageKey}.thumb.webp`;
+}
+
+/** 썸네일을 만들 수 있는 형식. SVG 는 뺀다 — 래스터화가 외부 참조를 끌어온다. */
+const THUMBNAILABLE = /^image\/(jpeg|png|webp|gif|avif|tiff|bmp)$/;
 
 /**
  * 메시지에 실려 나가는 첨부 요약.
@@ -99,6 +121,10 @@ export class AttachmentsService {
     // 행 없는 파일은 아래에서 곧바로 지운다.
     await this.storage.put(key, file.buffer, file.mimetype);
 
+    // 썸네일은 **있으면 좋은 것**이다. 실패해도 업로드를 막지 않는다 —
+    // 원본이 있으면 화면은 그것으로 그릴 수 있다.
+    await this.makeThumbnail(key, file.buffer, file.mimetype, width, height);
+
     try {
       // 사용량은 첨부와 **한 트랜잭션**이다. 따로 두면 중간에 끊겼을 때
       // 실제 파일과 집계가 갈라지고, 그 차이는 지워지지 않는다.
@@ -135,16 +161,59 @@ export class AttachmentsService {
   }
 
   /**
+   * 이미지면 미리보기용 축소본을 만들어 둔다.
+   *
+   * **원본보다 작을 때만 만든다.** 이미 작은 이미지는 축소본이 더 커질 수도
+   * 있고, 그러면 받는 쪽이 손해다. 없으면 다운로드가 원본으로 떨어지므로
+   * 화면은 어느 쪽이든 그려진다.
+   *
+   * WebP 를 쓰는 이유: 투명도를 지키면서 JPEG 만큼 작다. JPEG 로 하면 투명한
+   * PNG(스크린샷이 흔하다)의 배경이 검게 눌어붙는다.
+   */
+  private async makeThumbnail(
+    key: string,
+    buffer: Buffer,
+    mime: string | undefined,
+    width: number | null,
+    height: number | null,
+  ): Promise<void> {
+    if (!mime || !THUMBNAILABLE.test(mime)) return;
+    // 긴 변이 기준보다 작으면 줄일 것이 없다.
+    if ((width ?? 0) <= THUMB_MAX_EDGE && (height ?? 0) <= THUMB_MAX_EDGE) return;
+
+    try {
+      const thumb = await sharp(buffer)
+        .resize(THUMB_MAX_EDGE, THUMB_MAX_EDGE, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 75 })
+        .toBuffer();
+      await this.storage.put(thumbKeyFor(key), thumb, 'image/webp');
+    } catch (error) {
+      // 썸네일이 없는 것과 업로드가 실패하는 것은 다르다.
+      this.logger.warn(`썸네일 생성 실패 (${key}): ${String(error)}`);
+    }
+  }
+
+  /**
    * GET /api/spaces/:spaceId/attachments/:id — 바이트를 그대로 흘려보낸다.
    *
    * **서명 URL 을 주지 않는다.** 그 주소는 가드를 지나지 않아 스페이스 밖에서도
    * 열린다. 여기서는 매 요청 채널 열람 권한을 다시 확인한다 — 비공개 채널에서
    * 빠진 사람은 그 순간부터 첨부도 못 연다.
+   *
+   * `variant: 'thumb'` 면 축소본을 준다. **없으면 원본으로 떨어진다** — 파생본은
+   * 언제든 사라질 수 있고(생성 실패 · 규칙 변경), 그때 화면이 깨지면 안 된다.
    */
   async openStream(
     attachmentId: string,
     member: SpaceMember,
-  ): Promise<{ row: AttachmentSummary; stream: Readable }> {
+    variant?: 'thumb',
+  ): Promise<{
+    row: AttachmentSummary;
+    stream: Readable;
+    mime: string | null;
+    /** 원본을 그대로 줄 때만 안다. 파생본은 길이를 따로 재지 않는다. */
+    sizeBytes: bigint | null;
+  }> {
     const row = await this.prisma.attachment.findFirst({
       where: { id: attachmentId, spaceId: member.spaceId },
       select: { ...SUMMARY_SELECT, channelId: true, storageKey: true },
@@ -157,8 +226,24 @@ export class AttachmentsService {
     // 볼 수 없는 채널이면 404 다(403 이 아니다) — 403 은 그 채널의 존재를 알린다.
     await this.channels.assertCanView(row.channelId, member);
 
-    const stream = await this.storage.get(row.storageKey);
-    return { row, stream };
+    if (variant === 'thumb') {
+      const thumbKey = thumbKeyFor(row.storageKey);
+      if (await this.storage.exists(thumbKey)) {
+        return {
+          row,
+          stream: await this.storage.get(thumbKey),
+          mime: 'image/webp',
+          sizeBytes: null,
+        };
+      }
+    }
+
+    return {
+      row,
+      stream: await this.storage.get(row.storageKey),
+      mime: row.mime,
+      sizeBytes: row.sizeBytes,
+    };
   }
 
   /**
@@ -293,7 +378,11 @@ export class AttachmentsService {
     for (const orphan of orphans) {
       // 파일을 먼저 지운다. 반대로 하면 행이 사라진 뒤 파일 삭제가 실패했을 때
       // 그 파일을 가리키는 것이 아무것도 남지 않는다.
+      //
+      // **파생본도 함께 지운다.** 썸네일은 DB 에 행이 없어, 여기서 안 지우면
+      // 아무도 가리키지 않는 파일로 영원히 남는다.
       await this.storage.delete(orphan.storageKey);
+      await this.storage.delete(thumbKeyFor(orphan.storageKey));
       await this.prisma.$transaction([
         this.prisma.attachment.delete({ where: { id: orphan.id } }),
         this.prisma.space.update({

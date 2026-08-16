@@ -16,6 +16,7 @@ import type { Response } from 'express';
 import { CurrentSpaceMember } from '../spaces/decorators/current-space-member.decorator';
 import { SpaceGuard } from '../spaces/guards/space.guard';
 import { AttachmentsService, MAX_UPLOAD_BYTES } from './attachments.service';
+import { DownloadAttachmentDto } from './dto/download-attachment.dto';
 import { ListAttachmentsDto } from './dto/list-attachments.dto';
 
 /**
@@ -67,16 +68,22 @@ export class AttachmentsController {
   @Get('attachments/:attachmentId')
   async download(
     @Param('attachmentId', new ParseUUIDPipe()) attachmentId: string,
+    @Query() query: DownloadAttachmentDto,
     @CurrentSpaceMember() member: SpaceMember,
     @Res({ passthrough: false }) res: Response,
   ): Promise<void> {
-    const { row, stream } = await this.attachments.openStream(
+    const { row, stream, mime, sizeBytes } = await this.attachments.openStream(
       attachmentId,
       member,
+      query.variant,
     );
 
-    res.setHeader('Content-Type', row.mime ?? 'application/octet-stream');
-    res.setHeader('Content-Length', row.sizeBytes.toString());
+    res.setHeader('Content-Type', mime ?? 'application/octet-stream');
+    // 파생본은 길이를 따로 재지 않는다 — 청크로 보내면 그만이고, 길이를 알려고
+    // 드라이버에 메서드를 하나 더 만들 만한 이득이 없다.
+    if (sizeBytes !== null) {
+      res.setHeader('Content-Length', sizeBytes.toString());
+    }
     res.setHeader(
       'Content-Disposition',
       `inline; filename*=UTF-8''${encodeURIComponent(row.name)}`,

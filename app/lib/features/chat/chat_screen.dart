@@ -82,6 +82,7 @@ class _ChannelHeader extends StatelessWidget {
           ] else
             const Spacer(),
           const _PinnedButton(),
+          const _FilesButton(),
           const _ConnectionDot(),
         ],
       ),
@@ -860,6 +861,24 @@ class _PinnedButton extends ConsumerWidget {
       tooltip: '고정된 메시지',
       icon: const Icon(Icons.push_pin_outlined, size: 18),
       onPressed: () => _showPinned(context, ref),
+    );
+  }
+}
+
+/// 스페이스 파일 목록으로 가는 버튼.
+///
+/// 채널이 아니라 **스페이스** 단위인 이유는 파일을 찾을 때 어느 채널에
+/// 올렸는지 기억하지 못하는 편이 흔해서다. 서버가 볼 수 있는 채널의 것만 준다.
+class _FilesButton extends ConsumerWidget {
+  const _FilesButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spaceId = ref.watch(currentSpaceIdProvider);
+    return IconButton(
+      tooltip: '파일',
+      icon: const Icon(Icons.folder_outlined, size: 18),
+      onPressed: spaceId == null ? null : () => context.push('/s/$spaceId/files'),
     );
   }
 }
