@@ -667,12 +667,11 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 - **`prisma migrate dev` 는 이 환경(비대화형)에서 거부된다.** 위 HNSW 드리프트를 감지해 확인을 물으려 하기 때문이다. `npx prisma migrate diff --from-schema-datasource ... --to-schema-datamodel ... --script` 로 SQL 을 만들어 손질한 뒤 `prisma:deploy` 로 적용한다.
 - **`adb shell input text` 는 한글을 넣지 못한다**(NullPointerException). 실기기 검증 문구는 영문으로 쓸 것.
 - **소켓 토큰 갱신 경로가 자동 검증되지 않는다.** 액세스 토큰 만료(15분)를 기다려야 재현되므로 테스트에 넣지 않았다. 실기기로 한 번 확인했다.
-- ~~drift 웹 자산을 넣고도 실제로 열어 보지 못했다~~ — **웹으로 열어 봤고, 그 덕에 진짜 버그를 잡았다.** `driftDatabase(name:)` 에 **`web:` 옵션을 준 적이 없어** 자산을 `app/web/` 에 두어도 drift 가 찾지 못했다. 로그인 직후 DB 열기가 실패해 스페이스 화면이 오류로 떨어졌다. `DriftWebOptions(sqlite3Wasm: …, driftWorker: …)` 를 넘겨 고쳤고, 워커가 로드되어 drift 가 구현을 고르는 것(`sharedIndexedDb`)까지 확인했다.
-- **REST CORS 는 검증됐다** — `http://localhost:5173` 에서 preflight 204 → `/api/me` 200 을 실제 브라우저로 확인했다. 다만 **소켓 CORS 는 아직이다**(앱이 drift 단계에서 멈춰 소켓까지 가지 못했다).
-- **웹에서 대화 화면까지는 아직 못 갔다.** 남은 장애물은 앱이 아니라 검증 환경이다 — 내장 브라우저가 **SharedWorker 안에서의 `fetch` 를 막는다**(전용 Worker 는 되는데 SharedWorker 는 모든 URL 에서 `TypeError: Failed to fetch`). drift 가 하필 `sharedIndexedDb` 구현을 고르는 바람에 DB 를 못 연다. **일반 Chrome 에서는 다를 가능성이 높으니** 사람이 한 번 확인하면 끝난다:
-  ```bash
-  cd app && flutter run -d chrome --web-port=5173 --dart-define=API_BASE=http://127.0.0.1:3000
-  ```
+- ~~drift 웹 자산을 넣고도 실제로 열어 보지 못했다~~ · ~~소켓 CORS 미검증~~ — **웹을 실제 Chrome 으로 끝까지 확인했다**(로그인 → 스페이스 → 채널 → 대화). 그 과정에서 진짜 버그를 잡았다: `driftDatabase(name:)` 에 **`web:` 옵션을 준 적이 없어** 자산을 `app/web/` 에 두어도 drift 가 찾지 못했고, 로그인 직후 DB 열기가 실패해 스페이스 화면이 오류로 떨어졌다. `DriftWebOptions` 를 넘겨 고쳤다.
+
+  확인된 것: IndexedDB 에 **`nexus v1`** 이 실제로 생성됨 · REST CORS(preflight 204 → 200) · **소켓 CORS** — 밖에서 API 로 넣은 메시지가 웹 화면을 건드리지 않았는데 실시간으로 떴다.
+
+  **다만 브라우저 자동화 도구의 내장 브라우저로는 이 검증을 할 수 없다.** 그 브라우저는 **SharedWorker 안에서의 `fetch` 를 막는데**(전용 Worker 는 되고 SharedWorker 는 모든 URL 에서 `TypeError: Failed to fetch`), drift 가 하필 `sharedIndexedDb` 구현을 고른다. 웹을 다시 확인할 일이 있으면 **실제 Chrome** 으로 할 것.
 - ~~Windows 데스크톱 빌드 불가~~ — **해결됐다.** Flutter 3.47 + VS 2026 + 개발자 모드로 빌드된다(`flutter build windows --debug` 확인). 검증 경로는 Windows 데스크톱 · Chrome · Android 에뮬레이터 셋 다 열려 있다.
 
 ---
