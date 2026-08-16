@@ -5,6 +5,7 @@ import { MentionsService } from './mentions.service';
 import { MessagesController } from './messages.controller';
 import { ChannelsModule } from '../channels/channels.module';
 import { SpacesModule } from '../spaces/spaces.module';
+import { AttachmentsModule } from '../attachments/attachments.module';
 import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
 
 /**
@@ -16,7 +17,12 @@ import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
  * ChannelsModule 과의 순환이 생기지 않는다.
  */
 @Module({
-  imports: [forwardRef(() => ChannelsModule), SpacesModule, RealtimeEmitterModule],
+  imports: [
+    forwardRef(() => ChannelsModule),
+    SpacesModule,
+    AttachmentsModule,
+    RealtimeEmitterModule,
+  ],
   controllers: [MessagesController],
   providers: [MessagesService, ReactionsService, MentionsService],
   exports: [MessagesService, ReactionsService, MentionsService],

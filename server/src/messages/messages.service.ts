@@ -14,6 +14,7 @@ import { hasAtLeast } from '../spaces/space-role';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { ReactionsService } from './reactions.service';
 import { MentionsService } from './mentions.service';
+import { AttachmentsService } from '../attachments/attachments.service';
 
 /** 메시지에 함께 실어 보내는 작성자 정보. 이메일은 내보내지 않는다. */
 const AUTHOR_SELECT = {
@@ -41,6 +42,7 @@ export class MessagesService {
     private readonly realtime: RealtimeEmitter,
     private readonly reactions: ReactionsService,
     private readonly mentions: MentionsService,
+    private readonly attachments: AttachmentsService,
   ) {}
 
   /**
@@ -74,12 +76,13 @@ export class MessagesService {
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
 
-    // 리액션 · 인용 · 멘션은 한 번에 모아 붙인다. 메시지마다 조회하면 N+1 이 된다.
+    // 리액션 · 인용 · 멘션 · 첨부는 한 번에 모아 붙인다. 메시지마다 조회하면 N+1 이 된다.
     const ids = page.map((m) => m.id);
-    const [reactions, quoted, mentions] = await Promise.all([
+    const [reactions, quoted, mentions, attachments] = await Promise.all([
       this.reactions.summarizeMany(ids, member),
       this.loadQuoted(page, member),
       this.mentions.summarizeMany(ids, member),
+      this.attachments.summarizeMany(ids, member),
     ]);
 
     return {
@@ -90,6 +93,9 @@ export class MessagesService {
           ? (quoted.get(message.quotedMessageId) ?? null)
           : null,
         mentions: mentions.get(message.id) ?? [],
+        // **소프트 삭제된 메시지의 첨부도 그대로 간다.** 본문만 가려지고 파일은
+        // 남는 것이 보관 정책이다(설계 §3).
+        attachments: attachments.get(message.id) ?? [],
       })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
     };
@@ -148,6 +154,14 @@ export class MessagesService {
   async create(channelId: string, member: SpaceMember, dto: CreateMessageDto) {
     await this.channels.assertCanSend(channelId, member);
 
+    const body = dto.body ?? '';
+    const attachmentIds = dto.attachmentIds ?? [];
+
+    // 본문도 첨부도 없으면 빈 줄 하나가 대화에 남는다.
+    if (body.trim() === '' && attachmentIds.length === 0) {
+      throw new BadRequestException('메시지 본문은 비어 있을 수 없습니다');
+    }
+
     const quotedMessageId = await this.resolveQuoted(
       channelId,
       member,
@@ -159,20 +173,21 @@ export class MessagesService {
         channelId,
         member,
         dto.parentId,
-        dto.body,
+        body,
         quotedMessageId,
+        attachmentIds,
       );
     }
 
-    // 메시지와 멘션은 **한 트랜잭션**이다. 사이에서 끊기면 멘션 없는 메시지가
-    // 남아 상대의 뱃지가 영영 안 뜬다.
+    // 메시지 · 멘션 · 첨부 연결은 **한 트랜잭션**이다. 사이에서 끊기면 멘션 없는
+    // 메시지가 남아 상대의 뱃지가 영영 안 뜨고, 첨부가 빠진 채로 전송된다.
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.message.create({
         data: {
           spaceId: member.spaceId,
           channelId,
           authorId: member.userId,
-          body: dto.body,
+          body,
           quotedMessageId,
         },
         include: { author: AUTHOR_SELECT },
@@ -181,8 +196,15 @@ export class MessagesService {
       await this.mentions.createFor(tx, {
         messageId: row.id,
         spaceId: member.spaceId,
-        body: dto.body,
+        body,
         authorId: member.userId,
+      });
+
+      await this.attachments.linkToMessage(tx, {
+        messageId: row.id,
+        channelId,
+        member,
+        attachmentIds,
       });
 
       return row;
@@ -235,9 +257,10 @@ export class MessagesService {
     message: T,
     member: SpaceMember,
   ) {
-    const [quoted, mentions] = await Promise.all([
+    const [quoted, mentions, attachments] = await Promise.all([
       this.loadQuoted([message], member),
       this.mentions.summarizeMany([message.id], member),
+      this.attachments.summarizeMany([message.id], member),
     ]);
 
     return {
@@ -247,6 +270,7 @@ export class MessagesService {
         ? (quoted.get(message.quotedMessageId) ?? null)
         : null,
       mentions: mentions.get(message.id) ?? [],
+      attachments: attachments.get(message.id) ?? [],
     };
   }
 
@@ -260,6 +284,7 @@ export class MessagesService {
     parentId: string,
     body: string,
     quotedMessageId: string | null,
+    attachmentIds: string[],
   ) {
     const parent = await this.prisma.message.findFirst({
       where: { id: parentId, spaceId: member.spaceId },
@@ -308,6 +333,14 @@ export class MessagesService {
           spaceId: member.spaceId,
           body,
           authorId: member.userId,
+        });
+
+        // 첨부도 마찬가지다 — 스레드 답글에도 파일을 붙일 수 있어야 한다.
+        await this.attachments.linkToMessage(tx, {
+          messageId: row.id,
+          channelId,
+          member,
+          attachmentIds,
         });
 
         return { created: row, updatedParent: parentRow };
@@ -360,10 +393,11 @@ export class MessagesService {
     const page = hasMore ? rows.slice(0, limit) : rows;
 
     const ids = [...page.map((m) => m.id), parent.id];
-    const [reactions, quoted, mentions] = await Promise.all([
+    const [reactions, quoted, mentions, attachments] = await Promise.all([
       this.reactions.summarizeMany(ids, member),
       this.loadQuoted([...page, parent], member),
       this.mentions.summarizeMany(ids, member),
+      this.attachments.summarizeMany(ids, member),
     ]);
 
     const decorate = <T extends { id: string; quotedMessageId: string | null }>(
@@ -375,6 +409,7 @@ export class MessagesService {
         ? (quoted.get(message.quotedMessageId) ?? null)
         : null,
       mentions: mentions.get(message.id) ?? [],
+      attachments: attachments.get(message.id) ?? [],
     });
 
     return {
@@ -526,10 +561,11 @@ export class MessagesService {
     });
 
     const ids = rows.map((m) => m.id);
-    const [reactions, quoted, mentions] = await Promise.all([
+    const [reactions, quoted, mentions, attachments] = await Promise.all([
       this.reactions.summarizeMany(ids, member),
       this.loadQuoted(rows, member),
       this.mentions.summarizeMany(ids, member),
+      this.attachments.summarizeMany(ids, member),
     ]);
 
     return rows.map((message) => ({
@@ -539,6 +575,7 @@ export class MessagesService {
         ? (quoted.get(message.quotedMessageId) ?? null)
         : null,
       mentions: mentions.get(message.id) ?? [],
+      attachments: attachments.get(message.id) ?? [],
     }));
   }
 

@@ -174,6 +174,11 @@ src/
 ├─ messages/          # 메시지 목록 · 전송 · 수정 이력 · 소프트 삭제
 │                    #   + reactions.service.ts (리액션 요약 · 멱등 추가/제거)
 │                    #   + 스레드 답글(parent_id) · 답장 인용(quoted_message_id)
+│                    #   + mentions.service.ts (<@id> 파싱 · 안 읽은 멘션 수)
+├─ storage/           # StorageDriver — 바이트를 어디에 둘지만 안다
+│                    #   URL 을 만드는 메서드가 없다: 서명 URL 은 SpaceGuard 를
+│                    #   지나지 않아 스페이스 밖에서도 열린다
+├─ attachments/       # 업로드 · 스트리밍 다운로드 · 파일 목록 · 고아 정리(24h)
 ├─ realtime/          # 소켓 게이트웨이 · 룸 계산 · 이벤트 발신
 ├─ prisma/            # PrismaModule + PrismaService
 └─ common/            # 예외 필터, 데코레이터, 공통 DTO, slug

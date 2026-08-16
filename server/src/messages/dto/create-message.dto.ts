@@ -1,10 +1,35 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
+import { MAX_ATTACHMENTS_PER_MESSAGE } from '../../attachments/attachments.service';
 
 export class CreateMessageDto {
+  /**
+   * 첨부만 보내는 경우가 있어 **본문이 없어도 된다**. 다만 본문도 첨부도 없으면
+   * 아무것도 아닌 메시지라 서비스가 400 으로 막는다 — 그 검사는 두 값을 함께
+   * 봐야 해서 DTO 에 담기지 않는다.
+   */
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: '메시지 본문은 비어 있을 수 없습니다' })
   @MaxLength(10000)
-  body!: string;
+  body?: string;
+
+  /**
+   * 먼저 올려 둔 첨부의 id. 전송과 **같은 트랜잭션**에서 연결된다.
+   *
+   * 파일을 메시지와 함께 올리지 않는 이유: 고른 즉시 올려 두어야 전송이 빠르고,
+   * 큰 파일이 올라가는 동안에도 본문을 계속 쓸 수 있다.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_ATTACHMENTS_PER_MESSAGE)
+  @IsUUID('4', { each: true })
+  attachmentIds?: string[];
 
   /**
    * 스레드 답글이면 부모 메시지 id.

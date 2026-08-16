@@ -22,6 +22,7 @@
     "check:threads": "node server/scripts/check-threads.mjs",
     "check:quotes": "node server/scripts/check-quotes.mjs",
     "check:mentions": "node server/scripts/check-mentions.mjs",
-    "check:pins": "node server/scripts/check-pins.mjs"
+    "check:pins": "node server/scripts/check-pins.mjs",
+    "check:attachments": "node server/scripts/check-attachments.mjs"
   }
 }

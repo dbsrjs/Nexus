@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './prisma/prisma.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -11,6 +12,7 @@ import { SpacesModule } from './spaces/spaces.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ChannelsModule } from './channels/channels.module';
 import { MessagesModule } from './messages/messages.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 import { RealtimeModule } from './realtime/realtime.module';
 
 /**
@@ -25,6 +27,8 @@ import { RealtimeModule } from './realtime/realtime.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // 고아 첨부 정리(24시간)를 돌리기 위한 것. 지금은 그 작업 하나뿐이다.
+    ScheduleModule.forRoot(),
     PrismaModule,
 
     AuthModule,
@@ -33,6 +37,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     CategoriesModule,
     ChannelsModule,
     MessagesModule,
+    AttachmentsModule,
     RealtimeModule,
   ],
   providers: [

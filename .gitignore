@@ -23,6 +23,10 @@ app/ios/Flutter/Flutter.framework/
 app/ios/Flutter/Flutter.podspec
 *.iml
 
+# ---- 첨부 (개발용 로컬 디스크 드라이버) ----
+# DB 와 같다 — PC 마다 따로고 git 으로 옮기지 않는다.
+server/storage/
+
 # ---- logs ----
 *.log
 npm-debug.log*
