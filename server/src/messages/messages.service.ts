@@ -45,7 +45,10 @@ export class MessagesService {
    * GET /api/spaces/:spaceId/channels/:id/messages — 최신순 커서 페이지네이션.
    *
    * `parentId IS NULL` 만 본다. 스레드 답글은 채널 타임라인에 섞이지 않는다
-   * (docs/백엔드-설계.md §3). 답글 조회는 스레드 기능과 함께 뒤 단계에서 붙인다.
+   * (docs/백엔드-설계.md §3). 답글은 `listReplies()` 로 따로 조회한다.
+   *
+   * **답장(인용)은 여기 그대로 나온다.** `quotedMessageId` 는 타임라인에서 빼는
+   * 조건이 아니다 — 스레드와 다른 축이기 때문이다.
    *
    * 삭제된 메시지는 목록에서 빼지 않고 **본문만 비워서** 내려보낸다. 빼 버리면
    * 클라이언트가 이미 렌더한 메시지를 지울 근거가 없어 화면에 남는다.

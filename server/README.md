@@ -116,6 +116,24 @@ WSL 배포판에 systemd 가 켜져 있으면(`/etc/wsl.conf` 의 `[boot] system
 | `npm run prisma:migrate` | `prisma migrate dev` |
 | `npm run prisma:deploy` | `prisma migrate deploy` |
 | `npm run seed` | `ts-node prisma/seed.ts` |
+| `npm test` | Jest 단위 테스트 (49개 — 순수 로직 · 가드 · 권한 규칙) |
+| `npm run lint` | ESLint |
+
+계약 검증은 저장소 루트에서 돌린다. **실서버 · 실DB · 실소켓**을 쓴다.
+
+| 스크립트 | 대상 |
+|---|---|
+| `npm run check:realtime -- <시드비밀번호>` | 소켓 계약 41개 |
+| `npm run check:reactions` | 리액션 24개 |
+| `npm run check:threads` | 스레드 25개 |
+| `npm run check:quotes` | 답장(인용) 17개 |
+
+뒤의 셋은 **자체 계정 · 자체 스페이스를 만들어 쓴다** — 시드 비밀번호가 필요 없고
+기존 데이터를 건드리지 않는다.
+
+> **단위 테스트로 DB 동작을 증명하려 하지 말 것.** Prisma 를 스텁으로 대체해 22개를
+> 통과시킨 코드에서 실 DB 를 붙이자마자 버그 두 개가 나왔다(BigInt 직렬화, raw SQL
+> 캐스팅). 스키마·쿼리가 걸린 변경은 반드시 `check:*` 로 확인한다.
 
 ## 프로젝트 규약 (모든 모듈 공통)
 
@@ -154,11 +172,16 @@ src/
 ├─ categories/        # 채널 그룹
 ├─ channels/          # 채널 · 가시성 규칙 · 읽음 마커
 ├─ messages/          # 메시지 목록 · 전송 · 수정 이력 · 소프트 삭제
+│                    #   + reactions.service.ts (리액션 요약 · 멱등 추가/제거)
+│                    #   + 스레드 답글(parent_id) · 답장 인용(quoted_message_id)
+├─ realtime/          # 소켓 게이트웨이 · 룸 계산 · 이벤트 발신
 ├─ prisma/            # PrismaModule + PrismaService
 └─ common/            # 예외 필터, 데코레이터, 공통 DTO, slug
 prisma/
 ├─ schema.prisma      # 전체 데이터 모델
 ├─ migrations/        # init (pgvector 확장 · HNSW 인덱스 포함)
+│                    #   ⚠ 자동 생성 SQL 을 그대로 믿지 말 것 — Prisma 가 표현하지
+│                    #     못하는 HNSW 인덱스를 드리프트로 보고 DROP 을 끼워 넣는다
 └─ seed.ts
 docker-compose.yml    # pgvector/postgres + redis + minio
 ```
