@@ -639,6 +639,68 @@ check('기간 뒤에 닫힌 것은 그래프에서 끝까지 남는다',
   afterDone.json.days[afterDone.json.days.length - 1].points === 8,
   JSON.stringify(afterDone.json.days.map((d) => d.points)));
 
+// ── 15-1. 번다운이 실제로 줄어든다 ───────────────────
+// 위 케이스는 스프린트 기간이 과거라 '지금' 닫으면 그래프 밖이었다.
+// **오늘을 품는 기간**이라야 하락을 볼 수 있다 — 이게 번다운의 본체다.
+const today = new Date();
+const from = new Date(today.getTime() - 2 * 86400000);
+const to = new Date(today.getTime() + 2 * 86400000);
+
+const live = (await api('POST', `/spaces/${spaceId}/sprints`, {
+  token: alice.token,
+  body: {
+    name: '지금 도는 스프린트',
+    startsAt: from.toISOString(),
+    endsAt: to.toISOString(),
+  },
+})).json;
+
+const liveIssues = [];
+for (const points of [2, 3]) {
+  const made = (await createIssue({ title: `번다운 ${points}점`, storyPoints: points })).json;
+  await api('PATCH', `/spaces/${spaceId}/issues/${made.id}`, {
+    token: alice.token, body: { sprintId: live.id },
+  });
+  liveIssues.push(made);
+}
+
+const before = await api('GET', `/spaces/${spaceId}/sprints/${live.id}/burndown`, {
+  token: alice.token,
+});
+const todayIndex = before.json.days.findIndex(
+  (d) => d.date.slice(0, 10) === today.toISOString().slice(0, 10),
+);
+check('오늘이 그래프 안에 있다', todayIndex >= 0, JSON.stringify(before.json.days.map((d) => d.date)));
+check('닫기 전 오늘 남은 양은 5점', before.json.days[todayIndex].points === 5,
+  JSON.stringify(before.json.days[todayIndex]));
+
+await api('PATCH', `/spaces/${spaceId}/issues/${liveIssues[0].id}`, {
+  token: alice.token, body: { status: 'done' },
+});
+
+const after = await api('GET', `/spaces/${spaceId}/sprints/${live.id}/burndown`, {
+  token: alice.token,
+});
+check('★ 2점을 닫으면 오늘부터 3점으로 떨어진다',
+  after.json.days[todayIndex].points === 3,
+  JSON.stringify(after.json.days.map((d) => d.points)));
+check('닫기 전날은 그대로 5점이다 — 과거를 바꾸지 않는다',
+  todayIndex === 0 || after.json.days[todayIndex - 1].points === 5,
+  JSON.stringify(after.json.days.map((d) => d.points)));
+check('개수 계열도 함께 줄어든다', after.json.days[todayIndex].count === 1,
+  JSON.stringify(after.json.days.map((d) => d.count)));
+
+// 되돌리면 번다운도 되돌아온다 — closedAt 이 비워지기 때문이다.
+await api('PATCH', `/spaces/${spaceId}/issues/${liveIssues[0].id}`, {
+  token: alice.token, body: { status: 'doing' },
+});
+const reopened = await api('GET', `/spaces/${spaceId}/sprints/${live.id}/burndown`, {
+  token: alice.token,
+});
+check('done 에서 빼면 번다운도 되돌아온다',
+  reopened.json.days[todayIndex].points === 5,
+  JSON.stringify(reopened.json.days.map((d) => d.points)));
+
 // ── 16. 백로그 필터 (9-3) ────────────────────────────
 const backlogOnly = await listIssues('?sprint=none&status=backlog');
 check('sprint=none 은 스프린트에 없는 것만 준다',

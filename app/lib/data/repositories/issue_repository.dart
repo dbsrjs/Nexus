@@ -150,6 +150,37 @@ class IssueRepository {
     }
   }
 
+  /// 스프린트에 넣거나 뺀다. `sprintId` 가 `null` 이면 **백로그로 돌린다** —
+  /// `sprintId` 가 비어 있는 이슈의 집합이 곧 백로그이기 때문이다.
+  Future<bool> setSprint(String spaceId, Issue issue, String? sprintId) async {
+    try {
+      final updated = await _api.update(
+        spaceId,
+        issue.id,
+        sprintId: Patch(sprintId),
+      );
+      await _db.upsertIssue(spaceId, updated);
+      return true;
+    } on ApiException {
+      return false;
+    }
+  }
+
+  /// 스토리 포인트. `null` 이면 지운다 — 안 매기는 것도 뜻이 있다.
+  Future<bool> setStoryPoints(String spaceId, Issue issue, int? points) async {
+    try {
+      final updated = await _api.update(
+        spaceId,
+        issue.id,
+        storyPoints: Patch(points),
+      );
+      await _db.upsertIssue(spaceId, updated);
+      return true;
+    } on ApiException {
+      return false;
+    }
+  }
+
   /// 소켓이 준 이슈를 캐시에 반영한다. `issue:created` 와 `issue:updated` 가
   /// 같은 일을 하므로 하나로 받는다 — 이름이 나뉘어 있어 앱은 "이 id 가
   /// 캐시에 있나"를 먼저 묻지 않아도 된다.

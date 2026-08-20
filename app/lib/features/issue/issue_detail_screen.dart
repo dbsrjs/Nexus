@@ -8,7 +8,9 @@ import '../../domain/models/issue_comment.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import 'board_controller.dart';
 import 'issue_detail_controller.dart';
+import 'issue_planning_row.dart';
 import 'label_widgets.dart';
+import 'sprint_controller.dart';
 import '../space/space_controller.dart';
 
 /// 이슈 상세. 보드 위에 덮어서 연다.
@@ -37,6 +39,9 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
     Future.microtask(() {
       if (!mounted) return;
       ref.read(currentIssueKeyProvider.notifier).set(widget.issueKey);
+      // 스프린트 선택기가 쓰는 목록. 보드를 거치지 않고 딥링크로 들어오면
+      // 캐시가 비어 있어 고를 것이 없다.
+      ref.read(sprintActionsProvider).refresh();
     });
   }
 
@@ -132,6 +137,9 @@ class _Body extends ConsumerWidget {
                     _Chip(label: '담당 ${issue.assignee!.name}'),
                 ],
               ),
+              const SizedBox(height: NexusSpacing.sp5),
+              // 스프린트와 포인트. 이 둘이 없으면 번다운이 언제나 비어 있다.
+              IssuePlanningRow(issue: issue),
               const SizedBox(height: NexusSpacing.sp5),
               _LabelRow(issue: issue),
               if (issue.originMessage != null) ...[

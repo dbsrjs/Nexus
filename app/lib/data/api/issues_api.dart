@@ -5,6 +5,19 @@ import '../../domain/models/issue_comment.dart';
 import 'api_client.dart';
 import 'api_failure.dart';
 
+/// **`null` 을 "안 보냄"과 "비움"으로 구분해야 하는 필드**에 쓴다.
+///
+/// 담당자 · 스프린트 · 스토리 포인트가 그렇다. 서버 DTO 가 `!== undefined` 로
+/// 둘을 가르는데, Dart 의 선택 인자만으로는 "안 넘김"과 "null 을 넘김"이 같은
+/// 값이 되어 **비우는 길이 아예 없어진다.**
+///
+/// 바깥이 `null` 이면 건드리지 않고, `Patch(null)` 이면 비운다.
+class Patch<T> {
+  const Patch(this.value);
+
+  final T value;
+}
+
 /// 목록 응답. `truncated` 는 컬럼별 상한(200)에 걸려 잘린 컬럼이다 —
 /// 화면이 "더 있다"를 말할 수 있어야 한다. 조용히 자르면 다 왔다고 오해한다.
 class IssuePage {
@@ -81,6 +94,8 @@ class IssuesApi {
     IssueStatus? status,
     String? title,
     IssuePriority? priority,
+    Patch<String?>? sprintId,
+    Patch<int?>? storyPoints,
   }) async {
     try {
       final res = await _client.dio.patch<Map<String, dynamic>>(
@@ -89,6 +104,8 @@ class IssuesApi {
           if (status != null) 'status': status.name,
           'title': ?title,
           if (priority != null) 'priority': priority.name,
+          if (sprintId != null) 'sprintId': sprintId.value,
+          if (storyPoints != null) 'storyPoints': storyPoints.value,
         },
       );
       return Issue.fromJson(res.data!);
