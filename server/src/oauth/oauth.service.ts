@@ -21,6 +21,13 @@ export interface ConnectionView {
   provider: OauthProvider;
   login: string;
   avatarUrl: string | null;
+  /**
+   * `oauthAccount.createdAt` 그대로다. **"처음 연결한 때"가 아니라 "마지막
+   * 으로 연결한 때"** 다 — completeGithub() 가 upsert 전에 이 사용자의
+   * 기존 github 행을 먼저 지우기 때문에(사용자당 연결 하나 규칙), 같은
+   * 계정을 다시 연결해도 매번 새 행의 create 로 떨어져 createdAt 이
+   * 갱신된다. 의도된 동작이다 — 되돌리지 말 것.
+   */
   connectedAt: Date;
 }
 
@@ -132,7 +139,12 @@ export class OauthService {
    */
   async list(userId: string): Promise<ConnectionView[]> {
     const rows = await this.prisma.oauthAccount.findMany({
-      where: { userId },
+      // provider 를 github 으로 좁힌다. schema 의 OauthProvider 에는 gitlab 도
+      // 있는데, 여기서 거르지 않으면 그런 행의(복호화된) 토큰이 아래 루프에서
+      // this.github.fetchUser() 로 넘어가 GitHub 서버에 실려 나간다 — 남의
+      // provider 토큰이 GitHub 으로 새면 안 된다. disconnect() ·
+      // githubTokenFor() 는 이미 이렇게 좁히고 있었다.
+      where: { userId, provider: OauthProvider.github },
       orderBy: { createdAt: 'asc' },
     });
 

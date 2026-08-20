@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Query } from '@nestjs/common';
+import { Controller, Get, Header, Logger, Query } from '@nestjs/common';
 import { Public } from '../common/decorators/public.decorator';
 import { OauthService } from './oauth.service';
 import { CALLBACK_FAILURE_HTML, CALLBACK_SUCCESS_HTML } from './callback-page';
@@ -14,6 +14,8 @@ import { CALLBACK_FAILURE_HTML, CALLBACK_SUCCESS_HTML } from './callback-page';
  */
 @Controller('auth/github')
 export class OauthCallbackController {
+  private readonly logger = new Logger(OauthCallbackController.name);
+
   constructor(private readonly oauth: OauthService) {}
 
   @Public()
@@ -23,7 +25,23 @@ export class OauthCallbackController {
     @Query('code') code?: string,
     @Query('state') state?: string,
   ): Promise<string> {
-    const ok = await this.oauth.completeGithub(code, state);
+    // completeGithub() 안의 verifyState · GithubOauthClient 는 던지지 않지만
+    // this.prisma.$transaction(...) 은 DB 장애(P1001 등)에서 throw 할 수
+    // 있다. 이 라우트는 @Public() 이라 브라우저가 인증 없이 바로 읽는다 —
+    // 전역 예외 필터가 HttpException 이 아닌 Error 의 message 를 그대로
+    // 응답 바디에 실어 주므로, 여기서 잡지 않으면 DB 호스트 · 포트 같은
+    // 설정 세부가 밖으로 샌다. 어떤 예외든 실패 화면으로 접고, 원인은
+    // 로그로만 남긴다 — 운영자는 알아야 하지만 브라우저는 몰라도 된다.
+    let ok: boolean;
+    try {
+      ok = await this.oauth.completeGithub(code, state);
+    } catch (err) {
+      this.logger.error(
+        `GitHub 콜백 처리 중 예외: ${(err as Error).message}`,
+        (err as Error).stack,
+      );
+      ok = false;
+    }
 
     // 실패해도 상태 코드는 200 이다. 이 응답을 읽는 것은 사람의 브라우저이고,
     // 왜 실패했는지를 나눠 알려 주면 공격자에게 힌트가 된다.
