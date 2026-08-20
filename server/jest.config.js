@@ -29,7 +29,6 @@ module.exports = {
     '/permissions/',
     '/notifications/',
     '/files/',
-    '/issues/',
     '/gitlab/',
     '/ai/',
   ],
