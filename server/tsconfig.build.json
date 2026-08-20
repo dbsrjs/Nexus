@@ -11,7 +11,8 @@
     // 새 스키마를 참조하지 못해 컴파일되지 않는다. 소스는 남겨 두고 빌드에서만
     // 뺀다. 이관하는 단계에서 해당 줄을 지우고 app.module.ts 에 다시 등록한다.
     //   7단계~ → permissions · notifications (멘션 · 알림)
-    //   9단계~ → issues, gitlab (repos 로 개명), ai
+    //   9단계~ → gitlab (repos 로 개명), ai
+    //   issues 는 9-1 에서 다시 써 편입했다
     // files 는 8-1 에서 attachments 로 **다시 썼다.** 옛 소스는 지웠다 —
     // 서명 URL 을 발급하는 코드라, 남겨 두면 되살리는 사람이 그 구멍을
     // 함께 되살린다(첨부는 언제나 서버를 통해 스트리밍한다).
@@ -19,7 +20,6 @@
     "src/realtime/redis-io.adapter.ts",
     "src/permissions/**",
     "src/notifications/**",
-    "src/issues/**",
     "src/gitlab/**",
     "src/ai/**"
   ]

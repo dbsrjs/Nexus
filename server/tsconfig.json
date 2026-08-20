@@ -30,7 +30,6 @@
     "src/realtime/redis-io.adapter.ts",
     "src/permissions/**",
     "src/notifications/**",
-    "src/issues/**",
     "src/gitlab/**",
     "src/ai/**"
   ]

@@ -13,6 +13,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { ChannelsModule } from './channels/channels.module';
 import { MessagesModule } from './messages/messages.module';
 import { AttachmentsModule } from './attachments/attachments.module';
+import { IssuesModule } from './issues/issues.module';
 import { RealtimeModule } from './realtime/realtime.module';
 
 /**
@@ -38,6 +39,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     ChannelsModule,
     MessagesModule,
     AttachmentsModule,
+    IssuesModule,
     RealtimeModule,
   ],
   providers: [
