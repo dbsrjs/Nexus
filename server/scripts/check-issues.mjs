@@ -431,7 +431,131 @@ check('부모를 지워도 자식은 남는다', orphan.status === 200, `status=
 check('자식의 parentId 는 비워진다', orphan.json?.parentId === null,
   JSON.stringify(orphan.json?.parentId));
 
-// ── 12. 컬럼 상한 ────────────────────────────────────
+// ── 12. 라벨 (9-2b) ──────────────────────────────────
+const bug = await api('POST', `/spaces/${spaceId}/labels`, {
+  token: alice.token,
+  body: { name: '버그', color: '#D47D7D' },
+});
+check('라벨 생성 201', bug.status === 201, JSON.stringify(bug.json));
+
+const dupe = await api('POST', `/spaces/${spaceId}/labels`, {
+  token: alice.token,
+  body: { name: '버그', color: '#000000' },
+});
+check('같은 이름 라벨은 409', dupe.status === 409, `status=${dupe.status}`);
+
+const badColor = await api('POST', `/spaces/${spaceId}/labels`, {
+  token: alice.token,
+  body: { name: '잘못된색', color: 'red' },
+});
+check('색 형식이 틀리면 400', badColor.status === 400, `status=${badColor.status}`);
+
+const chore = (await api('POST', `/spaces/${spaceId}/labels`, {
+  token: alice.token,
+  body: { name: '잡일', color: '#74B48F' },
+})).json;
+
+const guestLabel = await api('POST', `/spaces/${spaceId}/labels`, {
+  token: guest.token, body: { name: 'guest 라벨', color: '#111111' },
+});
+check('guest 라벨 생성 거부', guestLabel.status === 403, `status=${guestLabel.status}`);
+
+const labeled = (await createIssue({ title: '라벨이 붙을 이슈' })).json;
+const setLabels = await api('PUT', `/spaces/${spaceId}/issues/${labeled.id}/labels`, {
+  token: alice.token,
+  body: { labelIds: [bug.json.id, chore.id] },
+});
+check('라벨 두 개를 붙인다', setLabels.status === 200 && setLabels.json.length === 2,
+  JSON.stringify(setLabels.json?.length));
+
+const withLabels = await api('GET', `/spaces/${spaceId}/issues/${labeled.id}`, {
+  token: alice.token,
+});
+check('이슈 응답에 라벨이 실린다', withLabels.json?.labels?.length === 2,
+  JSON.stringify(withLabels.json?.labels?.map((l) => l.name)));
+
+// 통째 교체라 멱등하다 — 같은 요청을 다시 보내도 개수가 늘지 않는다.
+await api('PUT', `/spaces/${spaceId}/issues/${labeled.id}/labels`, {
+  token: alice.token, body: { labelIds: [bug.json.id, chore.id] },
+});
+check('같은 라벨을 다시 붙여도 늘지 않는다',
+  (await api('GET', `/spaces/${spaceId}/issues/${labeled.id}`, { token: alice.token }))
+    .json.labels.length === 2);
+
+const replaced = await api('PUT', `/spaces/${spaceId}/issues/${labeled.id}/labels`, {
+  token: alice.token, body: { labelIds: [chore.id] },
+});
+check('통째 교체라 빠진 것은 떨어진다',
+  replaced.json.length === 1 && replaced.json[0].name === '잡일',
+  JSON.stringify(replaced.json?.map((l) => l.name)));
+
+const foreignLabel = await api('PUT', `/spaces/${spaceId}/issues/${labeled.id}/labels`, {
+  token: alice.token, body: { labelIds: [crypto.randomUUID()] },
+});
+check('없는 라벨 id 는 404 — 조용히 버리지 않는다', foreignLabel.status === 404,
+  `status=${foreignLabel.status}`);
+
+const labelDeleteByMember = await api('DELETE', `/spaces/${spaceId}/labels/${chore.id}`, {
+  token: guest.token,
+});
+check('guest 라벨 삭제 거부', labelDeleteByMember.status === 403,
+  `status=${labelDeleteByMember.status}`);
+
+await api('DELETE', `/spaces/${spaceId}/labels/${chore.id}`, { token: alice.token });
+check('라벨을 지우면 이슈에서도 떨어진다',
+  (await api('GET', `/spaces/${spaceId}/issues/${labeled.id}`, { token: alice.token }))
+    .json.labels.length === 0);
+
+// ── 13. 대화 → 이슈 (9-2b) ───────────────────────────
+const channels = await api('GET', `/spaces/${spaceId}/channels`, { token: alice.token });
+const channel = channels.json[0];
+const source = await api('POST', `/spaces/${spaceId}/channels/${channel.id}/messages`, {
+  token: alice.token,
+  body: { body: '이 논의로 이슈를 만든다' },
+});
+
+const fromMessage = await createIssue({
+  title: '대화에서 만든 이슈',
+  originMessageId: source.json.id,
+});
+check('대화 → 이슈 생성 201', fromMessage.status === 201, `status=${fromMessage.status}`);
+check('원문 요약이 실린다',
+  fromMessage.json?.originMessage?.body === '이 논의로 이슈를 만든다' &&
+  fromMessage.json?.originMessage?.channelId === channel.id,
+  JSON.stringify(fromMessage.json?.originMessage));
+
+// 소프트 삭제된 원문은 링크만 남고 본문은 빠진다.
+await api('DELETE', `/spaces/${spaceId}/messages/${source.json.id}`, { token: alice.token });
+const afterDelete = await api('GET', `/spaces/${spaceId}/issues/${fromMessage.json.id}`, {
+  token: alice.token,
+});
+check('원문이 지워져도 링크는 남는다', afterDelete.json?.originMessage?.id === source.json.id);
+check('지워진 원문의 본문은 싣지 않는다',
+  afterDelete.json?.originMessage?.body === null &&
+  afterDelete.json?.originMessage?.deleted === true,
+  JSON.stringify(afterDelete.json?.originMessage));
+
+// 비공개 채널의 메시지는 걸 수 없다 — 못 보는 대화가 이슈로 샌다.
+const priv = await api('POST', `/spaces/${spaceId}/channels`, {
+  token: alice.token,
+  body: { name: `secret${stamp}`, isPrivate: true },
+});
+const secret = await api('POST', `/spaces/${spaceId}/channels/${priv.json.id}/messages`, {
+  token: alice.token, body: { body: '비공개 대화' },
+});
+const leak = await api('POST', `/spaces/${spaceId}/issues`, {
+  token: guest.token,
+  body: { title: '샐 뻔한 이슈', originMessageId: secret.json.id },
+});
+check('비공개 채널 메시지는 비참여자가 걸 수 없다', leak.status === 403 || leak.status === 404,
+  `status=${leak.status}`);
+
+const foreignOrigin = await createIssue({
+  title: '남의 메시지', originMessageId: crypto.randomUUID(),
+});
+check('없는 메시지 id 는 404', foreignOrigin.status === 404, `status=${foreignOrigin.status}`);
+
+// ── 14. 컬럼 상한 ────────────────────────────────────
 // 채번이 스페이스 행을 잠그므로 200건을 한꺼번에 던지면 잠금 대기로 느려진다.
 // 20건씩 끊어 보낸다.
 const already = (await listIssues('?status=backlog')).json.issues.length;

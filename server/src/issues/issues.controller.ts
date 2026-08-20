@@ -24,11 +24,13 @@ import { SpaceRoleGuard } from '../spaces/guards/space-role.guard';
 import { MinRole } from '../spaces/decorators/min-role.decorator';
 import { IssuesService } from './issues.service';
 import { IssueCommentsService } from './issue-comments.service';
+import { IssueLabelsService } from './issue-labels.service';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { ListIssuesDto } from './dto/list-issues.dto';
 import { MoveIssueDto } from './dto/move-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { CreateIssueCommentDto } from './dto/create-comment.dto';
+import { CreateIssueLabelDto, SetIssueLabelsDto } from './dto/label.dto';
 
 /**
  * 이슈 보드 (docs/백엔드-설계.md §4).
@@ -42,6 +44,7 @@ export class IssuesController {
   constructor(
     private readonly issues: IssuesService,
     private readonly comments: IssueCommentsService,
+    private readonly labels: IssueLabelsService,
   ) {}
 
   @Get()
@@ -114,6 +117,20 @@ export class IssuesController {
     @Param('issueId', new ParseUUIDPipe()) issueId: string,
   ) {
     return this.comments.list(spaceId, issueId);
+  }
+
+  /**
+   * 이슈에 붙은 라벨을 **통째로 교체**한다. 화면이 "지금 선택된 것"을 그대로
+   * 보내면 되어, 클라이언트가 차집합을 계산할 일이 없다.
+   */
+  @Put(':issueId/labels')
+  @MinRole('member')
+  setLabels(
+    @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
+    @Param('issueId', new ParseUUIDPipe()) issueId: string,
+    @Body() dto: SetIssueLabelsDto,
+  ) {
+    return this.labels.setForIssue(spaceId, issueId, dto);
   }
 
   @Post(':issueId/comments')

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { IssuesService } from './issues.service';
 import { IssueCommentsService } from './issue-comments.service';
+import { IssueLabelsService } from './issue-labels.service';
+import { IssueLabelsController } from './issue-labels.controller';
 import { IssuesController } from './issues.controller';
 import { SpacesModule } from '../spaces/spaces.module';
 import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
@@ -13,8 +15,8 @@ import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
  */
 @Module({
   imports: [SpacesModule, RealtimeEmitterModule],
-  controllers: [IssuesController],
-  providers: [IssuesService, IssueCommentsService],
-  exports: [IssuesService, IssueCommentsService],
+  controllers: [IssuesController, IssueLabelsController],
+  providers: [IssuesService, IssueCommentsService, IssueLabelsService],
+  exports: [IssuesService, IssueCommentsService, IssueLabelsService],
 })
 export class IssuesModule {}

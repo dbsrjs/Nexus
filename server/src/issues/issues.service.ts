@@ -19,6 +19,18 @@ export const COLUMN_LIMIT = 200;
 
 export const ISSUE_INCLUDE = {
   assignee: { select: { id: true, name: true, avatarUrl: true } },
+  labelLinks: { select: { label: true } },
+  // 대화 → 이슈의 역방향 링크. **요약만 싣는다** — 원문 전체를 실으면
+  // 그 메시지의 인용·첨부가 딸려 와 응답이 끝없이 깊어진다(7-3 과 같은 판단).
+  originMessage: {
+    select: {
+      id: true,
+      channelId: true,
+      body: true,
+      deletedAt: true,
+      author: { select: { id: true, name: true } },
+    },
+  },
 } satisfies Prisma.IssueInclude;
 
 export type IssueRow = Prisma.IssueGetPayload<{ include: typeof ISSUE_INCLUDE }>;
@@ -28,7 +40,24 @@ export type IssueRow = Prisma.IssueGetPayload<{ include: typeof ISSUE_INCLUDE }>
  * 앱은 정렬에만 쓰고 산술을 하지 않는다.
  */
 export function toView(row: IssueRow) {
-  return { ...row, position: row.position.toString() };
+  const { labelLinks, originMessage, ...rest } = row;
+
+  return {
+    ...rest,
+    position: row.position.toString(),
+    labels: labelLinks.map((link) => link.label),
+    // 삭제된 메시지에서 만들어진 이슈도 링크는 남긴다 — 이슈의 맥락은 원문이
+    // 사라져도 필요하다. 다만 본문은 싣지 않는다(소프트 삭제의 뜻이 없어진다).
+    originMessage: originMessage
+      ? {
+          id: originMessage.id,
+          channelId: originMessage.channelId,
+          body: originMessage.deletedAt ? null : originMessage.body,
+          authorName: originMessage.author.name,
+          deleted: originMessage.deletedAt !== null,
+        }
+      : null,
+  };
 }
 
 export type IssueView = ReturnType<typeof toView>;
@@ -104,6 +133,9 @@ export class IssuesService {
     dto: CreateIssueDto,
   ): Promise<IssueView> {
     if (dto.parentId) await this.requireEpicCandidate(spaceId, dto.parentId);
+    if (dto.originMessageId) {
+      await this.requireVisibleMessage(spaceId, reporterId, dto.originMessageId);
+    }
 
     const status = dto.status ?? IssueStatus.backlog;
 
@@ -135,6 +167,7 @@ export class IssuesService {
           parentId: dto.parentId ?? null,
           storyPoints: dto.storyPoints ?? null,
           reporterId,
+          originMessageId: dto.originMessageId ?? null,
           position: positionBetween(null, top?.position ?? null),
         },
         include: ISSUE_INCLUDE,
@@ -254,6 +287,33 @@ export class IssuesService {
     const view = toView(updated);
     this.realtime.toSpace(spaceId, 'issue:updated', view);
     return view;
+  }
+
+  /**
+   * 대화 → 이슈로 걸 메시지가 **내가 볼 수 있는 것**인지 확인한다.
+   *
+   * 스페이스만 맞추면 부족하다 — 비공개 채널의 메시지를 걸면 그 채널에 없는
+   * 사람이 이슈를 통해 원문을 보게 된다. 채널 가시성 규칙을 그대로 태운다.
+   */
+  private async requireVisibleMessage(
+    spaceId: string,
+    userId: string,
+    messageId: string,
+  ) {
+    const message = await this.prisma.message.findFirst({
+      where: {
+        id: messageId,
+        spaceId,
+        channel: {
+          OR: [
+            { isPrivate: false },
+            { members: { some: { userId } } },
+          ],
+        },
+      },
+      select: { id: true },
+    });
+    if (!message) throw new NotFoundException('메시지를 찾을 수 없습니다');
   }
 
   /** 에픽 → 스토리는 한 단계만이다. 부모가 이미 자식이면 거부한다. */

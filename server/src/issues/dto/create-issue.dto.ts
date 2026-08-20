@@ -50,4 +50,12 @@ export class CreateIssueDto {
   @Min(0)
   @Max(100)
   storyPoints?: number;
+
+  /**
+   * 대화 → 이슈의 역방향 링크. **내가 볼 수 있는 채널의 메시지**여야 한다 —
+   * 아니면 못 보는 대화가 이슈의 맥락으로 샌다.
+   */
+  @IsOptional()
+  @IsUUID()
+  originMessageId?: string;
 }
