@@ -60,7 +60,7 @@ export class OauthService {
    */
   async completeGithub(code: string | undefined, state: string | undefined): Promise<boolean> {
     const cfg = resolveGithubOauth(this.config);
-    const key = resolveOauthTokenKey(this.config);
+    const key = this.tokenKeyOrNull();
     if (!cfg || !key || !code) return false;
 
     const userId = verifyState(state, this.stateSecret);
@@ -72,28 +72,47 @@ export class OauthService {
     const user = await this.github.fetchUser(cfg, token.accessToken);
     if (!user) return false;
 
-    // 같은 GitHub 계정을 다시 연결하면 갈아 끼운다. providerUserId 가
-    // 유니크라 다른 Nexus 계정이 같은 GitHub 을 잡고 있으면 그쪽에서 옮겨 온다.
-    await this.prisma.oauthAccount.upsert({
-      where: {
-        provider_providerUserId: {
+    // 사용자당 GitHub 연결은 하나로 못 박는다. `@@unique([provider,
+    // providerUserId])` 만으로는 같은 사용자가 계정 A 를 붙였다가 계정 B 로
+    // 다시 붙이는 경우를 막지 못한다 — upsert 의 where 가 GitHub 계정
+    // 기준이라 행이 둘 남고, githubTokenFor() 의 findFirst 가 어느 행을
+    // 줄지는 DB 가 정하게 된다(10-2b 의 저장소 서비스가 엉뚱한 계정 토큰으로
+    // GitHub 을 부를 위험). 그래서 upsert 전에 이 사용자의 기존 github 행을
+    // 먼저 지운다.
+    //
+    // 걷어내기와 upsert 는 **한 트랜잭션**이다 — 사이에서 끊기면 사용자는
+    // 연결을 잃고도 그 사실을 모른다.
+    //
+    // 조건은 `{ userId, provider: 'github' }` 뿐이다. 지금 붙이려는 그
+    // GitHub 계정이 이미 남의 것이면(다른 사용자가 providerUserId 를 잡고
+    // 있으면) 그 행은 이 delete 대상이 아니다 — 그 행을 가져오는 것은
+    // 아래 upsert 의 `update: { userId }` 가 담당하는 기존 동작이고, 그대로
+    // 둔다.
+    await this.prisma.$transaction([
+      this.prisma.oauthAccount.deleteMany({
+        where: { userId, provider: OauthProvider.github },
+      }),
+      this.prisma.oauthAccount.upsert({
+        where: {
+          provider_providerUserId: {
+            provider: OauthProvider.github,
+            providerUserId: String(user.id),
+          },
+        },
+        create: {
+          userId,
           provider: OauthProvider.github,
           providerUserId: String(user.id),
+          accessToken: encryptToken(token.accessToken, key),
+          scope: token.scope,
         },
-      },
-      create: {
-        userId,
-        provider: OauthProvider.github,
-        providerUserId: String(user.id),
-        accessToken: encryptToken(token.accessToken, key),
-        scope: token.scope,
-      },
-      update: {
-        userId,
-        accessToken: encryptToken(token.accessToken, key),
-        scope: token.scope,
-      },
-    });
+        update: {
+          userId,
+          accessToken: encryptToken(token.accessToken, key),
+          scope: token.scope,
+        },
+      }),
+    ]);
 
     this.realtime.toUser(userId, 'oauth:connected', {
       provider: 'github',
@@ -118,7 +137,7 @@ export class OauthService {
     });
 
     const cfg = resolveGithubOauth(this.config);
-    const key = resolveOauthTokenKey(this.config);
+    const key = this.tokenKeyOrNull();
     if (!cfg || !key) return [];
 
     const views: ConnectionView[] = [];
@@ -152,7 +171,7 @@ export class OauthService {
 
   /** 서버 안에서만 쓴다. 10-2b 의 저장소 서비스가 이것으로 GitHub 을 부른다. */
   async githubTokenFor(userId: string): Promise<string | null> {
-    const key = resolveOauthTokenKey(this.config);
+    const key = this.tokenKeyOrNull();
     if (!key) return null;
 
     const row = await this.prisma.oauthAccount.findFirst({
@@ -165,7 +184,7 @@ export class OauthService {
 
   private requireConfig(): GithubOauthConfig {
     const cfg = resolveGithubOauth(this.config);
-    const key = resolveOauthTokenKey(this.config);
+    const key = this.tokenKeyOrNull();
 
     if (!cfg || !key) {
       throw new ServiceUnavailableException(
@@ -173,5 +192,28 @@ export class OauthService {
       );
     }
     return cfg;
+  }
+
+  /**
+   * `OAUTH_TOKEN_KEY` 해석을 감싼다. `resolveOauthTokenKey()` 는 키가
+   * **없으면** `null` 을, 길이가 **틀리면** throw 한다 — "안 쓴다"와
+   * "설정 실수"를 가르기 위해서다(Task 1 의 의도). 그런데 그 Error 의
+   * message 에는 지금 몇 바이트인지까지 들어 있고, 전역 예외 필터는
+   * `HttpException` 이 아닌 Error 를 그대로 응답 바디에 싣는다 — 콜백은
+   * `@Public()` 이라 **인증 없이 누구나** 그 세부를 받아 볼 수 있게 된다.
+   *
+   * 여기서 throw 를 `null` 로 접어 호출부(완결 실패 · 목록 누락 · 503)가
+   * 다시 던지지 않게 하고, 대신 서버 로그에는 남긴다 — 설정 실수가 조용히
+   * 묻히면 안 되는 것은 운영자 쪽 사정이지 요청자에게 알려 줄 일이 아니다.
+   */
+  private tokenKeyOrNull(): Buffer | null {
+    try {
+      return resolveOauthTokenKey(this.config);
+    } catch (err) {
+      this.logger.warn(
+        `OAUTH_TOKEN_KEY 설정이 잘못됐습니다: ${(err as Error).message}`,
+      );
+      return null;
+    }
   }
 }
