@@ -1,48 +1,53 @@
-import { Type } from 'class-transformer';
+import { IssuePriority, IssueStatus } from '@prisma/client';
 import {
   IsEnum,
-  IsNotEmpty,
+  IsInt,
   IsOptional,
   IsString,
+  IsUUID,
+  Max,
   MaxLength,
-  ValidateIf,
+  Min,
+  MinLength,
 } from 'class-validator';
-import { IssuePriority, IssueStatus } from '@prisma/client';
 
-/**
- * Body for POST /api/issues. `key` is optional — the native provider
- * auto-generates a sequential key (e.g. ISSUE-1) when omitted.
- */
 export class CreateIssueDto {
-  @IsOptional()
   @IsString()
-  @MaxLength(40)
-  key?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(300)
+  @MinLength(1)
+  @MaxLength(200)
   title!: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(20000)
   description?: string;
 
+  /** 비우면 backlog. */
   @IsOptional()
   @IsEnum(IssueStatus)
   status?: IssueStatus;
 
+  /** 비우면 mid. */
   @IsOptional()
   @IsEnum(IssuePriority)
   priority?: IssuePriority;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(40)
-  label?: string;
+  @IsUUID()
+  assigneeId?: string;
 
   @IsOptional()
-  @ValidateIf((_, value) => value !== null)
-  @IsString()
-  assigneeId?: string | null;
+  @IsUUID()
+  sprintId?: string;
+
+  /** 에픽. 한 단계만 허용한다 — 에픽의 에픽은 400 이다. */
+  @IsOptional()
+  @IsUUID()
+  parentId?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  storyPoints?: number;
 }
