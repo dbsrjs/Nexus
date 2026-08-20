@@ -143,6 +143,7 @@ model User {
   mentions           Mention[]
   attachments        Attachment[]
   assignedIssues     Issue[]         @relation("IssueAssignee")
+  reportedIssues     Issue[]         @relation("IssueReporter")
   issueComments      IssueComment[]
   notifications      Notification[]
   aiRuns             AiRun[]
@@ -211,6 +212,11 @@ model Space {
   storageUsedBytes  BigInt  @default(0) @map("storage_used_bytes")
   /// null 이면 무제한. Phase 0·1의 기본값이며, null 인 동안 쿼터 검사 경로를 타지 않는다.
   storageQuotaBytes BigInt? @map("storage_quota_bytes")
+
+  /// 이슈 키(NEXUS-138)의 연번. 생성 트랜잭션에서 UPDATE ... RETURNING 으로
+  /// 원자적으로 올린다. count() 로 세면 동시 생성이 같은 키를 받고, 이슈를
+  /// 지우면 번호가 되돌아간다 — 연번은 세는 것이 아니라 발급하는 것이다.
+  issueSeq Int @default(0) @map("issue_seq")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -527,6 +533,9 @@ model Issue {
   status      IssueStatus   @default(backlog)
   priority    IssuePriority @default(mid)
   assigneeId  String?       @map("assignee_id")
+  /// 이슈를 만든 사람. 담당자(assigneeId)와 다르다. 저장소 연동이 밀어 넣는
+  /// 이슈에는 이 스페이스의 작성자가 없어 null 을 허용한다.
+  reporterId  String?       @map("reporter_id")
   sprintId    String?       @map("sprint_id")
   /// 에픽 → 스토리 1단계만. 임의 깊이 트리는 만들지 않는다 (설계 §3).
   parentId    String?       @map("parent_id")
@@ -544,6 +553,7 @@ model Issue {
 
   space         Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   assignee      User?            @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter      User?            @relation("IssueReporter", fields: [reporterId], references: [id], onDelete: SetNull)
   sprint        Sprint?          @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   parent        Issue?           @relation("IssueEpic", fields: [parentId], references: [id], onDelete: SetNull)
   children      Issue[]          @relation("IssueEpic")
