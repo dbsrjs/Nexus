@@ -3,28 +3,44 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../domain/models/issue.dart';
+import '../../domain/models/message.dart';
 import 'board_controller.dart';
 
 /// 새 이슈를 만드는 시트.
 ///
 /// 만들면 **그 컬럼 맨 위**에 놓인다(서버가 정한다). 방금 만든 것이 보이지
 /// 않으면 만든 사람은 실패했다고 믿는다.
-Future<void> showNewIssueSheet(BuildContext context) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
-  builder: (_) => const _NewIssueSheet(),
-);
+/// `fromMessage` 를 주면 **대화 → 이슈**다. 제목을 원문에서 미리 채우고
+/// 원문 링크를 함께 보낸다 — 이슈에서 그 대화로 돌아올 수 있어야 한다.
+Future<void> showNewIssueSheet(BuildContext context, {Message? fromMessage}) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _NewIssueSheet(fromMessage: fromMessage),
+    );
 
 class _NewIssueSheet extends ConsumerStatefulWidget {
-  const _NewIssueSheet();
+  const _NewIssueSheet({this.fromMessage});
+
+  final Message? fromMessage;
 
   @override
   ConsumerState<_NewIssueSheet> createState() => _NewIssueSheetState();
 }
 
 class _NewIssueSheetState extends ConsumerState<_NewIssueSheet> {
-  final _title = TextEditingController();
+  late final _title = TextEditingController(text: _titleFromMessage());
   final _description = TextEditingController();
+
+  /// 원문의 첫 줄을 제목으로 쓴다. 긴 글을 통째로 제목에 넣으면 카드가
+  /// 읽히지 않으므로 자른다 — 전문은 원문 링크를 눌러 보면 된다.
+  String _titleFromMessage() {
+    final body = widget.fromMessage?.body.trim();
+    if (body == null || body.isEmpty) return '';
+    final firstLine = body.split('\n').first.trim();
+    return firstLine.length <= 80 ? firstLine : '${firstLine.substring(0, 79)}…';
+  }
+
   IssueStatus _status = IssueStatus.backlog;
   IssuePriority _priority = IssuePriority.mid;
   bool _sending = false;
@@ -51,6 +67,7 @@ class _NewIssueSheetState extends ConsumerState<_NewIssueSheet> {
           description: _description.text.trim(),
           status: _status,
           priority: _priority,
+          originMessageId: widget.fromMessage?.id,
         );
 
     if (!mounted) return;
@@ -79,7 +96,10 @@ class _NewIssueSheetState extends ConsumerState<_NewIssueSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('새 이슈', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            widget.fromMessage == null ? '새 이슈' : '대화에서 이슈 만들기',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: NexusSpacing.sp5),
           TextField(
             controller: _title,

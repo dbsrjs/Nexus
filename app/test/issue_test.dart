@@ -92,6 +92,75 @@ void main() {
     expect(rows.map((r) => r.id), ['a']);
   });
 
+  test('라벨이 캐시를 왕복한다 — JSON 한 칸에 접어 둔다', () async {
+    await db.replaceIssues('s1', [
+      issue('a').copyWith(
+        labels: const [
+          IssueLabel(id: 'l1', name: '버그', color: '#d47d7d'),
+          IssueLabel(id: 'l2', name: '잡일', color: '#74b48f'),
+        ],
+      ),
+    ]);
+
+    final rows = await db.watchIssues('s1').first;
+
+    expect(rows.single.labels.map((l) => l.name), ['버그', '잡일']);
+    expect(rows.single.labels.first.color, '#d47d7d');
+  });
+
+  test('라벨이 없으면 빈 목록이다 — null 이 아니다', () async {
+    await db.replaceIssues('s1', [issue('a')]);
+
+    final rows = await db.watchIssues('s1').first;
+
+    expect(rows.single.labels, isEmpty);
+  });
+
+  test('대화 → 이슈의 원문 요약이 캐시를 왕복한다', () async {
+    await db.replaceIssues('s1', [
+      issue('a').copyWith(
+        originMessage: const IssueOrigin(
+          id: 'm1',
+          channelId: 'c1',
+          body: '이 논의로 이슈를 만든다',
+          authorName: '나',
+        ),
+      ),
+    ]);
+
+    final rows = await db.watchIssues('s1').first;
+
+    expect(rows.single.originMessage?.channelId, 'c1');
+    expect(rows.single.originMessage?.deleted, isFalse);
+  });
+
+  test('지워진 원문은 본문 없이 링크만 남는다', () async {
+    await db.replaceIssues('s1', [
+      issue('a').copyWith(
+        originMessage: const IssueOrigin(
+          id: 'm1',
+          channelId: 'c1',
+          authorName: '나',
+          deleted: true,
+        ),
+      ),
+    ]);
+
+    final rows = await db.watchIssues('s1').first;
+
+    expect(rows.single.originMessage?.id, 'm1');
+    expect(rows.single.originMessage?.body, isNull);
+    expect(rows.single.originMessage?.deleted, isTrue);
+  });
+
+  test('보드에서 만든 이슈는 원문이 없다', () async {
+    await db.replaceIssues('s1', [issue('a')]);
+
+    final rows = await db.watchIssues('s1').first;
+
+    expect(rows.single.originMessage, isNull);
+  });
+
   test('deleteIssue 는 그 이슈만 지운다', () async {
     await db.replaceIssues('s1', [issue('a'), issue('b')]);
     await db.deleteIssue('a');

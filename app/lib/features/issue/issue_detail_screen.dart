@@ -8,6 +8,8 @@ import '../../domain/models/issue_comment.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import 'board_controller.dart';
 import 'issue_detail_controller.dart';
+import 'label_widgets.dart';
+import '../space/space_controller.dart';
 
 /// 이슈 상세. 보드 위에 덮어서 연다.
 ///
@@ -130,6 +132,12 @@ class _Body extends ConsumerWidget {
                     _Chip(label: '담당 ${issue.assignee!.name}'),
                 ],
               ),
+              const SizedBox(height: NexusSpacing.sp5),
+              _LabelRow(issue: issue),
+              if (issue.originMessage != null) ...[
+                const SizedBox(height: NexusSpacing.sp5),
+                _OriginCard(origin: issue.originMessage!),
+              ],
               if (issue.description != null &&
                   issue.description!.trim().isNotEmpty) ...[
                 const SizedBox(height: NexusSpacing.sp6),
@@ -163,6 +171,83 @@ class _Body extends ConsumerWidget {
         ),
         _CommentComposer(issueId: issue.id),
       ],
+    );
+  }
+}
+
+/// 라벨 줄. 눌러서 고른다 — 통째 교체라 "지금 선택된 것"만 보내면 된다.
+class _LabelRow extends ConsumerWidget {
+  const _LabelRow({required this.issue});
+
+  final Issue issue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Wrap(
+      spacing: NexusSpacing.sp4,
+      runSpacing: NexusSpacing.sp4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (final label in issue.labels) LabelChip(label: label),
+        ActionChip(
+          avatar: const Icon(Icons.label_outline, size: 16),
+          label: Text(issue.labels.isEmpty ? '라벨 붙이기' : '라벨 고치기'),
+          onPressed: () => showLabelPicker(context, issue),
+        ),
+      ],
+    );
+  }
+}
+
+/// 이 이슈가 나온 대화. 눌러서 원문으로 돌아간다.
+///
+/// **원문이 지워져도 링크는 남는다** — 이슈의 맥락은 원문이 사라져도
+/// 필요하다. 다만 본문은 서버가 싣지 않는다.
+class _OriginCard extends ConsumerWidget {
+  const _OriginCard({required this.origin});
+
+  final IssueOrigin origin;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final spaceId = ref.watch(currentSpaceIdProvider);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(NexusRadius.md),
+      onTap: spaceId == null
+          ? null
+          : () => context.push('/s/$spaceId/c/${origin.channelId}'),
+      child: Container(
+        padding: const EdgeInsets.all(NexusSpacing.sp5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(NexusRadius.md),
+          border: Border.all(color: theme.dividerColor),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.forum_outlined, size: 16),
+            const SizedBox(width: NexusSpacing.sp4),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('이 대화에서 만들어졌습니다', style: theme.textTheme.labelSmall),
+                  const SizedBox(height: NexusSpacing.sp1),
+                  Text(
+                    origin.deleted
+                        ? '${origin.authorName} · 지워진 메시지'
+                        : '${origin.authorName} · ${origin.body ?? ''}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

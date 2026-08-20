@@ -54,6 +54,40 @@ class _ReactionsJson extends TypeConverter<List<MessageReaction>, String> {
       jsonEncode([for (final r in value) r.toJson()]);
 }
 
+/// 이슈 라벨. 메시지의 리액션과 같은 방식으로 JSON 한 칸에 접어 둔다 —
+/// 라벨은 이슈와 함께만 읽히므로 별도 캐시 테이블을 둘 값어치가 없다.
+class _LabelsJson extends TypeConverter<List<IssueLabel>, String> {
+  const _LabelsJson();
+
+  @override
+  List<IssueLabel> fromSql(String fromDb) {
+    final decoded = jsonDecode(fromDb) as List<dynamic>;
+    return decoded
+        .cast<Map<String, dynamic>>()
+        .map(IssueLabel.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  String toSql(List<IssueLabel> value) =>
+      jsonEncode([for (final l in value) l.toJson()]);
+}
+
+/// 대화 → 이슈의 원문 요약.
+class _OriginJson extends TypeConverter<IssueOrigin?, String?> {
+  const _OriginJson();
+
+  @override
+  IssueOrigin? fromSql(String? fromDb) {
+    if (fromDb == null) return null;
+    return IssueOrigin.fromJson(jsonDecode(fromDb) as Map<String, dynamic>);
+  }
+
+  @override
+  String? toSql(IssueOrigin? value) =>
+      value == null ? null : jsonEncode(value.toJson());
+}
+
 /// 인용 요약을 JSON 한 칸에 담는다. 리액션과 같은 이유다 —
 /// 정렬·필터 대상이 아니고 서버가 준 값으로 통째로 갈아 끼운다.
 class _QuotedJson extends TypeConverter<QuotedMessage?, String> {
@@ -324,6 +358,10 @@ class CachedIssues extends Table {
   /// 알파벳순(backlog · doing · done · review)이 되어 보드가 뒤섞인다.
   IntColumn get statusRank => integer()();
 
+  TextColumn get labels =>
+      text().map(const _LabelsJson()).withDefault(const Constant('[]'))();
+  TextColumn get originMessage => text().map(const _OriginJson()).nullable()();
+
   IntColumn get closedAt => integer().map(const _UtcMicros()).nullable()();
   IntColumn get createdAt => integer().map(const _UtcMicros())();
   IntColumn get updatedAt => integer().map(const _UtcMicros())();
@@ -364,7 +402,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus', web: _webOptions));
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -812,6 +850,8 @@ CachedIssuesCompanion _issueRow(String spaceId, Issue i) =>
       storyPoints: Value(i.storyPoints),
       position: i.position,
       sortKey: double.tryParse(i.position) ?? 0,
+      labels: Value(i.labels),
+      originMessage: Value(i.originMessage),
       closedAt: Value(i.closedAt),
       createdAt: i.createdAt,
       updatedAt: i.updatedAt,

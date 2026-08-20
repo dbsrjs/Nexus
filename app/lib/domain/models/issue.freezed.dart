@@ -13,6 +13,550 @@ part of 'issue.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
+mixin _$IssueLabel {
+
+ String get id; String get name; String get color;
+/// Create a copy of IssueLabel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$IssueLabelCopyWith<IssueLabel> get copyWith => _$IssueLabelCopyWithImpl<IssueLabel>(this as IssueLabel, _$identity);
+
+  /// Serializes this IssueLabel to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is IssueLabel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.color, color) || other.color == color));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,name,color);
+
+@override
+String toString() {
+  return 'IssueLabel(id: $id, name: $name, color: $color)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $IssueLabelCopyWith<$Res>  {
+  factory $IssueLabelCopyWith(IssueLabel value, $Res Function(IssueLabel) _then) = _$IssueLabelCopyWithImpl;
+@useResult
+$Res call({
+ String id, String name, String color
+});
+
+
+
+
+}
+/// @nodoc
+class _$IssueLabelCopyWithImpl<$Res>
+    implements $IssueLabelCopyWith<$Res> {
+  _$IssueLabelCopyWithImpl(this._self, this._then);
+
+  final IssueLabel _self;
+  final $Res Function(IssueLabel) _then;
+
+/// Create a copy of IssueLabel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? color = null,}) {
+  return _then(_self.copyWith(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,color: null == color ? _self.color : color // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [IssueLabel].
+extension IssueLabelPatterns on IssueLabel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _IssueLabel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _IssueLabel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _IssueLabel value)  $default,){
+final _that = this;
+switch (_that) {
+case _IssueLabel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _IssueLabel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _IssueLabel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String color)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _IssueLabel() when $default != null:
+return $default(_that.id,_that.name,_that.color);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String color)  $default,) {final _that = this;
+switch (_that) {
+case _IssueLabel():
+return $default(_that.id,_that.name,_that.color);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String color)?  $default,) {final _that = this;
+switch (_that) {
+case _IssueLabel() when $default != null:
+return $default(_that.id,_that.name,_that.color);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _IssueLabel implements IssueLabel {
+  const _IssueLabel({required this.id, required this.name, required this.color});
+  factory _IssueLabel.fromJson(Map<String, dynamic> json) => _$IssueLabelFromJson(json);
+
+@override final  String id;
+@override final  String name;
+@override final  String color;
+
+/// Create a copy of IssueLabel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$IssueLabelCopyWith<_IssueLabel> get copyWith => __$IssueLabelCopyWithImpl<_IssueLabel>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$IssueLabelToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _IssueLabel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.color, color) || other.color == color));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,name,color);
+
+@override
+String toString() {
+  return 'IssueLabel(id: $id, name: $name, color: $color)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$IssueLabelCopyWith<$Res> implements $IssueLabelCopyWith<$Res> {
+  factory _$IssueLabelCopyWith(_IssueLabel value, $Res Function(_IssueLabel) _then) = __$IssueLabelCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String name, String color
+});
+
+
+
+
+}
+/// @nodoc
+class __$IssueLabelCopyWithImpl<$Res>
+    implements _$IssueLabelCopyWith<$Res> {
+  __$IssueLabelCopyWithImpl(this._self, this._then);
+
+  final _IssueLabel _self;
+  final $Res Function(_IssueLabel) _then;
+
+/// Create a copy of IssueLabel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? color = null,}) {
+  return _then(_IssueLabel(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,color: null == color ? _self.color : color // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$IssueOrigin {
+
+ String get id; String get channelId; String? get body; String get authorName; bool get deleted;
+/// Create a copy of IssueOrigin
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$IssueOriginCopyWith<IssueOrigin> get copyWith => _$IssueOriginCopyWithImpl<IssueOrigin>(this as IssueOrigin, _$identity);
+
+  /// Serializes this IssueOrigin to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is IssueOrigin&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.body, body) || other.body == body)&&(identical(other.authorName, authorName) || other.authorName == authorName)&&(identical(other.deleted, deleted) || other.deleted == deleted));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,channelId,body,authorName,deleted);
+
+@override
+String toString() {
+  return 'IssueOrigin(id: $id, channelId: $channelId, body: $body, authorName: $authorName, deleted: $deleted)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $IssueOriginCopyWith<$Res>  {
+  factory $IssueOriginCopyWith(IssueOrigin value, $Res Function(IssueOrigin) _then) = _$IssueOriginCopyWithImpl;
+@useResult
+$Res call({
+ String id, String channelId, String? body, String authorName, bool deleted
+});
+
+
+
+
+}
+/// @nodoc
+class _$IssueOriginCopyWithImpl<$Res>
+    implements $IssueOriginCopyWith<$Res> {
+  _$IssueOriginCopyWithImpl(this._self, this._then);
+
+  final IssueOrigin _self;
+  final $Res Function(IssueOrigin) _then;
+
+/// Create a copy of IssueOrigin
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? channelId = null,Object? body = freezed,Object? authorName = null,Object? deleted = null,}) {
+  return _then(_self.copyWith(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,channelId: null == channelId ? _self.channelId : channelId // ignore: cast_nullable_to_non_nullable
+as String,body: freezed == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
+as String?,authorName: null == authorName ? _self.authorName : authorName // ignore: cast_nullable_to_non_nullable
+as String,deleted: null == deleted ? _self.deleted : deleted // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [IssueOrigin].
+extension IssueOriginPatterns on IssueOrigin {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _IssueOrigin value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _IssueOrigin() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _IssueOrigin value)  $default,){
+final _that = this;
+switch (_that) {
+case _IssueOrigin():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _IssueOrigin value)?  $default,){
+final _that = this;
+switch (_that) {
+case _IssueOrigin() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String channelId,  String? body,  String authorName,  bool deleted)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _IssueOrigin() when $default != null:
+return $default(_that.id,_that.channelId,_that.body,_that.authorName,_that.deleted);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String channelId,  String? body,  String authorName,  bool deleted)  $default,) {final _that = this;
+switch (_that) {
+case _IssueOrigin():
+return $default(_that.id,_that.channelId,_that.body,_that.authorName,_that.deleted);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String channelId,  String? body,  String authorName,  bool deleted)?  $default,) {final _that = this;
+switch (_that) {
+case _IssueOrigin() when $default != null:
+return $default(_that.id,_that.channelId,_that.body,_that.authorName,_that.deleted);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _IssueOrigin implements IssueOrigin {
+  const _IssueOrigin({required this.id, required this.channelId, this.body, required this.authorName, this.deleted = false});
+  factory _IssueOrigin.fromJson(Map<String, dynamic> json) => _$IssueOriginFromJson(json);
+
+@override final  String id;
+@override final  String channelId;
+@override final  String? body;
+@override final  String authorName;
+@override@JsonKey() final  bool deleted;
+
+/// Create a copy of IssueOrigin
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$IssueOriginCopyWith<_IssueOrigin> get copyWith => __$IssueOriginCopyWithImpl<_IssueOrigin>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$IssueOriginToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _IssueOrigin&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.body, body) || other.body == body)&&(identical(other.authorName, authorName) || other.authorName == authorName)&&(identical(other.deleted, deleted) || other.deleted == deleted));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,channelId,body,authorName,deleted);
+
+@override
+String toString() {
+  return 'IssueOrigin(id: $id, channelId: $channelId, body: $body, authorName: $authorName, deleted: $deleted)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$IssueOriginCopyWith<$Res> implements $IssueOriginCopyWith<$Res> {
+  factory _$IssueOriginCopyWith(_IssueOrigin value, $Res Function(_IssueOrigin) _then) = __$IssueOriginCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String channelId, String? body, String authorName, bool deleted
+});
+
+
+
+
+}
+/// @nodoc
+class __$IssueOriginCopyWithImpl<$Res>
+    implements _$IssueOriginCopyWith<$Res> {
+  __$IssueOriginCopyWithImpl(this._self, this._then);
+
+  final _IssueOrigin _self;
+  final $Res Function(_IssueOrigin) _then;
+
+/// Create a copy of IssueOrigin
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? channelId = null,Object? body = freezed,Object? authorName = null,Object? deleted = null,}) {
+  return _then(_IssueOrigin(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,channelId: null == channelId ? _self.channelId : channelId // ignore: cast_nullable_to_non_nullable
+as String,body: freezed == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
+as String?,authorName: null == authorName ? _self.authorName : authorName // ignore: cast_nullable_to_non_nullable
+as String,deleted: null == deleted ? _self.deleted : deleted // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$IssueAuthor {
 
  String get id; String get name; String? get avatarUrl;
@@ -287,7 +831,8 @@ mixin _$Issue {
  String get id;/// 사람이 대화에서 부르는 이름(`NEXUS-12`). 스페이스 안에서 유일하다.
  String get key; String get title; String? get description; IssueStatus get status; IssuePriority get priority; IssueAuthor? get assignee; String? get sprintId; String? get parentId; int? get storyPoints;/// 서버가 **문자열**로 준다 — Decimal 을 double 로 받으면 정밀도가 깎인다.
 /// 앱은 정렬과 되돌려 보내기에만 쓰고 산술을 하지 않는다.
- String get position;/// 번다운의 유일한 입력. 상태 전이가 정하므로 앱이 보내지 않는다.
+ String get position; List<IssueLabel> get labels;/// 이 이슈가 어느 대화에서 나왔는지. 없으면 보드에서 직접 만든 것이다.
+ IssueOrigin? get originMessage;/// 번다운의 유일한 입력. 상태 전이가 정하므로 앱이 보내지 않는다.
  DateTime? get closedAt; DateTime get createdAt; DateTime get updatedAt;
 /// Create a copy of Issue
 /// with the given fields replaced by the non-null parameter values.
@@ -301,16 +846,16 @@ $IssueCopyWith<Issue> get copyWith => _$IssueCopyWithImpl<Issue>(this as Issue, 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Issue&&(identical(other.id, id) || other.id == id)&&(identical(other.key, key) || other.key == key)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.status, status) || other.status == status)&&(identical(other.priority, priority) || other.priority == priority)&&(identical(other.assignee, assignee) || other.assignee == assignee)&&(identical(other.sprintId, sprintId) || other.sprintId == sprintId)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.storyPoints, storyPoints) || other.storyPoints == storyPoints)&&(identical(other.position, position) || other.position == position)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Issue&&(identical(other.id, id) || other.id == id)&&(identical(other.key, key) || other.key == key)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.status, status) || other.status == status)&&(identical(other.priority, priority) || other.priority == priority)&&(identical(other.assignee, assignee) || other.assignee == assignee)&&(identical(other.sprintId, sprintId) || other.sprintId == sprintId)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.storyPoints, storyPoints) || other.storyPoints == storyPoints)&&(identical(other.position, position) || other.position == position)&&const DeepCollectionEquality().equals(other.labels, labels)&&(identical(other.originMessage, originMessage) || other.originMessage == originMessage)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,key,title,description,status,priority,assignee,sprintId,parentId,storyPoints,position,closedAt,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,key,title,description,status,priority,assignee,sprintId,parentId,storyPoints,position,const DeepCollectionEquality().hash(labels),originMessage,closedAt,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Issue(id: $id, key: $key, title: $title, description: $description, status: $status, priority: $priority, assignee: $assignee, sprintId: $sprintId, parentId: $parentId, storyPoints: $storyPoints, position: $position, closedAt: $closedAt, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Issue(id: $id, key: $key, title: $title, description: $description, status: $status, priority: $priority, assignee: $assignee, sprintId: $sprintId, parentId: $parentId, storyPoints: $storyPoints, position: $position, labels: $labels, originMessage: $originMessage, closedAt: $closedAt, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -321,11 +866,11 @@ abstract mixin class $IssueCopyWith<$Res>  {
   factory $IssueCopyWith(Issue value, $Res Function(Issue) _then) = _$IssueCopyWithImpl;
 @useResult
 $Res call({
- String id, String key, String title, String? description, IssueStatus status, IssuePriority priority, IssueAuthor? assignee, String? sprintId, String? parentId, int? storyPoints, String position, DateTime? closedAt, DateTime createdAt, DateTime updatedAt
+ String id, String key, String title, String? description, IssueStatus status, IssuePriority priority, IssueAuthor? assignee, String? sprintId, String? parentId, int? storyPoints, String position, List<IssueLabel> labels, IssueOrigin? originMessage, DateTime? closedAt, DateTime createdAt, DateTime updatedAt
 });
 
 
-$IssueAuthorCopyWith<$Res>? get assignee;
+$IssueAuthorCopyWith<$Res>? get assignee;$IssueOriginCopyWith<$Res>? get originMessage;
 
 }
 /// @nodoc
@@ -338,7 +883,7 @@ class _$IssueCopyWithImpl<$Res>
 
 /// Create a copy of Issue
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? key = null,Object? title = null,Object? description = freezed,Object? status = null,Object? priority = null,Object? assignee = freezed,Object? sprintId = freezed,Object? parentId = freezed,Object? storyPoints = freezed,Object? position = null,Object? closedAt = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? key = null,Object? title = null,Object? description = freezed,Object? status = null,Object? priority = null,Object? assignee = freezed,Object? sprintId = freezed,Object? parentId = freezed,Object? storyPoints = freezed,Object? position = null,Object? labels = null,Object? originMessage = freezed,Object? closedAt = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,key: null == key ? _self.key : key // ignore: cast_nullable_to_non_nullable
@@ -351,7 +896,9 @@ as IssueAuthor?,sprintId: freezed == sprintId ? _self.sprintId : sprintId // ign
 as String?,parentId: freezed == parentId ? _self.parentId : parentId // ignore: cast_nullable_to_non_nullable
 as String?,storyPoints: freezed == storyPoints ? _self.storyPoints : storyPoints // ignore: cast_nullable_to_non_nullable
 as int?,position: null == position ? _self.position : position // ignore: cast_nullable_to_non_nullable
-as String,closedAt: freezed == closedAt ? _self.closedAt : closedAt // ignore: cast_nullable_to_non_nullable
+as String,labels: null == labels ? _self.labels : labels // ignore: cast_nullable_to_non_nullable
+as List<IssueLabel>,originMessage: freezed == originMessage ? _self.originMessage : originMessage // ignore: cast_nullable_to_non_nullable
+as IssueOrigin?,closedAt: freezed == closedAt ? _self.closedAt : closedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,
@@ -368,6 +915,18 @@ $IssueAuthorCopyWith<$Res>? get assignee {
 
   return $IssueAuthorCopyWith<$Res>(_self.assignee!, (value) {
     return _then(_self.copyWith(assignee: value));
+  });
+}/// Create a copy of Issue
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$IssueOriginCopyWith<$Res>? get originMessage {
+    if (_self.originMessage == null) {
+    return null;
+  }
+
+  return $IssueOriginCopyWith<$Res>(_self.originMessage!, (value) {
+    return _then(_self.copyWith(originMessage: value));
   });
 }
 }
@@ -451,10 +1010,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String key,  String title,  String? description,  IssueStatus status,  IssuePriority priority,  IssueAuthor? assignee,  String? sprintId,  String? parentId,  int? storyPoints,  String position,  DateTime? closedAt,  DateTime createdAt,  DateTime updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String key,  String title,  String? description,  IssueStatus status,  IssuePriority priority,  IssueAuthor? assignee,  String? sprintId,  String? parentId,  int? storyPoints,  String position,  List<IssueLabel> labels,  IssueOrigin? originMessage,  DateTime? closedAt,  DateTime createdAt,  DateTime updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Issue() when $default != null:
-return $default(_that.id,_that.key,_that.title,_that.description,_that.status,_that.priority,_that.assignee,_that.sprintId,_that.parentId,_that.storyPoints,_that.position,_that.closedAt,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.key,_that.title,_that.description,_that.status,_that.priority,_that.assignee,_that.sprintId,_that.parentId,_that.storyPoints,_that.position,_that.labels,_that.originMessage,_that.closedAt,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -472,10 +1031,10 @@ return $default(_that.id,_that.key,_that.title,_that.description,_that.status,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String key,  String title,  String? description,  IssueStatus status,  IssuePriority priority,  IssueAuthor? assignee,  String? sprintId,  String? parentId,  int? storyPoints,  String position,  DateTime? closedAt,  DateTime createdAt,  DateTime updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String key,  String title,  String? description,  IssueStatus status,  IssuePriority priority,  IssueAuthor? assignee,  String? sprintId,  String? parentId,  int? storyPoints,  String position,  List<IssueLabel> labels,  IssueOrigin? originMessage,  DateTime? closedAt,  DateTime createdAt,  DateTime updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Issue():
-return $default(_that.id,_that.key,_that.title,_that.description,_that.status,_that.priority,_that.assignee,_that.sprintId,_that.parentId,_that.storyPoints,_that.position,_that.closedAt,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.key,_that.title,_that.description,_that.status,_that.priority,_that.assignee,_that.sprintId,_that.parentId,_that.storyPoints,_that.position,_that.labels,_that.originMessage,_that.closedAt,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -492,10 +1051,10 @@ return $default(_that.id,_that.key,_that.title,_that.description,_that.status,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String key,  String title,  String? description,  IssueStatus status,  IssuePriority priority,  IssueAuthor? assignee,  String? sprintId,  String? parentId,  int? storyPoints,  String position,  DateTime? closedAt,  DateTime createdAt,  DateTime updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String key,  String title,  String? description,  IssueStatus status,  IssuePriority priority,  IssueAuthor? assignee,  String? sprintId,  String? parentId,  int? storyPoints,  String position,  List<IssueLabel> labels,  IssueOrigin? originMessage,  DateTime? closedAt,  DateTime createdAt,  DateTime updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Issue() when $default != null:
-return $default(_that.id,_that.key,_that.title,_that.description,_that.status,_that.priority,_that.assignee,_that.sprintId,_that.parentId,_that.storyPoints,_that.position,_that.closedAt,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.key,_that.title,_that.description,_that.status,_that.priority,_that.assignee,_that.sprintId,_that.parentId,_that.storyPoints,_that.position,_that.labels,_that.originMessage,_that.closedAt,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -507,7 +1066,7 @@ return $default(_that.id,_that.key,_that.title,_that.description,_that.status,_t
 @JsonSerializable()
 
 class _Issue implements Issue {
-  const _Issue({required this.id, required this.key, required this.title, this.description, required this.status, required this.priority, this.assignee, this.sprintId, this.parentId, this.storyPoints, required this.position, this.closedAt, required this.createdAt, required this.updatedAt});
+  const _Issue({required this.id, required this.key, required this.title, this.description, required this.status, required this.priority, this.assignee, this.sprintId, this.parentId, this.storyPoints, required this.position, final  List<IssueLabel> labels = const <IssueLabel>[], this.originMessage, this.closedAt, required this.createdAt, required this.updatedAt}): _labels = labels;
   factory _Issue.fromJson(Map<String, dynamic> json) => _$IssueFromJson(json);
 
 @override final  String id;
@@ -524,6 +1083,15 @@ class _Issue implements Issue {
 /// 서버가 **문자열**로 준다 — Decimal 을 double 로 받으면 정밀도가 깎인다.
 /// 앱은 정렬과 되돌려 보내기에만 쓰고 산술을 하지 않는다.
 @override final  String position;
+ final  List<IssueLabel> _labels;
+@override@JsonKey() List<IssueLabel> get labels {
+  if (_labels is EqualUnmodifiableListView) return _labels;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_labels);
+}
+
+/// 이 이슈가 어느 대화에서 나왔는지. 없으면 보드에서 직접 만든 것이다.
+@override final  IssueOrigin? originMessage;
 /// 번다운의 유일한 입력. 상태 전이가 정하므로 앱이 보내지 않는다.
 @override final  DateTime? closedAt;
 @override final  DateTime createdAt;
@@ -542,16 +1110,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Issue&&(identical(other.id, id) || other.id == id)&&(identical(other.key, key) || other.key == key)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.status, status) || other.status == status)&&(identical(other.priority, priority) || other.priority == priority)&&(identical(other.assignee, assignee) || other.assignee == assignee)&&(identical(other.sprintId, sprintId) || other.sprintId == sprintId)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.storyPoints, storyPoints) || other.storyPoints == storyPoints)&&(identical(other.position, position) || other.position == position)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Issue&&(identical(other.id, id) || other.id == id)&&(identical(other.key, key) || other.key == key)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&(identical(other.status, status) || other.status == status)&&(identical(other.priority, priority) || other.priority == priority)&&(identical(other.assignee, assignee) || other.assignee == assignee)&&(identical(other.sprintId, sprintId) || other.sprintId == sprintId)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.storyPoints, storyPoints) || other.storyPoints == storyPoints)&&(identical(other.position, position) || other.position == position)&&const DeepCollectionEquality().equals(other._labels, _labels)&&(identical(other.originMessage, originMessage) || other.originMessage == originMessage)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,key,title,description,status,priority,assignee,sprintId,parentId,storyPoints,position,closedAt,createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,key,title,description,status,priority,assignee,sprintId,parentId,storyPoints,position,const DeepCollectionEquality().hash(_labels),originMessage,closedAt,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Issue(id: $id, key: $key, title: $title, description: $description, status: $status, priority: $priority, assignee: $assignee, sprintId: $sprintId, parentId: $parentId, storyPoints: $storyPoints, position: $position, closedAt: $closedAt, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Issue(id: $id, key: $key, title: $title, description: $description, status: $status, priority: $priority, assignee: $assignee, sprintId: $sprintId, parentId: $parentId, storyPoints: $storyPoints, position: $position, labels: $labels, originMessage: $originMessage, closedAt: $closedAt, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -562,11 +1130,11 @@ abstract mixin class _$IssueCopyWith<$Res> implements $IssueCopyWith<$Res> {
   factory _$IssueCopyWith(_Issue value, $Res Function(_Issue) _then) = __$IssueCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String key, String title, String? description, IssueStatus status, IssuePriority priority, IssueAuthor? assignee, String? sprintId, String? parentId, int? storyPoints, String position, DateTime? closedAt, DateTime createdAt, DateTime updatedAt
+ String id, String key, String title, String? description, IssueStatus status, IssuePriority priority, IssueAuthor? assignee, String? sprintId, String? parentId, int? storyPoints, String position, List<IssueLabel> labels, IssueOrigin? originMessage, DateTime? closedAt, DateTime createdAt, DateTime updatedAt
 });
 
 
-@override $IssueAuthorCopyWith<$Res>? get assignee;
+@override $IssueAuthorCopyWith<$Res>? get assignee;@override $IssueOriginCopyWith<$Res>? get originMessage;
 
 }
 /// @nodoc
@@ -579,7 +1147,7 @@ class __$IssueCopyWithImpl<$Res>
 
 /// Create a copy of Issue
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? key = null,Object? title = null,Object? description = freezed,Object? status = null,Object? priority = null,Object? assignee = freezed,Object? sprintId = freezed,Object? parentId = freezed,Object? storyPoints = freezed,Object? position = null,Object? closedAt = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? key = null,Object? title = null,Object? description = freezed,Object? status = null,Object? priority = null,Object? assignee = freezed,Object? sprintId = freezed,Object? parentId = freezed,Object? storyPoints = freezed,Object? position = null,Object? labels = null,Object? originMessage = freezed,Object? closedAt = freezed,Object? createdAt = null,Object? updatedAt = null,}) {
   return _then(_Issue(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,key: null == key ? _self.key : key // ignore: cast_nullable_to_non_nullable
@@ -592,7 +1160,9 @@ as IssueAuthor?,sprintId: freezed == sprintId ? _self.sprintId : sprintId // ign
 as String?,parentId: freezed == parentId ? _self.parentId : parentId // ignore: cast_nullable_to_non_nullable
 as String?,storyPoints: freezed == storyPoints ? _self.storyPoints : storyPoints // ignore: cast_nullable_to_non_nullable
 as int?,position: null == position ? _self.position : position // ignore: cast_nullable_to_non_nullable
-as String,closedAt: freezed == closedAt ? _self.closedAt : closedAt // ignore: cast_nullable_to_non_nullable
+as String,labels: null == labels ? _self._labels : labels // ignore: cast_nullable_to_non_nullable
+as List<IssueLabel>,originMessage: freezed == originMessage ? _self.originMessage : originMessage // ignore: cast_nullable_to_non_nullable
+as IssueOrigin?,closedAt: freezed == closedAt ? _self.closedAt : closedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,
@@ -610,6 +1180,18 @@ $IssueAuthorCopyWith<$Res>? get assignee {
 
   return $IssueAuthorCopyWith<$Res>(_self.assignee!, (value) {
     return _then(_self.copyWith(assignee: value));
+  });
+}/// Create a copy of Issue
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$IssueOriginCopyWith<$Res>? get originMessage {
+    if (_self.originMessage == null) {
+    return null;
+  }
+
+  return $IssueOriginCopyWith<$Res>(_self.originMessage!, (value) {
+    return _then(_self.copyWith(originMessage: value));
   });
 }
 }

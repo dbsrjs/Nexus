@@ -50,12 +50,14 @@ class IssuesApi {
     IssueStatus? status,
     IssuePriority? priority,
     String? assigneeId,
+    String? originMessageId,
   }) async {
     try {
       final res = await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/issues',
         data: {
           'title': title,
+          'originMessageId': ?originMessageId,
           if (description != null && description.isNotEmpty)
             'description': description,
           if (status != null) 'status': status.name,
@@ -147,6 +149,57 @@ class IssuesApi {
         data: {'body': body},
       );
       return IssueComment.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// GET /api/spaces/:spaceId/labels — 스페이스가 공유하는 어휘.
+  Future<List<IssueLabel>> listLabels(String spaceId) async {
+    try {
+      final res = await _client.dio.get<List<dynamic>>('/spaces/$spaceId/labels');
+      return (res.data ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(IssueLabel.fromJson)
+          .toList(growable: false);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// POST /api/spaces/:spaceId/labels
+  Future<IssueLabel> createLabel(
+    String spaceId, {
+    required String name,
+    required String color,
+  }) async {
+    try {
+      final res = await _client.dio.post<Map<String, dynamic>>(
+        '/spaces/$spaceId/labels',
+        data: {'name': name, 'color': color},
+      );
+      return IssueLabel.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// PUT /api/spaces/:spaceId/issues/:issueId/labels — **통째로 교체**한다.
+  /// 화면이 "지금 선택된 것"을 그대로 보내면 되어 차집합을 계산할 일이 없다.
+  Future<List<IssueLabel>> setLabels(
+    String spaceId,
+    String issueId,
+    List<String> labelIds,
+  ) async {
+    try {
+      final res = await _client.dio.put<List<dynamic>>(
+        '/spaces/$spaceId/issues/$issueId/labels',
+        data: {'labelIds': labelIds},
+      );
+      return (res.data ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(IssueLabel.fromJson)
+          .toList(growable: false);
     } on DioException catch (e) {
       throw ApiException(classifyDioException(e));
     }

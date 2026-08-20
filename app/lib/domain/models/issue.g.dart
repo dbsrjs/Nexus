@@ -6,6 +6,36 @@ part of 'issue.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_IssueLabel _$IssueLabelFromJson(Map<String, dynamic> json) => _IssueLabel(
+  id: json['id'] as String,
+  name: json['name'] as String,
+  color: json['color'] as String,
+);
+
+Map<String, dynamic> _$IssueLabelToJson(_IssueLabel instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'color': instance.color,
+    };
+
+_IssueOrigin _$IssueOriginFromJson(Map<String, dynamic> json) => _IssueOrigin(
+  id: json['id'] as String,
+  channelId: json['channelId'] as String,
+  body: json['body'] as String?,
+  authorName: json['authorName'] as String,
+  deleted: json['deleted'] as bool? ?? false,
+);
+
+Map<String, dynamic> _$IssueOriginToJson(_IssueOrigin instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'channelId': instance.channelId,
+      'body': instance.body,
+      'authorName': instance.authorName,
+      'deleted': instance.deleted,
+    };
+
 _IssueAuthor _$IssueAuthorFromJson(Map<String, dynamic> json) => _IssueAuthor(
   id: json['id'] as String,
   name: json['name'] as String,
@@ -33,6 +63,14 @@ _Issue _$IssueFromJson(Map<String, dynamic> json) => _Issue(
   parentId: json['parentId'] as String?,
   storyPoints: (json['storyPoints'] as num?)?.toInt(),
   position: json['position'] as String,
+  labels:
+      (json['labels'] as List<dynamic>?)
+          ?.map((e) => IssueLabel.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const <IssueLabel>[],
+  originMessage: json['originMessage'] == null
+      ? null
+      : IssueOrigin.fromJson(json['originMessage'] as Map<String, dynamic>),
   closedAt: json['closedAt'] == null
       ? null
       : DateTime.parse(json['closedAt'] as String),
@@ -52,6 +90,8 @@ Map<String, dynamic> _$IssueToJson(_Issue instance) => <String, dynamic>{
   'parentId': instance.parentId,
   'storyPoints': instance.storyPoints,
   'position': instance.position,
+  'labels': instance.labels,
+  'originMessage': instance.originMessage,
   'closedAt': instance.closedAt?.toIso8601String(),
   'createdAt': instance.createdAt.toIso8601String(),
   'updatedAt': instance.updatedAt.toIso8601String(),

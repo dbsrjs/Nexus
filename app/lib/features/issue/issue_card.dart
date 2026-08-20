@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../space/space_controller.dart';
 import 'board_controller.dart';
+import 'label_widgets.dart';
 
 /// 칸반 카드 한 장.
 ///
@@ -52,6 +53,17 @@ class IssueCard extends ConsumerWidget {
               ),
               const SizedBox(height: NexusSpacing.sp2),
               Text(issue.title, style: theme.textTheme.bodyMedium),
+              if (issue.labels.isNotEmpty) ...[
+                const SizedBox(height: NexusSpacing.sp4),
+                Wrap(
+                  spacing: NexusSpacing.sp3,
+                  runSpacing: NexusSpacing.sp3,
+                  children: [
+                    for (final label in issue.labels)
+                      LabelChip(label: label, dense: true),
+                  ],
+                ),
+              ],
               if (assignee != null || issue.storyPoints != null) ...[
                 const SizedBox(height: NexusSpacing.sp5),
                 Row(

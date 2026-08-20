@@ -2484,6 +2484,25 @@ class $CachedIssuesTable extends CachedIssues
     requiredDuringInsert: true,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<List<IssueLabel>, String> labels =
+      GeneratedColumn<String>(
+        'labels',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('[]'),
+      ).withConverter<List<IssueLabel>>($CachedIssuesTable.$converterlabels);
+  @override
+  late final GeneratedColumnWithTypeConverter<IssueOrigin?, String>
+  originMessage = GeneratedColumn<String>(
+    'origin_message',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  ).withConverter<IssueOrigin?>($CachedIssuesTable.$converteroriginMessage);
+  @override
   late final GeneratedColumnWithTypeConverter<DateTime?, int> closedAt =
       GeneratedColumn<int>(
         'closed_at',
@@ -2528,6 +2547,8 @@ class $CachedIssuesTable extends CachedIssues
     position,
     sortKey,
     statusRank,
+    labels,
+    originMessage,
     closedAt,
     createdAt,
     updatedAt,
@@ -2740,6 +2761,18 @@ class $CachedIssuesTable extends CachedIssues
         DriftSqlType.int,
         data['${effectivePrefix}status_rank'],
       )!,
+      labels: $CachedIssuesTable.$converterlabels.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}labels'],
+        )!,
+      ),
+      originMessage: $CachedIssuesTable.$converteroriginMessage.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}origin_message'],
+        ),
+      ),
       closedAt: $CachedIssuesTable.$converterclosedAtn.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.int,
@@ -2766,6 +2799,10 @@ class $CachedIssuesTable extends CachedIssues
     return $CachedIssuesTable(attachedDatabase, alias);
   }
 
+  static TypeConverter<List<IssueLabel>, String> $converterlabels =
+      const _LabelsJson();
+  static TypeConverter<IssueOrigin?, String?> $converteroriginMessage =
+      const _OriginJson();
   static TypeConverter<DateTime, int> $converterclosedAt = const _UtcMicros();
   static TypeConverter<DateTime?, int?> $converterclosedAtn =
       NullAwareTypeConverter.wrap($converterclosedAt);
@@ -2798,6 +2835,8 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
   /// 컬럼 순서(backlog · doing · review · done). 이름으로 정렬하면
   /// 알파벳순(backlog · doing · done · review)이 되어 보드가 뒤섞인다.
   final int statusRank;
+  final List<IssueLabel> labels;
+  final IssueOrigin? originMessage;
   final DateTime? closedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -2818,6 +2857,8 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
     required this.position,
     required this.sortKey,
     required this.statusRank,
+    required this.labels,
+    this.originMessage,
     this.closedAt,
     required this.createdAt,
     required this.updatedAt,
@@ -2855,6 +2896,16 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
     map['position'] = Variable<String>(position);
     map['sort_key'] = Variable<double>(sortKey);
     map['status_rank'] = Variable<int>(statusRank);
+    {
+      map['labels'] = Variable<String>(
+        $CachedIssuesTable.$converterlabels.toSql(labels),
+      );
+    }
+    if (!nullToAbsent || originMessage != null) {
+      map['origin_message'] = Variable<String>(
+        $CachedIssuesTable.$converteroriginMessage.toSql(originMessage),
+      );
+    }
     if (!nullToAbsent || closedAt != null) {
       map['closed_at'] = Variable<int>(
         $CachedIssuesTable.$converterclosedAtn.toSql(closedAt),
@@ -2905,6 +2956,10 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
       position: Value(position),
       sortKey: Value(sortKey),
       statusRank: Value(statusRank),
+      labels: Value(labels),
+      originMessage: originMessage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originMessage),
       closedAt: closedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(closedAt),
@@ -2937,6 +2992,8 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
       position: serializer.fromJson<String>(json['position']),
       sortKey: serializer.fromJson<double>(json['sortKey']),
       statusRank: serializer.fromJson<int>(json['statusRank']),
+      labels: serializer.fromJson<List<IssueLabel>>(json['labels']),
+      originMessage: serializer.fromJson<IssueOrigin?>(json['originMessage']),
       closedAt: serializer.fromJson<DateTime?>(json['closedAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -2962,6 +3019,8 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
       'position': serializer.toJson<String>(position),
       'sortKey': serializer.toJson<double>(sortKey),
       'statusRank': serializer.toJson<int>(statusRank),
+      'labels': serializer.toJson<List<IssueLabel>>(labels),
+      'originMessage': serializer.toJson<IssueOrigin?>(originMessage),
       'closedAt': serializer.toJson<DateTime?>(closedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -2985,6 +3044,8 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
     String? position,
     double? sortKey,
     int? statusRank,
+    List<IssueLabel>? labels,
+    Value<IssueOrigin?> originMessage = const Value.absent(),
     Value<DateTime?> closedAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -3007,6 +3068,10 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
     position: position ?? this.position,
     sortKey: sortKey ?? this.sortKey,
     statusRank: statusRank ?? this.statusRank,
+    labels: labels ?? this.labels,
+    originMessage: originMessage.present
+        ? originMessage.value
+        : this.originMessage,
     closedAt: closedAt.present ? closedAt.value : this.closedAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -3041,6 +3106,10 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
       statusRank: data.statusRank.present
           ? data.statusRank.value
           : this.statusRank,
+      labels: data.labels.present ? data.labels.value : this.labels,
+      originMessage: data.originMessage.present
+          ? data.originMessage.value
+          : this.originMessage,
       closedAt: data.closedAt.present ? data.closedAt.value : this.closedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -3066,6 +3135,8 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
           ..write('position: $position, ')
           ..write('sortKey: $sortKey, ')
           ..write('statusRank: $statusRank, ')
+          ..write('labels: $labels, ')
+          ..write('originMessage: $originMessage, ')
           ..write('closedAt: $closedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -3074,7 +3145,7 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     spaceId,
     key,
@@ -3091,10 +3162,12 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
     position,
     sortKey,
     statusRank,
+    labels,
+    originMessage,
     closedAt,
     createdAt,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3115,6 +3188,8 @@ class CachedIssue extends DataClass implements Insertable<CachedIssue> {
           other.position == this.position &&
           other.sortKey == this.sortKey &&
           other.statusRank == this.statusRank &&
+          other.labels == this.labels &&
+          other.originMessage == this.originMessage &&
           other.closedAt == this.closedAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -3137,6 +3212,8 @@ class CachedIssuesCompanion extends UpdateCompanion<CachedIssue> {
   final Value<String> position;
   final Value<double> sortKey;
   final Value<int> statusRank;
+  final Value<List<IssueLabel>> labels;
+  final Value<IssueOrigin?> originMessage;
   final Value<DateTime?> closedAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -3158,6 +3235,8 @@ class CachedIssuesCompanion extends UpdateCompanion<CachedIssue> {
     this.position = const Value.absent(),
     this.sortKey = const Value.absent(),
     this.statusRank = const Value.absent(),
+    this.labels = const Value.absent(),
+    this.originMessage = const Value.absent(),
     this.closedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -3180,6 +3259,8 @@ class CachedIssuesCompanion extends UpdateCompanion<CachedIssue> {
     required String position,
     required double sortKey,
     required int statusRank,
+    this.labels = const Value.absent(),
+    this.originMessage = const Value.absent(),
     this.closedAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -3212,6 +3293,8 @@ class CachedIssuesCompanion extends UpdateCompanion<CachedIssue> {
     Expression<String>? position,
     Expression<double>? sortKey,
     Expression<int>? statusRank,
+    Expression<String>? labels,
+    Expression<String>? originMessage,
     Expression<int>? closedAt,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -3234,6 +3317,8 @@ class CachedIssuesCompanion extends UpdateCompanion<CachedIssue> {
       if (position != null) 'position': position,
       if (sortKey != null) 'sort_key': sortKey,
       if (statusRank != null) 'status_rank': statusRank,
+      if (labels != null) 'labels': labels,
+      if (originMessage != null) 'origin_message': originMessage,
       if (closedAt != null) 'closed_at': closedAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -3258,6 +3343,8 @@ class CachedIssuesCompanion extends UpdateCompanion<CachedIssue> {
     Value<String>? position,
     Value<double>? sortKey,
     Value<int>? statusRank,
+    Value<List<IssueLabel>>? labels,
+    Value<IssueOrigin?>? originMessage,
     Value<DateTime?>? closedAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -3280,6 +3367,8 @@ class CachedIssuesCompanion extends UpdateCompanion<CachedIssue> {
       position: position ?? this.position,
       sortKey: sortKey ?? this.sortKey,
       statusRank: statusRank ?? this.statusRank,
+      labels: labels ?? this.labels,
+      originMessage: originMessage ?? this.originMessage,
       closedAt: closedAt ?? this.closedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -3338,6 +3427,16 @@ class CachedIssuesCompanion extends UpdateCompanion<CachedIssue> {
     if (statusRank.present) {
       map['status_rank'] = Variable<int>(statusRank.value);
     }
+    if (labels.present) {
+      map['labels'] = Variable<String>(
+        $CachedIssuesTable.$converterlabels.toSql(labels.value),
+      );
+    }
+    if (originMessage.present) {
+      map['origin_message'] = Variable<String>(
+        $CachedIssuesTable.$converteroriginMessage.toSql(originMessage.value),
+      );
+    }
     if (closedAt.present) {
       map['closed_at'] = Variable<int>(
         $CachedIssuesTable.$converterclosedAtn.toSql(closedAt.value),
@@ -3378,6 +3477,8 @@ class CachedIssuesCompanion extends UpdateCompanion<CachedIssue> {
           ..write('position: $position, ')
           ..write('sortKey: $sortKey, ')
           ..write('statusRank: $statusRank, ')
+          ..write('labels: $labels, ')
+          ..write('originMessage: $originMessage, ')
           ..write('closedAt: $closedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -5606,6 +5707,8 @@ typedef $$CachedIssuesTableCreateCompanionBuilder =
       required String position,
       required double sortKey,
       required int statusRank,
+      Value<List<IssueLabel>> labels,
+      Value<IssueOrigin?> originMessage,
       Value<DateTime?> closedAt,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -5629,6 +5732,8 @@ typedef $$CachedIssuesTableUpdateCompanionBuilder =
       Value<String> position,
       Value<double> sortKey,
       Value<int> statusRank,
+      Value<List<IssueLabel>> labels,
+      Value<IssueOrigin?> originMessage,
       Value<DateTime?> closedAt,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -5722,6 +5827,18 @@ class $$CachedIssuesTableFilterComposer
   ColumnFilters<int> get statusRank => $composableBuilder(
     column: $table.statusRank,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<IssueLabel>, List<IssueLabel>, String>
+  get labels => $composableBuilder(
+    column: $table.labels,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<IssueOrigin?, IssueOrigin, String>
+  get originMessage => $composableBuilder(
+    column: $table.originMessage,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get closedAt =>
@@ -5832,6 +5949,16 @@ class $$CachedIssuesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get labels => $composableBuilder(
+    column: $table.labels,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originMessage => $composableBuilder(
+    column: $table.originMessage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get closedAt => $composableBuilder(
     column: $table.closedAt,
     builder: (column) => ColumnOrderings(column),
@@ -5917,6 +6044,15 @@ class $$CachedIssuesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<List<IssueLabel>, String> get labels =>
+      $composableBuilder(column: $table.labels, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<IssueOrigin?, String> get originMessage =>
+      $composableBuilder(
+        column: $table.originMessage,
+        builder: (column) => column,
+      );
+
   GeneratedColumnWithTypeConverter<DateTime?, int> get closedAt =>
       $composableBuilder(column: $table.closedAt, builder: (column) => column);
 
@@ -5974,6 +6110,8 @@ class $$CachedIssuesTableTableManager
                 Value<String> position = const Value.absent(),
                 Value<double> sortKey = const Value.absent(),
                 Value<int> statusRank = const Value.absent(),
+                Value<List<IssueLabel>> labels = const Value.absent(),
+                Value<IssueOrigin?> originMessage = const Value.absent(),
                 Value<DateTime?> closedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -5995,6 +6133,8 @@ class $$CachedIssuesTableTableManager
                 position: position,
                 sortKey: sortKey,
                 statusRank: statusRank,
+                labels: labels,
+                originMessage: originMessage,
                 closedAt: closedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -6018,6 +6158,8 @@ class $$CachedIssuesTableTableManager
                 required String position,
                 required double sortKey,
                 required int statusRank,
+                Value<List<IssueLabel>> labels = const Value.absent(),
+                Value<IssueOrigin?> originMessage = const Value.absent(),
                 Value<DateTime?> closedAt = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -6039,6 +6181,8 @@ class $$CachedIssuesTableTableManager
                 position: position,
                 sortKey: sortKey,
                 statusRank: statusRank,
+                labels: labels,
+                originMessage: originMessage,
                 closedAt: closedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

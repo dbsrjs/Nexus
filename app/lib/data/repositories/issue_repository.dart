@@ -43,6 +43,7 @@ class IssueRepository {
     String? description,
     IssueStatus? status,
     IssuePriority? priority,
+    String? originMessageId,
   }) async {
     try {
       final created = await _api.create(
@@ -51,6 +52,7 @@ class IssueRepository {
         description: description,
         status: status,
         priority: priority,
+        originMessageId: originMessageId,
       );
       await _db.upsertIssue(spaceId, created);
       return created;
@@ -123,6 +125,31 @@ class IssueRepository {
     }
   }
 
+  Future<List<IssueLabel>> listLabels(String spaceId) => _api.listLabels(spaceId);
+
+  Future<IssueLabel?> createLabel(
+    String spaceId, {
+    required String name,
+    required String color,
+  }) async {
+    try {
+      return await _api.createLabel(spaceId, name: name, color: color);
+    } on ApiException {
+      return null;
+    }
+  }
+
+  /// 통째 교체라 멱등하다. 성공하면 캐시의 이슈도 새 라벨로 덮는다.
+  Future<bool> setLabels(String spaceId, Issue issue, List<String> labelIds) async {
+    try {
+      final labels = await _api.setLabels(spaceId, issue.id, labelIds);
+      await _db.upsertIssue(spaceId, issue.copyWith(labels: labels));
+      return true;
+    } on ApiException {
+      return false;
+    }
+  }
+
   /// 소켓이 준 이슈를 캐시에 반영한다. `issue:created` 와 `issue:updated` 가
   /// 같은 일을 하므로 하나로 받는다 — 이름이 나뉘어 있어 앱은 "이 id 가
   /// 캐시에 있나"를 먼저 묻지 않아도 된다.
@@ -157,6 +184,8 @@ class IssueRepository {
     parentId: r.parentId,
     storyPoints: r.storyPoints,
     position: r.position,
+    labels: r.labels,
+    originMessage: r.originMessage,
     closedAt: r.closedAt,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,

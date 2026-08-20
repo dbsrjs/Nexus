@@ -19,6 +19,7 @@ import 'mention_autocomplete.dart';
 import 'mention_composer_controller.dart';
 import 'mention_text.dart';
 import 'message_controller.dart';
+import '../issue/new_issue_sheet.dart';
 
 /// 채널 하나의 대화. 메시지 리스트 + 입력창.
 class ChatScreen extends ConsumerWidget {
@@ -483,6 +484,15 @@ Future<void> _pickReaction(
               subtitle: const Text('대화에서 빼내어 따로 이어 간다'),
               onTap: () => Navigator.of(sheetContext).pop(_threadAction),
             ),
+            // 대화 → 이슈. 원문이 이슈에 링크로 남아, 이슈에서 이 대화로
+            // 돌아올 수 있다.
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.dashboard_customize_outlined),
+              title: const Text('이슈로 만들기'),
+              subtitle: const Text('이 메시지를 보드의 할 일로 옮긴다'),
+              onTap: () => Navigator.of(sheetContext).pop(_issueAction),
+            ),
             // 답글은 고정할 수 없다(서버가 400). 항목 자체를 감춘다 -
             // 눌러 봐야 실패하는 버튼은 없느니만 못하다.
             if (message.parentId == null)
@@ -514,6 +524,10 @@ Future<void> _pickReaction(
     await ref.read(messageActionsProvider).togglePin(message);
     return;
   }
+  if (picked == _issueAction) {
+    if (context.mounted) await showNewIssueSheet(context, fromMessage: message);
+    return;
+  }
   await ref.read(messageActionsProvider).toggleReaction(message, picked);
 }
 
@@ -522,6 +536,7 @@ Future<void> _pickReaction(
 const _threadAction = ' thread';
 const _replyAction = ' reply';
 const _pinAction = ' pin';
+const _issueAction = ' issue';
 
 /// 메시지에 달린 이모지들. 누르면 켜고 꺼진다.
 class _ReactionBar extends ConsumerWidget {
