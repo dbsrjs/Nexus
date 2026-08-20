@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -10,6 +13,8 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { SpaceRole } from '@prisma/client';
+import { CurrentSpaceMember } from '../spaces/decorators/current-space-member.decorator';
 import {
   AuthUser,
   CurrentUser,
@@ -18,10 +23,12 @@ import { SpaceGuard } from '../spaces/guards/space.guard';
 import { SpaceRoleGuard } from '../spaces/guards/space-role.guard';
 import { MinRole } from '../spaces/decorators/min-role.decorator';
 import { IssuesService } from './issues.service';
+import { IssueCommentsService } from './issue-comments.service';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { ListIssuesDto } from './dto/list-issues.dto';
 import { MoveIssueDto } from './dto/move-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
+import { CreateIssueCommentDto } from './dto/create-comment.dto';
 
 /**
  * 이슈 보드 (docs/백엔드-설계.md §4).
@@ -32,7 +39,10 @@ import { UpdateIssueDto } from './dto/update-issue.dto';
 @Controller('spaces/:spaceId/issues')
 @UseGuards(SpaceGuard, SpaceRoleGuard)
 export class IssuesController {
-  constructor(private readonly issues: IssuesService) {}
+  constructor(
+    private readonly issues: IssuesService,
+    private readonly comments: IssueCommentsService,
+  ) {}
 
   @Get()
   list(
@@ -78,5 +88,42 @@ export class IssuesController {
     @Body() dto: MoveIssueDto,
   ) {
     return this.issues.move(spaceId, issueId, dto);
+  }
+
+  /**
+   * 이슈를 지운다. **하드 삭제**다(설계 §6-1).
+   *
+   * `@MinRole` 을 걸지 않는 이유는 권한이 역할만으로 갈리지 않아서다 —
+   * 작성자는 자기 이슈를 지울 수 있고, 남의 이슈는 admin 이상이어야 한다.
+   * 서비스가 두 조건을 함께 본다.
+   */
+  @Delete(':issueId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(
+    @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
+    @Param('issueId', new ParseUUIDPipe()) issueId: string,
+    @CurrentUser() user: AuthUser,
+    @CurrentSpaceMember('role') role: SpaceRole,
+  ) {
+    return this.comments.remove(spaceId, issueId, user.id, role);
+  }
+
+  @Get(':issueId/comments')
+  listComments(
+    @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
+    @Param('issueId', new ParseUUIDPipe()) issueId: string,
+  ) {
+    return this.comments.list(spaceId, issueId);
+  }
+
+  @Post(':issueId/comments')
+  @MinRole('member')
+  createComment(
+    @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
+    @Param('issueId', new ParseUUIDPipe()) issueId: string,
+    @Body() dto: CreateIssueCommentDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.comments.create(spaceId, issueId, user.id, dto);
   }
 }

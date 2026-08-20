@@ -231,6 +231,8 @@ model Space {
   attachments Attachment[]
   sprints     Sprint[]
   labels      IssueLabel[]
+  labelLinks  IssueLabelLink[]
+  issueComments IssueComment[]
   issues      Issue[]
   repos       Repo[]
   repoEvents  RepoEvent[]
@@ -515,11 +517,15 @@ model IssueLabel {
 model IssueLabelLink {
   issueId String @map("issue_id")
   labelId String @map("label_id")
+  /// 부모를 타고 유추할 수 있어도 비정규화한다 (설계 §2 규칙 1 — 예외 없음).
+  spaceId String @map("space_id")
 
   issue Issue      @relation(fields: [issueId], references: [id], onDelete: Cascade)
   label IssueLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  space Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
 
   @@id([issueId, labelId])
+  @@index([spaceId])
   @@map("issue_label_links")
 }
 
@@ -570,6 +576,8 @@ model Issue {
 model IssueComment {
   id        String   @id @default(uuid())
   issueId   String   @map("issue_id")
+  /// 부모를 타고 유추할 수 있어도 비정규화한다 (설계 §2 규칙 1 — 예외 없음).
+  spaceId   String   @map("space_id")
   authorId  String   @map("author_id")
   body      String
   createdAt DateTime @default(now()) @map("created_at")
@@ -577,8 +585,10 @@ model IssueComment {
 
   issue  Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
   author User  @relation(fields: [authorId], references: [id])
+  space  Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
 
   @@index([issueId])
+  @@index([spaceId])
   @@map("issue_comments")
 }
 

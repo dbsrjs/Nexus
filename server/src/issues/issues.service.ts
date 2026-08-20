@@ -61,6 +61,7 @@ export class IssuesService {
   ): Promise<{ issues: IssueView[]; truncated: IssueStatus[] }> {
     const base: Prisma.IssueWhereInput = {
       spaceId,
+      ...(dto.key ? { key: dto.key } : {}),
       ...(dto.assigneeId ? { assigneeId: dto.assigneeId } : {}),
       ...(dto.sprintId ? { sprintId: dto.sprintId } : {}),
       ...(dto.q

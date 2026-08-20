@@ -340,7 +340,98 @@ check(
   `바닥=${bottomAt} · 내 카드 ${mine.length}개 중 아래로 샌 것 ${mine.filter((at) => at > bottomAt).length}개`,
 );
 
-// ── 10. 컬럼 상한 ────────────────────────────────────
+// ── 10. 이슈 상세 · 댓글 (9-2a) ──────────────────────
+const detailTarget = (await createIssue({ title: '댓글이 달릴 이슈' })).json;
+
+const emptyComments = await api(
+  'GET',
+  `/spaces/${spaceId}/issues/${detailTarget.id}/comments`,
+  { token: alice.token },
+);
+check('댓글이 없으면 빈 목록', emptyComments.status === 200 && emptyComments.json.length === 0,
+  JSON.stringify(emptyComments.json));
+
+const wrote = await api('POST', `/spaces/${spaceId}/issues/${detailTarget.id}/comments`, {
+  token: alice.token,
+  body: { body: '첫 댓글' },
+});
+check('댓글 작성 201', wrote.status === 201, `status=${wrote.status}`);
+check('댓글에 작성자 요약이 붙는다', wrote.json?.author?.id === alice.userId,
+  JSON.stringify(wrote.json?.author));
+
+await api('POST', `/spaces/${spaceId}/issues/${detailTarget.id}/comments`, {
+  token: alice.token, body: { body: '둘째 댓글' },
+});
+const comments = await api('GET', `/spaces/${spaceId}/issues/${detailTarget.id}/comments`, {
+  token: alice.token,
+});
+check('댓글은 오래된 것부터 온다',
+  comments.json[0]?.body === '첫 댓글' && comments.json[1]?.body === '둘째 댓글',
+  comments.json.map((c) => c.body).join(','));
+
+// 남의 스페이스 이슈에는 댓글을 달 수 없다.
+const foreignComment = await api(
+  'POST',
+  `/spaces/${spaceId}/issues/${otherIssue.json.id}/comments`,
+  { token: alice.token, body: { body: '남의 이슈에' } },
+);
+check('타 스페이스 이슈 댓글은 404', foreignComment.status === 404,
+  `status=${foreignComment.status}`);
+
+const guestComment = await api(
+  'POST',
+  `/spaces/${spaceId}/issues/${detailTarget.id}/comments`,
+  { token: guest.token, body: { body: 'guest 가 단다' } },
+);
+check('guest 댓글 작성 거부', guestComment.status === 403, `status=${guestComment.status}`);
+check('guest 댓글 열람 허용',
+  (await api('GET', `/spaces/${spaceId}/issues/${detailTarget.id}/comments`,
+    { token: guest.token })).status === 200);
+
+// key 로 한 건만 찾는 길 — 딥링크용
+const byKey = await listIssues(`?key=${detailTarget.key}`);
+check('key 로 한 건만 찾는다',
+  byKey.json.issues.length === 1 && byKey.json.issues[0].id === detailTarget.id,
+  `${byKey.json.issues.length}건`);
+
+// ── 11. 이슈 삭제 (9-2a) ─────────────────────────────
+const doomed = (await createIssue({ title: '지워질 이슈' })).json;
+
+const guestDelete = await api('DELETE', `/spaces/${spaceId}/issues/${doomed.id}`, {
+  token: guest.token,
+});
+check('guest 삭제 거부', guestDelete.status === 403, `status=${guestDelete.status}`);
+
+const deletedEvent = waitFor(socket, 'issue:deleted');
+const removed = await api('DELETE', `/spaces/${spaceId}/issues/${doomed.id}`, {
+  token: alice.token,
+});
+check('작성자는 자기 이슈를 지운다', removed.status === 204, `status=${removed.status}`);
+check('issue:deleted 가 도착한다', (await deletedEvent)?.issueId === doomed.id);
+
+const gone = await api('GET', `/spaces/${spaceId}/issues/${doomed.id}`, { token: alice.token });
+check('지운 이슈는 404', gone.status === 404, `status=${gone.status}`);
+
+// 삭제는 하드 삭제라 댓글도 함께 사라진다(Cascade).
+const withComment = (await createIssue({ title: '댓글 달린 채 지워질 이슈' })).json;
+await api('POST', `/spaces/${spaceId}/issues/${withComment.id}/comments`, {
+  token: alice.token, body: { body: '함께 사라질 댓글' },
+});
+await api('DELETE', `/spaces/${spaceId}/issues/${withComment.id}`, { token: alice.token });
+check('이슈를 지우면 댓글도 사라진다',
+  (await api('GET', `/spaces/${spaceId}/issues/${withComment.id}/comments`,
+    { token: alice.token })).status === 404);
+
+// 부모를 지워도 자식은 남는다 — 할 일이 사라지면 안 된다.
+const parent = (await createIssue({ title: '지워질 에픽' })).json;
+const child = (await createIssue({ title: '남아야 할 스토리', parentId: parent.id })).json;
+await api('DELETE', `/spaces/${spaceId}/issues/${parent.id}`, { token: alice.token });
+const orphan = await api('GET', `/spaces/${spaceId}/issues/${child.id}`, { token: alice.token });
+check('부모를 지워도 자식은 남는다', orphan.status === 200, `status=${orphan.status}`);
+check('자식의 parentId 는 비워진다', orphan.json?.parentId === null,
+  JSON.stringify(orphan.json?.parentId));
+
+// ── 12. 컬럼 상한 ────────────────────────────────────
 // 채번이 스페이스 행을 잠그므로 200건을 한꺼번에 던지면 잠금 대기로 느려진다.
 // 20건씩 끊어 보낸다.
 const already = (await listIssues('?status=backlog')).json.issues.length;
