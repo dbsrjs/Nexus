@@ -1,5 +1,12 @@
 import { IssueStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export class ListIssuesDto {
   /** 주면 그 컬럼만. 안 주면 보드 전체. */
@@ -14,6 +21,14 @@ export class ListIssuesDto {
   @IsOptional()
   @IsUUID()
   sprintId?: string;
+
+  /**
+   * `none` 을 주면 **백로그**(스프린트에 없는 것)만 본다.
+   * `sprintId` 로는 "비어 있는 것"을 고를 수 없어 따로 둔다.
+   */
+  @IsOptional()
+  @IsIn(['none'])
+  sprint?: 'none';
 
   /**
    * 이슈 키 정확 일치(`NEXUS-12`). 딥링크로 상세에 곧장 들어왔는데 캐시가

@@ -14,6 +14,7 @@ import { ChannelsModule } from './channels/channels.module';
 import { MessagesModule } from './messages/messages.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { IssuesModule } from './issues/issues.module';
+import { SprintsModule } from './sprints/sprints.module';
 import { RealtimeModule } from './realtime/realtime.module';
 
 /**
@@ -40,6 +41,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     MessagesModule,
     AttachmentsModule,
     IssuesModule,
+    SprintsModule,
     RealtimeModule,
   ],
   providers: [

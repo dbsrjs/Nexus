@@ -93,6 +93,7 @@ export class IssuesService {
       ...(dto.key ? { key: dto.key } : {}),
       ...(dto.assigneeId ? { assigneeId: dto.assigneeId } : {}),
       ...(dto.sprintId ? { sprintId: dto.sprintId } : {}),
+      ...(dto.sprint === 'none' ? { sprintId: null } : {}),
       ...(dto.q
         ? { title: { contains: dto.q, mode: 'insensitive' as const } }
         : {}),

@@ -555,7 +555,110 @@ const foreignOrigin = await createIssue({
 });
 check('없는 메시지 id 는 404', foreignOrigin.status === 404, `status=${foreignOrigin.status}`);
 
-// ── 14. 컬럼 상한 ────────────────────────────────────
+// ── 14. 스프린트 (9-3) ───────────────────────────────
+const sprintOne = await api('POST', `/spaces/${spaceId}/sprints`, {
+  token: alice.token,
+  body: { name: '1주차', goal: '보드를 쓸 만하게', startsAt: '2026-08-01T00:00:00.000Z', endsAt: '2026-08-04T00:00:00.000Z' },
+});
+check('스프린트 생성 201', sprintOne.status === 201, JSON.stringify(sprintOne.json));
+check('만들면 planned 다', sprintOne.json?.state === 'planned', sprintOne.json?.state);
+
+const guestSprint = await api('POST', `/spaces/${spaceId}/sprints`, {
+  token: guest.token, body: { name: 'guest 스프린트' },
+});
+check('guest 스프린트 생성 거부', guestSprint.status === 403, `status=${guestSprint.status}`);
+
+const started = await api('PATCH', `/spaces/${spaceId}/sprints/${sprintOne.json.id}`, {
+  token: alice.token, body: { state: 'active' },
+});
+check('planned → active 는 된다', started.json?.state === 'active', JSON.stringify(started.json));
+
+const sprintTwo = (await api('POST', `/spaces/${spaceId}/sprints`, {
+  token: alice.token, body: { name: '2주차' },
+})).json;
+const secondActive = await api('PATCH', `/spaces/${spaceId}/sprints/${sprintTwo.id}`, {
+  token: alice.token, body: { state: 'active' },
+});
+check('진행 중인 스프린트가 둘이 될 수 없다 — 409', secondActive.status === 409,
+  `status=${secondActive.status}`);
+
+const backToPlanned = await api('PATCH', `/spaces/${spaceId}/sprints/${sprintOne.json.id}`, {
+  token: alice.token, body: { state: 'planned' },
+});
+check('active → planned 로 되돌릴 수 없다 — 400', backToPlanned.status === 400,
+  `status=${backToPlanned.status}`);
+
+// ── 15. 번다운 (9-3) ─────────────────────────────────
+const noDates = await api('GET', `/spaces/${spaceId}/sprints/${sprintTwo.id}/burndown`, {
+  token: alice.token,
+});
+check('기간이 없으면 번다운은 400', noDates.status === 400, `status=${noDates.status}`);
+
+// 스프린트에 이슈 셋을 넣고 하나를 닫는다.
+const s1 = (await createIssue({ title: '스프린트 이슈 1', storyPoints: 3 })).json;
+const s2 = (await createIssue({ title: '스프린트 이슈 2', storyPoints: 5 })).json;
+const s3 = (await createIssue({ title: '포인트 없는 이슈' })).json;
+for (const issue of [s1, s2, s3]) {
+  await api('PATCH', `/spaces/${spaceId}/issues/${issue.id}`, {
+    token: alice.token, body: { sprintId: sprintOne.json.id },
+  });
+}
+
+const burn = await api('GET', `/spaces/${spaceId}/sprints/${sprintOne.json.id}/burndown`, {
+  token: alice.token,
+});
+check('번다운 200', burn.status === 200, `status=${burn.status}`);
+check('총량은 포인트 8 · 개수 3',
+  burn.json?.total?.points === 8 && burn.json?.total?.count === 3,
+  JSON.stringify(burn.json?.total));
+check('기간이 4일이면 4칸이다', burn.json?.days?.length === 4,
+  `${burn.json?.days?.length}칸`);
+check('아무것도 닫히지 않았으면 평평하다',
+  burn.json.days.every((d) => d.points === 8 && d.count === 3),
+  JSON.stringify(burn.json.days.map((d) => d.points)));
+
+// 하나를 done 으로 옮기면 closedAt 이 찍히고 번다운이 줄어든다.
+// 다만 closedAt 은 '지금'이라 스프린트 기간(2026-08-01~04) 밖이다 —
+// 기간이 지난 스프린트라 끝까지 남아 있는 것이 맞다.
+await api('PATCH', `/spaces/${spaceId}/issues/${s1.id}`, {
+  token: alice.token, body: { status: 'done' },
+});
+const afterDone = await api('GET', `/spaces/${spaceId}/sprints/${sprintOne.json.id}/burndown`, {
+  token: alice.token,
+});
+check('총량은 닫혀도 그대로다 — 분모는 변하지 않는다',
+  afterDone.json.total.points === 8, JSON.stringify(afterDone.json.total));
+check('기간 뒤에 닫힌 것은 그래프에서 끝까지 남는다',
+  afterDone.json.days[afterDone.json.days.length - 1].points === 8,
+  JSON.stringify(afterDone.json.days.map((d) => d.points)));
+
+// ── 16. 백로그 필터 (9-3) ────────────────────────────
+const backlogOnly = await listIssues('?sprint=none&status=backlog');
+check('sprint=none 은 스프린트에 없는 것만 준다',
+  backlogOnly.json.issues.every((i) => i.sprintId === null),
+  backlogOnly.json.issues.filter((i) => i.sprintId !== null).length + '건이 샜다');
+
+const inSprint = await listIssues(`?sprintId=${sprintOne.json.id}`);
+check('sprintId 로 그 스프린트의 것만 준다',
+  inSprint.json.issues.length === 3 &&
+  inSprint.json.issues.every((i) => i.sprintId === sprintOne.json.id),
+  `${inSprint.json.issues.length}건`);
+
+// 스프린트를 지우면 이슈는 백로그로 돌아간다 — 할 일이 사라지면 안 된다.
+await api('DELETE', `/spaces/${spaceId}/sprints/${sprintTwo.id}`, { token: alice.token });
+const guestDeleteSprint = await api('DELETE', `/spaces/${spaceId}/sprints/${sprintOne.json.id}`, {
+  token: guest.token,
+});
+check('guest 스프린트 삭제 거부', guestDeleteSprint.status === 403,
+  `status=${guestDeleteSprint.status}`);
+
+await api('DELETE', `/spaces/${spaceId}/sprints/${sprintOne.json.id}`, { token: alice.token });
+const orphaned = await api('GET', `/spaces/${spaceId}/issues/${s2.id}`, { token: alice.token });
+check('스프린트를 지워도 이슈는 남는다', orphaned.status === 200, `status=${orphaned.status}`);
+check('지운 스프린트의 이슈는 백로그로 돌아간다', orphaned.json?.sprintId === null,
+  JSON.stringify(orphaned.json?.sprintId));
+
+// ── 17. 컬럼 상한 ────────────────────────────────────
 // 채번이 스페이스 행을 잠그므로 200건을 한꺼번에 던지면 잠금 대기로 느려진다.
 // 20건씩 끊어 보낸다.
 const already = (await listIssues('?status=backlog')).json.issues.length;
