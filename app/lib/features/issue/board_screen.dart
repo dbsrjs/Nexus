@@ -37,6 +37,13 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
       appBar: AppBar(
         title: const Text('보드'),
         actions: [
+          // FAB 과 같은 일을 한다. 떠 있는 버튼은 창 크기나 겹친 창에 따라
+          // 화면 밖으로 밀릴 수 있어, 언제나 닿는 자리에도 둔다.
+          IconButton(
+            tooltip: '새 이슈',
+            icon: const Icon(Icons.add),
+            onPressed: () => showNewIssueSheet(context),
+          ),
           IconButton(
             tooltip: '새로고침',
             icon: const Icon(Icons.refresh),
@@ -53,13 +60,18 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             // 좁으면 한 열이 화면의 대부분을 쓰고, 넓으면 넷이 한눈에 들어온다.
+            //
+            // **리스트 좌우 패딩을 먼저 뺀다.** 빼지 않으면 네 컬럼의 합이
+            // 화면보다 딱 그만큼 넓어져, 폭이 충분한데도 마지막 컬럼이
+            // 잘린 채 가로 스크롤이 생긴다.
+            final usable = constraints.maxWidth - _boardPadding * 2;
             final columnWidth = constraints.maxWidth < 720
-                ? constraints.maxWidth * 0.82
-                : (constraints.maxWidth / 4).clamp(240.0, 360.0);
+                ? usable * 0.85
+                : (usable / IssueStatus.values.length).clamp(240.0, 360.0);
 
             return ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.all(NexusSpacing.sp5),
+              padding: const EdgeInsets.all(_boardPadding),
               children: [
                 for (final status in IssueStatus.values)
                   SizedBox(
@@ -78,6 +90,10 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     );
   }
 }
+
+/// 보드 바깥 여백. 컬럼 폭 계산이 이 값을 빼야 하므로 상수로 묶어 둔다 —
+/// 둘이 갈라지면 마지막 컬럼이 잘린다.
+const double _boardPadding = NexusSpacing.sp5;
 
 class _BoardColumn extends StatelessWidget {
   const _BoardColumn({
