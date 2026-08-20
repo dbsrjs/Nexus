@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import '../../core/env.dart';
+import '../../domain/models/issue.dart';
 import '../../domain/models/message.dart';
 import '../api/api_client.dart';
 import 'socket_event.dart';
@@ -55,6 +56,9 @@ class SocketClient {
       ..on('thread:reply', _onThreadReply)
       ..on('pin:changed', _onPinChanged)
       ..on('reaction:changed', _onReactionChanged)
+      ..on('issue:created', _onIssueUpserted)
+      ..on('issue:updated', _onIssueUpserted)
+      ..on('issue:deleted', _onIssueDeleted)
       ..on('read:synced', _onReadSynced)
       ..on('rooms:invalidate', _onRoomsInvalidate);
 
@@ -171,6 +175,27 @@ class SocketClient {
     } catch (e) {
       debugPrint('소켓 스레드 답글 파싱 실패: $e');
     }
+  }
+
+  /// `issue:created` 와 `issue:updated` 를 함께 받는다 — 앱이 할 일이 같다.
+  /// 페이로드는 REST 응답과 같은 모양이라 파서를 따로 두지 않는다.
+  void _onIssueUpserted(dynamic data) {
+    final map = _asMap(data);
+    final spaceId = map?['spaceId'];
+    if (map == null || spaceId is! String) return;
+
+    _emit(IssueUpserted(spaceId: spaceId, issue: Issue.fromJson(map)));
+  }
+
+  void _onIssueDeleted(dynamic data) {
+    final map = _asMap(data);
+    final issueId = map?['issueId'];
+    if (map == null || issueId is! String) return;
+
+    _emit(IssueDeleted(
+      spaceId: map['spaceId'] as String? ?? '',
+      issueId: issueId,
+    ));
   }
 
   void _onPinChanged(dynamic data) {

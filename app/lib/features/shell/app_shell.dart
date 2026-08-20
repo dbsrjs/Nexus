@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/breakpoints.dart';
@@ -58,6 +59,18 @@ class _AppShellState extends ConsumerState<AppShell> {
     });
   }
 
+  /// '보드' 탭은 셸 본문을 갈아 끼우는 대신 **보드 화면을 덮어서 연다.**
+  /// 본문을 탭으로 바꾸면 "라우트가 진실의 원천"이라는 이 셸의 전제가 깨진다.
+  /// 돌아오면 탭은 대화로 되돌린다 — 보드가 열려 있지 않은데 '보드'가
+  /// 선택돼 있으면 지금 무엇을 보고 있는지 읽을 수 없다.
+  void _onTab(int index) {
+    if (index == 1) {
+      context.push('/s/${widget.spaceId}/issues');
+      return;
+    }
+    setState(() => _tab = index);
+  }
+
   @override
   Widget build(BuildContext context) {
     final layout = Layout.ofContext(context);
@@ -68,7 +81,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       Layout.mobile => _CompactShell(
           showBottomTabs: true,
           tab: _tab,
-          onTab: (i) => setState(() => _tab = i),
+          onTab: _onTab,
         ),
     };
   }

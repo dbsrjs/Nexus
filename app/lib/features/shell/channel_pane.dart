@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/breakpoints.dart';
@@ -46,6 +47,15 @@ class ChannelPane extends ConsumerWidget {
                     style: theme.textTheme.titleSmall,
                     overflow: TextOverflow.ellipsis,
                   ),
+                ),
+                // 보드로 가는 길. 데스크톱·태블릿에서는 하단 탭이 없어
+                // 여기가 유일한 진입점이다.
+                IconButton(
+                  tooltip: '보드',
+                  icon: const Icon(Icons.dashboard_outlined, size: 18),
+                  onPressed: space == null
+                      ? null
+                      : () => context.push('/s/${space.id}/issues'),
                 ),
                 if (onClose != null)
                   IconButton(

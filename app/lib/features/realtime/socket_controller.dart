@@ -5,6 +5,7 @@ import '../../data/socket/socket_event.dart';
 import '../auth/auth_controller.dart';
 import '../channel/channel_controller.dart';
 import '../chat/message_controller.dart';
+import '../issue/board_controller.dart';
 
 /// 앱 전체에 하나뿐인 소켓 연결.
 ///
@@ -105,6 +106,14 @@ final realtimeChannelSyncProvider = Provider<void>((ref) {
           // 실패하면 ApiClient 가 세션 만료를 알려 로그인 화면으로 간다.
           if (ok) ref.read(socketClientProvider).reconnectWithFreshToken();
         });
+
+      case IssueUpserted():
+        // 이슈는 채널에 속하지 않아 스페이스 룸으로 온다. 보드를 열어 두지
+        // 않았어도 캐시를 갱신해 둔다 — 열었을 때 이미 맞아 있어야 한다.
+        ref.read(issueRepositoryProvider).applyUpsert(event.spaceId, event.issue);
+
+      case IssueDeleted():
+        ref.read(issueRepositoryProvider).applyDelete(event.issueId);
 
       case MessageEdited():
       case MessageDeleted():

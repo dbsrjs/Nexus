@@ -1,3 +1,4 @@
+import '../../domain/models/issue.dart';
 import '../../domain/models/message.dart';
 
 /// 서버 → 클라이언트 소켓 이벤트.
@@ -125,6 +126,27 @@ class ReactionEntry {
 
   final String emoji;
   final String userId;
+}
+
+/// 이슈가 생겼거나 바뀌었다. **스페이스 룸으로 온다** — 이슈는 채널에
+/// 속하지 않는다.
+///
+/// 생성과 수정을 한 클래스로 받는 이유는 앱이 할 일이 같아서다(캐시에
+/// upsert). 서버가 이름을 둘로 나눈 덕분에 "이 id 가 캐시에 있나"를 먼저
+/// 묻지 않아도 된다.
+class IssueUpserted extends SocketEvent {
+  const IssueUpserted({required this.spaceId, required this.issue});
+
+  final String spaceId;
+  final Issue issue;
+}
+
+/// 이슈가 지워졌다(9-2 에서 서버가 쏘기 시작한다).
+class IssueDeleted extends SocketEvent {
+  const IssueDeleted({required this.spaceId, required this.issueId});
+
+  final String spaceId;
+  final String issueId;
 }
 
 /// 다른 기기에서 읽음 위치가 바뀌었다. 룸은 `user:{id}` 라 내 모든 기기에 온다.
