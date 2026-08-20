@@ -290,7 +290,57 @@ await api('PATCH', `/spaces/${spaceId}/issues/${made.json.id}`, {
 });
 check('issue:updated 가 도착한다', (await updatedEvent)?.status === 'review');
 
-// ── 9. 컬럼 상한 ─────────────────────────────────────
+// ── 9. 정렬 자리 소진 → 재채번 ───────────────────────
+// 같은 틈에 계속 끼워 넣으면 Decimal 의 유효 자릿수가 소진된다(실측 64회).
+// 그때 그 컬럼만 다시 채번하는 경로가 도는지 본다 — 안 돌면 두 카드가 같은
+// position 을 갖고 순서가 tie-break 로 넘어가 흔들린다.
+const bottom = (await createIssue({ title: '바닥', status: 'review' })).json;
+const ceiling = (await createIssue({ title: '천장', status: 'review' })).json;
+
+let anchorId = ceiling.id;
+let squeezeOk = true;
+for (let i = 0; i < 70; i++) {
+  const card = (await createIssue({ title: `끼움 ${i}`, status: 'review' })).json;
+  const res = await api('PUT', `/spaces/${spaceId}/issues/${card.id}/position`, {
+    token: alice.token,
+    body: { status: 'review', afterId: anchorId, beforeId: bottom.id },
+  });
+  if (res.status !== 200) {
+    squeezeOk = false;
+    check(`${i}번째 끼워 넣기 실패`, false, JSON.stringify(res.json));
+    break;
+  }
+  anchorId = card.id;
+}
+check('자리가 소진될 때까지 끼워 넣어도 전부 200', squeezeOk);
+
+const squeezed = (await listIssues('?status=review')).json.issues;
+const squeezedPositions = squeezed.map((i) => Number(i.position));
+check(
+  '재채번 뒤에도 position 이 서로 다르다',
+  new Set(squeezed.map((i) => i.position)).size === squeezed.length,
+  `${squeezed.length}건 중 유일값 ${new Set(squeezed.map((i) => i.position)).size}개`,
+);
+check(
+  '목록이 position 오름차순으로 온다',
+  squeezedPositions.every((p, i) => i === 0 || squeezedPositions[i - 1] <= p),
+  squeezedPositions.slice(0, 5).join(','),
+);
+// 이 컬럼에는 앞 단계(소켓 검증)가 옮겨 놓은 카드도 있으므로 "맨 아래"가
+// 아니라 **내가 넣은 카드들보다 아래**인지를 본다. 절대 위치가 아니라
+// 상대 순서가 이 기능의 계약이다.
+const squeezedIds = squeezed.map((i) => i.id);
+const bottomAt = squeezedIds.indexOf(bottom.id);
+const mine = squeezed
+  .filter((i) => i.title === '천장' || i.title.startsWith('끼움'))
+  .map((i) => squeezedIds.indexOf(i.id));
+check(
+  '끼워 넣은 카드가 전부 바닥 위에 있다',
+  bottomAt >= 0 && mine.length === 71 && mine.every((at) => at < bottomAt),
+  `바닥=${bottomAt} · 내 카드 ${mine.length}개 중 아래로 샌 것 ${mine.filter((at) => at > bottomAt).length}개`,
+);
+
+// ── 10. 컬럼 상한 ────────────────────────────────────
 // 채번이 스페이스 행을 잠그므로 200건을 한꺼번에 던지면 잠금 대기로 느려진다.
 // 20건씩 끊어 보낸다.
 const already = (await listIssues('?status=backlog')).json.issues.length;
