@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import '../../domain/models/issue.dart';
 import '../../domain/models/message.dart';
 
 part 'app_database.g.dart';
@@ -292,6 +293,45 @@ class CachedSpaces extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 이슈 보드 캐시. 화면은 이것만 구독한다 — REST 와 소켓은 여기를 갱신할 뿐이다.
+///
+/// **큐가 없다.** 쓰기는 온라인 전용이라 오프라인에서 만든 이슈를 보관할 곳이
+/// 필요 없다. 칸반 이동은 같은 카드를 두 곳에서 옮겼을 때 순서를 합칠 방법이
+/// 없어, 메시지처럼 append 로 풀리지 않는다.
+class CachedIssues extends Table {
+  TextColumn get id => text()();
+  TextColumn get spaceId => text()();
+  TextColumn get key => text()();
+  TextColumn get title => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get status => text()();
+  TextColumn get priority => text()();
+  TextColumn get assigneeId => text().nullable()();
+  TextColumn get assigneeName => text().nullable()();
+  TextColumn get assigneeAvatarUrl => text().nullable()();
+  TextColumn get sprintId => text().nullable()();
+  TextColumn get parentId => text().nullable()();
+  IntColumn get storyPoints => integer().nullable()();
+
+  /// 서버가 준 Decimal 문자열을 그대로 둔다. 이동 요청에 되돌려 보낼 값이다.
+  TextColumn get position => text()();
+
+  /// **정렬은 이것이 한다.** position 문자열은 사전순이 수 순서와 달라
+  /// ('-1000' 이 '500' 보다 뒤에 온다) 그대로 정렬하면 뒤집힌다.
+  RealColumn get sortKey => real()();
+
+  /// 컬럼 순서(backlog · doing · review · done). 이름으로 정렬하면
+  /// 알파벳순(backlog · doing · done · review)이 되어 보드가 뒤섞인다.
+  IntColumn get statusRank => integer()();
+
+  IntColumn get closedAt => integer().map(const _UtcMicros()).nullable()();
+  IntColumn get createdAt => integer().map(const _UtcMicros())();
+  IntColumn get updatedAt => integer().map(const _UtcMicros())();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// 웹에서 drift 를 열려면 **자산이 어디 있는지 알려 줘야 한다.**
 ///
 /// 네이티브는 파일 하나면 끝이지만 웹은 sqlite3 를 WebAssembly 로 싣고 작업을
@@ -315,6 +355,7 @@ final _webOptions = DriftWebOptions(
     CachedChannels,
     CachedCategories,
     CachedSpaces,
+    CachedIssues,
     OutboxMessages,
   ],
 )
@@ -323,7 +364,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus', web: _webOptions));
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -386,7 +427,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// 스키마가 바뀌면 통째로 다시 만드는 테이블. **큐는 여기 없다.**
   List<TableInfo<Table, dynamic>> get _rebuildableCaches =>
-      [cachedMessages, cachedChannels, cachedCategories, cachedSpaces];
+      [cachedMessages, cachedChannels, cachedCategories, cachedSpaces, cachedIssues];
 
   // ──────────────────────────────────────────────
   // 메시지
@@ -712,10 +753,69 @@ class AppDatabase extends _$AppDatabase {
       await delete(cachedChannels).go();
       await delete(cachedCategories).go();
       await delete(cachedSpaces).go();
+      await delete(cachedIssues).go();
       await delete(outboxMessages).go();
     });
   }
+
+  // ──────────────────────────────────────────────
+  // 이슈
+  // ──────────────────────────────────────────────
+
+  /// 보드에 그릴 순서 그대로 준다 — 컬럼 순서, 그 안에서 position 순.
+  Stream<List<CachedIssue>> watchIssues(String spaceId) =>
+      (select(cachedIssues)
+            ..where((t) => t.spaceId.equals(spaceId))
+            ..orderBy([
+              (t) => OrderingTerm.asc(t.statusRank),
+              (t) => OrderingTerm.asc(t.sortKey),
+              (t) => OrderingTerm.asc(t.createdAt),
+            ]))
+          .watch();
+
+  /// 서버 목록으로 통째 교체한다. 사라진 이슈는 지운다 — 남겨 두면 다른
+  /// 곳에서 지운 이슈가 이 기기에만 영원히 남는다.
+  Future<void> replaceIssues(String spaceId, List<Issue> issues) =>
+      transaction(() async {
+        await (delete(cachedIssues)
+              ..where((t) => t.spaceId.equals(spaceId)))
+            .go();
+        await batch((b) => b.insertAll(
+              cachedIssues,
+              issues.map((i) => _issueRow(spaceId, i)).toList(growable: false),
+            ));
+      });
+
+  /// 소켓 한 건 · 낙관적 갱신이 쓴다. 같은 id 면 덮어쓴다.
+  Future<void> upsertIssue(String spaceId, Issue issue) =>
+      into(cachedIssues).insertOnConflictUpdate(_issueRow(spaceId, issue));
+
+  Future<void> deleteIssue(String issueId) =>
+      (delete(cachedIssues)..where((t) => t.id.equals(issueId))).go();
 }
+
+CachedIssuesCompanion _issueRow(String spaceId, Issue i) =>
+    CachedIssuesCompanion.insert(
+      id: i.id,
+      spaceId: spaceId,
+      key: i.key,
+      title: i.title,
+      description: Value(i.description),
+      status: i.status.name,
+      statusRank: i.status.index,
+      priority: i.priority.name,
+      assigneeId: Value(i.assignee?.id),
+      assigneeName: Value(i.assignee?.name),
+      assigneeAvatarUrl: Value(i.assignee?.avatarUrl),
+      sprintId: Value(i.sprintId),
+      parentId: Value(i.parentId),
+      storyPoints: Value(i.storyPoints),
+      position: i.position,
+      sortKey: double.tryParse(i.position) ?? 0,
+      closedAt: Value(i.closedAt),
+      createdAt: i.createdAt,
+      updatedAt: i.updatedAt,
+    );
 
 /// 캐시와 큐를 합친 UNION 결과 한 줄 → 화면 모델.
 ///

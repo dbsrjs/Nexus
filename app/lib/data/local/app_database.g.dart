@@ -2308,6 +2308,1085 @@ class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
   }
 }
 
+class $CachedIssuesTable extends CachedIssues
+    with TableInfo<$CachedIssuesTable, CachedIssue> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedIssuesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _spaceIdMeta = const VerificationMeta(
+    'spaceId',
+  );
+  @override
+  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
+    'space_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _priorityMeta = const VerificationMeta(
+    'priority',
+  );
+  @override
+  late final GeneratedColumn<String> priority = GeneratedColumn<String>(
+    'priority',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _assigneeIdMeta = const VerificationMeta(
+    'assigneeId',
+  );
+  @override
+  late final GeneratedColumn<String> assigneeId = GeneratedColumn<String>(
+    'assignee_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _assigneeNameMeta = const VerificationMeta(
+    'assigneeName',
+  );
+  @override
+  late final GeneratedColumn<String> assigneeName = GeneratedColumn<String>(
+    'assignee_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _assigneeAvatarUrlMeta = const VerificationMeta(
+    'assigneeAvatarUrl',
+  );
+  @override
+  late final GeneratedColumn<String> assigneeAvatarUrl =
+      GeneratedColumn<String>(
+        'assignee_avatar_url',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _sprintIdMeta = const VerificationMeta(
+    'sprintId',
+  );
+  @override
+  late final GeneratedColumn<String> sprintId = GeneratedColumn<String>(
+    'sprint_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _parentIdMeta = const VerificationMeta(
+    'parentId',
+  );
+  @override
+  late final GeneratedColumn<String> parentId = GeneratedColumn<String>(
+    'parent_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _storyPointsMeta = const VerificationMeta(
+    'storyPoints',
+  );
+  @override
+  late final GeneratedColumn<int> storyPoints = GeneratedColumn<int>(
+    'story_points',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<String> position = GeneratedColumn<String>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortKeyMeta = const VerificationMeta(
+    'sortKey',
+  );
+  @override
+  late final GeneratedColumn<double> sortKey = GeneratedColumn<double>(
+    'sort_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusRankMeta = const VerificationMeta(
+    'statusRank',
+  );
+  @override
+  late final GeneratedColumn<int> statusRank = GeneratedColumn<int>(
+    'status_rank',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> closedAt =
+      GeneratedColumn<int>(
+        'closed_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($CachedIssuesTable.$converterclosedAtn);
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> createdAt =
+      GeneratedColumn<int>(
+        'created_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($CachedIssuesTable.$convertercreatedAt);
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> updatedAt =
+      GeneratedColumn<int>(
+        'updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($CachedIssuesTable.$converterupdatedAt);
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    spaceId,
+    key,
+    title,
+    description,
+    status,
+    priority,
+    assigneeId,
+    assigneeName,
+    assigneeAvatarUrl,
+    sprintId,
+    parentId,
+    storyPoints,
+    position,
+    sortKey,
+    statusRank,
+    closedAt,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_issues';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedIssue> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('space_id')) {
+      context.handle(
+        _spaceIdMeta,
+        spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_spaceIdMeta);
+    }
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('priority')) {
+      context.handle(
+        _priorityMeta,
+        priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_priorityMeta);
+    }
+    if (data.containsKey('assignee_id')) {
+      context.handle(
+        _assigneeIdMeta,
+        assigneeId.isAcceptableOrUnknown(data['assignee_id']!, _assigneeIdMeta),
+      );
+    }
+    if (data.containsKey('assignee_name')) {
+      context.handle(
+        _assigneeNameMeta,
+        assigneeName.isAcceptableOrUnknown(
+          data['assignee_name']!,
+          _assigneeNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('assignee_avatar_url')) {
+      context.handle(
+        _assigneeAvatarUrlMeta,
+        assigneeAvatarUrl.isAcceptableOrUnknown(
+          data['assignee_avatar_url']!,
+          _assigneeAvatarUrlMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sprint_id')) {
+      context.handle(
+        _sprintIdMeta,
+        sprintId.isAcceptableOrUnknown(data['sprint_id']!, _sprintIdMeta),
+      );
+    }
+    if (data.containsKey('parent_id')) {
+      context.handle(
+        _parentIdMeta,
+        parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta),
+      );
+    }
+    if (data.containsKey('story_points')) {
+      context.handle(
+        _storyPointsMeta,
+        storyPoints.isAcceptableOrUnknown(
+          data['story_points']!,
+          _storyPointsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('sort_key')) {
+      context.handle(
+        _sortKeyMeta,
+        sortKey.isAcceptableOrUnknown(data['sort_key']!, _sortKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sortKeyMeta);
+    }
+    if (data.containsKey('status_rank')) {
+      context.handle(
+        _statusRankMeta,
+        statusRank.isAcceptableOrUnknown(data['status_rank']!, _statusRankMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusRankMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedIssue map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedIssue(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      spaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}space_id'],
+      )!,
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      priority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}priority'],
+      )!,
+      assigneeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}assignee_id'],
+      ),
+      assigneeName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}assignee_name'],
+      ),
+      assigneeAvatarUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}assignee_avatar_url'],
+      ),
+      sprintId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sprint_id'],
+      ),
+      parentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parent_id'],
+      ),
+      storyPoints: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}story_points'],
+      ),
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}position'],
+      )!,
+      sortKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}sort_key'],
+      )!,
+      statusRank: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}status_rank'],
+      )!,
+      closedAt: $CachedIssuesTable.$converterclosedAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}closed_at'],
+        ),
+      ),
+      createdAt: $CachedIssuesTable.$convertercreatedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}created_at'],
+        )!,
+      ),
+      updatedAt: $CachedIssuesTable.$converterupdatedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}updated_at'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $CachedIssuesTable createAlias(String alias) {
+    return $CachedIssuesTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $converterclosedAt = const _UtcMicros();
+  static TypeConverter<DateTime?, int?> $converterclosedAtn =
+      NullAwareTypeConverter.wrap($converterclosedAt);
+  static TypeConverter<DateTime, int> $convertercreatedAt = const _UtcMicros();
+  static TypeConverter<DateTime, int> $converterupdatedAt = const _UtcMicros();
+}
+
+class CachedIssue extends DataClass implements Insertable<CachedIssue> {
+  final String id;
+  final String spaceId;
+  final String key;
+  final String title;
+  final String? description;
+  final String status;
+  final String priority;
+  final String? assigneeId;
+  final String? assigneeName;
+  final String? assigneeAvatarUrl;
+  final String? sprintId;
+  final String? parentId;
+  final int? storyPoints;
+
+  /// 서버가 준 Decimal 문자열을 그대로 둔다. 이동 요청에 되돌려 보낼 값이다.
+  final String position;
+
+  /// **정렬은 이것이 한다.** position 문자열은 사전순이 수 순서와 달라
+  /// ('-1000' 이 '500' 보다 뒤에 온다) 그대로 정렬하면 뒤집힌다.
+  final double sortKey;
+
+  /// 컬럼 순서(backlog · doing · review · done). 이름으로 정렬하면
+  /// 알파벳순(backlog · doing · done · review)이 되어 보드가 뒤섞인다.
+  final int statusRank;
+  final DateTime? closedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const CachedIssue({
+    required this.id,
+    required this.spaceId,
+    required this.key,
+    required this.title,
+    this.description,
+    required this.status,
+    required this.priority,
+    this.assigneeId,
+    this.assigneeName,
+    this.assigneeAvatarUrl,
+    this.sprintId,
+    this.parentId,
+    this.storyPoints,
+    required this.position,
+    required this.sortKey,
+    required this.statusRank,
+    this.closedAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['space_id'] = Variable<String>(spaceId);
+    map['key'] = Variable<String>(key);
+    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['status'] = Variable<String>(status);
+    map['priority'] = Variable<String>(priority);
+    if (!nullToAbsent || assigneeId != null) {
+      map['assignee_id'] = Variable<String>(assigneeId);
+    }
+    if (!nullToAbsent || assigneeName != null) {
+      map['assignee_name'] = Variable<String>(assigneeName);
+    }
+    if (!nullToAbsent || assigneeAvatarUrl != null) {
+      map['assignee_avatar_url'] = Variable<String>(assigneeAvatarUrl);
+    }
+    if (!nullToAbsent || sprintId != null) {
+      map['sprint_id'] = Variable<String>(sprintId);
+    }
+    if (!nullToAbsent || parentId != null) {
+      map['parent_id'] = Variable<String>(parentId);
+    }
+    if (!nullToAbsent || storyPoints != null) {
+      map['story_points'] = Variable<int>(storyPoints);
+    }
+    map['position'] = Variable<String>(position);
+    map['sort_key'] = Variable<double>(sortKey);
+    map['status_rank'] = Variable<int>(statusRank);
+    if (!nullToAbsent || closedAt != null) {
+      map['closed_at'] = Variable<int>(
+        $CachedIssuesTable.$converterclosedAtn.toSql(closedAt),
+      );
+    }
+    {
+      map['created_at'] = Variable<int>(
+        $CachedIssuesTable.$convertercreatedAt.toSql(createdAt),
+      );
+    }
+    {
+      map['updated_at'] = Variable<int>(
+        $CachedIssuesTable.$converterupdatedAt.toSql(updatedAt),
+      );
+    }
+    return map;
+  }
+
+  CachedIssuesCompanion toCompanion(bool nullToAbsent) {
+    return CachedIssuesCompanion(
+      id: Value(id),
+      spaceId: Value(spaceId),
+      key: Value(key),
+      title: Value(title),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      status: Value(status),
+      priority: Value(priority),
+      assigneeId: assigneeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assigneeId),
+      assigneeName: assigneeName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assigneeName),
+      assigneeAvatarUrl: assigneeAvatarUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assigneeAvatarUrl),
+      sprintId: sprintId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sprintId),
+      parentId: parentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentId),
+      storyPoints: storyPoints == null && nullToAbsent
+          ? const Value.absent()
+          : Value(storyPoints),
+      position: Value(position),
+      sortKey: Value(sortKey),
+      statusRank: Value(statusRank),
+      closedAt: closedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(closedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CachedIssue.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedIssue(
+      id: serializer.fromJson<String>(json['id']),
+      spaceId: serializer.fromJson<String>(json['spaceId']),
+      key: serializer.fromJson<String>(json['key']),
+      title: serializer.fromJson<String>(json['title']),
+      description: serializer.fromJson<String?>(json['description']),
+      status: serializer.fromJson<String>(json['status']),
+      priority: serializer.fromJson<String>(json['priority']),
+      assigneeId: serializer.fromJson<String?>(json['assigneeId']),
+      assigneeName: serializer.fromJson<String?>(json['assigneeName']),
+      assigneeAvatarUrl: serializer.fromJson<String?>(
+        json['assigneeAvatarUrl'],
+      ),
+      sprintId: serializer.fromJson<String?>(json['sprintId']),
+      parentId: serializer.fromJson<String?>(json['parentId']),
+      storyPoints: serializer.fromJson<int?>(json['storyPoints']),
+      position: serializer.fromJson<String>(json['position']),
+      sortKey: serializer.fromJson<double>(json['sortKey']),
+      statusRank: serializer.fromJson<int>(json['statusRank']),
+      closedAt: serializer.fromJson<DateTime?>(json['closedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'spaceId': serializer.toJson<String>(spaceId),
+      'key': serializer.toJson<String>(key),
+      'title': serializer.toJson<String>(title),
+      'description': serializer.toJson<String?>(description),
+      'status': serializer.toJson<String>(status),
+      'priority': serializer.toJson<String>(priority),
+      'assigneeId': serializer.toJson<String?>(assigneeId),
+      'assigneeName': serializer.toJson<String?>(assigneeName),
+      'assigneeAvatarUrl': serializer.toJson<String?>(assigneeAvatarUrl),
+      'sprintId': serializer.toJson<String?>(sprintId),
+      'parentId': serializer.toJson<String?>(parentId),
+      'storyPoints': serializer.toJson<int?>(storyPoints),
+      'position': serializer.toJson<String>(position),
+      'sortKey': serializer.toJson<double>(sortKey),
+      'statusRank': serializer.toJson<int>(statusRank),
+      'closedAt': serializer.toJson<DateTime?>(closedAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CachedIssue copyWith({
+    String? id,
+    String? spaceId,
+    String? key,
+    String? title,
+    Value<String?> description = const Value.absent(),
+    String? status,
+    String? priority,
+    Value<String?> assigneeId = const Value.absent(),
+    Value<String?> assigneeName = const Value.absent(),
+    Value<String?> assigneeAvatarUrl = const Value.absent(),
+    Value<String?> sprintId = const Value.absent(),
+    Value<String?> parentId = const Value.absent(),
+    Value<int?> storyPoints = const Value.absent(),
+    String? position,
+    double? sortKey,
+    int? statusRank,
+    Value<DateTime?> closedAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => CachedIssue(
+    id: id ?? this.id,
+    spaceId: spaceId ?? this.spaceId,
+    key: key ?? this.key,
+    title: title ?? this.title,
+    description: description.present ? description.value : this.description,
+    status: status ?? this.status,
+    priority: priority ?? this.priority,
+    assigneeId: assigneeId.present ? assigneeId.value : this.assigneeId,
+    assigneeName: assigneeName.present ? assigneeName.value : this.assigneeName,
+    assigneeAvatarUrl: assigneeAvatarUrl.present
+        ? assigneeAvatarUrl.value
+        : this.assigneeAvatarUrl,
+    sprintId: sprintId.present ? sprintId.value : this.sprintId,
+    parentId: parentId.present ? parentId.value : this.parentId,
+    storyPoints: storyPoints.present ? storyPoints.value : this.storyPoints,
+    position: position ?? this.position,
+    sortKey: sortKey ?? this.sortKey,
+    statusRank: statusRank ?? this.statusRank,
+    closedAt: closedAt.present ? closedAt.value : this.closedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  CachedIssue copyWithCompanion(CachedIssuesCompanion data) {
+    return CachedIssue(
+      id: data.id.present ? data.id.value : this.id,
+      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
+      key: data.key.present ? data.key.value : this.key,
+      title: data.title.present ? data.title.value : this.title,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      status: data.status.present ? data.status.value : this.status,
+      priority: data.priority.present ? data.priority.value : this.priority,
+      assigneeId: data.assigneeId.present
+          ? data.assigneeId.value
+          : this.assigneeId,
+      assigneeName: data.assigneeName.present
+          ? data.assigneeName.value
+          : this.assigneeName,
+      assigneeAvatarUrl: data.assigneeAvatarUrl.present
+          ? data.assigneeAvatarUrl.value
+          : this.assigneeAvatarUrl,
+      sprintId: data.sprintId.present ? data.sprintId.value : this.sprintId,
+      parentId: data.parentId.present ? data.parentId.value : this.parentId,
+      storyPoints: data.storyPoints.present
+          ? data.storyPoints.value
+          : this.storyPoints,
+      position: data.position.present ? data.position.value : this.position,
+      sortKey: data.sortKey.present ? data.sortKey.value : this.sortKey,
+      statusRank: data.statusRank.present
+          ? data.statusRank.value
+          : this.statusRank,
+      closedAt: data.closedAt.present ? data.closedAt.value : this.closedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedIssue(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('key: $key, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('status: $status, ')
+          ..write('priority: $priority, ')
+          ..write('assigneeId: $assigneeId, ')
+          ..write('assigneeName: $assigneeName, ')
+          ..write('assigneeAvatarUrl: $assigneeAvatarUrl, ')
+          ..write('sprintId: $sprintId, ')
+          ..write('parentId: $parentId, ')
+          ..write('storyPoints: $storyPoints, ')
+          ..write('position: $position, ')
+          ..write('sortKey: $sortKey, ')
+          ..write('statusRank: $statusRank, ')
+          ..write('closedAt: $closedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    spaceId,
+    key,
+    title,
+    description,
+    status,
+    priority,
+    assigneeId,
+    assigneeName,
+    assigneeAvatarUrl,
+    sprintId,
+    parentId,
+    storyPoints,
+    position,
+    sortKey,
+    statusRank,
+    closedAt,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedIssue &&
+          other.id == this.id &&
+          other.spaceId == this.spaceId &&
+          other.key == this.key &&
+          other.title == this.title &&
+          other.description == this.description &&
+          other.status == this.status &&
+          other.priority == this.priority &&
+          other.assigneeId == this.assigneeId &&
+          other.assigneeName == this.assigneeName &&
+          other.assigneeAvatarUrl == this.assigneeAvatarUrl &&
+          other.sprintId == this.sprintId &&
+          other.parentId == this.parentId &&
+          other.storyPoints == this.storyPoints &&
+          other.position == this.position &&
+          other.sortKey == this.sortKey &&
+          other.statusRank == this.statusRank &&
+          other.closedAt == this.closedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CachedIssuesCompanion extends UpdateCompanion<CachedIssue> {
+  final Value<String> id;
+  final Value<String> spaceId;
+  final Value<String> key;
+  final Value<String> title;
+  final Value<String?> description;
+  final Value<String> status;
+  final Value<String> priority;
+  final Value<String?> assigneeId;
+  final Value<String?> assigneeName;
+  final Value<String?> assigneeAvatarUrl;
+  final Value<String?> sprintId;
+  final Value<String?> parentId;
+  final Value<int?> storyPoints;
+  final Value<String> position;
+  final Value<double> sortKey;
+  final Value<int> statusRank;
+  final Value<DateTime?> closedAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CachedIssuesCompanion({
+    this.id = const Value.absent(),
+    this.spaceId = const Value.absent(),
+    this.key = const Value.absent(),
+    this.title = const Value.absent(),
+    this.description = const Value.absent(),
+    this.status = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.assigneeId = const Value.absent(),
+    this.assigneeName = const Value.absent(),
+    this.assigneeAvatarUrl = const Value.absent(),
+    this.sprintId = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.storyPoints = const Value.absent(),
+    this.position = const Value.absent(),
+    this.sortKey = const Value.absent(),
+    this.statusRank = const Value.absent(),
+    this.closedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedIssuesCompanion.insert({
+    required String id,
+    required String spaceId,
+    required String key,
+    required String title,
+    this.description = const Value.absent(),
+    required String status,
+    required String priority,
+    this.assigneeId = const Value.absent(),
+    this.assigneeName = const Value.absent(),
+    this.assigneeAvatarUrl = const Value.absent(),
+    this.sprintId = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.storyPoints = const Value.absent(),
+    required String position,
+    required double sortKey,
+    required int statusRank,
+    this.closedAt = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       spaceId = Value(spaceId),
+       key = Value(key),
+       title = Value(title),
+       status = Value(status),
+       priority = Value(priority),
+       position = Value(position),
+       sortKey = Value(sortKey),
+       statusRank = Value(statusRank),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<CachedIssue> custom({
+    Expression<String>? id,
+    Expression<String>? spaceId,
+    Expression<String>? key,
+    Expression<String>? title,
+    Expression<String>? description,
+    Expression<String>? status,
+    Expression<String>? priority,
+    Expression<String>? assigneeId,
+    Expression<String>? assigneeName,
+    Expression<String>? assigneeAvatarUrl,
+    Expression<String>? sprintId,
+    Expression<String>? parentId,
+    Expression<int>? storyPoints,
+    Expression<String>? position,
+    Expression<double>? sortKey,
+    Expression<int>? statusRank,
+    Expression<int>? closedAt,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (spaceId != null) 'space_id': spaceId,
+      if (key != null) 'key': key,
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (status != null) 'status': status,
+      if (priority != null) 'priority': priority,
+      if (assigneeId != null) 'assignee_id': assigneeId,
+      if (assigneeName != null) 'assignee_name': assigneeName,
+      if (assigneeAvatarUrl != null) 'assignee_avatar_url': assigneeAvatarUrl,
+      if (sprintId != null) 'sprint_id': sprintId,
+      if (parentId != null) 'parent_id': parentId,
+      if (storyPoints != null) 'story_points': storyPoints,
+      if (position != null) 'position': position,
+      if (sortKey != null) 'sort_key': sortKey,
+      if (statusRank != null) 'status_rank': statusRank,
+      if (closedAt != null) 'closed_at': closedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedIssuesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? spaceId,
+    Value<String>? key,
+    Value<String>? title,
+    Value<String?>? description,
+    Value<String>? status,
+    Value<String>? priority,
+    Value<String?>? assigneeId,
+    Value<String?>? assigneeName,
+    Value<String?>? assigneeAvatarUrl,
+    Value<String?>? sprintId,
+    Value<String?>? parentId,
+    Value<int?>? storyPoints,
+    Value<String>? position,
+    Value<double>? sortKey,
+    Value<int>? statusRank,
+    Value<DateTime?>? closedAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedIssuesCompanion(
+      id: id ?? this.id,
+      spaceId: spaceId ?? this.spaceId,
+      key: key ?? this.key,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      assigneeId: assigneeId ?? this.assigneeId,
+      assigneeName: assigneeName ?? this.assigneeName,
+      assigneeAvatarUrl: assigneeAvatarUrl ?? this.assigneeAvatarUrl,
+      sprintId: sprintId ?? this.sprintId,
+      parentId: parentId ?? this.parentId,
+      storyPoints: storyPoints ?? this.storyPoints,
+      position: position ?? this.position,
+      sortKey: sortKey ?? this.sortKey,
+      statusRank: statusRank ?? this.statusRank,
+      closedAt: closedAt ?? this.closedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (spaceId.present) {
+      map['space_id'] = Variable<String>(spaceId.value);
+    }
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (priority.present) {
+      map['priority'] = Variable<String>(priority.value);
+    }
+    if (assigneeId.present) {
+      map['assignee_id'] = Variable<String>(assigneeId.value);
+    }
+    if (assigneeName.present) {
+      map['assignee_name'] = Variable<String>(assigneeName.value);
+    }
+    if (assigneeAvatarUrl.present) {
+      map['assignee_avatar_url'] = Variable<String>(assigneeAvatarUrl.value);
+    }
+    if (sprintId.present) {
+      map['sprint_id'] = Variable<String>(sprintId.value);
+    }
+    if (parentId.present) {
+      map['parent_id'] = Variable<String>(parentId.value);
+    }
+    if (storyPoints.present) {
+      map['story_points'] = Variable<int>(storyPoints.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<String>(position.value);
+    }
+    if (sortKey.present) {
+      map['sort_key'] = Variable<double>(sortKey.value);
+    }
+    if (statusRank.present) {
+      map['status_rank'] = Variable<int>(statusRank.value);
+    }
+    if (closedAt.present) {
+      map['closed_at'] = Variable<int>(
+        $CachedIssuesTable.$converterclosedAtn.toSql(closedAt.value),
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(
+        $CachedIssuesTable.$convertercreatedAt.toSql(createdAt.value),
+      );
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(
+        $CachedIssuesTable.$converterupdatedAt.toSql(updatedAt.value),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedIssuesCompanion(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('key: $key, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('status: $status, ')
+          ..write('priority: $priority, ')
+          ..write('assigneeId: $assigneeId, ')
+          ..write('assigneeName: $assigneeName, ')
+          ..write('assigneeAvatarUrl: $assigneeAvatarUrl, ')
+          ..write('sprintId: $sprintId, ')
+          ..write('parentId: $parentId, ')
+          ..write('storyPoints: $storyPoints, ')
+          ..write('position: $position, ')
+          ..write('sortKey: $sortKey, ')
+          ..write('statusRank: $statusRank, ')
+          ..write('closedAt: $closedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $OutboxMessagesTable extends OutboxMessages
     with TableInfo<$OutboxMessagesTable, OutboxMessage> {
   @override
@@ -3319,6 +4398,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $CachedSpacesTable cachedSpaces = $CachedSpacesTable(this);
+  late final $CachedIssuesTable cachedIssues = $CachedIssuesTable(this);
   late final $OutboxMessagesTable outboxMessages = $OutboxMessagesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -3329,6 +4409,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cachedChannels,
     cachedCategories,
     cachedSpaces,
+    cachedIssues,
     outboxMessages,
   ];
 }
@@ -4507,6 +5588,487 @@ typedef $$CachedSpacesTableProcessedTableManager =
       CachedSpace,
       PrefetchHooks Function()
     >;
+typedef $$CachedIssuesTableCreateCompanionBuilder =
+    CachedIssuesCompanion Function({
+      required String id,
+      required String spaceId,
+      required String key,
+      required String title,
+      Value<String?> description,
+      required String status,
+      required String priority,
+      Value<String?> assigneeId,
+      Value<String?> assigneeName,
+      Value<String?> assigneeAvatarUrl,
+      Value<String?> sprintId,
+      Value<String?> parentId,
+      Value<int?> storyPoints,
+      required String position,
+      required double sortKey,
+      required int statusRank,
+      Value<DateTime?> closedAt,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedIssuesTableUpdateCompanionBuilder =
+    CachedIssuesCompanion Function({
+      Value<String> id,
+      Value<String> spaceId,
+      Value<String> key,
+      Value<String> title,
+      Value<String?> description,
+      Value<String> status,
+      Value<String> priority,
+      Value<String?> assigneeId,
+      Value<String?> assigneeName,
+      Value<String?> assigneeAvatarUrl,
+      Value<String?> sprintId,
+      Value<String?> parentId,
+      Value<int?> storyPoints,
+      Value<String> position,
+      Value<double> sortKey,
+      Value<int> statusRank,
+      Value<DateTime?> closedAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedIssuesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedIssuesTable> {
+  $$CachedIssuesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get assigneeId => $composableBuilder(
+    column: $table.assigneeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get assigneeName => $composableBuilder(
+    column: $table.assigneeName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get assigneeAvatarUrl => $composableBuilder(
+    column: $table.assigneeAvatarUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sprintId => $composableBuilder(
+    column: $table.sprintId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parentId => $composableBuilder(
+    column: $table.parentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get storyPoints => $composableBuilder(
+    column: $table.storyPoints,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sortKey => $composableBuilder(
+    column: $table.sortKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get statusRank => $composableBuilder(
+    column: $table.statusRank,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get closedAt =>
+      $composableBuilder(
+        column: $table.closedAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get createdAt =>
+      $composableBuilder(
+        column: $table.createdAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get updatedAt =>
+      $composableBuilder(
+        column: $table.updatedAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+}
+
+class $$CachedIssuesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedIssuesTable> {
+  $$CachedIssuesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get assigneeId => $composableBuilder(
+    column: $table.assigneeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get assigneeName => $composableBuilder(
+    column: $table.assigneeName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get assigneeAvatarUrl => $composableBuilder(
+    column: $table.assigneeAvatarUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sprintId => $composableBuilder(
+    column: $table.sprintId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parentId => $composableBuilder(
+    column: $table.parentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get storyPoints => $composableBuilder(
+    column: $table.storyPoints,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sortKey => $composableBuilder(
+    column: $table.sortKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get statusRank => $composableBuilder(
+    column: $table.statusRank,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get closedAt => $composableBuilder(
+    column: $table.closedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedIssuesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedIssuesTable> {
+  $$CachedIssuesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get spaceId =>
+      $composableBuilder(column: $table.spaceId, builder: (column) => column);
+
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
+  GeneratedColumn<String> get assigneeId => $composableBuilder(
+    column: $table.assigneeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get assigneeName => $composableBuilder(
+    column: $table.assigneeName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get assigneeAvatarUrl => $composableBuilder(
+    column: $table.assigneeAvatarUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sprintId =>
+      $composableBuilder(column: $table.sprintId, builder: (column) => column);
+
+  GeneratedColumn<String> get parentId =>
+      $composableBuilder(column: $table.parentId, builder: (column) => column);
+
+  GeneratedColumn<int> get storyPoints => $composableBuilder(
+    column: $table.storyPoints,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<double> get sortKey =>
+      $composableBuilder(column: $table.sortKey, builder: (column) => column);
+
+  GeneratedColumn<int> get statusRank => $composableBuilder(
+    column: $table.statusRank,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get closedAt =>
+      $composableBuilder(column: $table.closedAt, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CachedIssuesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedIssuesTable,
+          CachedIssue,
+          $$CachedIssuesTableFilterComposer,
+          $$CachedIssuesTableOrderingComposer,
+          $$CachedIssuesTableAnnotationComposer,
+          $$CachedIssuesTableCreateCompanionBuilder,
+          $$CachedIssuesTableUpdateCompanionBuilder,
+          (
+            CachedIssue,
+            BaseReferences<_$AppDatabase, $CachedIssuesTable, CachedIssue>,
+          ),
+          CachedIssue,
+          PrefetchHooks Function()
+        > {
+  $$CachedIssuesTableTableManager(_$AppDatabase db, $CachedIssuesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedIssuesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedIssuesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedIssuesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> spaceId = const Value.absent(),
+                Value<String> key = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> priority = const Value.absent(),
+                Value<String?> assigneeId = const Value.absent(),
+                Value<String?> assigneeName = const Value.absent(),
+                Value<String?> assigneeAvatarUrl = const Value.absent(),
+                Value<String?> sprintId = const Value.absent(),
+                Value<String?> parentId = const Value.absent(),
+                Value<int?> storyPoints = const Value.absent(),
+                Value<String> position = const Value.absent(),
+                Value<double> sortKey = const Value.absent(),
+                Value<int> statusRank = const Value.absent(),
+                Value<DateTime?> closedAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedIssuesCompanion(
+                id: id,
+                spaceId: spaceId,
+                key: key,
+                title: title,
+                description: description,
+                status: status,
+                priority: priority,
+                assigneeId: assigneeId,
+                assigneeName: assigneeName,
+                assigneeAvatarUrl: assigneeAvatarUrl,
+                sprintId: sprintId,
+                parentId: parentId,
+                storyPoints: storyPoints,
+                position: position,
+                sortKey: sortKey,
+                statusRank: statusRank,
+                closedAt: closedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String spaceId,
+                required String key,
+                required String title,
+                Value<String?> description = const Value.absent(),
+                required String status,
+                required String priority,
+                Value<String?> assigneeId = const Value.absent(),
+                Value<String?> assigneeName = const Value.absent(),
+                Value<String?> assigneeAvatarUrl = const Value.absent(),
+                Value<String?> sprintId = const Value.absent(),
+                Value<String?> parentId = const Value.absent(),
+                Value<int?> storyPoints = const Value.absent(),
+                required String position,
+                required double sortKey,
+                required int statusRank,
+                Value<DateTime?> closedAt = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedIssuesCompanion.insert(
+                id: id,
+                spaceId: spaceId,
+                key: key,
+                title: title,
+                description: description,
+                status: status,
+                priority: priority,
+                assigneeId: assigneeId,
+                assigneeName: assigneeName,
+                assigneeAvatarUrl: assigneeAvatarUrl,
+                sprintId: sprintId,
+                parentId: parentId,
+                storyPoints: storyPoints,
+                position: position,
+                sortKey: sortKey,
+                statusRank: statusRank,
+                closedAt: closedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedIssuesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedIssuesTable,
+      CachedIssue,
+      $$CachedIssuesTableFilterComposer,
+      $$CachedIssuesTableOrderingComposer,
+      $$CachedIssuesTableAnnotationComposer,
+      $$CachedIssuesTableCreateCompanionBuilder,
+      $$CachedIssuesTableUpdateCompanionBuilder,
+      (
+        CachedIssue,
+        BaseReferences<_$AppDatabase, $CachedIssuesTable, CachedIssue>,
+      ),
+      CachedIssue,
+      PrefetchHooks Function()
+    >;
 typedef $$OutboxMessagesTableCreateCompanionBuilder =
     OutboxMessagesCompanion Function({
       required String id,
@@ -4973,6 +6535,8 @@ class $AppDatabaseManager {
       $$CachedCategoriesTableTableManager(_db, _db.cachedCategories);
   $$CachedSpacesTableTableManager get cachedSpaces =>
       $$CachedSpacesTableTableManager(_db, _db.cachedSpaces);
+  $$CachedIssuesTableTableManager get cachedIssues =>
+      $$CachedIssuesTableTableManager(_db, _db.cachedIssues);
   $$OutboxMessagesTableTableManager get outboxMessages =>
       $$OutboxMessagesTableTableManager(_db, _db.outboxMessages);
 }
