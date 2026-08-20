@@ -1,4 +1,5 @@
 import '../../domain/models/issue.dart';
+import '../../domain/models/issue_comment.dart';
 import '../api/api_failure.dart';
 import '../api/issues_api.dart';
 import '../local/app_database.dart';
@@ -71,6 +72,54 @@ class IssueRepository {
     } on ApiException {
       await _db.upsertIssue(spaceId, issue);
       return false;
+    }
+  }
+
+  /// 캐시에서 키로 찾는다. 보드를 거쳐 들어왔으면 여기서 끝난다.
+  Future<Issue?> findCachedByKey(String spaceId, String key) async {
+    final rows = await _db.watchIssues(spaceId).first;
+    for (final row in rows) {
+      if (row.key == key) return _toIssue(row);
+    }
+    return null;
+  }
+
+  /// 캐시에 없을 때만 서버에 묻는다 — 딥링크로 상세에 곧장 들어온 경우다.
+  Future<Issue?> fetchByKey(String spaceId, String key) async {
+    try {
+      final issue = await _api.findByKey(spaceId, key);
+      if (issue != null) await _db.upsertIssue(spaceId, issue);
+      return issue;
+    } on ApiException {
+      return null;
+    }
+  }
+
+  /// **하드 삭제**다. 성공하면 캐시에서도 지운다 — 소켓이 오기 전에 화면이
+  /// 먼저 반응해야 지운 사람이 기다리지 않는다.
+  Future<bool> remove(String spaceId, String issueId) async {
+    try {
+      await _api.remove(spaceId, issueId);
+      await _db.deleteIssue(issueId);
+      return true;
+    } on ApiException {
+      return false;
+    }
+  }
+
+  /// 댓글은 캐시하지 않는다. 들어올 때마다 받는다(설계 §6-1).
+  Future<List<IssueComment>> listComments(String spaceId, String issueId) =>
+      _api.listComments(spaceId, issueId);
+
+  Future<IssueComment?> createComment(
+    String spaceId,
+    String issueId,
+    String body,
+  ) async {
+    try {
+      return await _api.createComment(spaceId, issueId, body);
+    } on ApiException {
+      return null;
     }
   }
 

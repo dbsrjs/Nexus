@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../domain/models/issue.dart';
+import '../../domain/models/issue_comment.dart';
 import 'api_client.dart';
 import 'api_failure.dart';
 
@@ -89,6 +90,63 @@ class IssuesApi {
         },
       );
       return Issue.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// GET /api/spaces/:spaceId/issues?key=NEXUS-12 — 딥링크로 상세에 곧장
+  /// 들어왔는데 캐시가 비어 있을 때 한 건만 받아 온다.
+  Future<Issue?> findByKey(String spaceId, String key) async {
+    try {
+      final res = await _client.dio.get<Map<String, dynamic>>(
+        '/spaces/$spaceId/issues',
+        queryParameters: {'key': key},
+      );
+      final issues = (res.data?['issues'] as List<dynamic>? ?? const [])
+          .cast<Map<String, dynamic>>();
+      return issues.isEmpty ? null : Issue.fromJson(issues.first);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// DELETE /api/spaces/:spaceId/issues/:issueId — **하드 삭제**다.
+  Future<void> remove(String spaceId, String issueId) async {
+    try {
+      await _client.dio.delete<void>('/spaces/$spaceId/issues/$issueId');
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// GET /api/spaces/:spaceId/issues/:issueId/comments — 오래된 것부터.
+  Future<List<IssueComment>> listComments(String spaceId, String issueId) async {
+    try {
+      final res = await _client.dio.get<List<dynamic>>(
+        '/spaces/$spaceId/issues/$issueId/comments',
+      );
+      return (res.data ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(IssueComment.fromJson)
+          .toList(growable: false);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// POST /api/spaces/:spaceId/issues/:issueId/comments
+  Future<IssueComment> createComment(
+    String spaceId,
+    String issueId,
+    String body,
+  ) async {
+    try {
+      final res = await _client.dio.post<Map<String, dynamic>>(
+        '/spaces/$spaceId/issues/$issueId/comments',
+        data: {'body': body},
+      );
+      return IssueComment.fromJson(res.data!);
     } on DioException catch (e) {
       throw ApiException(classifyDioException(e));
     }

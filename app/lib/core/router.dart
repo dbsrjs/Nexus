@@ -6,6 +6,7 @@ import '../features/auth/auth_controller.dart';
 import '../features/chat/thread_screen.dart';
 import '../features/files/files_screen.dart';
 import '../features/issue/board_screen.dart';
+import '../features/issue/issue_detail_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/space/space_picker_screen.dart';
@@ -67,6 +68,17 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'issues',
             builder: (_, state) =>
                 BoardScreen(spaceId: state.pathParameters['spaceId']!),
+            routes: [
+              // 상세는 **키**로 잡는다 — 사람이 대화에 붙여 넣는 것도
+              // uuid 가 아니라 NEXUS-12 다. API 는 id 로 유지한다.
+              GoRoute(
+                path: ':issueKey',
+                builder: (_, state) => IssueDetailScreen(
+                  spaceId: state.pathParameters['spaceId']!,
+                  issueKey: state.pathParameters['issueKey']!,
+                ),
+              ),
+            ],
           ),
           // 채널을 연 상태. 셸은 같고 본문만 대화로 바뀐다.
           GoRoute(

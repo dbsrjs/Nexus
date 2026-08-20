@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../domain/models/issue.dart';
 import '../../shared/widgets/nexus_avatar.dart';
+import 'package:go_router/go_router.dart';
+
+import '../space/space_controller.dart';
 import 'board_controller.dart';
 
 /// 칸반 카드 한 장.
@@ -23,49 +26,62 @@ class IssueCard extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: NexusSpacing.sp4),
-      child: Padding(
-        padding: const EdgeInsets.all(NexusSpacing.sp5),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  issue.key,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.textTheme.bodySmall?.color,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-                const Spacer(),
-                _PriorityDot(priority: issue.priority),
-                _MoveMenu(issue: issue),
-              ],
-            ),
-            const SizedBox(height: NexusSpacing.sp2),
-            Text(issue.title, style: theme.textTheme.bodyMedium),
-            if (assignee != null || issue.storyPoints != null) ...[
-              const SizedBox(height: NexusSpacing.sp5),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(NexusRadius.md),
+        onTap: () => context.push(
+          '/s/${ref.read(currentSpaceIdProvider)}/issues/${issue.key}',
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(NexusSpacing.sp5),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  if (assignee != null) ...[
-                    NexusAvatar(seed: assignee.id, label: assignee.name, size: 20),
-                    const SizedBox(width: NexusSpacing.sp3),
-                    Flexible(
-                      child: Text(
-                        assignee.name,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall,
-                      ),
+                  Text(
+                    issue.key,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.textTheme.bodySmall?.color,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
-                  ],
+                  ),
                   const Spacer(),
-                  if (issue.storyPoints != null)
-                    Text('${issue.storyPoints}p', style: theme.textTheme.labelSmall),
+                  _PriorityDot(priority: issue.priority),
+                  _MoveMenu(issue: issue),
                 ],
               ),
+              const SizedBox(height: NexusSpacing.sp2),
+              Text(issue.title, style: theme.textTheme.bodyMedium),
+              if (assignee != null || issue.storyPoints != null) ...[
+                const SizedBox(height: NexusSpacing.sp5),
+                Row(
+                  children: [
+                    if (assignee != null) ...[
+                      NexusAvatar(
+                        seed: assignee.id,
+                        label: assignee.name,
+                        size: 20,
+                      ),
+                      const SizedBox(width: NexusSpacing.sp3),
+                      Flexible(
+                        child: Text(
+                          assignee.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    if (issue.storyPoints != null)
+                      Text(
+                        '${issue.storyPoints}p',
+                        style: theme.textTheme.labelSmall,
+                      ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -106,8 +122,9 @@ class _MoveMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final others =
-        IssueStatus.values.where((s) => s != issue.status).toList(growable: false);
+    final others = IssueStatus.values
+        .where((s) => s != issue.status)
+        .toList(growable: false);
 
     return PopupMenuButton<IssueStatus>(
       tooltip: '옮기기',
