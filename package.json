@@ -26,6 +26,7 @@
     "check:attachments": "node server/scripts/check-attachments.mjs",
     "check:issues": "node server/scripts/check-issues.mjs",
     "check:repos": "node server/scripts/check-repos.mjs",
+    "check:oauth": "node server/scripts/check-oauth.mjs",
     "check:migrations": "node server/scripts/check-migrations.mjs"
   }
 }
