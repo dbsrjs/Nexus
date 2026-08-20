@@ -45,6 +45,9 @@ dependencies:
   drift: ^2.34.3
   drift_flutter: ^0.3.1
   file_picker: ^12.0.0
+  # OAuth 는 시스템 브라우저에서 진행한다. 앱 안 웹뷰를 쓰지 않는 것은
+  # GitHub 이 임베디드 웹뷰 로그인을 막기 때문이기도 하다.
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
