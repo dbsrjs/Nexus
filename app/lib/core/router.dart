@@ -7,6 +7,7 @@ import '../features/chat/thread_screen.dart';
 import '../features/files/files_screen.dart';
 import '../features/issue/board_screen.dart';
 import '../features/issue/issue_detail_screen.dart';
+import '../features/issue/sprint_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/space/space_picker_screen.dart';
@@ -64,6 +65,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           // 이슈 보드도 같은 방식이다. 셸 본문을 탭으로 갈아 끼우면
           // "라우트가 진실의 원천"이라는 셸의 전제가 깨진다.
+          GoRoute(
+            path: 'sprints',
+            builder: (_, state) =>
+                SprintScreen(spaceId: state.pathParameters['spaceId']!),
+          ),
           GoRoute(
             path: 'issues',
             builder: (_, state) =>

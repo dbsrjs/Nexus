@@ -582,6 +582,13 @@ const secondActive = await api('PATCH', `/spaces/${spaceId}/sprints/${sprintTwo.
 check('진행 중인 스프린트가 둘이 될 수 없다 — 409', secondActive.status === 409,
   `status=${secondActive.status}`);
 
+// 목록 순서 — enum 선언 순서(planned · active · closed)를 그대로 쓰면
+// 도는 스프린트가 계획 뒤로 밀린다. 지금 하는 일이 맨 위여야 한다.
+const sprintList = await api('GET', `/spaces/${spaceId}/sprints`, { token: alice.token });
+check('도는 스프린트가 목록 맨 위에 온다',
+  sprintList.json[0]?.state === 'active',
+  sprintList.json.map((s) => s.state).join(','));
+
 const backToPlanned = await api('PATCH', `/spaces/${spaceId}/sprints/${sprintOne.json.id}`, {
   token: alice.token, body: { state: 'planned' },
 });

@@ -13,6 +13,13 @@ import {
   UpdateSprintDto,
 } from './dto/sprint.dto';
 
+/** 화면에 보이는 순서. enum 선언 순서와 다르다 — 도는 것이 맨 위다. */
+const SPRINT_ORDER: Record<SprintState, number> = {
+  active: 0,
+  planned: 1,
+  closed: 2,
+};
+
 /**
  * 스프린트. **이슈와 별도 모듈이다** — 자기 수명주기와 번다운을 갖는 독립된
  * 것이라, `issues/` 에 넣으면 그 모듈이 부푼다(설계 §1).
@@ -23,12 +30,18 @@ import {
 export class SprintsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  list(spaceId: string, dto: ListSprintsDto): Promise<Sprint[]> {
-    return this.prisma.sprint.findMany({
+  async list(spaceId: string, dto: ListSprintsDto): Promise<Sprint[]> {
+    const sprints = await this.prisma.sprint.findMany({
       where: { spaceId, ...(dto.state ? { state: dto.state } : {}) },
-      // 도는 것이 먼저, 그다음 계획, 닫힌 것은 뒤로. 같은 상태면 최신순.
-      orderBy: [{ state: 'asc' }, { createdAt: 'desc' }],
+      orderBy: { createdAt: 'desc' },
     });
+
+    // **선언 순서에 기대지 않는다.** Prisma 의 enum 정렬은 스키마 선언 순서
+    // (planned · active · closed)라, 그대로 쓰면 도는 스프린트가 계획 뒤로
+    // 밀린다. 지금 하는 일이 맨 위에 있어야 한다.
+    return sprints.sort(
+      (a, b) => SPRINT_ORDER[a.state] - SPRINT_ORDER[b.state],
+    );
   }
 
   create(spaceId: string, dto: CreateSprintDto): Promise<Sprint> {

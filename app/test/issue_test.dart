@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/data/local/app_database.dart';
 import 'package:nexus_app/domain/models/issue.dart';
+import 'package:nexus_app/domain/models/sprint.dart';
 
 /// 인메모리 drift 로 실제 DB 동작까지 덮는다. 화면은 여기만 구독하므로
 /// 캐시가 틀리면 보드가 통째로 틀린다.
@@ -159,6 +160,66 @@ void main() {
     final rows = await db.watchIssues('s1').first;
 
     expect(rows.single.originMessage, isNull);
+  });
+
+  test('스프린트가 캐시를 왕복한다', () async {
+    await db.replaceSprints('s1', [
+      Sprint(
+        id: 'sp1',
+        name: '1주차',
+        goal: '보드를 쓸 만하게',
+        startsAt: DateTime.utc(2026, 8, 1),
+        endsAt: DateTime.utc(2026, 8, 14),
+        state: SprintState.active,
+      ),
+    ]);
+
+    final rows = await db.watchSprints('s1').first;
+
+    expect(rows.single.name, '1주차');
+    expect(rows.single.state, 'active');
+    // 캐시는 UTC 마이크로초 정수로 저장하고 로컬 표기로 되돌린다.
+    // 같은 순간인지를 보아야지 표기를 비교하면 시간대에 따라 깨진다.
+    expect(rows.single.startsAt?.isAtSameMomentAs(DateTime.utc(2026, 8, 1)), isTrue);
+  });
+
+  test('스프린트는 진행 중 · 계획 · 완료 순으로 온다', () async {
+    // 이름으로 정렬하면 알파벳순(active · closed · planned)이 되어
+    // 닫힌 것이 가운데로 온다.
+    Sprint sp(String id, SprintState state) =>
+        Sprint(id: id, name: id, state: state);
+
+    await db.replaceSprints('s1', [
+      sp('c', SprintState.closed),
+      sp('p', SprintState.planned),
+      sp('a', SprintState.active),
+    ]);
+
+    final rows = await db.watchSprints('s1').first;
+
+    expect(rows.map((r) => r.id), ['a', 'p', 'c']);
+  });
+
+  test('기간이 없는 스프린트도 캐시된다 — 계획 단계에서는 날짜가 없다', () async {
+    await db.replaceSprints('s1', [
+      const Sprint(id: 'sp1', name: '미정', state: SprintState.planned),
+    ]);
+
+    final rows = await db.watchSprints('s1').first;
+
+    expect(rows.single.startsAt, isNull);
+    expect(rows.single.endsAt, isNull);
+  });
+
+  test('다른 스페이스의 스프린트는 섞이지 않는다', () async {
+    await db.replaceSprints('s1', [
+      const Sprint(id: 'a', name: 'A', state: SprintState.planned),
+    ]);
+    await db.replaceSprints('s2', [
+      const Sprint(id: 'b', name: 'B', state: SprintState.planned),
+    ]);
+
+    expect((await db.watchSprints('s1').first).map((r) => r.id), ['a']);
   });
 
   test('deleteIssue 는 그 이슈만 지운다', () async {

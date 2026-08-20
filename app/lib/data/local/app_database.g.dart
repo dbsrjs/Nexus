@@ -3488,6 +3488,511 @@ class CachedIssuesCompanion extends UpdateCompanion<CachedIssue> {
   }
 }
 
+class $CachedSprintsTable extends CachedSprints
+    with TableInfo<$CachedSprintsTable, CachedSprint> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedSprintsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _spaceIdMeta = const VerificationMeta(
+    'spaceId',
+  );
+  @override
+  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
+    'space_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _goalMeta = const VerificationMeta('goal');
+  @override
+  late final GeneratedColumn<String> goal = GeneratedColumn<String>(
+    'goal',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> startsAt =
+      GeneratedColumn<int>(
+        'starts_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($CachedSprintsTable.$converterstartsAtn);
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> endsAt =
+      GeneratedColumn<int>(
+        'ends_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($CachedSprintsTable.$converterendsAtn);
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stateRankMeta = const VerificationMeta(
+    'stateRank',
+  );
+  @override
+  late final GeneratedColumn<int> stateRank = GeneratedColumn<int>(
+    'state_rank',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    spaceId,
+    name,
+    goal,
+    startsAt,
+    endsAt,
+    state,
+    stateRank,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_sprints';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedSprint> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('space_id')) {
+      context.handle(
+        _spaceIdMeta,
+        spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_spaceIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('goal')) {
+      context.handle(
+        _goalMeta,
+        goal.isAcceptableOrUnknown(data['goal']!, _goalMeta),
+      );
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stateMeta);
+    }
+    if (data.containsKey('state_rank')) {
+      context.handle(
+        _stateRankMeta,
+        stateRank.isAcceptableOrUnknown(data['state_rank']!, _stateRankMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stateRankMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedSprint map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedSprint(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      spaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}space_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      goal: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}goal'],
+      ),
+      startsAt: $CachedSprintsTable.$converterstartsAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}starts_at'],
+        ),
+      ),
+      endsAt: $CachedSprintsTable.$converterendsAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}ends_at'],
+        ),
+      ),
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      stateRank: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}state_rank'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedSprintsTable createAlias(String alias) {
+    return $CachedSprintsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $converterstartsAt = const _UtcMicros();
+  static TypeConverter<DateTime?, int?> $converterstartsAtn =
+      NullAwareTypeConverter.wrap($converterstartsAt);
+  static TypeConverter<DateTime, int> $converterendsAt = const _UtcMicros();
+  static TypeConverter<DateTime?, int?> $converterendsAtn =
+      NullAwareTypeConverter.wrap($converterendsAt);
+}
+
+class CachedSprint extends DataClass implements Insertable<CachedSprint> {
+  final String id;
+  final String spaceId;
+  final String name;
+  final String? goal;
+  final DateTime? startsAt;
+  final DateTime? endsAt;
+  final String state;
+
+  /// 도는 것이 먼저, 그다음 계획, 닫힌 것은 뒤로. 이름으로 정렬하면
+  /// 알파벳순(active · closed · planned)이 되어 닫힌 것이 가운데로 온다.
+  final int stateRank;
+  const CachedSprint({
+    required this.id,
+    required this.spaceId,
+    required this.name,
+    this.goal,
+    this.startsAt,
+    this.endsAt,
+    required this.state,
+    required this.stateRank,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['space_id'] = Variable<String>(spaceId);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || goal != null) {
+      map['goal'] = Variable<String>(goal);
+    }
+    if (!nullToAbsent || startsAt != null) {
+      map['starts_at'] = Variable<int>(
+        $CachedSprintsTable.$converterstartsAtn.toSql(startsAt),
+      );
+    }
+    if (!nullToAbsent || endsAt != null) {
+      map['ends_at'] = Variable<int>(
+        $CachedSprintsTable.$converterendsAtn.toSql(endsAt),
+      );
+    }
+    map['state'] = Variable<String>(state);
+    map['state_rank'] = Variable<int>(stateRank);
+    return map;
+  }
+
+  CachedSprintsCompanion toCompanion(bool nullToAbsent) {
+    return CachedSprintsCompanion(
+      id: Value(id),
+      spaceId: Value(spaceId),
+      name: Value(name),
+      goal: goal == null && nullToAbsent ? const Value.absent() : Value(goal),
+      startsAt: startsAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startsAt),
+      endsAt: endsAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endsAt),
+      state: Value(state),
+      stateRank: Value(stateRank),
+    );
+  }
+
+  factory CachedSprint.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedSprint(
+      id: serializer.fromJson<String>(json['id']),
+      spaceId: serializer.fromJson<String>(json['spaceId']),
+      name: serializer.fromJson<String>(json['name']),
+      goal: serializer.fromJson<String?>(json['goal']),
+      startsAt: serializer.fromJson<DateTime?>(json['startsAt']),
+      endsAt: serializer.fromJson<DateTime?>(json['endsAt']),
+      state: serializer.fromJson<String>(json['state']),
+      stateRank: serializer.fromJson<int>(json['stateRank']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'spaceId': serializer.toJson<String>(spaceId),
+      'name': serializer.toJson<String>(name),
+      'goal': serializer.toJson<String?>(goal),
+      'startsAt': serializer.toJson<DateTime?>(startsAt),
+      'endsAt': serializer.toJson<DateTime?>(endsAt),
+      'state': serializer.toJson<String>(state),
+      'stateRank': serializer.toJson<int>(stateRank),
+    };
+  }
+
+  CachedSprint copyWith({
+    String? id,
+    String? spaceId,
+    String? name,
+    Value<String?> goal = const Value.absent(),
+    Value<DateTime?> startsAt = const Value.absent(),
+    Value<DateTime?> endsAt = const Value.absent(),
+    String? state,
+    int? stateRank,
+  }) => CachedSprint(
+    id: id ?? this.id,
+    spaceId: spaceId ?? this.spaceId,
+    name: name ?? this.name,
+    goal: goal.present ? goal.value : this.goal,
+    startsAt: startsAt.present ? startsAt.value : this.startsAt,
+    endsAt: endsAt.present ? endsAt.value : this.endsAt,
+    state: state ?? this.state,
+    stateRank: stateRank ?? this.stateRank,
+  );
+  CachedSprint copyWithCompanion(CachedSprintsCompanion data) {
+    return CachedSprint(
+      id: data.id.present ? data.id.value : this.id,
+      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
+      name: data.name.present ? data.name.value : this.name,
+      goal: data.goal.present ? data.goal.value : this.goal,
+      startsAt: data.startsAt.present ? data.startsAt.value : this.startsAt,
+      endsAt: data.endsAt.present ? data.endsAt.value : this.endsAt,
+      state: data.state.present ? data.state.value : this.state,
+      stateRank: data.stateRank.present ? data.stateRank.value : this.stateRank,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedSprint(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('name: $name, ')
+          ..write('goal: $goal, ')
+          ..write('startsAt: $startsAt, ')
+          ..write('endsAt: $endsAt, ')
+          ..write('state: $state, ')
+          ..write('stateRank: $stateRank')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, spaceId, name, goal, startsAt, endsAt, state, stateRank);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedSprint &&
+          other.id == this.id &&
+          other.spaceId == this.spaceId &&
+          other.name == this.name &&
+          other.goal == this.goal &&
+          other.startsAt == this.startsAt &&
+          other.endsAt == this.endsAt &&
+          other.state == this.state &&
+          other.stateRank == this.stateRank);
+}
+
+class CachedSprintsCompanion extends UpdateCompanion<CachedSprint> {
+  final Value<String> id;
+  final Value<String> spaceId;
+  final Value<String> name;
+  final Value<String?> goal;
+  final Value<DateTime?> startsAt;
+  final Value<DateTime?> endsAt;
+  final Value<String> state;
+  final Value<int> stateRank;
+  final Value<int> rowid;
+  const CachedSprintsCompanion({
+    this.id = const Value.absent(),
+    this.spaceId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.goal = const Value.absent(),
+    this.startsAt = const Value.absent(),
+    this.endsAt = const Value.absent(),
+    this.state = const Value.absent(),
+    this.stateRank = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedSprintsCompanion.insert({
+    required String id,
+    required String spaceId,
+    required String name,
+    this.goal = const Value.absent(),
+    this.startsAt = const Value.absent(),
+    this.endsAt = const Value.absent(),
+    required String state,
+    required int stateRank,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       spaceId = Value(spaceId),
+       name = Value(name),
+       state = Value(state),
+       stateRank = Value(stateRank);
+  static Insertable<CachedSprint> custom({
+    Expression<String>? id,
+    Expression<String>? spaceId,
+    Expression<String>? name,
+    Expression<String>? goal,
+    Expression<int>? startsAt,
+    Expression<int>? endsAt,
+    Expression<String>? state,
+    Expression<int>? stateRank,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (spaceId != null) 'space_id': spaceId,
+      if (name != null) 'name': name,
+      if (goal != null) 'goal': goal,
+      if (startsAt != null) 'starts_at': startsAt,
+      if (endsAt != null) 'ends_at': endsAt,
+      if (state != null) 'state': state,
+      if (stateRank != null) 'state_rank': stateRank,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedSprintsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? spaceId,
+    Value<String>? name,
+    Value<String?>? goal,
+    Value<DateTime?>? startsAt,
+    Value<DateTime?>? endsAt,
+    Value<String>? state,
+    Value<int>? stateRank,
+    Value<int>? rowid,
+  }) {
+    return CachedSprintsCompanion(
+      id: id ?? this.id,
+      spaceId: spaceId ?? this.spaceId,
+      name: name ?? this.name,
+      goal: goal ?? this.goal,
+      startsAt: startsAt ?? this.startsAt,
+      endsAt: endsAt ?? this.endsAt,
+      state: state ?? this.state,
+      stateRank: stateRank ?? this.stateRank,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (spaceId.present) {
+      map['space_id'] = Variable<String>(spaceId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (goal.present) {
+      map['goal'] = Variable<String>(goal.value);
+    }
+    if (startsAt.present) {
+      map['starts_at'] = Variable<int>(
+        $CachedSprintsTable.$converterstartsAtn.toSql(startsAt.value),
+      );
+    }
+    if (endsAt.present) {
+      map['ends_at'] = Variable<int>(
+        $CachedSprintsTable.$converterendsAtn.toSql(endsAt.value),
+      );
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (stateRank.present) {
+      map['state_rank'] = Variable<int>(stateRank.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedSprintsCompanion(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('name: $name, ')
+          ..write('goal: $goal, ')
+          ..write('startsAt: $startsAt, ')
+          ..write('endsAt: $endsAt, ')
+          ..write('state: $state, ')
+          ..write('stateRank: $stateRank, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $OutboxMessagesTable extends OutboxMessages
     with TableInfo<$OutboxMessagesTable, OutboxMessage> {
   @override
@@ -4500,6 +5005,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $CachedSpacesTable cachedSpaces = $CachedSpacesTable(this);
   late final $CachedIssuesTable cachedIssues = $CachedIssuesTable(this);
+  late final $CachedSprintsTable cachedSprints = $CachedSprintsTable(this);
   late final $OutboxMessagesTable outboxMessages = $OutboxMessagesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -4511,6 +5017,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cachedCategories,
     cachedSpaces,
     cachedIssues,
+    cachedSprints,
     outboxMessages,
   ];
 }
@@ -6213,6 +6720,265 @@ typedef $$CachedIssuesTableProcessedTableManager =
       CachedIssue,
       PrefetchHooks Function()
     >;
+typedef $$CachedSprintsTableCreateCompanionBuilder =
+    CachedSprintsCompanion Function({
+      required String id,
+      required String spaceId,
+      required String name,
+      Value<String?> goal,
+      Value<DateTime?> startsAt,
+      Value<DateTime?> endsAt,
+      required String state,
+      required int stateRank,
+      Value<int> rowid,
+    });
+typedef $$CachedSprintsTableUpdateCompanionBuilder =
+    CachedSprintsCompanion Function({
+      Value<String> id,
+      Value<String> spaceId,
+      Value<String> name,
+      Value<String?> goal,
+      Value<DateTime?> startsAt,
+      Value<DateTime?> endsAt,
+      Value<String> state,
+      Value<int> stateRank,
+      Value<int> rowid,
+    });
+
+class $$CachedSprintsTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedSprintsTable> {
+  $$CachedSprintsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get goal => $composableBuilder(
+    column: $table.goal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get startsAt =>
+      $composableBuilder(
+        column: $table.startsAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get endsAt =>
+      $composableBuilder(
+        column: $table.endsAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get stateRank => $composableBuilder(
+    column: $table.stateRank,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedSprintsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedSprintsTable> {
+  $$CachedSprintsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get goal => $composableBuilder(
+    column: $table.goal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startsAt => $composableBuilder(
+    column: $table.startsAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get endsAt => $composableBuilder(
+    column: $table.endsAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get stateRank => $composableBuilder(
+    column: $table.stateRank,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedSprintsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedSprintsTable> {
+  $$CachedSprintsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get spaceId =>
+      $composableBuilder(column: $table.spaceId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get goal =>
+      $composableBuilder(column: $table.goal, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get startsAt =>
+      $composableBuilder(column: $table.startsAt, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get endsAt =>
+      $composableBuilder(column: $table.endsAt, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<int> get stateRank =>
+      $composableBuilder(column: $table.stateRank, builder: (column) => column);
+}
+
+class $$CachedSprintsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedSprintsTable,
+          CachedSprint,
+          $$CachedSprintsTableFilterComposer,
+          $$CachedSprintsTableOrderingComposer,
+          $$CachedSprintsTableAnnotationComposer,
+          $$CachedSprintsTableCreateCompanionBuilder,
+          $$CachedSprintsTableUpdateCompanionBuilder,
+          (
+            CachedSprint,
+            BaseReferences<_$AppDatabase, $CachedSprintsTable, CachedSprint>,
+          ),
+          CachedSprint,
+          PrefetchHooks Function()
+        > {
+  $$CachedSprintsTableTableManager(_$AppDatabase db, $CachedSprintsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedSprintsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedSprintsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedSprintsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> spaceId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> goal = const Value.absent(),
+                Value<DateTime?> startsAt = const Value.absent(),
+                Value<DateTime?> endsAt = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<int> stateRank = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedSprintsCompanion(
+                id: id,
+                spaceId: spaceId,
+                name: name,
+                goal: goal,
+                startsAt: startsAt,
+                endsAt: endsAt,
+                state: state,
+                stateRank: stateRank,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String spaceId,
+                required String name,
+                Value<String?> goal = const Value.absent(),
+                Value<DateTime?> startsAt = const Value.absent(),
+                Value<DateTime?> endsAt = const Value.absent(),
+                required String state,
+                required int stateRank,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedSprintsCompanion.insert(
+                id: id,
+                spaceId: spaceId,
+                name: name,
+                goal: goal,
+                startsAt: startsAt,
+                endsAt: endsAt,
+                state: state,
+                stateRank: stateRank,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedSprintsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedSprintsTable,
+      CachedSprint,
+      $$CachedSprintsTableFilterComposer,
+      $$CachedSprintsTableOrderingComposer,
+      $$CachedSprintsTableAnnotationComposer,
+      $$CachedSprintsTableCreateCompanionBuilder,
+      $$CachedSprintsTableUpdateCompanionBuilder,
+      (
+        CachedSprint,
+        BaseReferences<_$AppDatabase, $CachedSprintsTable, CachedSprint>,
+      ),
+      CachedSprint,
+      PrefetchHooks Function()
+    >;
 typedef $$OutboxMessagesTableCreateCompanionBuilder =
     OutboxMessagesCompanion Function({
       required String id,
@@ -6681,6 +7447,8 @@ class $AppDatabaseManager {
       $$CachedSpacesTableTableManager(_db, _db.cachedSpaces);
   $$CachedIssuesTableTableManager get cachedIssues =>
       $$CachedIssuesTableTableManager(_db, _db.cachedIssues);
+  $$CachedSprintsTableTableManager get cachedSprints =>
+      $$CachedSprintsTableTableManager(_db, _db.cachedSprints);
   $$OutboxMessagesTableTableManager get outboxMessages =>
       $$OutboxMessagesTableTableManager(_db, _db.outboxMessages);
 }

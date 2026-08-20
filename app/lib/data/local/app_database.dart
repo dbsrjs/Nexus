@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import '../../domain/models/issue.dart';
+import '../../domain/models/sprint.dart';
 import '../../domain/models/message.dart';
 
 part 'app_database.g.dart';
@@ -327,6 +328,27 @@ class CachedSpaces extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 스프린트 캐시. **보드 필터가 쓰는 값이라 오프라인에서도 보여야 한다.**
+///
+/// 라벨과 달리 이슈에 붙는 것이 아니라 독립된 목록이라 테이블을 따로 둔다.
+/// 번다운은 캐시하지 않는다 — 댓글과 같은 판단으로, 열 때마다 받는다.
+class CachedSprints extends Table {
+  TextColumn get id => text()();
+  TextColumn get spaceId => text()();
+  TextColumn get name => text()();
+  TextColumn get goal => text().nullable()();
+  IntColumn get startsAt => integer().map(const _UtcMicros()).nullable()();
+  IntColumn get endsAt => integer().map(const _UtcMicros()).nullable()();
+  TextColumn get state => text()();
+
+  /// 도는 것이 먼저, 그다음 계획, 닫힌 것은 뒤로. 이름으로 정렬하면
+  /// 알파벳순(active · closed · planned)이 되어 닫힌 것이 가운데로 온다.
+  IntColumn get stateRank => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// 이슈 보드 캐시. 화면은 이것만 구독한다 — REST 와 소켓은 여기를 갱신할 뿐이다.
 ///
 /// **큐가 없다.** 쓰기는 온라인 전용이라 오프라인에서 만든 이슈를 보관할 곳이
@@ -394,6 +416,7 @@ final _webOptions = DriftWebOptions(
     CachedCategories,
     CachedSpaces,
     CachedIssues,
+    CachedSprints,
     OutboxMessages,
   ],
 )
@@ -402,7 +425,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus', web: _webOptions));
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -465,7 +488,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// 스키마가 바뀌면 통째로 다시 만드는 테이블. **큐는 여기 없다.**
   List<TableInfo<Table, dynamic>> get _rebuildableCaches =>
-      [cachedMessages, cachedChannels, cachedCategories, cachedSpaces, cachedIssues];
+      [cachedMessages, cachedChannels, cachedCategories, cachedSpaces, cachedIssues, cachedSprints];
 
   // ──────────────────────────────────────────────
   // 메시지
@@ -792,6 +815,7 @@ class AppDatabase extends _$AppDatabase {
       await delete(cachedCategories).go();
       await delete(cachedSpaces).go();
       await delete(cachedIssues).go();
+      await delete(cachedSprints).go();
       await delete(outboxMessages).go();
     });
   }
@@ -828,9 +852,52 @@ class AppDatabase extends _$AppDatabase {
   Future<void> upsertIssue(String spaceId, Issue issue) =>
       into(cachedIssues).insertOnConflictUpdate(_issueRow(spaceId, issue));
 
+  // ──────────────────────────────────────────────
+  // 스프린트
+  // ──────────────────────────────────────────────
+
+  Stream<List<CachedSprint>> watchSprints(String spaceId) =>
+      (select(cachedSprints)
+            ..where((t) => t.spaceId.equals(spaceId))
+            ..orderBy([
+              (t) => OrderingTerm.asc(t.stateRank),
+              (t) => OrderingTerm.desc(t.startsAt),
+              (t) => OrderingTerm.asc(t.name),
+            ]))
+          .watch();
+
+  Future<void> replaceSprints(String spaceId, List<Sprint> sprints) =>
+      transaction(() async {
+        await (delete(cachedSprints)
+              ..where((t) => t.spaceId.equals(spaceId)))
+            .go();
+        await batch((b) => b.insertAll(
+              cachedSprints,
+              sprints.map((s) => _sprintRow(spaceId, s)).toList(growable: false),
+            ));
+      });
+
+  Future<void> upsertSprint(String spaceId, Sprint sprint) =>
+      into(cachedSprints).insertOnConflictUpdate(_sprintRow(spaceId, sprint));
+
+  Future<void> deleteSprint(String sprintId) =>
+      (delete(cachedSprints)..where((t) => t.id.equals(sprintId))).go();
+
   Future<void> deleteIssue(String issueId) =>
       (delete(cachedIssues)..where((t) => t.id.equals(issueId))).go();
 }
+
+CachedSprintsCompanion _sprintRow(String spaceId, Sprint s) =>
+    CachedSprintsCompanion.insert(
+      id: s.id,
+      spaceId: spaceId,
+      name: s.name,
+      goal: Value(s.goal),
+      startsAt: Value(s.startsAt),
+      endsAt: Value(s.endsAt),
+      state: s.state.name,
+      stateRank: sprintStateRank(s.state),
+    );
 
 CachedIssuesCompanion _issueRow(String spaceId, Issue i) =>
     CachedIssuesCompanion.insert(
