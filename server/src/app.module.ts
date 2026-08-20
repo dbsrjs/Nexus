@@ -15,6 +15,7 @@ import { MessagesModule } from './messages/messages.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { IssuesModule } from './issues/issues.module';
 import { SprintsModule } from './sprints/sprints.module';
+import { ReposModule } from './repos/repos.module';
 import { RealtimeModule } from './realtime/realtime.module';
 
 /**
@@ -42,6 +43,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     AttachmentsModule,
     IssuesModule,
     SprintsModule,
+    ReposModule,
     RealtimeModule,
   ],
   providers: [

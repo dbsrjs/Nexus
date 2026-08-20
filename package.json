@@ -25,6 +25,7 @@
     "check:pins": "node server/scripts/check-pins.mjs",
     "check:attachments": "node server/scripts/check-attachments.mjs",
     "check:issues": "node server/scripts/check-issues.mjs",
+    "check:repos": "node server/scripts/check-repos.mjs",
     "check:migrations": "node server/scripts/check-migrations.mjs"
   }
 }

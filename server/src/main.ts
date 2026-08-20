@@ -12,7 +12,11 @@ import { SocketIoAdapter } from './realtime/socket-io.adapter';
 enableBigIntSerialization();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // **웹훅 서명은 원문 바이트로 검증해야 한다.** 파싱된 객체를 다시
+  // 직렬화해 HMAC 을 계산하면 키 순서 · 공백 · 유니코드 이스케이프가 달라져
+  // 멀쩡한 요청이 위조로 판정된다. rawBody 를 켜면 파싱된 body 는 그대로
+  // 두고 원문을 `req.rawBody` 로 함께 받는다.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
