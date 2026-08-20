@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **기준 브랜치** | **`main`.** 2026-08-17 에 `feat/pivot-nexus` 를 fast-forward 로 합쳤다 — 이제 main 이 곧 이 프로젝트다. 새 작업은 `feat/*` 를 따 쓰고 끝나면 main 으로 합친다(CI 가 `main` 과 `feat/**` 를 돈다) |
-| **상태** | 사내 메신저 → 개인 프로젝트로의 **전환 완료**. **9단계(이슈 · 스프린트)까지 끝났다** — 오프라인으로 켜도 대화가 보이고(Phase 0), 파일을 주고받고, 칸반 보드에 이슈가 뜬다. 다음은 10단계(저장소 연동 — 웹훅 · 열람 프록시) |
+| **상태** | 사내 메신저 → 개인 프로젝트로의 **전환 완료**. **10-1(저장소 웹훅 수신)까지 끝났다** — 오프라인으로 켜도 대화가 보이고(Phase 0), 파일을 주고받고, 칸반 보드에 이슈가 뜬다. 다음은 10-2(GitHub OAuth 연결) |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
 
@@ -134,10 +134,43 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run check:mentions` | 멘션 계약 검증(18개) |
 | `npm run check:pins` | 핀 계약 검증(20개) |
 | `npm run check:attachments` | 첨부 계약 검증(43개). **드라이버와 무관하게 돈다** — 배포 전 `STORAGE_DRIVER=s3` 로 한 번 더 돌린다 |
+| `npm run check:repos` | 저장소 웹훅 계약 검증(30개). **GitHub 없이 돈다** — 서명을 직접 만들어 보낸다 |
 | `npm run check:migrations` | 마이그레이션에 **수동 관리 객체를 지우는 구문**이 섞였는지 검사. DB 도 서버도 필요 없다 — CI 서버 잡이 매번 돈다 |
 | `npm run check:issues` | 이슈 · 스프린트 계약 검증(89개). 자체 계정을 쓴다. **컬럼 상한(200)과 재채번까지 태우므로 다른 스크립트보다 오래 걸린다** |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
 | `cd app && dart run build_runner build` | freezed · json_serializable 재생성 |
+
+### 실제 GitHub 에 웹훅을 붙이는 법 — PC 를 옮기면 다시 해야 한다
+
+**저장소 등록은 DB 에 있고 DB 는 PC 마다 따로다.** 아래 절차는 새 PC 에서
+그대로 반복한다. 등록된 저장소도, 웹훅 시크릿도 옮겨지지 않는다.
+
+```bash
+# 1) 터널 — GitHub 이 이 PC 에 닿을 주소를 만든다
+#    winget install Cloudflare.cloudflared  (한 번만)
+cloudflared tunnel --url http://localhost:3000
+#    → https://<임의의-말>.trycloudflare.com 이 로그에 찍힌다
+
+# 2) 저장소 등록 — 응답의 webhookSecret 을 적어 둔다(다시 볼 수 없다)
+curl -X POST http://127.0.0.1:3000/api/spaces/<spaceId>/repos   -H "authorization: Bearer <accessToken>" -H "content-type: application/json"   -d '{"provider":"github","fullPath":"소유자/이름","linkedChannelId":"<channelId>"}'
+```
+
+3) GitHub 저장소 → Settings → Webhooks → Add webhook
+
+| 칸 | 값 |
+|---|---|
+| Payload URL | `https://<터널>/api/webhooks/github/<repoId>` |
+| Content type | **`application/json`** — 기본값 `form` 이면 서명이 안 맞는다 |
+| Secret | 2번에서 받은 `whsec_…` |
+
+**함정 셋을 실제로 겪었다.**
+
+- **터널을 다시 띄우면 주소가 바뀐다.** 무료 quick tunnel 은 매번 새 도메인이라
+  GitHub 쪽 Payload URL 도 함께 고쳐야 한다. 안 고치면 **530**(터널 없음)이 뜬다
+- `Add webhook` 직후 GitHub 이 **ping** 을 보낸다. 우리는 모르는 이벤트로
+  200 을 주므로 **초록 체크가 뜨는 것이 정상**이다(적재는 하지 않는다)
+- 시크릿을 잃어버리면 `POST /spaces/:spaceId/repos/:repoId/secret` 으로 재발급한다.
+  **옛 시크릿은 그 순간부터 401** 이므로 GitHub 쪽도 함께 고친다
 
 ### DB 는 PC 마다 따로다
 
@@ -152,6 +185,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | 증상 | 원인 · 대응 |
 |---|---|
 | `P1001: Can't reach database server` (Node 로는 붙는데 Prisma 만 실패) | Windows 에서 `localhost` 가 `::1` 로 먼저 해석되는데 WSL 포워딩은 IPv4 만 동작. `DATABASE_URL` 에 **`127.0.0.1`** 을 쓸 것 |
+| `taskkill node.exe` 로 DB 까지 죽음 | Prisma 엔진 DLL 잠금을 풀려고 node 를 전부 잡으면 **WSL 세션 유지 프로세스와 개발 서버까지** 함께 죽는다. 실제로 겪었다 — 잠긴 것은 `server:dev` 하나이므로 그것만 끄고 `prisma:generate` 를 돌릴 것 |
 | 잘 되다가 갑자기 `ECONNREFUSED` | WSL2 는 배포판의 **마지막 세션이 닫히면 배포판을 정지**시킨다. Postgres 도 함께 죽는다. `npm run db:up` 이 세션을 잡아 둔다 (`.wslconfig` 의 `vmIdleTimeout` 은 VM 만 잡고 배포판은 못 잡는다 — 시도해 봤고 안 된다) |
 | PowerShell 스크립트 파싱 에러 | Windows PowerShell 5.1 은 BOM 없는 UTF-8 을 ANSI 로 읽는다. 한글이 든 `.ps1` 은 **UTF-8 BOM** 으로 저장할 것 |
 | `wsl` 명령이 무응답 | Ubuntu OOBE(첫 사용자 생성)가 걸린 상태일 수 있다. `wsl --shutdown` 후 재시도. 이 PC 는 개인 UNIX 계정 없이 **root 로** 쓰고 있다 |
@@ -815,6 +849,47 @@ Windows 데스크톱으로 카드 → 상세 → 댓글 작성 → 삭제(확인
 스토리 포인트가 없어 번다운이 언제나 비어 있었다), 그런 구멍은 사람이 눈으로
 볼 때만 드러났다. 규칙을 일부러 깨뜨려 그 테스트만 실패하는 것까지 확인했다.
 
+### 10-1 완료 (저장소 웹훅 수신) — 실제 GitHub 으로 확인
+
+**커밋 · PR 이벤트가 채널로 흘러 들어온다.** 제품 기획이 말하는 핵심 차별점의
+첫 조각이고, **앱은 한 줄도 고치지 않았다** — 기존 메시지 경로를 그대로 타므로
+채널을 보고 있으면 소켓으로 실시간으로 뜬다.
+
+- **외부 의존이 없는 것을 앞으로 당겼다.** GitHub 계정에 무언가 등록해야 하는
+  구간(OAuth)이 전체를 막지 않도록, 웹훅 수신부터 만들고 저장소는 수동 등록한다.
+  그 길은 10-2 이후에도 남긴다 — 설계 §7.1 의 "웹훅을 등록할 수 없는 환경"
+  대비책이 곧 이것이다
+- **서명이 곧 인증이다.** 부르는 쪽이 GitHub 이라 JWT 를 요구할 수 없다.
+  `@Public()` 이지만 저장소마다 다른 시크릿으로 만든 HMAC 을 검증한다
+- **원문 바이트로 검증한다.** 파싱된 객체를 다시 직렬화하면 키 순서 · 공백 ·
+  유니코드 이스케이프가 달라져 **멀쩡한 요청이 위조로 판정된다.**
+  `main.ts` 에 `rawBody: true` 를 켰다
+- 비교는 **`timingSafeEqual`**. 문자열 `===` 는 앞에서 몇 글자가 맞았는지가
+  비교 시간으로 새 나간다
+- **시스템 메시지의 작성자는 봇 사용자 하나다.** `Message.authorId` 가 필수라
+  누군가는 있어야 하는데, nullable 로 바꾸는 것이 정직하지만 **가장 뜨거운
+  테이블**을 건드리고 앱 모델 · 캐시 · 큐 · 멘션 렌더까지 파급된다.
+  봇은 **스페이스 멤버가 아니라** 멤버 목록 · 멘션 자동완성에 뜨지 않고,
+  비밀번호 해시 자리에 bcrypt 가 아닌 값을 넣어 **로그인할 수 없다**
+- **적재와 게시를 한 트랜잭션으로 묶는다.** 사이에서 끊기면 "이벤트는 왔는데
+  채널에는 없는" 상태가 되는데, GitHub 은 200 을 받았으므로 다시 보내지 않는다 —
+  재시도로도 낫지 않는다
+- **모르는 이벤트와 PR `synchronize` 는 200 으로 넘기고 적재도 하지 않는다.**
+  실패를 돌려주면 GitHub 이 재시도해 저장소 설정 화면이 빨갛게 되고,
+  `synchronize` 는 PR 하나당 수십 번 와 채널을 덮는다
+- **중복 배달은 `X-GitHub-Delivery` 로 거른다.** `repo_events` 에 그 컬럼을
+  더하는 대신 `payload` 안에 넣고 최근 10분만 뒤진다 — 재시도는 몇 초 안에
+  오므로 짧은 창이면 충분하고 마이그레이션이 없다
+- **시크릿은 등록 · 재발급 응답에만 실린다.** 목록에 두면 그것을 볼 수 있는
+  모든 경로가 새는 자리가 된다
+- 본문은 **한 줄**이다. 커밋 목록을 다 펼치면 대화가 로그로 덮인다
+
+**확인한 것**: `npm run check:repos` **30개**(실서버 · 실DB) · 서버 **115개**.
+그리고 **실제 GitHub 저장소(`dbsrjs/Nexus`)에 웹훅을 붙여 진짜 push 이벤트로
+확인했다** — cloudflared 터널로 열고, GitHub 이 자기 시크릿으로 서명한 요청이
+통과해 채널에 메시지가 떴다. 헤더 · `content_type: json` · ping 처리 ·
+`refs/heads/` 벗기기까지 가정한 그대로였다.
+
 **아직 없는 것**: DM,
 저장소 연동, AI. 멘션 **알림**(푸시 · 알림 센터)은 범위 밖이다 -
 `notifications` 모듈이 미이관이고 알림 화면도 없다.
@@ -853,7 +928,10 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 | 9-2a | **이슈 상세** — 댓글 · 삭제 | ✅ |
 | 9-2b | **라벨 · 대화 → 이슈** | ✅ **9-2 완료** |
 | 9-3 | **스프린트 · 번다운** | ✅ **9단계 완료** |
-| 10~ | repos(웹훅 · 열람 프록시) → PR → 인덱싱 → AI | |
+| 10-1 | **저장소 웹훅 수신** — 서명 검증 · 이벤트 적재 · 채널 게시 | ✅ |
+| 10-2 | **GitHub OAuth** — 연결 · 저장소 목록 · 웹훅 자동 등록 | |
+| 10-3 | **열람 프록시** — 브랜치 · 트리 · 파일 | |
+| 11~ | PR → 인덱싱 → AI | |
 | 마지막 | 푸시 · 트레이 · 딥링크 · CI · 테넌트 격리 통합 테스트 | |
 
 5-2 를 시작하기 전에 [슬라이스 1 스펙](docs/superpowers/specs/2026-08-14-앱-슬라이스1-인증-design.md)
