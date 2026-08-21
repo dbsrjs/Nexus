@@ -80,10 +80,23 @@ export class ReposService {
    * 지운다. 쌓인 `repo_events` 는 Cascade 로 함께 사라지지만, **채널에 올라간
    * 메시지는 남는다** — 그건 대화의 일부이고, 저장소를 떼었다고 지난 대화가
    * 사라지면 안 된다.
+   *
+   * **GitHub 쪽 훅은 컨트롤러가 먼저 뗀다**(10-2b). 여기서 하지 않는 이유는
+   * 이 서비스가 밖으로 나가지 않는다는 성질을 지키기 위해서다.
    */
   async remove(spaceId: string, repoId: string): Promise<void> {
     await this.requireRepo(spaceId, repoId);
     await this.prisma.repo.delete({ where: { id: repoId } });
+  }
+
+  /** 훅을 떼기 위해 필요한 것만. 없으면 404 다. */
+  async findForDetach(spaceId: string, repoId: string) {
+    const repo = await this.prisma.repo.findFirst({
+      where: { id: repoId, spaceId },
+      select: { fullPath: true, provider: true, webhookExternalId: true },
+    });
+    if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
+    return repo;
   }
 
   /** 웹훅 수신이 쓴다. **시크릿이 필요하므로 select 를 따로 둔다.** */
@@ -114,7 +127,7 @@ export class ReposService {
 }
 
 /** `webhookSecret` 이 빠져 있다. 등록 · 재발급 응답에서만 따로 붙인다. */
-const REPO_SELECT = {
+export const REPO_SELECT = {
   id: true,
   spaceId: true,
   provider: true,
@@ -122,6 +135,9 @@ const REPO_SELECT = {
   fullPath: true,
   defaultBranch: true,
   linkedChannelId: true,
+  // 훅이 걸렸는지를 화면이 알아야 "다시 걸기"를 띄운다(10-2b). 시크릿과 달리
+  // 이 값은 새는 자리가 아니다 — GitHub 쪽 훅 번호일 뿐이다.
+  webhookExternalId: true,
   syncedAt: true,
   createdAt: true,
 } satisfies Prisma.RepoSelect;
