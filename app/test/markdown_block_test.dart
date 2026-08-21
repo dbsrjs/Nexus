@@ -1,0 +1,83 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:nexus_app/shared/markdown/block.dart';
+
+String dump(List<BlockNode> blocks) =>
+    blocks.map((b) => '${b.kind.name}(${b.lines.join('/')})').join('+');
+
+void main() {
+  test('평범한 글은 문단 하나다', () {
+    expect(dump(parseBlocks('안녕\n하세요')), 'paragraph(안녕/하세요)');
+  });
+
+  test('빈 줄이 문단을 가른다', () {
+    expect(dump(parseBlocks('a\n\nb')), 'paragraph(a)+paragraph(b)');
+  });
+
+  test('코드블록 — 언어를 읽는다', () {
+    final blocks = parseBlocks('```dart\nvar a = 1;\n```');
+
+    expect(blocks.single.kind, BlockKind.code);
+    expect(blocks.single.language, 'dart');
+    expect(blocks.single.lines, ['var a = 1;']);
+  });
+
+  test('코드블록 안에서는 다른 블록을 찾지 않는다', () {
+    final blocks = parseBlocks('```\n# 제목\n> 인용\n```');
+
+    expect(blocks.single.kind, BlockKind.code);
+    expect(blocks.single.lines, ['# 제목', '> 인용']);
+  });
+
+  test('닫히지 않은 코드블록은 끝까지 코드다', () {
+    final blocks = parseBlocks('```\na');
+
+    expect(blocks.single.kind, BlockKind.code);
+    expect(blocks.single.lines, ['a']);
+  });
+
+  test('인용 — 여러 줄이 한 블록이다', () {
+    final blocks = parseBlocks('> a\n> b');
+
+    expect(blocks.single.kind, BlockKind.quote);
+    expect(blocks.single.lines, ['a', 'b']);
+  });
+
+  test('제목 — 세 단계까지', () {
+    expect(parseBlocks('# a').single.level, 1);
+    expect(parseBlocks('### a').single.level, 3);
+    // #### 는 본문과 구분이 안 된다 — 제목으로 보지 않는다.
+    expect(parseBlocks('#### a').single.kind, BlockKind.paragraph);
+  });
+
+  test('목록 — 순서 없는 것과 있는 것', () {
+    final bullet = parseBlocks('- a\n- b').single;
+    expect(bullet.kind, BlockKind.list);
+    expect(bullet.ordered, isFalse);
+    expect(bullet.lines, ['a', 'b']);
+
+    expect(parseBlocks('1. a\n2. b').single.ordered, isTrue);
+  });
+
+  test('표 — 헤더와 본문을 나눈다', () {
+    final table = parseBlocks('| 이름 | 값 |\n|---|---|\n| a | 1 |').single;
+
+    expect(table.kind, BlockKind.table);
+    expect(table.rows, [
+      ['이름', '값'],
+      ['a', '1'],
+    ]);
+  });
+
+  test('구분 행이 없으면 표가 아니다', () {
+    // 그냥 파이프를 쓴 문장이 표로 바뀌면 안 된다.
+    expect(parseBlocks('| a | b |').single.kind, BlockKind.paragraph);
+  });
+
+  test('문단 도중에 목록이 시작되면 거기서 끊는다', () {
+    expect(dump(parseBlocks('설명\n- 하나')), 'paragraph(설명)+list(하나)');
+  });
+
+  test('빈 본문은 블록이 없다', () {
+    expect(parseBlocks(''), isEmpty);
+  });
+}
