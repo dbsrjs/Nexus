@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../domain/models/repo_browse.dart';
 import 'browse_controller.dart';
+import 'code_highlight.dart';
 
 /// 저장소 안을 들여다본다. **캐시하지 않는다**(설계 §4).
 ///
@@ -285,6 +286,7 @@ class _FileBody extends StatelessWidget {
           fontFamily: 'monospace',
           height: 1.5,
         );
+    final palette = CodePalette.of(context);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -306,7 +308,7 @@ class _FileBody extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text(lines[i], style: style),
+                  CodeLine(line: lines[i], style: style, palette: palette),
                 ],
               ),
           ],
