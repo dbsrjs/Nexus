@@ -1,11 +1,15 @@
 import '../../domain/models/message.dart';
-
-/// 본문에 박혀 있는 멘션 표기. 서버와 같은 형식이어야 한다
-/// (server/src/messages/mentions.service.ts).
-final _userMention = RegExp(r'<@([0-9a-fA-F-]{36})>');
-final _specialMention = RegExp(r'(^|\s)(@channel|@everyone)\b');
+import '../../shared/markdown/inline.dart';
 
 /// 본문을 그리기 위해 쪼갠 조각.
+///
+/// **마크다운 도입 이후 이 파일은 어댑터다** — 실제 파싱은
+/// `shared/markdown/inline.dart` 가 한다. 마크다운과 멘션이 한 본문을 나눠
+/// 가지므로 파서가 하나여야 하기 때문이다(마크다운 설계 §0).
+///
+/// 이 함수는 **서식을 그리지 않는 자리**를 위해 남는다 — 인용 요약, 답장
+/// 미리보기처럼 한 줄로 줄이는 곳이다. 거기서도 `<@uuid>` 가 보이면 무엇에
+/// 답하는지 읽을 수 없으므로 이름으로 바꾸는 일은 여전히 필요하다.
 class MentionSpan {
   const MentionSpan.text(this.text)
       : isMention = false,
@@ -26,9 +30,6 @@ class MentionSpan {
 /// 이름을 본문에 저장하지 않는 이유는 사용자가 이름을 바꾸면 지난 메시지가
 /// 낡기 때문이다 — 그 대가로 그릴 때 이어 붙이는 일이 생긴다.
 ///
-/// 이름을 못 찾으면(멤버가 나갔거나 목록이 아직 없음) `@알 수 없음` 으로 둔다.
-/// 원본 `<@uuid>` 를 그대로 보이면 사용자가 읽을 수 없다.
-///
 /// [fallbackNames] 는 **메시지에 이름이 실려 오지 않는 자리**를 위한 것이다 —
 /// 아직 보내지 못한 큐의 메시지(서버가 멘션을 아직 붙이지 않았다)와 인용
 /// 요약(서버가 본문만 준다)이 그렇다. 스페이스 멤버 목록에서 채운다.
@@ -37,45 +38,40 @@ List<MentionSpan> buildMentionSpans(
   List<MessageMention> mentions, {
   Map<String, String> fallbackNames = const {},
 }) {
-  final nameById = <String, String>{
+  final names = <String, String>{
+    ...fallbackNames,
+    // 메시지에 실려 온 이름이 우선이다 — 그 시점의 이름이기 때문이다.
     for (final m in mentions)
       if (m.userId != null && m.name != null) m.userId!: m.name!,
   };
 
   final spans = <MentionSpan>[];
-  var cursor = 0;
 
-  // 사용자 멘션과 특수 멘션을 한 번에 훑는다. 두 번 나눠 훑으면 위치가 어긋난다.
-  final matches = <_Match>[
-    for (final m in _userMention.allMatches(body))
-      _Match(m.start, m.end, userId: m.group(1)!.toLowerCase()),
-    for (final m in _specialMention.allMatches(body))
-      // group(1) 은 앞의 공백이라 실제 토큰은 group(2) 부터다.
-      _Match(m.start + m.group(1)!.length, m.end, special: m.group(2)!),
-  ]..sort((a, b) => a.start.compareTo(b.start));
-
-  for (final match in matches) {
-    if (match.start > cursor) {
-      spans.add(MentionSpan.text(body.substring(cursor, match.start)));
+  // **서식은 무시하고 평평하게 편다.** 이 함수를 쓰는 자리는 마크다운을
+  // 그리지 않는 곳이라, 트리를 글자로 되돌려 준다. 서식 문자(`**`)는 파서가
+  // 이미 걷어냈으므로 여기서 다시 나타나지 않는다.
+  void walk(List<InlineNode> nodes) {
+    for (final node in nodes) {
+      if (node.kind == InlineKind.mention) {
+        spans.add(MentionSpan.mention(node.text, userId: node.userId));
+        continue;
+      }
+      if (node.children.isNotEmpty) {
+        walk(node.children);
+        continue;
+      }
+      // 앞 조각이 텍스트면 이어 붙인다 — 이 함수의 계약은 텍스트를 잘게
+      // 쪼개지 않는 것이다(멘션 사이의 글자가 한 조각이어야 한다).
+      if (spans.isNotEmpty && !spans.last.isMention) {
+        final merged = spans.removeLast().text + node.text;
+        spans.add(MentionSpan.text(merged));
+      } else {
+        spans.add(MentionSpan.text(node.text));
+      }
     }
-
-    if (match.special != null) {
-      spans.add(MentionSpan.mention(match.special!));
-    } else {
-      final name = nameById[match.userId!] ?? fallbackNames[match.userId!];
-      spans.add(
-        MentionSpan.mention(
-          name == null ? '@알 수 없음' : '@$name',
-          userId: match.userId,
-        ),
-      );
-    }
-    cursor = match.end;
   }
 
-  if (cursor < body.length) {
-    spans.add(MentionSpan.text(body.substring(cursor)));
-  }
+  walk(parseInline(body, names: names));
   return spans;
 }
 
@@ -104,13 +100,4 @@ bool mentionsMe(Message message, String myUserId) {
     if (mention.userId == myUserId) return true;
   }
   return false;
-}
-
-class _Match {
-  _Match(this.start, this.end, {this.userId, this.special});
-
-  final int start;
-  final int end;
-  final String? userId;
-  final String? special;
 }
