@@ -9,6 +9,7 @@ import '../features/issue/board_screen.dart';
 import '../features/issue/issue_detail_screen.dart';
 import '../features/issue/sprint_screen.dart';
 import '../features/auth/login_screen.dart';
+import '../features/repo/repos_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/space/space_picker_screen.dart';
 
@@ -62,6 +63,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'files',
             builder: (_, state) =>
                 FilesScreen(spaceId: state.pathParameters['spaceId']!),
+          ),
+          // 저장소. 파일 목록과 같이 셸 위에 덮어서 연다.
+          GoRoute(
+            path: 'repos',
+            builder: (_, state) =>
+                ReposScreen(spaceId: state.pathParameters['spaceId']!),
           ),
           // 이슈 보드도 같은 방식이다. 셸 본문을 탭으로 갈아 끼우면
           // "라우트가 진실의 원천"이라는 셸의 전제가 깨진다.

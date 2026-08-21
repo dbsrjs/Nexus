@@ -57,6 +57,13 @@ class ChannelPane extends ConsumerWidget {
                       ? null
                       : () => context.push('/s/${space.id}/issues'),
                 ),
+                IconButton(
+                  tooltip: '저장소',
+                  icon: const Icon(Icons.hub_outlined, size: 18),
+                  onPressed: space == null
+                      ? null
+                      : () => context.push('/s/${space.id}/repos'),
+                ),
                 if (onClose != null)
                   IconButton(
                     icon: const Icon(Icons.close, size: 18),
