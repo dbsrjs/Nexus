@@ -4,8 +4,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/socket/socket_event.dart';
 import '../../domain/models/connection.dart';
+import '../../domain/models/repo.dart';
 import '../realtime/socket_controller.dart';
 import 'connection_controller.dart';
+import 'repo_controller.dart';
+import 'repo_picker_sheet.dart';
 
 /// 저장소 화면. **10-2a 는 상단 연결 영역만 채운다** — 저장소 목록과
 /// 붙이기는 10-2b 다.
@@ -54,6 +57,33 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _openPicker(String login) async {
+    final added = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => RepoPickerSheet(spaceId: widget.spaceId, login: login),
+    );
+    if (added == true) ref.invalidate(spaceReposProvider(widget.spaceId));
+  }
+
+  Future<void> _reattach(String repoId) async {
+    try {
+      await ref.read(reposApiProvider).reattach(widget.spaceId, repoId);
+    } catch (_) {
+      if (mounted) _toast('웹훅을 걸지 못했습니다');
+    }
+    ref.invalidate(spaceReposProvider(widget.spaceId));
+  }
+
+  Future<void> _remove(String repoId) async {
+    try {
+      await ref.read(reposApiProvider).remove(widget.spaceId, repoId);
+    } catch (_) {
+      if (mounted) _toast('떼어 내지 못했습니다');
+    }
+    ref.invalidate(spaceReposProvider(widget.spaceId));
+  }
+
   @override
   Widget build(BuildContext context) {
     // 콜백은 브라우저가 받는다. 앱은 이 이벤트로 연결을 안다.
@@ -84,7 +114,84 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
                 ? _Disconnected(waiting: _waiting, onConnect: _connect)
                 : _Connected(connection: github, onDisconnect: _disconnect),
           },
+          // **연결 전에는 목록을 부르지 않는다** — 토큰이 없으면 서버가 400 이다.
+          if (github != null) ...[
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('붙은 저장소',
+                      style: Theme.of(context).textTheme.titleSmall),
+                ),
+                TextButton.icon(
+                  onPressed: () => _openPicker(github.login),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('저장소 추가'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            switch (ref.watch(spaceReposProvider(widget.spaceId))) {
+              AsyncError() => _Retry(
+                  onRetry: () =>
+                      ref.invalidate(spaceReposProvider(widget.spaceId)),
+                ),
+              AsyncLoading() => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              AsyncValue(:final value?) when value.isEmpty =>
+                const Text('아직 붙인 저장소가 없습니다'),
+              AsyncValue(:final value?) => Column(
+                  children: [
+                    for (final repo in value)
+                      _RepoRow(
+                        repo: repo,
+                        onReattach: () => _reattach(repo.id),
+                        onRemove: () => _remove(repo.id),
+                      ),
+                  ],
+                ),
+            },
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _RepoRow extends StatelessWidget {
+  const _RepoRow({
+    required this.repo,
+    required this.onReattach,
+    required this.onRemove,
+  });
+
+  final SpaceRepo repo;
+  final VoidCallback onReattach;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        title: Text(repo.fullPath),
+        // 훅이 안 걸린 것을 조용히 두면 사용자는 커밋이 왜 안 오는지 모른다.
+        subtitle: Text(repo.webhookActive ? '웹훅 연결됨' : '웹훅 등록 실패'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!repo.webhookActive)
+              TextButton(onPressed: onReattach, child: const Text('다시 걸기')),
+            IconButton(
+              tooltip: '떼어 내기',
+              icon: const Icon(Icons.link_off, size: 18),
+              onPressed: onRemove,
+            ),
+          ],
+        ),
       ),
     );
   }
