@@ -85,7 +85,10 @@ class NexusRadius {
   const NexusRadius._();
 
   static const double sm = 4;
-  static const double md = 6;
+
+  /// 카드 · 입력창 · 버튼. 6은 딱딱하고 Material 기본값(12)은 코드와 표가
+  /// 들어가면 패딩이 이중으로 겹친다.
+  static const double md = 8;
   static const double full = 9999;
 }
 
@@ -106,11 +109,17 @@ class NexusTextSizes {
   static const double textXs = 12;
   static const double textSm = 13;
   static const double textBase = 14;
+
+  /// 본문 읽기 크기. 메시지 · 이슈 본문 · 댓글이 여기 온다.
+  /// 14 다음이 16이라 이 자리가 비어 있었다.
+  static const double textBody = 15;
+
   static const double textMd = 16;
   static const double textLg = 20;
   static const double textXl = 24;
 
-  static const double leadingBody = 1.5;
+  /// 한글 본문에서 1.5 는 빽빽하다.
+  static const double leadingBody = 1.6;
   static const double leadingUi = 1.3;
 }
 
@@ -169,6 +178,11 @@ ThemeData buildNexusTheme({required Brightness brightness}) {
   return ThemeData(
     useMaterial3: true,
     brightness: brightness,
+    // **textTheme 에 적지 않은 스타일까지 이 폰트를 쓰게 한다.** 이것이
+    // 없으면 titleSmall · labelMedium 처럼 정의하지 않은 스타일이 시스템
+    // 기본 폰트로 그려져 한 화면에 폰트가 둘 섞인다.
+    fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     colorScheme: scheme,
     scaffoldBackgroundColor: bgBase,
     canvasColor: bgSurface,
@@ -178,9 +192,15 @@ ThemeData buildNexusTheme({required Brightness brightness}) {
       headlineSmall: ui(NexusTextSizes.textXl, weight: FontWeight.w600),
       titleLarge: ui(NexusTextSizes.textLg, weight: FontWeight.w600),
       titleMedium: ui(NexusTextSizes.textMd, weight: FontWeight.w600),
-      bodyLarge: body(NexusTextSizes.textMd),
-      bodyMedium: body(NexusTextSizes.textBase),
+      // 쓰이는데 정의가 없어 시스템 폰트로 그려지던 둘이다.
+      titleSmall: ui(NexusTextSizes.textBase, weight: FontWeight.w600),
+      // **읽는 글자는 한 크기다.** bodyMedium 은 메시지와 마크다운의
+      // 기반이고(markdown_body.dart), bodyLarge 는 Material 3 의
+      // ListTile 제목 기본값이다.
+      bodyLarge: body(NexusTextSizes.textBody),
+      bodyMedium: body(NexusTextSizes.textBody),
       bodySmall: body(NexusTextSizes.textSm, color: textSecondary),
+      labelMedium: ui(NexusTextSizes.textSm, color: textSecondary),
       labelSmall: ui(NexusTextSizes.textXs, color: textSecondary),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -225,6 +245,59 @@ ThemeData buildNexusTheme({required Brightness brightness}) {
         ),
         textStyle: ui(NexusTextSizes.textBase, weight: FontWeight.w600),
       ),
+    ),
+
+    // ── 없던 컴포넌트 테마 ──────────────────────────
+    // 여기가 비어 있어서 카드 · 앱바 · 칩 · 리스트가 Material 기본값으로
+    // 떴다. 디자인 시스템을 만들어 놓고 그 위에 기본값이 얹혀 있었다.
+
+    // **그림자를 쓰지 않는다.** 이 팔레트는 표면 셋(base · surface ·
+    // elevated)으로 깊이를 표현하도록 만들어져 있어, 그림자를 얹으면
+    // 두 체계가 겹쳐 탁해진다.
+    cardTheme: CardThemeData(
+      color: bgSurface,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(NexusRadius.md),
+      ),
+    ),
+
+    // 스크롤하면 Material 이 색을 바꿔 헤더가 혼자 떠 보인다.
+    // 둘 다 0 으로 눌러 본문과 같은 면에 둔다.
+    appBarTheme: AppBarThemeData(
+      backgroundColor: bgBase,
+      foregroundColor: textPrimary,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: false,
+      titleTextStyle: ui(NexusTextSizes.textMd, weight: FontWeight.w600),
+    ),
+
+    // 라벨 칩만 자기 색을 얹는다(label_widgets.dart 의 규칙).
+    // 여기서는 형태와 기본 면만 정한다.
+    chipTheme: ChipThemeData(
+      backgroundColor: bgElevated,
+      side: BorderSide.none,
+      shape: const StadiumBorder(),
+      labelStyle: ui(NexusTextSizes.textXs),
+      padding: const EdgeInsets.symmetric(
+        horizontal: NexusSpacing.sp4,
+        vertical: NexusSpacing.sp2,
+      ),
+    ),
+
+    // 목록이 많은 앱이라 이것 하나가 저장소 · 파일 · 스페이스 화면에
+    // 다 걸린다.
+    listTileTheme: ListTileThemeData(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(NexusRadius.md),
+      ),
+      selectedColor: accent,
+      selectedTileColor: isDark
+          ? NexusColors.accentSubtleDark
+          : NexusColors.accentSubtleLight,
+      iconColor: textSecondary,
     ),
   );
 }
