@@ -29,6 +29,8 @@ class _SprintScreenState extends ConsumerState<SprintScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        // 셸 안이라 돌아갈 곳이 스택에 없다. 판에서 바로 오는 화면이다.
+        automaticallyImplyLeading: false,
         title: const Text('스프린트'),
         actions: [
           IconButton(

@@ -99,7 +99,11 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
     final github = ref.watch(githubConnectionProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('저장소')),
+      appBar: AppBar(
+        // 셸 안이라 돌아갈 곳이 스택에 없다. 판에서 바로 오는 화면이다.
+        automaticallyImplyLeading: false,
+        title: const Text('저장소'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

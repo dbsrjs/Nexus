@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/breakpoints.dart';
 import '../../core/theme.dart';
 import '../channel/channel_controller.dart';
-import '../chat/chat_screen.dart';
 import '../space/space_controller.dart';
 import 'channel_pane.dart';
 import 'space_rail.dart';
@@ -22,10 +21,22 @@ import 'space_rail.dart';
 /// | 600~1023 | 본문만. 레일+채널은 드로어 |
 /// | <600 | 본문 + 하단 탭. 채널은 드로어 |
 class AppShell extends ConsumerStatefulWidget {
-  const AppShell({super.key, required this.spaceId, this.channelId});
+  const AppShell({
+    super.key,
+    required this.spaceId,
+    this.channelId,
+    required this.child,
+  });
 
   final String spaceId;
   final String? channelId;
+
+  /// 본문. **무엇을 그릴지는 라우터가 정한다.**
+  ///
+  /// 셸이 본문을 탭으로 갈아 끼우면 "라우트가 진실의 원천"이라는 이 셸의
+  /// 전제가 깨진다. ShellRoute 를 쓰는 이유가 그것이다 — 셸은 마운트된 채로
+  /// 남고 무엇을 그릴지는 여전히 라우터가 정한다.
+  final Widget child;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
@@ -76,12 +87,14 @@ class _AppShellState extends ConsumerState<AppShell> {
     final layout = Layout.ofContext(context);
 
     return switch (layout) {
-      Layout.desktop => const _DesktopShell(),
-      Layout.tablet => const _CompactShell(showBottomTabs: false),
+      Layout.desktop => _DesktopShell(child: widget.child),
+      Layout.tablet =>
+        _CompactShell(showBottomTabs: false, child: widget.child),
       Layout.mobile => _CompactShell(
           showBottomTabs: true,
           tab: _tab,
           onTab: _onTab,
+          child: widget.child,
         ),
     };
   }
@@ -89,11 +102,13 @@ class _AppShellState extends ConsumerState<AppShell> {
 
 /// 3단 고정.
 class _DesktopShell extends StatelessWidget {
-  const _DesktopShell();
+  const _DesktopShell({required this.child});
+
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       // 데스크톱 OS 에는 상태 표시줄이 없지만, **Android 태블릿은 폭이 1024dp 를
       // 넘으면 이 분기를 탄다.** SafeArea 가 없으면 레일 첫 아바타와 채널 헤더가
       // 시계·배터리와 겹친다.
@@ -101,11 +116,11 @@ class _DesktopShell extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SpaceRail(),
-            VerticalDivider(width: 1),
-            ChannelPane(),
-            VerticalDivider(width: 1),
-            Expanded(child: _Content()),
+            const SpaceRail(),
+            const VerticalDivider(width: 1),
+            const ChannelPane(),
+            const VerticalDivider(width: 1),
+            Expanded(child: child),
           ],
         ),
       ),
@@ -117,11 +132,13 @@ class _DesktopShell extends StatelessWidget {
 class _CompactShell extends ConsumerWidget {
   const _CompactShell({
     required this.showBottomTabs,
+    required this.child,
     this.tab = 0,
     this.onTab,
   });
 
   final bool showBottomTabs;
+  final Widget child;
   final int tab;
   final ValueChanged<int>? onTab;
 
@@ -163,7 +180,7 @@ class _CompactShell extends ConsumerWidget {
           ),
         ),
       ),
-      body: const _Content(),
+      body: child,
       bottomNavigationBar: showBottomTabs
           ? NavigationBar(
               selectedIndex: tab,
@@ -196,16 +213,16 @@ class _CompactShell extends ConsumerWidget {
   }
 }
 
-/// 본문 — 채널이 열려 있으면 대화, 아니면 안내.
-class _Content extends ConsumerWidget {
-  const _Content();
+/// `/s/:spaceId` — 채널을 아직 고르지 않은 상태.
+///
+/// 이전에는 셸이 `channelId` 를 보고 대화와 안내 중 하나를 골랐다. 이제
+/// 무엇을 그릴지는 라우터가 정하므로, 이 화면이 그 자리에 오는 라우트가 된다.
+class ShellHome extends StatelessWidget {
+  const ShellHome({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final channelId = ref.watch(currentChannelIdProvider);
-
-    if (channelId != null) return const ChatScreen();
 
     return ColoredBox(
       color: theme.scaffoldBackgroundColor,

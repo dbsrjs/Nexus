@@ -41,6 +41,8 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        // 셸 안이라 돌아갈 곳이 스택에 없다. 판에서 바로 오는 화면이다.
+        automaticallyImplyLeading: false,
         title: const Text('보드'),
         actions: [
           IconButton(

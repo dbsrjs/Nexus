@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth_controller.dart';
+import '../features/chat/chat_screen.dart';
 import '../features/chat/thread_screen.dart';
 import '../features/files/files_screen.dart';
 import '../features/issue/board_screen.dart';
@@ -55,106 +56,125 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const _SignupPlaceholder()),
       GoRoute(path: '/spaces', builder: (_, _) => const SpacePickerScreen()),
-      GoRoute(
-        path: '/s/:spaceId',
-        builder: (_, state) =>
-            AppShell(spaceId: state.pathParameters['spaceId']!),
+      // ── 셸 안 — 한 번 가서 머무는 곳 ──────────────────
+      //
+      // ShellRoute 가 셸을 마운트한 채로 두므로, 갈래를 옮겨도 레일과 채널
+      // 목록이 다시 만들어지지 않는다. **무엇을 그릴지는 여전히 라우터가
+      // 정한다** — 셸이 본문을 탭으로 갈아 끼우면 "라우트가 진실의 원천"
+      // 이라는 전제가 깨진다.
+      ShellRoute(
+        builder: (context, state, child) {
+          // ShellRoute 빌더에서 자식 라우트의 pathParameters 가 실리는지는
+          // go_router 버전에 따라 다를 수 있어, 경로에서 직접 읽는다.
+          // 세그먼트는 [s, <spaceId>] 또는 [s, <spaceId>, c, <channelId>] 다.
+          final seg = state.uri.pathSegments;
+          final spaceId = seg.length >= 2 ? seg[1] : '';
+          final channelId = seg.length >= 4 && seg[2] == 'c' ? seg[3] : null;
+
+          return AppShell(
+            spaceId: spaceId,
+            // 대화 라우트에서만 채널이 열려 있다. 다른 갈래에서는 null 이라
+            // 채널 목록의 선택 표시가 꺼진다.
+            channelId: channelId,
+            child: child,
+          );
+        },
         routes: [
-          // 스페이스 파일 목록. 스레드와 같이 셸 위에 덮어서 연다 — 대화의
-          // 곁가지라 돌아오는 길이 분명한 편이 낫다.
           GoRoute(
-            path: 'files',
-            builder: (_, state) =>
-                FilesScreen(spaceId: state.pathParameters['spaceId']!),
-          ),
-          // 저장소. 파일 목록과 같이 셸 위에 덮어서 연다.
-          GoRoute(
-            path: 'repos',
-            builder: (_, state) =>
-                ReposScreen(spaceId: state.pathParameters['spaceId']!),
-          ),
-          // 저장소 안 들여다보기. **폴더 이동은 라우트를 쌓지 않는다** —
-          // 경로는 화면의 상태이고 되돌아가는 길은 빵부스러기가 맡는다(설계 §4).
-          GoRoute(
-            path: 'repos/:repoId/browse',
-            builder: (_, state) => BrowseScreen(
-              spaceId: state.pathParameters['spaceId']!,
-              repoId: state.pathParameters['repoId']!,
-              // 커밋 상세에서 오면 그 sha·경로로 시작한다(10-3b).
-              initialRef: state.uri.queryParameters['ref'],
-              initialPath: state.uri.queryParameters['path'],
-            ),
-          ),
-          // 그 push 에 들어온 커밋들. 채널 메시지에서 들어온다(10-3b).
-          GoRoute(
-            path: 'repo-events/:eventId',
-            builder: (_, state) => CommitsScreen(
-              spaceId: state.pathParameters['spaceId']!,
-              eventId: state.pathParameters['eventId'],
-            ),
-          ),
-          // 브랜치 이력. 탐색 화면의 커밋 버튼에서 들어온다.
-          GoRoute(
-            path: 'repos/:repoId/commits',
-            builder: (_, state) => CommitsScreen(
-              spaceId: state.pathParameters['spaceId']!,
-              repoId: state.pathParameters['repoId']!,
-              branchRef: state.uri.queryParameters['ref'],
-            ),
-          ),
-          GoRoute(
-            path: 'repos/:repoId/commits/:sha',
-            builder: (_, state) => CommitDetailScreen(
-              spaceId: state.pathParameters['spaceId']!,
-              repoId: state.pathParameters['repoId']!,
-              sha: state.pathParameters['sha']!,
-            ),
-          ),
-          // 이슈 보드도 같은 방식이다. 셸 본문을 탭으로 갈아 끼우면
-          // "라우트가 진실의 원천"이라는 셸의 전제가 깨진다.
-          GoRoute(
-            path: 'sprints',
-            builder: (_, state) =>
-                SprintScreen(spaceId: state.pathParameters['spaceId']!),
-          ),
-          GoRoute(
-            path: 'issues',
-            builder: (_, state) =>
-                BoardScreen(spaceId: state.pathParameters['spaceId']!),
+            path: '/s/:spaceId',
+            builder: (_, _) => const ShellHome(),
             routes: [
-              // 상세는 **키**로 잡는다 — 사람이 대화에 붙여 넣는 것도
-              // uuid 가 아니라 NEXUS-12 다. API 는 id 로 유지한다.
+              // 이슈 보드와 스프린트는 대화의 곁가지가 아니라 나란한 주
+              // 기능이다. 그래서 셸 안에 둔다.
               GoRoute(
-                path: ':issueKey',
-                builder: (_, state) => IssueDetailScreen(
+                path: 'issues',
+                builder: (_, state) =>
+                    BoardScreen(spaceId: state.pathParameters['spaceId']!),
+                routes: [
+                  // 상세는 **키**로 잡는다 — 사람이 대화에 붙여 넣는 것도
+                  // uuid 가 아니라 NEXUS-12 다. API 는 id 로 유지한다.
+                  GoRoute(
+                    path: ':issueKey',
+                    builder: (_, state) => IssueDetailScreen(
+                      spaceId: state.pathParameters['spaceId']!,
+                      issueKey: state.pathParameters['issueKey']!,
+                    ),
+                  ),
+                ],
+              ),
+              GoRoute(
+                path: 'sprints',
+                builder: (_, state) =>
+                    SprintScreen(spaceId: state.pathParameters['spaceId']!),
+              ),
+              GoRoute(
+                path: 'files',
+                builder: (_, state) =>
+                    FilesScreen(spaceId: state.pathParameters['spaceId']!),
+              ),
+              GoRoute(
+                path: 'repos',
+                builder: (_, state) =>
+                    ReposScreen(spaceId: state.pathParameters['spaceId']!),
+              ),
+              // 저장소 안 들여다보기. **폴더 이동은 라우트를 쌓지 않는다** —
+              // 경로는 화면의 상태이고 되돌아가는 길은 빵부스러기가 맡는다.
+              GoRoute(
+                path: 'repos/:repoId/browse',
+                builder: (_, state) => BrowseScreen(
                   spaceId: state.pathParameters['spaceId']!,
-                  issueKey: state.pathParameters['issueKey']!,
+                  repoId: state.pathParameters['repoId']!,
+                  // 커밋 상세에서 오면 그 sha·경로로 시작한다(10-3b).
+                  initialRef: state.uri.queryParameters['ref'],
+                  initialPath: state.uri.queryParameters['path'],
                 ),
               ),
-            ],
-          ),
-          // 채널을 연 상태. 셸은 같고 본문만 대화로 바뀐다.
-          GoRoute(
-            path: 'c/:channelId',
-            builder: (_, state) => AppShell(
-              spaceId: state.pathParameters['spaceId']!,
-              channelId: state.pathParameters['channelId'],
-            ),
-            routes: [
-              // 스레드는 셸 위에 **덮어서** 연다. 채널 목록·레일을 유지한 채
-              // 본문만 바꾸면 좁은 화면에서 뒤로 가기가 애매해지고, 스레드는
-              // 대화의 곁가지라 채널로 돌아오는 길이 분명한 편이 낫다.
+              // 채널을 연 상태. 셸은 같고 본문만 대화로 바뀐다.
               GoRoute(
-                path: 't/:messageId',
-                builder: (_, state) => ThreadScreen(
-                  spaceId: state.pathParameters['spaceId']!,
-                  channelId: state.pathParameters['channelId']!,
-                  messageId: state.pathParameters['messageId']!,
-                ),
+                path: 'c/:channelId',
+                builder: (_, _) => const ChatScreen(),
               ),
             ],
           ),
         ],
+      ),
+
+      // ── 셸 밖 — 보고 돌아오는 곳 ──────────────────────
+      //
+      // 특정 메시지 · 특정 저장소에서 파고드는 것이라 돌아오는 길이 분명한
+      // 편이 낫다. 이것은 원래 판단이고 그대로 지킨다.
+      GoRoute(
+        path: '/s/:spaceId/c/:channelId/t/:messageId',
+        builder: (_, state) => ThreadScreen(
+          spaceId: state.pathParameters['spaceId']!,
+          channelId: state.pathParameters['channelId']!,
+          messageId: state.pathParameters['messageId']!,
+        ),
+      ),
+      // 그 push 에 들어온 커밋들. 채널 메시지에서 들어온다(10-3b).
+      GoRoute(
+        path: '/s/:spaceId/repo-events/:eventId',
+        builder: (_, state) => CommitsScreen(
+          spaceId: state.pathParameters['spaceId']!,
+          eventId: state.pathParameters['eventId'],
+        ),
+      ),
+      // 브랜치 이력. 탐색 화면의 커밋 버튼에서 들어온다.
+      GoRoute(
+        path: '/s/:spaceId/repos/:repoId/commits',
+        builder: (_, state) => CommitsScreen(
+          spaceId: state.pathParameters['spaceId']!,
+          repoId: state.pathParameters['repoId']!,
+          branchRef: state.uri.queryParameters['ref'],
+        ),
+      ),
+      GoRoute(
+        path: '/s/:spaceId/repos/:repoId/commits/:sha',
+        builder: (_, state) => CommitDetailScreen(
+          spaceId: state.pathParameters['spaceId']!,
+          repoId: state.pathParameters['repoId']!,
+          sha: state.pathParameters['sha']!,
+        ),
       ),
     ],
   );
