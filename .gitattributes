@@ -14,6 +14,15 @@ Dockerfile  text eol=lf
 *.yml       text eol=lf
 *.yaml      text eol=lf
 
+# Flutter 가 생성하는 플러그인 등록 파일 — 도구가 LF 로 쓴다.
+#
+# eol 을 못 박지 않으면 `* text=auto` + core.autocrlf=true 조합이 체크아웃할 때
+# CRLF 로 바꿔 두는데, `flutter pub get` 은 그것을 다시 LF 로 쓴다. 내용은 한
+# 글자도 다르지 않은데 status 에는 늘 수정됨으로 뜨고, 매번 손으로 되돌리게 된다.
+**/flutter/generated_plugin_registrant.*  text eol=lf
+**/flutter/generated_plugins.cmake        text eol=lf
+**/GeneratedPluginRegistrant.*            text eol=lf
+
 # Windows PowerShell 전용 — CRLF
 *.ps1       text eol=crlf
 *.cmd       text eol=crlf
