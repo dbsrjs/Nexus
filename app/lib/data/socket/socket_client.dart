@@ -60,6 +60,7 @@ class SocketClient {
       ..on('issue:updated', _onIssueUpserted)
       ..on('issue:deleted', _onIssueDeleted)
       ..on('read:synced', _onReadSynced)
+      ..on('oauth:connected', _onOauthConnected)
       ..on('rooms:invalidate', _onRoomsInvalidate);
 
     _socket = socket;
@@ -245,6 +246,15 @@ class SocketClient {
       channelId: map['channelId'] as String? ?? '',
       lastReadMessageId: map['lastReadMessageId'] as String?,
     ));
+  }
+
+  void _onOauthConnected(dynamic data) {
+    final map = _asMap(data);
+    final provider = map?['provider'];
+    final login = map?['login'];
+    if (provider is! String || login is! String) return;
+
+    _emit(OauthConnected(provider: provider, login: login));
   }
 
   void _onRoomsInvalidate(dynamic data) {

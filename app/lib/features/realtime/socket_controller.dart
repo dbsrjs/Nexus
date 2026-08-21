@@ -121,8 +121,9 @@ final realtimeChannelSyncProvider = Provider<void>((ref) {
       case ThreadReply():
       case PinChanged():
       case SocketDisconnected():
+      case OauthConnected():
         // 채널 목록·뱃지에 영향이 없다. 리액션과 스레드 답글은 열려 있는
-        // 채널·스레드의 컨트롤러가 받는다.
+        // 채널·스레드의 컨트롤러가 받는다. 계정 연결은 저장소 화면이 받는다.
         break;
     }
   });

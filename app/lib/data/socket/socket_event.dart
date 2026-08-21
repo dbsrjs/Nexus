@@ -25,6 +25,17 @@ class SocketUnauthorized extends SocketEvent {
   const SocketUnauthorized();
 }
 
+/// GitHub 계정 연결이 끝났다. **콜백은 브라우저가 받고 앱은 이것으로 안다**
+/// (docs/superpowers/specs/2026-08-20-github-oauth-design.md §2).
+///
+/// 개인 룸(`user:{userId}`)으로만 온다 — 남의 연결이 내게 오지 않는다.
+class OauthConnected extends SocketEvent {
+  const OauthConnected({required this.provider, required this.login});
+
+  final String provider;
+  final String login;
+}
+
 class MessageNew extends SocketEvent {
   const MessageNew({
     required this.spaceId,
