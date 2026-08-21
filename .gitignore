@@ -45,3 +45,9 @@ Thumbs.db
 # ---- misc ----
 *.tsbuildinfo
 coverage/
+
+# ---- 디자인 캔버스 ----
+# .dc.html 원본과 canvas.json 은 남긴다 — 다시 그릴 때 여기서 시작한다.
+# 빌드 산출물만 뺀다: 에디터가 통째로 박혀 있어 2.3MB 다.
+.design/*.html
+!.design/*.dc.html
