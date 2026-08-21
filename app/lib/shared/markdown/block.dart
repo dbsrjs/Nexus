@@ -46,10 +46,14 @@ List<BlockNode> parseBlocks(String source) {
   while (i < lines.length) {
     final line = lines[i];
 
+    // **앞 공백은 어느 블록에서나 턴다.** 한 곳만 줄 맨 앞을 요구하면 같은
+    // 글이 어디서 복사해 왔느냐에 따라 다르게 그려진다 — 실제로 겪었다.
+    final trimmed = line.trimLeft();
+
     // ── 코드블록이 가장 먼저다 ──────────────────────
     // 안에서는 다른 블록을 찾지 않는다.
-    if (line.trimLeft().startsWith('```')) {
-      final language = line.trimLeft().substring(3).trim();
+    if (trimmed.startsWith('```')) {
+      final language = trimmed.substring(3).trim();
       final body = <String>[];
       i++;
       while (i < lines.length && !lines[i].trimLeft().startsWith('```')) {
@@ -73,7 +77,7 @@ List<BlockNode> parseBlocks(String source) {
     }
 
     // ── 제목 ─────────────────────────────────────────
-    final heading = _heading.firstMatch(line);
+    final heading = _heading.firstMatch(trimmed);
     if (heading != null) {
       blocks.add(BlockNode(
         BlockKind.heading,
@@ -86,9 +90,7 @@ List<BlockNode> parseBlocks(String source) {
 
     // ── 표 — **구분 행이 있어야 표다** ──────────────
     // 그냥 파이프를 쓴 문장이 표로 바뀌면 안 된다.
-    if (line.contains('|') &&
-        i + 1 < lines.length &&
-        _tableDivider.hasMatch(lines[i + 1].trim())) {
+    if (_isTableStart(lines, i)) {
       final rows = <List<String>>[_splitRow(line)];
       i += 2;
       while (i < lines.length && lines[i].contains('|')) {
@@ -100,7 +102,7 @@ List<BlockNode> parseBlocks(String source) {
     }
 
     // ── 인용 ─────────────────────────────────────────
-    if (line.trimLeft().startsWith('>')) {
+    if (trimmed.startsWith('>')) {
       final body = <String>[];
       while (i < lines.length && lines[i].trimLeft().startsWith('>')) {
         body.add(lines[i].trimLeft().substring(1).trimLeft());
@@ -111,15 +113,15 @@ List<BlockNode> parseBlocks(String source) {
     }
 
     // ── 목록 ─────────────────────────────────────────
-    final bullet = _bullet.firstMatch(line);
-    final ordered = _ordered.firstMatch(line);
+    final bullet = _bullet.firstMatch(trimmed);
+    final ordered = _ordered.firstMatch(trimmed);
     if (bullet != null || ordered != null) {
       final isOrdered = ordered != null;
       final body = <String>[];
       while (i < lines.length) {
         final m = isOrdered
-            ? _ordered.firstMatch(lines[i])
-            : _bullet.firstMatch(lines[i]);
+            ? _ordered.firstMatch(lines[i].trimLeft())
+            : _bullet.firstMatch(lines[i].trimLeft());
         if (m == null) break;
         body.add(m.group(1)!);
         i++;
@@ -133,7 +135,7 @@ List<BlockNode> parseBlocks(String source) {
     i++;
     while (i < lines.length &&
         lines[i].trim().isNotEmpty &&
-        !_isBlockStart(lines[i])) {
+        !_isBlockStart(lines, i)) {
       body.add(lines[i]);
       i++;
     }
@@ -143,13 +145,28 @@ List<BlockNode> parseBlocks(String source) {
   return blocks;
 }
 
+/// 표는 **구분 행까지 두 줄을 봐야** 판별된다. 시작 판단과 문단을 끊는 판단이
+/// 같은 것을 봐야 해서 한 곳에 둔다 — 갈라지면 "표로 그려지긴 하는데 앞
+/// 문단에 먹히는" 식으로 어긋난다.
+bool _isTableStart(List<String> lines, int i) =>
+    lines[i].contains('|') &&
+    i + 1 < lines.length &&
+    _tableDivider.hasMatch(lines[i + 1].trim());
+
 /// 문단을 끊는 줄인지. 문단 도중에 목록이 시작되면 거기서 끊는다.
-bool _isBlockStart(String line) =>
-    line.trimLeft().startsWith('```') ||
-    line.trimLeft().startsWith('>') ||
-    _heading.hasMatch(line) ||
-    _bullet.hasMatch(line) ||
-    _ordered.hasMatch(line);
+///
+/// **줄 하나가 아니라 위치를 받는다** — 표를 알아보려면 다음 줄이 필요하다.
+/// 한 줄만 받던 때에는 표만 문단을 끊지 못해, `결과는 아래와 같다` 다음 줄에
+/// 바로 쓴 표가 통째로 문단 글자가 됐다.
+bool _isBlockStart(List<String> lines, int i) {
+  final line = lines[i].trimLeft();
+  return line.startsWith('```') ||
+      line.startsWith('>') ||
+      _heading.hasMatch(line) ||
+      _bullet.hasMatch(line) ||
+      _ordered.hasMatch(line) ||
+      _isTableStart(lines, i);
+}
 
 List<String> _splitRow(String line) {
   var text = line.trim();
