@@ -5,12 +5,12 @@
 //   npm run db:seed 로 만든 비밀번호를 인자로 넘긴다
 //
 // 사용: npm run check:realtime -- <시드비밀번호>
-import { io } from 'socket.io-client';
 
 import { requireServer } from './lib/preflight.mjs';
-const BASE = 'http://127.0.0.1:3000/api';
+import { BASE, api } from './lib/api.mjs';
+import { check, summary } from './lib/checks.mjs';
+import { connect, waitFor } from './lib/socket.mjs';
 await requireServer(BASE);
-const WS = 'http://127.0.0.1:3000';
 const OWNER_EMAIL = 'dbsrjs1224@gmail.com';
 const OWNER_PASSWORD = process.argv[2];
 
@@ -19,66 +19,9 @@ if (!OWNER_PASSWORD) {
   process.exit(1);
 }
 
-let pass = 0;
-let fail = 0;
-
-function check(name, ok, detail = '') {
-  if (ok) {
-    pass++;
-    console.log(`  ✅ ${name}`);
-  } else {
-    fail++;
-    console.log(`  ❌ ${name} ${detail}`);
-  }
-}
-
-async function api(method, path, { token, body } = {}) {
-  const res = await fetch(BASE + path, {
-    method,
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  let json = null;
-  try {
-    json = await res.json();
-  } catch {
-    /* 본문 없음 */
-  }
-  return { status: res.status, json };
-}
 
 /** 소켓 하나를 연결한다. 성공하면 소켓, 실패하면 Error 를 돌려준다(던지지 않는다). */
-function connect(token) {
-  return new Promise((resolve) => {
-    const socket = io(WS, {
-      auth: token === undefined ? {} : { token },
-      transports: ['websocket'],
-      reconnection: false,
-      timeout: 5000,
-    });
-    socket.once('connect', () => resolve(socket));
-    socket.once('connect_error', (err) => resolve(err));
-  });
-}
-
 /** 이벤트를 기다린다. ms 안에 안 오면 null. */
-function waitFor(socket, event, ms = 3000) {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      socket.off(event, handler);
-      resolve(null);
-    }, ms);
-    const handler = (payload) => {
-      clearTimeout(timer);
-      resolve(payload);
-    };
-    socket.once(event, handler);
-  });
-}
-
 /** ack 이 있는 이벤트를 보낸다. */
 function emitWithAck(socket, event, payload, ms = 3000) {
   return new Promise((resolve) => {
@@ -378,8 +321,7 @@ async function main() {
  */
 function report() {
   for (const s of sockets) s.disconnect();
-  console.log(`\n통과 ${pass} / 실패 ${fail}`);
-  process.exitCode = fail ? 1 : 0;
+  summary();
 }
 
 main().catch((err) => {

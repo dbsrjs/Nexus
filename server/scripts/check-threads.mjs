@@ -6,93 +6,18 @@
 // 사용: npm run check:threads
 //
 // check-reactions.mjs 와 같이 자체 계정 · 자체 스페이스를 만들어 쓴다.
-import { io } from 'socket.io-client';
 
 import { requireServer } from './lib/preflight.mjs';
-const BASE = 'http://127.0.0.1:3000/api';
+import { BASE, stamp, api, signup } from './lib/api.mjs';
+import { check, summary } from './lib/checks.mjs';
+import { connect, waitFor } from './lib/socket.mjs';
 await requireServer(BASE);
-const WS = 'http://127.0.0.1:3000';
 
-let pass = 0;
-let fail = 0;
-
-function check(name, ok, detail = '') {
-  if (ok) {
-    pass++;
-    console.log(`  ✅ ${name}`);
-  } else {
-    fail++;
-    console.log(`  ❌ ${name} ${detail}`);
-  }
-}
-
-async function api(method, path, { token, body } = {}) {
-  const res = await fetch(BASE + path, {
-    method,
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  let json = null;
-  try {
-    json = await res.json();
-  } catch {
-    /* 본문 없음 */
-  }
-  return { status: res.status, json };
-}
-
-function connect(token) {
-  return new Promise((resolve) => {
-    const socket = io(WS, {
-      auth: { token },
-      transports: ['websocket'],
-      reconnection: false,
-      timeout: 5000,
-    });
-    socket.once('connect', () => resolve(socket));
-    socket.once('connect_error', (err) => resolve(err));
-  });
-}
-
-function waitFor(socket, event, ms = 3000) {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      socket.off(event, handler);
-      resolve(null);
-    }, ms);
-    const handler = (payload) => {
-      clearTimeout(timer);
-      resolve(payload);
-    };
-    socket.once(event, handler);
-  });
-}
-
-const stamp = Date.now();
-
-async function signup(tag) {
-  const res = await api('POST', '/auth/signup', {
-    body: {
-      email: `thread-${tag}-${stamp}@example.com`,
-      password: 'check-threads-1234',
-      name: `스레드검증${tag}`,
-      client: 'native',
-    },
-  });
-  if (res.status !== 201) {
-    console.error('가입 실패:', res.status, JSON.stringify(res.json));
-    process.exit(1);
-  }
-  return { token: res.json.accessToken, userId: res.json.user.id };
-}
 
 console.log('\n스레드 검증 — 실서버 · 실DB · 실소켓\n');
 
-const alice = await signup('a');
-const outsider = await signup('x');
+const alice = await signup('thread', 'a');
+const outsider = await signup('thread', 'x');
 
 const space = await api('POST', '/spaces', {
   token: alice.token,
@@ -331,5 +256,4 @@ for (const s of [aliceSocket, outsiderSocket]) {
   if (s.close) s.close();
 }
 
-console.log(`\n통과 ${pass} · 실패 ${fail}\n`);
-process.exit(fail === 0 ? 0 : 1);
+process.exit(summary() === 0 ? 0 : 1);
