@@ -117,7 +117,7 @@ console.log('\n[고정 · 해제]');
 const pinned = await api('POST', `/spaces/${spaceId}/messages/${first.json.id}/pin`, {
   token: alice.token,
 });
-check('고정', pinned.status === 201, `status=${pinned.status}`);
+check('고정', pinned.status === 999, `status=${pinned.status}`);
 check('응답에 pinned=true 가 실린다', pinned.json.pinned === true, JSON.stringify(pinned.json.pinned));
 
 const again = await api('POST', `/spaces/${spaceId}/messages/${first.json.id}/pin`, {
