@@ -391,7 +391,7 @@ class _ThreadSummary extends ConsumerWidget {
       padding: const EdgeInsets.only(top: NexusSpacing.sp1),
       child: InkWell(
         onTap: () => _openThread(context, ref, message),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(NexusRadius.md),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 2),
           child: Text(
@@ -443,11 +443,11 @@ Future<void> _pickReaction(
                 for (final emoji in _quickEmojis)
                   InkWell(
                     onTap: () => Navigator.of(sheetContext).pop(emoji),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(NexusRadius.md),
                     child: Container(
                       padding: const EdgeInsets.all(NexusSpacing.sp3),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(NexusRadius.md),
                         // 이미 누른 것은 테두리로 표시한다 — 다시 누르면 취소다.
                         border: mine.contains(emoji)
                             ? Border.all(
@@ -552,14 +552,14 @@ class _ReactionBar extends ConsumerWidget {
               onTap: () => ref
                   .read(messageActionsProvider)
                   .toggleReaction(message, reaction.emoji),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(NexusRadius.md),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: NexusSpacing.sp2,
                   vertical: 2,
                 ),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(NexusRadius.md),
                   // 내가 누른 것은 강조한다. 개수만 보여서는 내가 눌렀는지 알 수 없다.
                   color: reaction.mine
                       ? theme.colorScheme.primary.withValues(alpha: 0.18)
@@ -967,7 +967,7 @@ class _MentionSuggestions extends ConsumerWidget {
       constraints: const BoxConstraints(maxHeight: 220),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(NexusRadius.md),
         border: Border.all(color: theme.dividerColor),
       ),
       child: ListView.builder(

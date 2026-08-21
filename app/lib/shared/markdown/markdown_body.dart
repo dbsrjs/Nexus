@@ -6,6 +6,7 @@ import '../../domain/models/message.dart';
 import '../../features/repo/code_highlight.dart';
 import 'block.dart';
 import 'inline.dart';
+import '../../core/theme.dart';
 
 /// 마크다운 본문. **채팅 · 이슈 본문 · 이슈 댓글이 같은 것을 쓴다** —
 /// 규칙이 갈라지면 "채팅에서는 되는데 이슈에서는 안 되는" 일이 생긴다.
@@ -273,7 +274,7 @@ class _SpoilerState extends State<_Spoiler> {
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(NexusRadius.sm),
         ),
         // 글자를 지우지 않고 가린다 — 폭이 유지돼야 눌렀을 때 줄이 흔들리지 않는다.
         child: Opacity(opacity: 0, child: content),
@@ -301,7 +302,7 @@ class _CodeBlock extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: theme.dividerColor.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(NexusRadius.md),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,7 +352,7 @@ class _TableBlock extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           border: Border.all(color: theme.dividerColor),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(NexusRadius.md),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

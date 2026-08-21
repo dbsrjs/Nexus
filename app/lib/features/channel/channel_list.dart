@@ -147,7 +147,7 @@ class _MentionBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: theme.colorScheme.error,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(NexusRadius.full),
       ),
       child: Text(
         // 개수보다 "불렸다"는 사실이 먼저다. 한 건이면 @ 만 보여 준다.
@@ -173,7 +173,7 @@ class _UnreadBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: theme.colorScheme.primary,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(NexusRadius.full),
       ),
       child: Text(
         count > 99 ? '99+' : '$count',
