@@ -62,7 +62,7 @@ export class WebhooksService {
     // **적재와 게시를 한 트랜잭션으로 묶는다.** 사이에서 끊기면 "이벤트는
     // 왔는데 채널에는 없는" 상태가 되는데, GitHub 은 200 을 받았으므로 다시
     // 보내지 않는다 — 재시도로도 낫지 않는다.
-    const message = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       let created: { id: string; channelId: string } | null = null;
 
       if (repo.linkedChannelId && author) {
@@ -77,7 +77,9 @@ export class WebhooksService {
         });
       }
 
-      await tx.repoEvent.create({
+      // **이름을 `event` 로 두지 않는다** — 이 메서드의 인자가 `event`(문자열)라
+      // 아래 payload 에서 자기 자신을 가리키게 된다.
+      const repoEventRow = await tx.repoEvent.create({
         data: {
           spaceId: repo.spaceId,
           repoId: repo.id,
@@ -91,10 +93,13 @@ export class WebhooksService {
           messageId: created?.id ?? null,
           occurredAt: new Date(),
         },
+        select: { id: true },
       });
 
-      return created;
+      return { message: created, eventId: repoEventRow.id };
     });
+
+    const message = result.message;
 
     if (message) {
       // 기존 메시지 경로와 같은 이벤트를 쓴다. `repo:event` 를 따로 만들지
@@ -105,7 +110,14 @@ export class WebhooksService {
           author: { select: { id: true, name: true, avatarUrl: true } },
         },
       });
-      if (full) this.realtime.toChannel(message.channelId, 'message:new', full);
+      // **목록 응답과 같은 모양이어야 한다** — 앱은 소켓으로 받은 메시지와
+      // REST 로 받은 메시지를 구분하지 않는다(10-3b).
+      if (full) {
+        this.realtime.toChannel(message.channelId, 'message:new', {
+          ...full,
+          repoEventId: result.eventId,
+        });
+      }
     }
 
     return { stored: true, posted: message !== null, duplicate: false };

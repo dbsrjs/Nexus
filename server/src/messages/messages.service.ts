@@ -78,11 +78,12 @@ export class MessagesService {
 
     // 리액션 · 인용 · 멘션 · 첨부는 한 번에 모아 붙인다. 메시지마다 조회하면 N+1 이 된다.
     const ids = page.map((m) => m.id);
-    const [reactions, quoted, mentions, attachments] = await Promise.all([
+    const [reactions, quoted, mentions, attachments, repoEvents] = await Promise.all([
       this.reactions.summarizeMany(ids, member),
       this.loadQuoted(page, member),
       this.mentions.summarizeMany(ids, member),
       this.attachments.summarizeMany(ids, member),
+      this.loadRepoEvents(ids, member.spaceId),
     ]);
 
     return {
@@ -96,9 +97,37 @@ export class MessagesService {
         // **소프트 삭제된 메시지의 첨부도 그대로 간다.** 본문만 가려지고 파일은
         // 남는 것이 보관 정책이다(설계 §3).
         attachments: attachments.get(message.id) ?? [],
+        // 저장소 이벤트가 만든 메시지면 그 이벤트 id. **앱은 이것이 있을 때만
+        // 커밋으로 파고들 수 있다**(10-3b 설계 §1).
+        repoEventId: repoEvents.get(message.id) ?? null,
       })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
     };
+  }
+
+  /**
+   * 메시지 → 저장소 이벤트 id.
+   *
+   * **`messageId in (…)` 한 번으로 읽는다** — 메시지마다 조회하면 N+1 이 된다
+   * (리액션 · 멘션과 같은 규칙).
+   */
+  private async loadRepoEvents(
+    messageIds: string[],
+    spaceId: string,
+  ): Promise<Map<string, string>> {
+    if (messageIds.length === 0) return new Map();
+
+    const rows = await this.prisma.repoEvent.findMany({
+      // 테넌트 조건은 예외 없이 모든 쿼리에 넣는다.
+      where: { spaceId, messageId: { in: messageIds } },
+      select: { id: true, messageId: true },
+    });
+
+    const map = new Map<string, string>();
+    for (const row of rows) {
+      if (row.messageId) map.set(row.messageId, row.id);
+    }
+    return map;
   }
 
   /**
