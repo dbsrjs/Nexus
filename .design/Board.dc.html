@@ -1,0 +1,250 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #77AECF; text-decoration: none; }
+    a:hover { color: #5197C2; text-decoration: underline; }
+    ::selection { background: rgba(119,174,207,.28); }
+  </style>
+</helmet>
+
+<div style="width: 1280px; height: 800px; display: flex; background: #121314; color: #DDE6ED; font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;">
+
+  <!-- 레일 -->
+  <div style="width: 68px; flex: none; background: #0D0E0F; display: flex; flex-direction: column; align-items: center; padding: 14px 0; gap: 8px;">
+    <div style="position: relative; display: flex; align-items: center;">
+      <div style="position: absolute; left: -14px; top: 7px; bottom: 7px; width: 3px; background: #DDE6ED; border-radius: 0 3px 3px 0;"></div>
+      <div style="width: 40px; height: 40px; border-radius: 11px; background: #77AECF; color: #121314; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; letter-spacing: -.02em;">N</div>
+    </div>
+    <div style="width: 40px; height: 40px; border-radius: 11px; background: #1C1D1F; color: #9DA0A4; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px;">L</div>
+    <div style="flex: 1;"></div>
+    <div style="position: relative;">
+      <div style="width: 34px; height: 34px; border-radius: 9999px; background: #90A8C1; color: #121314; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;">이윤</div>
+      <div style="position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 9999px; background: #74B48F; border: 2.5px solid #0D0E0F;"></div>
+    </div>
+  </div>
+
+  <!-- 두 번째 판 : 대화 + 작업 + 저장소 -->
+  <div style="width: 244px; flex: none; background: #1C1D1F; display: flex; flex-direction: column; overflow: hidden;">
+    <div style="height: 56px; flex: none; display: flex; align-items: center; padding: 0 16px; gap: 8px;">
+      <span style="font-size: 15.5px; font-weight: 700; letter-spacing: -.015em;">Nexus</span>
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" style="color: #63676B;"><path d="M2.5 4.5h7L6 9 2.5 4.5z"/></svg>
+    </div>
+
+    <div style="flex: 1; padding: 2px 8px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; flex-direction: column; gap: 1px;">
+        <div style="padding: 0 8px 7px; font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: #63676B;">개발</div>
+        <div style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 9px; border-radius: 8px;">
+          <span style="color: #63676B; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1;">#</span>
+          <span style="font-size: 13.5px; color: #9DA0A4;">일반</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 9px; border-radius: 8px;">
+          <span style="color: #63676B; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1;">#</span>
+          <span style="font-size: 13.5px; color: #9DA0A4;">개발</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 9px; border-radius: 8px;">
+          <span style="color: #63676B; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1;">#</span>
+          <span style="font-size: 13.5px; color: #DDE6ED; font-weight: 600;">nexus</span>
+          <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; background: #77AECF; color: #121314; font-weight: 700; border-radius: 9999px; min-width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; padding: 0 5px;">3</span>
+        </div>
+      </div>
+
+      <!-- ★ 새 섹션 : 셸 밖에 있던 화면들을 여기로 들인다 -->
+      <div style="display: flex; flex-direction: column; gap: 1px;">
+        <div style="padding: 0 8px 7px; font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: #63676B;">작업</div>
+        <div style="position: relative; display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 9px; border-radius: 8px; background: rgba(119,174,207,.13);">
+          <div style="position: absolute; left: 0; top: 6px; bottom: 6px; width: 2.5px; background: #77AECF; border-radius: 0 2px 2px 0;"></div>
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#77AECF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><rect x="2" y="2.5" width="4" height="11" rx="1"/><rect x="7.5" y="2.5" width="4" height="7" rx="1"/></svg>
+          <span style="font-size: 13.5px; color: #DDE6ED; font-weight: 600;">이슈 보드</span>
+          <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #9DA0A4;">12</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 9px; border-radius: 8px;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#63676B" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M2 13V3M2 13h12M4.5 10.5l3-3 2.5 2 4-4.5"/></svg>
+          <span style="font-size: 13.5px; color: #9DA0A4;">스프린트</span>
+          <span style="margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: .05em; color: #74B48F; background: rgba(116,180,143,.14); border-radius: 4px; padding: 2px 5px;">진행</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 9px; border-radius: 8px;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#63676B" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M2.5 4.5A1.5 1.5 0 014 3h2.5L8 4.5h4A1.5 1.5 0 0113.5 6v6A1.5 1.5 0 0112 13.5H4A1.5 1.5 0 012.5 12V4.5z"/></svg>
+          <span style="font-size: 13.5px; color: #9DA0A4;">파일</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 1px;">
+        <div style="padding: 0 8px 7px; font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: #63676B;">저장소</div>
+        <div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 9px; border-radius: 8px;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="color: #63676B; flex: none;"><path d="M8 .2a8 8 0 00-2.5 15.6c.4.07.55-.17.55-.38v-1.35c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.23 1.88.87 2.34.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.3-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 014 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 008 .2z"/></svg>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #9DA0A4;">dbsrjs/Nexus</span>
+          <span style="margin-left: auto; width: 7px; height: 7px; border-radius: 9999px; background: #74B48F;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 본문 : 칸반 -->
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #121314;">
+
+    <div style="height: 56px; flex: none; display: flex; align-items: center; gap: 11px; padding: 0 20px; border-bottom: 1px solid rgba(221,230,237,.10);">
+      <span style="font-size: 15.5px; font-weight: 700; letter-spacing: -.01em;">이슈 보드</span>
+      <div style="display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 10px; border-radius: 8px; background: #1C1D1F; margin-left: 4px;">
+        <span style="width: 7px; height: 7px; border-radius: 9999px; background: #74B48F;"></span>
+        <span style="font-size: 12.5px; color: #DDE6ED;">스프린트 3</span>
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" style="color: #63676B;"><path d="M2.5 4.5h7L6 9 2.5 4.5z"/></svg>
+      </div>
+      <span style="font-size: 12px; color: #63676B;">8월 18일 – 8월 29일 · 남은 5일</span>
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 11px; border-radius: 8px; background: #1C1D1F;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#63676B" stroke-width="1.7" stroke-linecap="round"><path d="M2.5 4h11M4.5 8h7M6.5 12h3"/></svg>
+          <span style="font-size: 12.5px; color: #9DA0A4;">필터</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 13px; border-radius: 8px; background: #77AECF; color: #121314;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3.5v9M3.5 8h9"/></svg>
+          <span style="font-size: 12.5px; font-weight: 600;">새 이슈</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex: 1; min-height: 0; padding: 16px 20px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;">
+
+      <!-- backlog -->
+      <div style="min-width: 0; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 0 3px;">
+          <span style="font-size: 12.5px; font-weight: 600; color: #9DA0A4;">백로그</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #63676B; background: #1C1D1F; border-radius: 9999px; padding: 1px 7px;">4</span>
+        </div>
+
+        <div style="background: #1C1D1F; border-radius: 8px; padding: 12px 13px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #63676B;">NEXUS-24</span>
+            <span style="margin-left: auto; width: 7px; height: 7px; border-radius: 9999px; background: #74B48F;"></span>
+          </div>
+          <div style="font-size: 14px; line-height: 1.45; font-weight: 500;">PR 이벤트를 테이블에 적재한다</div>
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span style="font-size: 10.5px; font-weight: 600; color: #90C1C1; background: rgba(144,193,193,.13); box-shadow: inset 0 0 0 1px rgba(144,193,193,.5); border-radius: 9999px; padding: 2px 8px;">11단계</span>
+          </div>
+        </div>
+
+        <div style="background: #1C1D1F; border-radius: 8px; padding: 12px 13px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #63676B;">NEXUS-25</span>
+            <span style="margin-left: auto; width: 7px; height: 7px; border-radius: 9999px; background: #D3B069;"></span>
+          </div>
+          <div style="font-size: 14px; line-height: 1.45; font-weight: 500;">비공개 채널에 멤버를 추가하는 API</div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 10.5px; font-weight: 600; color: #C1909C; background: rgba(193,144,156,.13); box-shadow: inset 0 0 0 1px rgba(193,144,156,.5); border-radius: 9999px; padding: 2px 8px;">빚</span>
+            <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #63676B;">3</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- doing -->
+      <div style="min-width: 0; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 0 3px;">
+          <span style="font-size: 12.5px; font-weight: 600; color: #DDE6ED;">진행</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #121314; background: #77AECF; font-weight: 700; border-radius: 9999px; padding: 1px 7px;">2</span>
+        </div>
+
+        <div style="background: #1C1D1F; border-radius: 8px; padding: 12px 13px; display: flex; flex-direction: column; gap: 8px; box-shadow: inset 2.5px 0 0 #77AECF;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #63676B;">NEXUS-21</span>
+            <span style="margin-left: auto; width: 7px; height: 7px; border-radius: 9999px; background: #D47D7D;"></span>
+          </div>
+          <div style="font-size: 14px; line-height: 1.45; font-weight: 500;">계약 검증을 CI 에 태운다</div>
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span style="font-size: 10.5px; font-weight: 600; color: #B4C190; background: rgba(180,193,144,.13); box-shadow: inset 0 0 0 1px rgba(180,193,144,.5); border-radius: 9999px; padding: 2px 8px;">검증</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding-top: 2px;">
+            <div style="width: 22px; height: 22px; border-radius: 9999px; background: #90A8C1; color: #121314; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600;">이윤</div>
+            <div style="display: flex; align-items: center; gap: 5px; margin-left: auto; color: #63676B;">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 10.5A1.5 1.5 0 0112.5 12H5l-3 2.5V3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v7z"/></svg>
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px;">3</span>
+            </div>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9DA0A4; background: #282A2C; border-radius: 4px; padding: 1px 6px;">5</span>
+          </div>
+        </div>
+
+        <div style="background: #1C1D1F; border-radius: 8px; padding: 12px 13px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #63676B;">NEXUS-22</span>
+            <span style="margin-left: auto; width: 7px; height: 7px; border-radius: 9999px; background: #D3B069;"></span>
+          </div>
+          <div style="font-size: 14px; line-height: 1.45; font-weight: 500;">계약 검증 헬퍼 중복을 걷는다</div>
+          <div style="display: flex; align-items: center; gap: 8px; padding-top: 2px;">
+            <div style="width: 22px; height: 22px; border-radius: 9999px; background: #90A8C1; color: #121314; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600;">이윤</div>
+            <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9DA0A4; background: #282A2C; border-radius: 4px; padding: 1px 6px;">3</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- review -->
+      <div style="min-width: 0; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 0 3px;">
+          <span style="font-size: 12.5px; font-weight: 600; color: #9DA0A4;">리뷰</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #63676B; background: #1C1D1F; border-radius: 9999px; padding: 1px 7px;">1</span>
+        </div>
+
+        <div style="background: #1C1D1F; border-radius: 8px; padding: 12px 13px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #63676B;">NEXUS-19</span>
+            <span style="margin-left: auto; width: 7px; height: 7px; border-radius: 9999px; background: #74B48F;"></span>
+          </div>
+          <div style="font-size: 14px; line-height: 1.45; font-weight: 500;">마크다운 블록 파서의 앞 공백 처리</div>
+          <div style="display: flex; align-items: center; gap: 8px; padding-top: 2px;">
+            <div style="width: 22px; height: 22px; border-radius: 9999px; background: #C1A890; color: #121314; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600;">서연</div>
+            <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9DA0A4; background: #282A2C; border-radius: 4px; padding: 1px 6px;">2</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- done -->
+      <div style="min-width: 0; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 0 3px;">
+          <span style="font-size: 12.5px; font-weight: 600; color: #9DA0A4;">완료</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #63676B; background: #1C1D1F; border-radius: 9999px; padding: 1px 7px;">5</span>
+        </div>
+
+        <div style="background: #1C1D1F; border-radius: 8px; padding: 12px 13px; display: flex; flex-direction: column; gap: 8px; opacity: .62;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #63676B;">NEXUS-18</span>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#74B48F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto;"><path d="M3 8.5l3.5 3.5L13 5"/></svg>
+          </div>
+          <div style="font-size: 14px; line-height: 1.45; font-weight: 500; text-decoration: line-through; text-decoration-color: rgba(221,230,237,.35);">커밋 열람 — 10-3b</div>
+          <div style="display: flex; align-items: center; gap: 8px; padding-top: 2px;">
+            <div style="width: 22px; height: 22px; border-radius: 9999px; background: #90A8C1; color: #121314; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600;">이윤</div>
+            <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9DA0A4; background: #282A2C; border-radius: 4px; padding: 1px 6px;">8</span>
+          </div>
+        </div>
+
+        <div style="background: #1C1D1F; border-radius: 8px; padding: 12px 13px; display: flex; flex-direction: column; gap: 8px; opacity: .62;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #63676B;">NEXUS-17</span>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#74B48F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto;"><path d="M3 8.5l3.5 3.5L13 5"/></svg>
+          </div>
+          <div style="font-size: 14px; line-height: 1.45; font-weight: 500; text-decoration: line-through; text-decoration-color: rgba(221,230,237,.35);">저장소 열람 — 10-3a</div>
+          <div style="display: flex; align-items: center; gap: 8px; padding-top: 2px;">
+            <div style="width: 22px; height: 22px; border-radius: 9999px; background: #90A8C1; color: #121314; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600;">이윤</div>
+            <span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9DA0A4; background: #282A2C; border-radius: 4px; padding: 1px 6px;">5</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
