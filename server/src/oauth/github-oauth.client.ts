@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { GithubOauthConfig } from '../config/oauth.config';
+// **타입만 가져온다**(런타임 의존이 생기지 않는다). 커밋 요약의 모양이
+// payload 에서 온 것과 GitHub 에서 온 것 사이에서 갈라지지 않도록 한 곳에 둔다.
+import type { CommitSummary } from '../repos/push-commits';
 
 export interface GithubToken {
   accessToken: string;
@@ -48,6 +51,11 @@ export interface GithubContentDir {
     type: 'file' | 'dir';
     size: number | null;
   }>;
+}
+
+export interface ChangedFile {
+  path: string;
+  status: 'added' | 'removed' | 'modified';
 }
 
 /**
@@ -376,6 +384,61 @@ export class GithubOauthClient {
     });
   }
 
+  /**
+   * 브랜치 이력. **파일 수를 주지 않아 `changedCount` 는 `null` 이다** —
+   * 채우려고 커밋마다 상세를 부르면 서른 번 왕복이 된다 (설계 §2).
+   */
+  async listCommits(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+    ref: string,
+    page: number,
+  ): Promise<GithubResult<CommitSummary[]>> {
+    const query = new URLSearchParams({ per_page: '30', page: String(page) });
+    if (ref) query.set('sha', ref);
+
+    const res = await this.call<Array<Record<string, unknown>>>(
+      `${cfg.apiBase}/repos/${fullName}/commits?${query.toString()}`,
+      token,
+    );
+    if (!res.ok) return res;
+
+    const commits: CommitSummary[] = [];
+    for (const raw of res.value) {
+      const summary = toCommitSummary(raw);
+      if (summary) commits.push(summary);
+    }
+    return { ok: true, value: commits };
+  }
+
+  async getCommit(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+    sha: string,
+  ): Promise<GithubResult<{ summary: CommitSummary; files: ChangedFile[] }>> {
+    const res = await this.call<Record<string, unknown>>(
+      `${cfg.apiBase}/repos/${fullName}/commits/${encodeURIComponent(sha)}`,
+      token,
+    );
+    if (!res.ok) return res;
+
+    const summary = toCommitSummary(res.value);
+    if (!summary) return { ok: false, status: 422 };
+
+    const rawFiles = Array.isArray(res.value.files) ? res.value.files : [];
+    const files: ChangedFile[] = [];
+    for (const item of rawFiles) {
+      const file = item as Record<string, unknown>;
+      const path = typeof file.filename === 'string' ? file.filename : null;
+      if (!path) continue;
+      files.push({ path, status: toStatus(file.status) });
+    }
+
+    return { ok: true, value: { summary, files } };
+  }
+
   /** 인증 헤더와 오류 해석이 같아 한 곳에 모은다. */
   private async call<T>(
     url: string,
@@ -412,4 +475,34 @@ export class GithubOauthClient {
       return { ok: false, status: 0 };
     }
   }
+}
+
+/**
+ * GitHub 커밋 JSON → 우리 요약.
+ *
+ * **payload 에서 온 것과 같은 모양이어야 한다** — 다르게 보이면 사용자가 두
+ * 목록을 다른 것으로 읽는다 (설계 §2).
+ */
+function toCommitSummary(raw: Record<string, unknown>): CommitSummary | null {
+  const sha = typeof raw.sha === 'string' ? raw.sha : null;
+  if (!sha) return null;
+
+  const commit = raw.commit as Record<string, unknown> | undefined;
+  const author = commit?.author as Record<string, unknown> | undefined;
+
+  return {
+    sha,
+    message: typeof commit?.message === 'string' ? commit.message : '',
+    authorName: typeof author?.name === 'string' ? author.name : null,
+    committedAt: typeof author?.date === 'string' ? author.date : null,
+    // 목록 API 는 파일 수를 주지 않는다.
+    changedCount: null,
+  };
+}
+
+/** `renamed` · `copied` 등은 `modified` 로 접는다 — 화면이 할 일이 같다. */
+function toStatus(value: unknown): ChangedFile['status'] {
+  if (value === 'added') return 'added';
+  if (value === 'removed') return 'removed';
+  return 'modified';
 }
