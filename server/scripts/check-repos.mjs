@@ -8,39 +8,10 @@
 import { createHmac } from 'node:crypto';
 
 import { requireServer } from './lib/preflight.mjs';
-const BASE = 'http://127.0.0.1:3000/api';
+import { BASE, stamp, api, signup } from './lib/api.mjs';
+import { check, summary } from './lib/checks.mjs';
 await requireServer(BASE);
 
-let pass = 0;
-let fail = 0;
-
-function check(name, ok, detail = '') {
-  if (ok) {
-    pass++;
-    console.log(`  OK  ${name}`);
-  } else {
-    fail++;
-    console.log(`FAIL  ${name} ${detail}`);
-  }
-}
-
-async function api(method, path, { token, body } = {}) {
-  const res = await fetch(BASE + path, {
-    method,
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  let json = null;
-  try {
-    json = await res.json();
-  } catch {
-    /* 본문 없음 */
-  }
-  return { status: res.status, json };
-}
 
 /**
  * 웹훅을 보낸다. **본문 문자열을 그대로 서명하고 그대로 보낸다** —
@@ -72,23 +43,6 @@ async function deliver(repoId, { secret, event, deliveryId, payload, provider = 
   return { status: res.status, json };
 }
 
-const stamp = Date.now();
-
-async function signup(tag) {
-  const res = await api('POST', '/auth/signup', {
-    body: {
-      email: `repo-${tag}-${stamp}@example.com`,
-      password: 'check-repos-1234',
-      name: `저장소검증${tag}`,
-      client: 'native',
-    },
-  });
-  if (res.status !== 201) {
-    console.error('가입 실패:', res.status, JSON.stringify(res.json));
-    process.exit(1);
-  }
-  return { token: res.json.accessToken, userId: res.json.user.id };
-}
 
 const pushPayload = (message = '보드 폭 계산을 고친다') => ({
   ref: 'refs/heads/main',
@@ -98,8 +52,8 @@ const pushPayload = (message = '보드 폭 계산을 고친다') => ({
 
 console.log('\n저장소 연동 검증 — 실서버 · 실DB (GitHub 없이 돈다)\n');
 
-const alice = await signup('a');
-const outsider = await signup('x');
+const alice = await signup('repo', 'a');
+const outsider = await signup('repo', 'x');
 
 const space = await api('POST', '/spaces', {
   token: alice.token,
@@ -291,5 +245,4 @@ check('★ 저장소를 지워도 채널 메시지는 남는다 — 대화의 �
   messagesAfterDelete === messagesBeforeDelete,
   `${messagesBeforeDelete} → ${messagesAfterDelete}`);
 
-console.log(`\n통과 ${pass} · 실패 ${fail}\n`);
-process.exit(fail === 0 ? 0 : 1);
+process.exit(summary() === 0 ? 0 : 1);

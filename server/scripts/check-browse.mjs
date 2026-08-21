@@ -13,41 +13,11 @@ import { createServer } from 'node:http';
 import { createHmac } from 'node:crypto';
 
 import { requireServer, abortUnless, PreflightAbort } from './lib/preflight.mjs';
-const BASE = 'http://127.0.0.1:3000/api';
+import { BASE, stamp, api, signup } from './lib/api.mjs';
+import { check, summary } from './lib/checks.mjs';
 await requireServer(BASE);
 const FAKE_PORT = 4599;
-const stamp = Date.now().toString(36);
 
-let pass = 0;
-let fail = 0;
-
-function check(name, ok, detail = '') {
-  if (ok) {
-    pass++;
-    console.log(`  OK  ${name}`);
-  } else {
-    fail++;
-    console.log(`FAIL  ${name} ${detail}`);
-  }
-}
-
-async function api(method, path, { token, body } = {}) {
-  const res = await fetch(BASE + path, {
-    method,
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  let json = null;
-  try {
-    json = await res.json();
-  } catch {
-    /* 본문 없음 */
-  }
-  return { status: res.status, json, headers: res.headers };
-}
 
 // ── 가짜 GitHub ────────────────────────────────────────
 const REPO = {
@@ -233,21 +203,8 @@ const fake = createServer((req, res) => {
   res.writeHead(404).end();
 });
 
-async function signup(tag) {
-  const res = await api('POST', '/auth/signup', {
-    body: {
-      email: `browse-${tag}-${stamp}@example.com`,
-      password: 'check-browse-1234',
-      name: `열람검증${tag}`,
-      client: 'native',
-    },
-  });
-  if (res.status !== 201) throw new Error(`가입 실패: ${res.status}`);
-  return { token: res.json.accessToken, userId: res.json.user.id };
-}
-
 /** OAuth 연결을 마친다 — 열람은 토큰이 있어야 한다. */
-async function connect(token, seed) {
+async function connectGithub(token, seed) {
   const started = await api('POST', '/me/connections/github/start', { token });
   if (started.status === 503) return false;
   const state = new URL(started.json.authorizeUrl).searchParams.get('state');
@@ -259,13 +216,13 @@ async function connect(token, seed) {
 async function main() {
   console.log('\n저장소 열람 검증 — 실서버 · 실DB (가짜 GitHub 4599)\n');
 
-  const alice = await signup('a');
-  const ok = await connect(alice.token, 'a');
+  const alice = await signup('browse', 'a');
+  const ok = await connectGithub(alice.token, 'a');
   if (!ok) {
     console.log('서버가 GitHub OAuth 미설정 상태다 — check-oauth.mjs 의 안내를 따를 것.\n');
     return;
   }
-  const bob = await signup('x');
+  const bob = await signup('browse', 'x');
 
   const space = await api('POST', '/spaces', {
     token: alice.token,
@@ -526,5 +483,4 @@ if (crashed instanceof PreflightAbort) {
   process.exitCode = 1;
 }
 
-console.log(`\n통과 ${pass} · 실패 ${fail}\n`);
-if (fail > 0) process.exitCode = 1;
+summary();

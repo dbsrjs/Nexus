@@ -25,7 +25,10 @@ export async function api(method, path, { token, body } = {}) {
   } catch {
     /* 본문 없음 */
   }
-  return { status: res.status, json };
+  // headers 도 함께 준다. check-browse 가 429 의 Retry-After 를 **헤더로**
+  // 확인한다 — 전역 예외 필터가 본문을 일정한 봉투로 다시 빚어 커스텀 필드는
+  // 살아남지 못하기 때문이다(10-3a 에서 잡은 결함). 쓰지 않는 쪽은 무시하면 된다.
+  return { status: res.status, json, headers: res.headers };
 }
 
 // 검증용 계정을 만든다. 비밀번호는 어디서도 재사용되지 않으므로(로그인하는

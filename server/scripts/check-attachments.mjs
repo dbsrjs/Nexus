@@ -11,39 +11,10 @@
 import zlib from 'zlib';
 
 import { requireServer } from './lib/preflight.mjs';
-const BASE = 'http://127.0.0.1:3000/api';
+import { BASE, stamp, api, signup } from './lib/api.mjs';
+import { check, summary } from './lib/checks.mjs';
 await requireServer(BASE);
 
-let pass = 0;
-let fail = 0;
-
-function check(name, ok, detail = '') {
-  if (ok) {
-    pass++;
-    console.log(`  OK  ${name}`);
-  } else {
-    fail++;
-    console.log(`FAIL  ${name} ${detail}`);
-  }
-}
-
-async function api(method, path, { token, body } = {}) {
-  const res = await fetch(BASE + path, {
-    method,
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  let json = null;
-  try {
-    json = await res.json();
-  } catch {
-    /* 본문 없음 */
-  }
-  return { status: res.status, json };
-}
 
 /** multipart 업로드. Node 의 FormData·Blob 을 그대로 쓴다. */
 async function upload(spaceId, channelId, token, { name, bytes, type }) {
@@ -116,23 +87,6 @@ function makePng(width, height) {
   ]);
 }
 
-const stamp = Date.now();
-
-async function signup(tag) {
-  const res = await api('POST', '/auth/signup', {
-    body: {
-      email: `att-${tag}-${stamp}@example.com`,
-      password: 'check-attachments-1234',
-      name: `첨부검증${tag}`,
-      client: 'native',
-    },
-  });
-  if (res.status !== 201) {
-    console.error('가입 실패:', res.status, JSON.stringify(res.json));
-    process.exit(1);
-  }
-  return { token: res.json.accessToken, userId: res.json.user.id };
-}
 
 /** 1×1 빨간 점 PNG. 크기 측정이 되는지 보려면 진짜 이미지여야 한다. */
 const PNG_1X1 = Buffer.from(
@@ -142,8 +96,8 @@ const PNG_1X1 = Buffer.from(
 
 console.log('\n첨부 검증 — 실서버 · 실DB · 실스토리지\n');
 
-const alice = await signup('a');
-const outsider = await signup('x');
+const alice = await signup('att', 'a');
+const outsider = await signup('att', 'x');
 
 const space = await api('POST', '/spaces', {
   token: alice.token,
@@ -524,5 +478,4 @@ check(
 );
 
 // ── 결과 ──────────────────────────────────────
-console.log(`\n통과 ${pass} · 실패 ${fail}\n`);
-process.exit(fail === 0 ? 0 : 1);
+process.exit(summary() === 0 ? 0 : 1);

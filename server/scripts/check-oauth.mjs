@@ -27,41 +27,11 @@
 import { createServer } from 'node:http';
 
 import { requireServer, abortUnless, PreflightAbort } from './lib/preflight.mjs';
-const BASE = 'http://127.0.0.1:3000/api';
+import { BASE, stamp, api, signup } from './lib/api.mjs';
+import { check, summary } from './lib/checks.mjs';
 await requireServer(BASE);
 const FAKE_PORT = 4599;
-const stamp = Date.now().toString(36);
 
-let pass = 0;
-let fail = 0;
-
-function check(name, ok, detail = '') {
-  if (ok) {
-    pass++;
-    console.log(`  OK  ${name}`);
-  } else {
-    fail++;
-    console.log(`FAIL  ${name} ${detail}`);
-  }
-}
-
-async function api(method, path, { token, body } = {}) {
-  const res = await fetch(BASE + path, {
-    method,
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  let json = null;
-  try {
-    json = await res.json();
-  } catch {
-    /* 본문 없음 */
-  }
-  return { status: res.status, json };
-}
 
 // ── 가짜 GitHub ────────────────────────────────────────
 // code 하나당 한 번만 토큰을 내준다 — 진짜 GitHub 이 code 재사용을 거부하는
@@ -213,21 +183,6 @@ const fake = createServer((req, res) => {
   res.writeHead(404).end();
 });
 
-async function signup(tag) {
-  const res = await api('POST', '/auth/signup', {
-    body: {
-      email: `oauth-${tag}-${stamp}@example.com`,
-      password: 'check-oauth-1234',
-      name: `연결검증${tag}`,
-      client: 'native',
-    },
-  });
-  if (res.status !== 201) {
-    throw new Error(`가입 실패: ${res.status} ${JSON.stringify(res.json)}`);
-  }
-  return { token: res.json.accessToken, userId: res.json.user.id };
-}
-
 /** authorizeUrl 에서 state 만 뽑는다. */
 function stateOf(authorizeUrl) {
   return new URL(authorizeUrl).searchParams.get('state');
@@ -277,7 +232,7 @@ async function expectFailure(label, code, state) {
 async function main() {
   console.log('\nGitHub 계정 연결 검증 — 실서버 · 실DB (가짜 GitHub 4599)\n');
 
-  const alice = await signup('a');
+  const alice = await signup('oauth', 'a');
 
   // ── 0. 지금 서버가 설정돼 있는지 스스로 감지한다 ─────
   // 이 요청이 브리프의 "1. 시작" 절이 쓰는 첫 start 호출이기도 하다 —
@@ -301,7 +256,7 @@ async function main() {
   console.log('태우지 않는다. 그 분기를 보려면 위 값들을 비우고 서버를 재시작한 뒤');
   console.log('이 스크립트를 다시 돌려라.\n');
 
-  const bob = await signup('b');
+  const bob = await signup('oauth', 'b');
 
   // ── 1. 시작 ──────────────────────────────────────────
   const started = probe;
@@ -592,11 +547,11 @@ try {
   }
 }
 
-console.log(`\n통과 ${pass} · 실패 ${fail}\n`);
+summary();
 
 // **`close()` 직후 바로 `process.exit()` 하면 Windows 에서 아직 정리 중인
 // 소켓 핸들과 경합해 libuv 단언(`UV_HANDLE_CLOSING`)으로 죽는다.** `close()`
 // 콜백을 기다린 뒤 강제 종료 대신 `exitCode` 만 세팅해 이벤트 루프가 스스로
 // 비워지게 둔다.
 await new Promise((resolve) => fake.close(() => resolve()));
-process.exitCode = crashed || fail > 0 ? 1 : 0;
+if (crashed) process.exitCode = 1;
