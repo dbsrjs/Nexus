@@ -125,6 +125,33 @@ export class ReposController {
     return this.browse.blob(spaceId, userId, repoId, ref, path);
   }
 
+  /** 브랜치 이력(10-3b). `ref` 를 비우면 기본 브랜치다. */
+  @Get(':repoId/commits')
+  commits(
+    @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
+    @Param('repoId', new ParseUUIDPipe()) repoId: string,
+    @CurrentUser('id') userId: string,
+    @Query('ref') ref = '',
+    @Query('cursor') cursor = '',
+  ) {
+    return this.browse.commits(spaceId, userId, repoId, ref, cursor);
+  }
+
+  /**
+   * 커밋 하나 — 메시지와 **바뀐 파일 목록**. diff 본문은 주지 않는다.
+   *
+   * **`:sha` 에 `ParseUUIDPipe` 를 걸지 않는다** — sha 는 uuid 가 아니다.
+   */
+  @Get(':repoId/commits/:sha')
+  commit(
+    @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
+    @Param('repoId', new ParseUUIDPipe()) repoId: string,
+    @Param('sha') sha: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.browse.commitDetail(spaceId, userId, repoId, sha);
+  }
+
   /** **GitHub 훅을 먼저 떼고 우리 행을 지운다.** */
   @Delete(':repoId')
   @MinRole('admin')

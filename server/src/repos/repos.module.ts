@@ -9,6 +9,7 @@ import { OauthModule } from '../oauth/oauth.module';
 import { GithubReposController } from './github-repos.controller';
 import { RepoConnectService } from './repo-connect.service';
 import { RepoBrowseService } from './repo-browse.service';
+import { RepoEventsController } from './repo-events.controller';
 
 /**
  * 저장소 연동. 웹훅 수신은 `SpaceGuard` 를 지나지 않으므로(부르는 쪽이
@@ -21,7 +22,12 @@ import { RepoBrowseService } from './repo-browse.service';
  */
 @Module({
   imports: [SpacesModule, RealtimeEmitterModule, OauthModule],
-  controllers: [ReposController, WebhooksController, GithubReposController],
+  controllers: [
+    ReposController,
+    WebhooksController,
+    GithubReposController,
+    RepoEventsController,
+  ],
   providers: [ReposService, WebhooksService, RepoConnectService, RepoBrowseService],
   exports: [ReposService],
 })
