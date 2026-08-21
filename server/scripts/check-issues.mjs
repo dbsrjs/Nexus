@@ -6,7 +6,9 @@
 // 자체 계정 · 스페이스를 만들어 쓰므로 시드 비밀번호가 필요 없다.
 import { io } from 'socket.io-client';
 
+import { requireServer } from './lib/preflight.mjs';
 const BASE = 'http://127.0.0.1:3000/api';
+await requireServer(BASE);
 const WS = 'http://127.0.0.1:3000';
 
 let pass = 0;

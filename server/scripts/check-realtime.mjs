@@ -7,7 +7,9 @@
 // 사용: npm run check:realtime -- <시드비밀번호>
 import { io } from 'socket.io-client';
 
+import { requireServer } from './lib/preflight.mjs';
 const BASE = 'http://127.0.0.1:3000/api';
+await requireServer(BASE);
 const WS = 'http://127.0.0.1:3000';
 const OWNER_EMAIL = 'dbsrjs1224@gmail.com';
 const OWNER_PASSWORD = process.argv[2];

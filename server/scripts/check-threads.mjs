@@ -8,7 +8,9 @@
 // check-reactions.mjs 와 같이 자체 계정 · 자체 스페이스를 만들어 쓴다.
 import { io } from 'socket.io-client';
 
+import { requireServer } from './lib/preflight.mjs';
 const BASE = 'http://127.0.0.1:3000/api';
+await requireServer(BASE);
 const WS = 'http://127.0.0.1:3000';
 
 let pass = 0;

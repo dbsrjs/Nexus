@@ -7,7 +7,9 @@
 // 사용: npm run check:quotes
 import { io } from 'socket.io-client';
 
+import { requireServer } from './lib/preflight.mjs';
 const BASE = 'http://127.0.0.1:3000/api';
+await requireServer(BASE);
 const WS = 'http://127.0.0.1:3000';
 
 let pass = 0;

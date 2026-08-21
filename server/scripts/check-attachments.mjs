@@ -10,7 +10,9 @@
 
 import zlib from 'zlib';
 
+import { requireServer } from './lib/preflight.mjs';
 const BASE = 'http://127.0.0.1:3000/api';
+await requireServer(BASE);
 
 let pass = 0;
 let fail = 0;

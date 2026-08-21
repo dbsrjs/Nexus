@@ -4,7 +4,9 @@
 // 사용: npm run check:mentions
 //
 // 자체 계정 · 자체 스페이스를 만들어 쓴다.
+import { requireServer } from './lib/preflight.mjs';
 const BASE = 'http://127.0.0.1:3000/api';
+await requireServer(BASE);
 
 let pass = 0;
 let fail = 0;

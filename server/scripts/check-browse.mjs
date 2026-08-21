@@ -12,7 +12,9 @@
 import { createServer } from 'node:http';
 import { createHmac } from 'node:crypto';
 
+import { requireServer, abortUnless, PreflightAbort } from './lib/preflight.mjs';
 const BASE = 'http://127.0.0.1:3000/api';
+await requireServer(BASE);
 const FAKE_PORT = 4599;
 const stamp = Date.now().toString(36);
 
@@ -280,6 +282,11 @@ async function main() {
     body: { githubRepoId: REPO.id, linkedChannelId: channelId },
   });
   check('저장소 준비', connected.status === 201, JSON.stringify(connected.json));
+  abortUnless(
+    connected.status === 201,
+    `저장소 준비 실패 (status=${connected.status})`,
+    connected.json,
+  );
   const repoId = connected.json.id;
   const at = (p, q = '') => `/spaces/${spaceId}/repos/${repoId}/${p}${q}`;
 
@@ -503,7 +510,18 @@ try {
 }
 fake.close();
 
-if (crashed) {
+if (crashed instanceof PreflightAbort) {
+  console.error('');
+  console.error(`중단: ${crashed.reason}`);
+  if (crashed.hint) {
+    console.error('');
+    console.error(crashed.hint);
+  }
+  console.error('');
+  console.error('뒤의 케이스는 실패한 것이 아니라 검증하지 못한 것입니다.');
+  console.error('');
+  process.exitCode = 1;
+} else if (crashed) {
   console.error('\n검증 중 예외:', crashed);
   process.exitCode = 1;
 }

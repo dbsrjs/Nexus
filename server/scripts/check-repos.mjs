@@ -7,7 +7,9 @@
 // 되기 때문이다 — 그것이 이 조각을 외부 의존 없이 자를 수 있었던 이유다.
 import { createHmac } from 'node:crypto';
 
+import { requireServer } from './lib/preflight.mjs';
 const BASE = 'http://127.0.0.1:3000/api';
+await requireServer(BASE);
 
 let pass = 0;
 let fail = 0;

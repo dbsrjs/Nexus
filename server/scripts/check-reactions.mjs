@@ -12,7 +12,9 @@
 // 기존 데이터를 건드리지 않고, 시드를 다시 돌린 뒤에도 그대로 동작한다.
 import { io } from 'socket.io-client';
 
+import { requireServer } from './lib/preflight.mjs';
 const BASE = 'http://127.0.0.1:3000/api';
+await requireServer(BASE);
 const WS = 'http://127.0.0.1:3000';
 
 let pass = 0;

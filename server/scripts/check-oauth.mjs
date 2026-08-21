@@ -26,7 +26,9 @@
 // 등을 비운 채, 한 번은 채운 채로.
 import { createServer } from 'node:http';
 
+import { requireServer, abortUnless, PreflightAbort } from './lib/preflight.mjs';
 const BASE = 'http://127.0.0.1:3000/api';
+await requireServer(BASE);
 const FAKE_PORT = 4599;
 const stamp = Date.now().toString(36);
 
@@ -437,6 +439,11 @@ async function main() {
     body: { githubRepoId: 9001, linkedChannelId: channelId },
   });
   check('자동 등록 201', connected.status === 201, JSON.stringify(connected.json));
+  abortUnless(
+    connected.status === 201,
+    `자동 등록 실패 (status=${connected.status})`,
+    connected.json,
+  );
   check('훅 상태가 active', connected.json?.webhookStatus === 'active');
   check('응답에 시크릿이 없다', connected.json?.webhookSecret === undefined);
   check(
@@ -570,7 +577,19 @@ try {
   await main();
 } catch (err) {
   crashed = err;
-  console.error('예외로 중단:', err);
+  if (err instanceof PreflightAbort) {
+    console.error('');
+    console.error(`중단: ${err.reason}`);
+    if (err.hint) {
+      console.error('');
+      console.error(err.hint);
+    }
+    console.error('');
+    console.error('뒤의 케이스는 실패한 것이 아니라 검증하지 못한 것입니다.');
+    console.error('');
+  } else {
+    console.error('예외로 중단:', err);
+  }
 }
 
 console.log(`\n통과 ${pass} · 실패 ${fail}\n`);
