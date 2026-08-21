@@ -83,3 +83,125 @@ jobs:
       - run: flutter analyze
 
       - run: flutter test
+
+  server-integration:
+    name: 서버 통합 (계약 검증 12종)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    # 순정 postgres 를 쓰면 init 마이그레이션이 CREATE EXTENSION "vector" 에서
+    # 죽는다. docker-compose.yml 과 같은 이미지를 쓴다.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: nexus
+          POSTGRES_USER: nexus
+          POSTGRES_PASSWORD: nexus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexus -d nexus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # **전부 검증 전용 가짜값이다. secrets 를 쓰지 않는다.**
+    # secrets 에 넣으면 포크에서 온 PR 이 조용히 못 돌고, 새 PC 에서 재현도
+    # 안 된다. 그리고 가짜값을 secrets 에 두는 것 자체가 "여기 진짜 비밀이
+    # 있다"는 잘못된 신호가 되어, 나중에 누군가 그 자리에 진짜 키를 넣는다.
+    # 이 DB 는 잡이 끝나면 사라진다.
+    env:
+      DATABASE_URL: postgresql://nexus:nexus@127.0.0.1:5432/nexus
+      # 32자 미만이면 서버가 부팅을 거부한다(jwt.config.ts).
+      JWT_SECRET: nM31nP4SCY7cbL8jVTdQ3E72yaK4VocwQ0a6ZHAW2d-XruMK0rc3xThqEFVr0_CF
+      JWT_REFRESH_SECRET: vUs9kRXk8kJd1aLjV86t01pvGFeWyae9lx7Puut1WY8ow64l9Ai8GGLCKGTvXeNk
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      CORS_ORIGINS: http://localhost:5173
+      COOKIE_SECURE: 'false'
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_DIR: /tmp/nexus-storage
+      GITHUB_CLIENT_ID: check-client-id
+      GITHUB_CLIENT_SECRET: check-client-secret
+      GITHUB_CALLBACK_URL: http://127.0.0.1:3000/api/auth/github/callback
+      # check:oauth · check:browse 가 이 포트에 가짜 GitHub 을 스스로 띄운다.
+      GITHUB_OAUTH_BASE: http://127.0.0.1:4599
+      GITHUB_API_BASE: http://127.0.0.1:4599
+      # 32바이트 base64url. 길이가 틀리면 부팅이 멈춘다.
+      OAUTH_TOKEN_KEY: 28zA3oxkP03A-XaFJAa95xge7vGvgYjBQIQRmdUqBv4
+      # 가짜 GitHub 이 훅 URL 을 검사하지 않으므로 아무 http 주소면 된다.
+      # 비우면 check:oauth · check:browse 가 준비 단계에서 중단된다.
+      PUBLIC_BASE_URL: http://127.0.0.1:3000
+      # check:realtime 만 시드 계정으로 로그인한다. 시드는 기존 계정의
+      # 비밀번호를 덮어쓰지 않지만(upsert 의 update 가 name 만 건드린다)
+      # CI 는 DB 가 매번 새것이라 이 값으로 생성된다.
+      SEED_PASSWORD: ci-seed-password-1234
+      PORT: '3000'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - run: npm ci
+
+      # Prisma Client 는 생성물이라 저장소에 없다.
+      - run: npm run prisma:generate
+
+      - run: npm run prisma:deploy
+
+      - run: npm run seed
+
+      - run: npm run build
+
+      # **빌드본을 띄운다(start:dev 가 아니다).** enableBigIntSerialization() ·
+      # rawBody: true · 전역 파이프 · 전역 예외 필터가 전부 main.ts 에 있고,
+      # 이 층이 존재하는 이유가 그것을 태우는 것이다. CLAUDE.md §6 의 BigInt
+      # 버그도 10-3a 의 Retry-After 결함도 정확히 그 자리에 있었다.
+      #
+      # 로그를 파일로 돌리는 것은 취향이 아니다 — stdout 을 잡고 있으면 이
+      # 단계가 끝나지 않는다.
+      - name: 서버 기동
+        run: node dist/main > /tmp/server.log 2>&1 &
+
+      # 고정 sleep 을 쓰지 않는다 — 느린 러너에서 먼저 깨지고 빠른 러너에서는
+      # 시간을 버린다.
+      - name: 서버가 응답할 때까지 대기
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -m 2 http://127.0.0.1:3000/api/me || true)
+            if [ "$code" != "000" ]; then
+              echo "준비됨 (HTTP $code, ${i}회 시도)"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::서버가 60초 안에 응답하지 않았습니다"
+          cat /tmp/server.log
+          exit 1
+
+      - name: 계약 검증 12종
+        run: |
+          set -e
+          echo "── check:migrations ──"
+          node scripts/check-migrations.mjs
+          echo "── check:realtime ──"
+          node scripts/check-realtime.mjs "$SEED_PASSWORD"
+          for s in reactions threads quotes mentions pins attachments issues repos oauth browse; do
+            echo "── check:$s ──"
+            node "scripts/check-$s.mjs"
+          done
+
+      # 없으면 CI 의 빨간 X 를 보고도 원인을 못 찾는다. 2026-08-21 에
+      # PUBLIC_BASE_URL 하나로 37개가 무너졌을 때, 원인은 서버가 준 400 응답
+      # 본문 안에만 있었다.
+      - name: 실패 시 서버 로그
+        if: failure()
+        run: cat /tmp/server.log
