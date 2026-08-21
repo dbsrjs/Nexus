@@ -43,8 +43,6 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  int _tab = 0;
-
   @override
   void initState() {
     super.initState();
@@ -70,16 +68,26 @@ class _AppShellState extends ConsumerState<AppShell> {
     });
   }
 
-  /// '보드' 탭은 셸 본문을 갈아 끼우는 대신 **보드 화면을 덮어서 연다.**
-  /// 본문을 탭으로 바꾸면 "라우트가 진실의 원천"이라는 이 셸의 전제가 깨진다.
-  /// 돌아오면 탭은 대화로 되돌린다 — 보드가 열려 있지 않은데 '보드'가
-  /// 선택돼 있으면 지금 무엇을 보고 있는지 읽을 수 없다.
+  /// 탭은 셸 안의 갈래를 고른다. **`go` 로 민다** — 이제 넷 다 셸 안에
+  /// 있으므로 덮어서 열 이유가 없다.
+  ///
+  /// 이전에는 보드만 `push` 로 덮어서 열었고 나머지 둘(알림 · 내정보)은
+  /// `setState(_tab)` 만 했다. 그런데 본문은 `_tab` 을 보지 않았으므로
+  /// **눌러도 화면이 그대로였다** — 아무 데도 가지 않는 탭이 둘 있었다.
   void _onTab(int index) {
-    if (index == 1) {
-      context.push('/s/${widget.spaceId}/issues');
-      return;
+    final base = '/s/${widget.spaceId}';
+    switch (index) {
+      case 0:
+        // 보던 채널로 돌아간다. 고른 채널이 없으면 셸 홈이다.
+        final channelId = widget.channelId;
+        context.go(channelId == null ? base : '$base/c/$channelId');
+      case 1:
+        context.go('$base/issues');
+      case 2:
+        context.go('$base/repos');
+      case 3:
+        context.go('$base/files');
     }
-    setState(() => _tab = index);
   }
 
   @override
@@ -92,7 +100,6 @@ class _AppShellState extends ConsumerState<AppShell> {
         _CompactShell(showBottomTabs: false, child: widget.child),
       Layout.mobile => _CompactShell(
           showBottomTabs: true,
-          tab: _tab,
           onTab: _onTab,
           child: widget.child,
         ),
@@ -133,19 +140,28 @@ class _CompactShell extends ConsumerWidget {
   const _CompactShell({
     required this.showBottomTabs,
     required this.child,
-    this.tab = 0,
     this.onTab,
   });
 
   final bool showBottomTabs;
   final Widget child;
-  final int tab;
   final ValueChanged<int>? onTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final space = ref.watch(currentSpaceProvider);
     final channel = ref.watch(currentChannelProvider);
+
+    // **선택된 탭을 셸이 들고 있지 않는다.** 라우트에서 읽어야 채널 판에서
+    // 직접 이동해도 탭이 따라온다. 이전에는 _tab 을 들고 있었는데 본문은
+    // 그것을 보지 않아 둘이 어긋났다.
+    final location = GoRouterState.of(context).uri.path;
+    final selectedTab = switch (location) {
+      final p when p.contains('/issues') => 1,
+      final p when p.contains('/repos') => 2,
+      final p when p.contains('/files') => 3,
+      _ => 0,
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -181,9 +197,12 @@ class _CompactShell extends ConsumerWidget {
         ),
       ),
       body: child,
+      // 데스크톱 두 번째 판의 '작업' 섹션과 같은 갈래를 담는다.
+      // 알림 · 내정보를 뺀 것은 갈 곳이 없어서다 — notifications 모듈은
+      // 아직 이관되지 않았고, 눌러도 화면이 그대로인 탭은 없느니만 못하다.
       bottomNavigationBar: showBottomTabs
           ? NavigationBar(
-              selectedIndex: tab,
+              selectedIndex: selectedTab,
               onDestinationSelected: onTab,
               destinations: const [
                 NavigationDestination(
@@ -194,17 +213,17 @@ class _CompactShell extends ConsumerWidget {
                 NavigationDestination(
                   icon: Icon(Icons.dashboard_outlined),
                   selectedIcon: Icon(Icons.dashboard),
-                  label: '보드',
+                  label: '이슈',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.notifications_outlined),
-                  selectedIcon: Icon(Icons.notifications),
-                  label: '알림',
+                  icon: Icon(Icons.hub_outlined),
+                  selectedIcon: Icon(Icons.hub),
+                  label: '저장소',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person),
-                  label: '내정보',
+                  icon: Icon(Icons.folder_outlined),
+                  selectedIcon: Icon(Icons.folder),
+                  label: '파일',
                 ),
               ],
             )

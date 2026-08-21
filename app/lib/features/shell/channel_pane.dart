@@ -48,22 +48,6 @@ class ChannelPane extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                // 보드로 가는 길. 데스크톱·태블릿에서는 하단 탭이 없어
-                // 여기가 유일한 진입점이다.
-                IconButton(
-                  tooltip: '보드',
-                  icon: const Icon(Icons.dashboard_outlined, size: 18),
-                  onPressed: space == null
-                      ? null
-                      : () => context.push('/s/${space.id}/issues'),
-                ),
-                IconButton(
-                  tooltip: '저장소',
-                  icon: const Icon(Icons.hub_outlined, size: 18),
-                  onPressed: space == null
-                      ? null
-                      : () => context.push('/s/${space.id}/repos'),
-                ),
                 if (onClose != null)
                   IconButton(
                     icon: const Icon(Icons.close, size: 18),
@@ -72,9 +56,80 @@ class ChannelPane extends ConsumerWidget {
               ],
             ),
           ),
+          if (space != null)
+            _WorkSection(spaceId: space.id, onTap: onChannelTap),
           Expanded(child: ChannelList(onChannelTap: onChannelTap)),
         ],
       ),
+    );
+  }
+}
+
+
+/// 셸 안에서 갈 수 있는 곳 — 이슈 보드 · 스프린트 · 파일 · 저장소.
+///
+/// 이전에는 판 **헤더의 아이콘 둘**(보드 · 저장소)이 유일한 진입점이었고
+/// 스프린트와 파일로 가는 길은 아예 없었다. 아이콘만으로는 무엇인지 읽히지
+/// 않고, 갈래가 늘 때마다 헤더가 좁아진다.
+///
+/// 이 판에는 이미 채널이 카테고리로 묶여 있다. 구조를 새로 만드는 것이
+/// 아니라 있던 것을 끝까지 쓰는 것이다.
+class _WorkSection extends StatelessWidget {
+  const _WorkSection({required this.spaceId, this.onTap});
+
+  final String spaceId;
+
+  /// 드로어에서 고르면 드로어를 닫기 위한 콜백. 채널을 고를 때와 같다.
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // 지금 어디에 있는지는 라우트가 안다. 셸이 따로 상태를 들지 않는다.
+    final location = GoRouterState.of(context).uri.path;
+
+    Widget item(String label, IconData icon, String suffix) {
+      final path = '/s/$spaceId$suffix';
+      final selected = location == path || location.startsWith('$path/');
+
+      return ListTile(
+        dense: true,
+        visualDensity: VisualDensity.compact,
+        selected: selected,
+        leading: Icon(icon, size: 18),
+        title: Text(
+          label,
+          style: selected
+              ? theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                )
+              : theme.textTheme.bodySmall,
+        ),
+        onTap: () {
+          context.go(path);
+          onTap?.call();
+        },
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            NexusSpacing.sp5,
+            NexusSpacing.sp5,
+            NexusSpacing.sp5,
+            NexusSpacing.sp2,
+          ),
+          child: Text('작업', style: theme.textTheme.labelSmall),
+        ),
+        item('이슈 보드', Icons.dashboard_outlined, '/issues'),
+        item('스프린트', Icons.timeline_outlined, '/sprints'),
+        item('파일', Icons.folder_outlined, '/files'),
+        item('저장소', Icons.hub_outlined, '/repos'),
+      ],
     );
   }
 }
