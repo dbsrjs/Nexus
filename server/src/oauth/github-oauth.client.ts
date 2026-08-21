@@ -25,6 +25,31 @@ export interface GithubRepoView {
   canWebhook: boolean;
 }
 
+export interface GithubBranch {
+  name: string;
+  protected: boolean;
+}
+
+/** contents API 는 **경로가 파일이냐 디렉터리냐에 따라 다른 모양**을 준다. */
+export interface GithubContentFile {
+  type: 'file';
+  name: string;
+  path: string;
+  size: number;
+  /** 1MB 를 넘으면 GitHub 이 본문을 주지 않는다 — 그때 `null` 이다. */
+  contentBase64: string | null;
+}
+
+export interface GithubContentDir {
+  type: 'dir';
+  entries: Array<{
+    name: string;
+    path: string;
+    type: 'file' | 'dir';
+    size: number | null;
+  }>;
+}
+
 /**
  * 실패를 상태 코드째로 준다.
  *
@@ -181,6 +206,92 @@ export class GithubOauthClient {
       if (view) views.push(view);
     }
     return { ok: true, value: views };
+  }
+
+  async listBranches(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+  ): Promise<GithubResult<GithubBranch[]>> {
+    const res = await this.call<Array<{ name?: string; protected?: boolean }>>(
+      `${cfg.apiBase}/repos/${fullName}/branches?per_page=100`,
+      token,
+    );
+    if (!res.ok) return res;
+
+    const branches: GithubBranch[] = [];
+    for (const raw of res.value) {
+      if (!raw.name) continue;
+      branches.push({ name: raw.name, protected: raw.protected === true });
+    }
+    return { ok: true, value: branches };
+  }
+
+  /**
+   * 경로 하나를 받는다. **디렉터리면 배열, 파일이면 객체**가 오므로 그것으로
+   * 갈린다 — 우리 `tree` 와 `blob` 이 같은 호출을 쓴다 (설계 §1).
+   */
+  async getContents(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+    path: string,
+    ref: string,
+  ): Promise<GithubResult<GithubContentFile | GithubContentDir>> {
+    // 경로 세그먼트마다 인코딩한다. 통째로 encodeURIComponent 하면 `/` 가
+    // %2F 가 되어 GitHub 이 다른 경로로 읽는다.
+    const encoded = path
+      .split('/')
+      .filter(Boolean)
+      .map(encodeURIComponent)
+      .join('/');
+    const query = new URLSearchParams({ ref });
+
+    const res = await this.call<unknown>(
+      `${cfg.apiBase}/repos/${fullName}/contents/${encoded}?${query.toString()}`,
+      token,
+    );
+    if (!res.ok) return res;
+
+    // 디렉터리 — 배열이 온다.
+    if (Array.isArray(res.value)) {
+      const entries: GithubContentDir['entries'] = [];
+      for (const raw of res.value as Array<Record<string, unknown>>) {
+        const name = raw.name;
+        const p = raw.path;
+        const t = raw.type;
+        if (typeof name !== 'string' || typeof p !== 'string') continue;
+        // GitHub 은 submodule · symlink 도 준다. 우리는 둘만 다룬다.
+        if (t !== 'file' && t !== 'dir') continue;
+        entries.push({
+          name,
+          path: p,
+          type: t,
+          size: t === 'file' && typeof raw.size === 'number' ? raw.size : null,
+        });
+      }
+      return { ok: true, value: { type: 'dir', entries } };
+    }
+
+    const raw = res.value as Record<string, unknown>;
+    if (raw.type !== 'file' || typeof raw.path !== 'string') {
+      // submodule · symlink 를 열려고 한 경우. 파일이 아니다.
+      return { ok: false, status: 422 };
+    }
+
+    const content = raw.content;
+    return {
+      ok: true,
+      value: {
+        type: 'file',
+        name: typeof raw.name === 'string' ? raw.name : '',
+        path: raw.path,
+        size: typeof raw.size === 'number' ? raw.size : 0,
+        // 1MB 초과면 GitHub 이 빈 문자열을 준다 — 없는 것으로 친다.
+        contentBase64:
+          typeof content === 'string' && content.length > 0 ? content : null,
+      },
+    };
   }
 
   /**
