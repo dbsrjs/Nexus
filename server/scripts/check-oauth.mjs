@@ -67,6 +67,41 @@ async function api(method, path, { token, body } = {}) {
 const usedCodes = new Set();
 let userLogin = 'octocat';
 
+// ── 가짜 저장소 셋 (10-2b) ─────────────────────────────
+const REPO_ADMIN = {
+  id: 9001,
+  full_name: 'octocat/hello-world',
+  private: false,
+  default_branch: 'main',
+  pushed_at: '2026-08-20T00:00:00Z',
+  permissions: { admin: true },
+};
+/** admin 이 아니라 훅을 걸 수 없다 — canWebhook=false 로 와야 한다. */
+const REPO_READONLY = {
+  id: 9002,
+  full_name: 'octocat/read-only',
+  private: true,
+  default_branch: 'main',
+  pushed_at: '2026-08-19T00:00:00Z',
+  permissions: { admin: false },
+};
+/** 권한은 있는데 훅 등록만 403 이다 — 실패해도 행이 남는 것을 보려고 둔다. */
+const REPO_HOOK_FAIL = {
+  id: 9003,
+  full_name: 'octocat/hook-fails',
+  private: false,
+  default_branch: 'main',
+  pushed_at: '2026-08-18T00:00:00Z',
+  permissions: { admin: true },
+};
+const ALL_REPOS = [REPO_ADMIN, REPO_READONLY, REPO_HOOK_FAIL];
+
+let hookSeq = 700;
+/** 등록된 훅 — 마지막 것의 config 로 content_type · url 을 확인한다. */
+const hookLog = [];
+const patchedHooks = [];
+const deletedHooks = new Set();
+
 const fake = createServer((req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${FAKE_PORT}`);
 
@@ -103,6 +138,74 @@ const fake = createServer((req, res) => {
       }),
     );
     return;
+  }
+
+  // ── 저장소 목록 (10-2b) ──────────────────────────────
+  if (req.method === 'GET' && url.pathname === '/user/repos') {
+    const page = Number(url.searchParams.get('page') ?? '1');
+    res.writeHead(200, { 'content-type': 'application/json' });
+    // 2페이지는 비어 있다 — hasNext 가 꺼지는 것을 볼 수 있다.
+    res.end(JSON.stringify(page === 1 ? ALL_REPOS : []));
+    return;
+  }
+
+  // ── 저장소 단건 ──────────────────────────────────────
+  const single = url.pathname.match(/^\/repositories\/(\d+)$/);
+  if (req.method === 'GET' && single) {
+    const found = ALL_REPOS.find((r) => r.id === Number(single[1]));
+    if (!found) {
+      res.writeHead(404, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ message: 'Not Found' }));
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(found));
+    return;
+  }
+
+  // ── 훅 등록 ──────────────────────────────────────────
+  const hooks = url.pathname.match(/^\/repos\/([^/]+\/[^/]+)\/hooks$/);
+  if (req.method === 'POST' && hooks) {
+    let raw = '';
+    req.on('data', (c) => (raw += c));
+    req.on('end', () => {
+      if (hooks[1] === REPO_HOOK_FAIL.full_name) {
+        res.writeHead(403, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ message: 'Must have admin rights to Repository.' }));
+        return;
+      }
+      const body = JSON.parse(raw || '{}');
+      hookLog.push({ path: hooks[1], config: body.config, events: body.events });
+      res.writeHead(201, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ id: ++hookSeq }));
+    });
+    return;
+  }
+
+  // ── 훅 갱신 · 삭제 ───────────────────────────────────
+  const oneHook = url.pathname.match(/^\/repos\/([^/]+\/[^/]+)\/hooks\/(\d+)$/);
+  if (oneHook) {
+    const hookId = Number(oneHook[2]);
+    if (deletedHooks.has(hookId)) {
+      res.writeHead(404, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ message: 'Not Found' }));
+      return;
+    }
+    if (req.method === 'PATCH') {
+      let raw = '';
+      req.on('data', (c) => (raw += c));
+      req.on('end', () => {
+        patchedHooks.push({ id: hookId, config: JSON.parse(raw || '{}').config });
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ id: hookId }));
+      });
+      return;
+    }
+    if (req.method === 'DELETE') {
+      deletedHooks.add(hookId);
+      res.writeHead(204).end();
+      return;
+    }
   }
 
   res.writeHead(404).end();
@@ -207,7 +310,14 @@ async function main() {
     authorizeUrl.startsWith(`http://127.0.0.1:${FAKE_PORT}/login/oauth/authorize`),
     authorizeUrl,
   );
-  check('client_id 가 실린다', authorizeUrl.includes('client_id=check-oauth-client'));
+  // **값을 고정하지 않는다.** 여기서 볼 것은 client_id 가 빠지지 않는다는
+  // 것이고, 값 자체는 .env 설정이다 — 진짜 OAuth App 을 물린 채로 이 스크립트를
+  // 돌릴 때(10-2a 종단 확인 이후)도 나머지 케이스는 그대로 유효해야 한다.
+  check(
+    'client_id 가 실린다',
+    !!new URL(authorizeUrl).searchParams.get('client_id'),
+    authorizeUrl,
+  );
   check('scope=repo 가 실린다', new URL(authorizeUrl).searchParams.get('scope') === 'repo');
   check('state 가 실린다', !!stateOf(authorizeUrl));
 
@@ -277,7 +387,170 @@ async function main() {
   check('다시 연결해도 행이 늘지 않는다', relisted.json?.length === 1, JSON.stringify(relisted.json));
   check('바뀐 login 이 반영된다', relisted.json?.[0]?.login === 'octocat-renamed');
 
-  // ── 7. 해제 ──────────────────────────────────────────
+  // ── 7. 저장소 목록 (10-2b) ───────────────────────────
+  const list1 = await api('GET', '/me/github/repos', { token: alice.token });
+  check('저장소 목록 200', list1.status === 200, String(list1.status));
+  check('세 건이 온다', list1.json?.repos?.length === 3, JSON.stringify(list1.json?.repos));
+  check(
+    'canWebhook 이 권한을 반영한다',
+    list1.json?.repos?.find((r) => r.id === 9001)?.canWebhook === true &&
+      list1.json?.repos?.find((r) => r.id === 9002)?.canWebhook === false,
+  );
+  check('fullName 이 온다', list1.json?.repos?.[0]?.fullName === 'octocat/hello-world');
+  check('100건 미만이면 hasNext 가 꺼진다', list1.json?.hasNext === false);
+
+  const page2 = await api('GET', '/me/github/repos?page=2', { token: alice.token });
+  check('2페이지는 빈 목록', page2.status === 200 && page2.json?.repos?.length === 0);
+
+  const badPage = await api('GET', '/me/github/repos?page=0', { token: alice.token });
+  check('page=0 은 400', badPage.status === 400, String(badPage.status));
+
+  // bob 은 연결하지 않았다 — 빈 목록이 아니라 400 이어야 "연결부터 하라"가 전달된다.
+  const noConn = await api('GET', '/me/github/repos', { token: bob.token });
+  check('연결 없이 목록을 부르면 400', noConn.status === 400, String(noConn.status));
+
+  // ── 8. 자동 등록 (10-2b) ─────────────────────────────
+  const space = await api('POST', '/spaces', {
+    token: alice.token,
+    body: { name: `repolink${stamp}` },
+  });
+  check('스페이스 생성 201', space.status === 201, String(space.status));
+  const spaceId = space.json.id;
+  const channels = await api('GET', `/spaces/${spaceId}/channels`, { token: alice.token });
+  const channelId = channels.json?.[0]?.id;
+  check('기본 채널 준비', !!channelId);
+
+  const denied = await api('POST', `/spaces/${spaceId}/repos/connect`, {
+    token: alice.token,
+    body: { githubRepoId: 9002, linkedChannelId: channelId },
+  });
+  check('canWebhook=false 로 connect 하면 403', denied.status === 403, String(denied.status));
+
+  const missing = await api('POST', `/spaces/${spaceId}/repos/connect`, {
+    token: alice.token,
+    body: { githubRepoId: 999999 },
+  });
+  check('없는 저장소는 404', missing.status === 404, String(missing.status));
+
+  const connected = await api('POST', `/spaces/${spaceId}/repos/connect`, {
+    token: alice.token,
+    body: { githubRepoId: 9001, linkedChannelId: channelId },
+  });
+  check('자동 등록 201', connected.status === 201, JSON.stringify(connected.json));
+  check('훅 상태가 active', connected.json?.webhookStatus === 'active');
+  check('응답에 시크릿이 없다', connected.json?.webhookSecret === undefined);
+  check(
+    '훅이 json content_type 으로 걸렸다',
+    hookLog.at(-1)?.config?.content_type === 'json',
+    JSON.stringify(hookLog.at(-1)),
+  );
+  check(
+    '훅 URL 이 우리 수신 라우트를 가리킨다',
+    (hookLog.at(-1)?.config?.url ?? '').endsWith(`/api/webhooks/github/${connected.json?.id}`),
+    hookLog.at(-1)?.config?.url,
+  );
+  check(
+    '구독 이벤트가 push · pull_request',
+    JSON.stringify(hookLog.at(-1)?.events) === JSON.stringify(['push', 'pull_request']),
+  );
+  check('시크릿이 훅에 실린다', (hookLog.at(-1)?.config?.secret ?? '').startsWith('whsec_'));
+
+  const again2 = await api('POST', `/spaces/${spaceId}/repos/connect`, {
+    token: alice.token,
+    body: { githubRepoId: 9001, linkedChannelId: channelId },
+  });
+  const afterList = await api('GET', `/spaces/${spaceId}/repos`, { token: alice.token });
+  check(
+    '다시 연결해도 행이 늘지 않는다',
+    again2.status === 201 && afterList.json?.length === 1,
+    JSON.stringify(afterList.json),
+  );
+
+  // ── 9. 훅 등록이 실패해도 행은 남는다 ────────────────
+  const failed = await api('POST', `/spaces/${spaceId}/repos/connect`, {
+    token: alice.token,
+    body: { githubRepoId: 9003 },
+  });
+  check('훅 등록이 실패해도 201', failed.status === 201, String(failed.status));
+  check('상태가 failed 다', failed.json?.webhookStatus === 'failed');
+  const withFailed = await api('GET', `/spaces/${spaceId}/repos`, { token: alice.token });
+  check(
+    '실패해도 행이 남는다 — 재시도할 대상이 있어야 한다',
+    withFailed.json?.length === 2,
+    JSON.stringify(withFailed.json),
+  );
+
+  // ── 10. 승격 — 수동으로 붙인 행이 늘지 않는다 ────────
+  const promoSpace = await api('POST', '/spaces', {
+    token: alice.token,
+    body: { name: `promote${stamp}` },
+  });
+  const promoId = promoSpace.json.id;
+  const manual = await api('POST', `/spaces/${promoId}/repos`, {
+    token: alice.token,
+    body: { provider: 'github', fullPath: 'octocat/hello-world' },
+  });
+  check('수동 등록 201', manual.status === 201, String(manual.status));
+  const promoted = await api('POST', `/spaces/${promoId}/repos/connect`, {
+    token: alice.token,
+    body: { githubRepoId: 9001 },
+  });
+  const promoList = await api('GET', `/spaces/${promoId}/repos`, { token: alice.token });
+  check('승격해도 행이 하나다', promoList.json?.length === 1, JSON.stringify(promoList.json));
+  // `undefined === undefined` 로 거짓 통과하지 않도록 id 가 있는 것부터 본다.
+  check(
+    '같은 행이 승격됐다 — 쌓인 이벤트가 이어진다',
+    !!manual.json?.id && promoted.json?.id === manual.json.id,
+    `manual=${manual.json?.id} promoted=${promoted.json?.id}`,
+  );
+  check('승격 후 훅이 걸렸다', promoted.json?.webhookStatus === 'active');
+
+  // ── 11. 재등록 ───────────────────────────────────────
+  const patchedBefore = patchedHooks.length;
+  const re = await api('POST', `/spaces/${spaceId}/repos/${connected.json.id}/webhook`, {
+    token: alice.token,
+  });
+  check('재등록 201', re.status === 201, String(re.status));
+  check('훅 id 가 있으면 PATCH 로 주소만 갈아 끼운다', patchedHooks.length === patchedBefore + 1);
+  check('재등록 후에도 active', re.json?.webhookStatus === 'active');
+
+  // 훅 id 가 없던 행(9003)은 새로 만든다 — 이번엔 실패가 반복되므로 failed 그대로다.
+  const reFailed = await api('POST', `/spaces/${spaceId}/repos/${failed.json.id}/webhook`, {
+    token: alice.token,
+  });
+  check('훅 id 가 없으면 새로 만든다(다시 실패해도 200대)', reFailed.status === 201);
+  check('여전히 failed 다', reFailed.json?.webhookStatus === 'failed');
+
+  // ── 12. 테넌트 격리 ──────────────────────────────────
+  const foreignConnect = await api('POST', `/spaces/${spaceId}/repos/connect`, {
+    token: bob.token,
+    body: { githubRepoId: 9001 },
+  });
+  check('남의 스페이스에 connect 하면 404', foreignConnect.status === 404, String(foreignConnect.status));
+  const foreignHook = await api(
+    'POST',
+    `/spaces/${spaceId}/repos/${connected.json.id}/webhook`,
+    { token: bob.token },
+  );
+  check('남의 저장소 재등록도 404', foreignHook.status === 404, String(foreignHook.status));
+  const foreignDelete = await api(
+    'DELETE',
+    `/spaces/${spaceId}/repos/${connected.json.id}`,
+    { token: bob.token },
+  );
+  check('남의 저장소 삭제도 404', foreignDelete.status === 404, String(foreignDelete.status));
+
+  // ── 13. 삭제 — GitHub 훅도 지운다 ────────────────────
+  const deletedBefore = deletedHooks.size;
+  const del = await api('DELETE', `/spaces/${spaceId}/repos/${connected.json.id}`, {
+    token: alice.token,
+  });
+  check('삭제 204', del.status === 204, String(del.status));
+  check('GitHub 훅도 지워졌다', deletedHooks.size === deletedBefore + 1);
+  const afterDelete = await api('GET', `/spaces/${spaceId}/repos`, { token: alice.token });
+  check('우리 행도 사라졌다', afterDelete.json?.length === 1);
+
+  // ── 14. 해제 ─────────────────────────────────────────
   const removed = await api('DELETE', '/me/connections/github', { token: alice.token });
   check('해제 204', removed.status === 204, String(removed.status));
   check(
