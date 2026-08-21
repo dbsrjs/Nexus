@@ -8,6 +8,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { SpaceGuard } from '../spaces/guards/space.guard';
@@ -16,6 +17,7 @@ import { MinRole } from '../spaces/decorators/min-role.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ReposService } from './repos.service';
 import { RepoConnectService } from './repo-connect.service';
+import { RepoBrowseService } from './repo-browse.service';
 import { CreateRepoDto } from './dto/repo.dto';
 import { ConnectRepoDto } from './dto/connect-repo.dto';
 
@@ -32,6 +34,7 @@ export class ReposController {
   constructor(
     private readonly repos: ReposService,
     private readonly connectService: RepoConnectService,
+    private readonly browse: RepoBrowseService,
   ) {}
 
   @Get()
@@ -83,6 +86,43 @@ export class ReposController {
     @CurrentUser('id') userId: string,
   ) {
     return this.connectService.reattach(spaceId, userId, repoId);
+  }
+
+  /**
+   * 열람 셋(10-3a). **`@MinRole` 을 걸지 않는다** — 저장소를 붙이는 것은
+   * admin 이지만 보는 것은 이슈 열람과 같은 무게다 (설계 §2).
+   */
+  @Get(':repoId/branches')
+  branches(
+    @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
+    @Param('repoId', new ParseUUIDPipe()) repoId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.browse.branches(spaceId, userId, repoId);
+  }
+
+  /** `ref` 를 비우면 기본 브랜치, `path` 를 비우면 루트다. */
+  @Get(':repoId/tree')
+  tree(
+    @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
+    @Param('repoId', new ParseUUIDPipe()) repoId: string,
+    @CurrentUser('id') userId: string,
+    @Query('ref') ref = '',
+    @Query('path') path = '',
+  ) {
+    return this.browse.tree(spaceId, userId, repoId, ref, path);
+  }
+
+  /** `path` 는 필수다 — 루트는 파일이 아니다. */
+  @Get(':repoId/blob')
+  blob(
+    @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
+    @Param('repoId', new ParseUUIDPipe()) repoId: string,
+    @CurrentUser('id') userId: string,
+    @Query('ref') ref = '',
+    @Query('path') path = '',
+  ) {
+    return this.browse.blob(spaceId, userId, repoId, ref, path);
   }
 
   /** **GitHub 훅을 먼저 떼고 우리 행을 지운다.** */
