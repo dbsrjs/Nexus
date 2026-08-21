@@ -10,6 +10,7 @@
 // **check:oauth 에 섞지 않는 이유**는 그쪽이 이미 76개이고 주제가 연결 ·
 // 등록이기 때문이다. 열람은 읽기 전용이라 섞을 이유가 없다 (설계 §5).
 import { createServer } from 'node:http';
+import { createHmac } from 'node:crypto';
 
 const BASE = 'http://127.0.0.1:3000/api';
 const FAKE_PORT = 4599;
@@ -115,10 +116,27 @@ const CONTENTS = {
   },
 };
 
+/** **가짜 GitHub 이 받은 요청 수.** "GitHub 을 부르지 않는다"를 확인하는 데 쓴다. */
+let apiHits = 0;
+
+const COMMIT = {
+  sha: 'abc123def456',
+  commit: {
+    message: 'fix: 무언가를 고친다\n\n본문',
+    author: { name: 'dbsrjs', date: '2026-08-21T00:00:00Z' },
+  },
+  files: [
+    { filename: 'a.ts', status: 'added' },
+    { filename: 'b.ts', status: 'removed' },
+    { filename: 'c.ts', status: 'renamed' },
+  ],
+};
+
 let rateLimited = false;
 
 const fake = createServer((req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${FAKE_PORT}`);
+  apiHits++;
   const json = (code, body, headers = {}) => {
     res.writeHead(code, { 'content-type': 'application/json', ...headers });
     res.end(JSON.stringify(body));
@@ -166,6 +184,24 @@ const fake = createServer((req, res) => {
       { name: 'main', protected: true },
       { name: 'dev', protected: false },
     ]);
+    return;
+  }
+
+  // **`/commits/:sha` 를 `/commits` 보다 먼저 본다** — 뒤에 두면 목록 분기가
+  // sha 요청까지 삼킨다.
+  const oneCommit = url.pathname.match(/^\/repos\/([^/]+\/[^/]+)\/commits\/(.+)$/);
+  if (req.method === 'GET' && oneCommit) {
+    if (decodeURIComponent(oneCommit[2]) !== COMMIT.sha) {
+      json(404, { message: 'No commit found' });
+      return;
+    }
+    json(200, COMMIT);
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === `/repos/${REPO.full_name}/commits`) {
+    const page = Number(url.searchParams.get('page') ?? '1');
+    json(200, page === 1 ? [COMMIT] : []);
     return;
   }
 
@@ -234,9 +270,14 @@ async function main() {
     body: { name: `browse${stamp}` },
   });
   const spaceId = space.json.id;
+  // 채널을 함께 붙인다 — 10-3b 가 웹훅으로 메시지를 만들어 확인한다.
+  const channels = await api('GET', `/spaces/${spaceId}/channels`, { token: alice.token });
+  const channelId = channels.json?.[0]?.id;
+  check('기본 채널 준비', !!channelId);
+
   const connected = await api('POST', `/spaces/${spaceId}/repos/connect`, {
     token: alice.token,
-    body: { githubRepoId: REPO.id },
+    body: { githubRepoId: REPO.id, linkedChannelId: channelId },
   });
   check('저장소 준비', connected.status === 201, JSON.stringify(connected.json));
   const repoId = connected.json.id;
@@ -332,6 +373,99 @@ async function main() {
     limited.headers?.get('retry-after') === '42',
     String(limited.headers?.get('retry-after')),
   );
+
+  // ── 커밋 목록 · 상세 (10-3b) ─────────────────────────
+  const commits = await api('GET', at('commits'), { token: alice.token });
+  check('커밋 목록 200', commits.status === 200, String(commits.status));
+  check('한 건이 온다', commits.json?.commits?.length === 1);
+  check('sha 가 온다', commits.json?.commits?.[0]?.sha === COMMIT.sha);
+  check('메시지를 자르지 않는다', commits.json?.commits?.[0]?.message?.includes('본문'));
+  check(
+    '목록에는 changedCount 가 없다 — 0 이 아니라 null',
+    commits.json?.commits?.[0]?.changedCount === null,
+    JSON.stringify(commits.json?.commits?.[0]),
+  );
+  check('마지막 장이면 nextCursor 가 null', commits.json?.nextCursor === null);
+
+  const commitPage2 = await api('GET', at('commits', '?cursor=2'), { token: alice.token });
+  check('2페이지는 빈 목록', commitPage2.json?.commits?.length === 0);
+
+  const detail = await api('GET', at(`commits/${COMMIT.sha}`), { token: alice.token });
+  check('커밋 상세 200', detail.status === 200, String(detail.status));
+  check('파일 셋', detail.json?.files?.length === 3);
+  check(
+    'status 세 값 — renamed 는 modified 로 접힌다',
+    JSON.stringify(detail.json?.files?.map((f) => f.status)) ===
+      JSON.stringify(['added', 'removed', 'modified']),
+    JSON.stringify(detail.json?.files),
+  );
+  check('상세에 diff 본문이 없다', !JSON.stringify(detail.json).includes('patch'));
+  const missingCommit = await api('GET', at('commits/deadbeef'), { token: alice.token });
+  check('없는 커밋은 404', missingCommit.status === 404, String(missingCommit.status));
+
+  // ── 이벤트 커밋 — **GitHub 을 부르지 않는다** ────────
+  const secret = (await api('POST', at('secret'), { token: alice.token })).json?.webhookSecret;
+  check('웹훅 시크릿 발급', typeof secret === 'string');
+
+  const pushBody = JSON.stringify({
+    ref: 'refs/heads/main',
+    before: 'aaa',
+    after: 'bbb',
+    pusher: { name: 'dbsrjs' },
+    commits: [
+      {
+        id: COMMIT.sha,
+        message: 'fix: 무언가를 고친다',
+        timestamp: '2026-08-21T00:00:00Z',
+        author: { name: 'dbsrjs' },
+        added: ['a.ts'],
+        removed: [],
+        modified: ['b.ts'],
+      },
+    ],
+  });
+  const sig =
+    'sha256=' + createHmac('sha256', secret).update(pushBody).digest('hex');
+  const hookRes = await fetch(`${BASE}/webhooks/github/${repoId}`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-github-event': 'push',
+      'x-github-delivery': `d-${stamp}`,
+      'x-hub-signature-256': sig,
+    },
+    body: pushBody,
+  });
+  check('웹훅 수신 200', hookRes.status === 200, String(hookRes.status));
+
+  const msgs = await api('GET', `/spaces/${spaceId}/channels/${channelId}/messages`, {
+    token: alice.token,
+  });
+  const botMsg = msgs.json?.items?.find((m) => m.repoEventId);
+  check('메시지에 repoEventId 가 실린다', !!botMsg, JSON.stringify(msgs.json?.items?.[0]));
+
+  const hitsBefore = apiHits;
+  const evt = await api('GET', `/spaces/${spaceId}/repo-events/${botMsg?.repoEventId}`, {
+    token: alice.token,
+  });
+  check('이벤트 200', evt.status === 200, String(evt.status));
+  check('커밋이 온다', evt.json?.commits?.length === 1);
+  check(
+    'changedCount 가 payload 에서 채워진다',
+    evt.json?.commits?.[0]?.changedCount === 2,
+    JSON.stringify(evt.json?.commits?.[0]),
+  );
+  check('ref 에서 refs/heads/ 가 벗겨진다', evt.json?.ref === 'main');
+  check('저장소 경로가 함께 온다', evt.json?.repoFullPath === REPO.full_name);
+  // **이 조각의 핵심 판단이라 말로만 두지 않는다** (설계 §4).
+  check('GitHub 을 부르지 않았다', apiHits === hitsBefore, `${hitsBefore} → ${apiHits}`);
+
+  const foreignEvt = await api(
+    'GET',
+    `/spaces/${spaceId}/repo-events/${botMsg?.repoEventId}`,
+    { token: bob.token },
+  );
+  check('남의 스페이스 이벤트는 404', foreignEvt.status === 404, String(foreignEvt.status));
 
   // ── 격리 ─────────────────────────────────────────────
   check(
