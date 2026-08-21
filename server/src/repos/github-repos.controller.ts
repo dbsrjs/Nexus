@@ -1,0 +1,100 @@
+import {
+  BadRequestException,
+  Controller,
+  DefaultValuePipe,
+  Get,
+  HttpException,
+  HttpStatus,
+  ParseIntPipe,
+  Query,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { resolveGithubOauth } from '../config/oauth.config';
+import { GithubOauthClient } from '../oauth/github-oauth.client';
+import { OauthService } from '../oauth/oauth.service';
+
+/**
+ * 내 GitHub 저장소 목록. **DB 에 두지 않고 프록시한다** — 원본은 GitHub 이고
+ * 사본을 두면 동기화가 곧바로 숙제가 된다 (설계 §6).
+ *
+ * **스페이스 밑이 아니다.** 토큰이 사람에게 붙어 있어 사용자 단위 자원이라
+ * `SpaceGuard` 를 걸지 않는다 — 전역 `JwtAuthGuard` 만 지난다.
+ */
+@Controller('me/github')
+export class GithubReposController {
+  constructor(
+    private readonly oauth: OauthService,
+    private readonly github: GithubOauthClient,
+    private readonly config: ConfigService,
+  ) {}
+
+  @Get('repos')
+  async repos(
+    @CurrentUser('id') userId: string,
+    @Query('page', new DefaultValuePipe(1), new ParseIntPipe()) page: number,
+  ) {
+    const cfg = resolveGithubOauth(this.config);
+    if (!cfg) {
+      throw new ServiceUnavailableException(
+        'GitHub 연결이 설정되지 않았습니다. 서버 관리자가 .env 를 채워야 합니다.',
+      );
+    }
+
+    // 페이지 번호는 GitHub 의 것을 그대로 노출한다 — 커서를 새로 만들 이유가
+    // 없다. 다만 0 이하는 GitHub 이 422 를 주므로 여기서 막는다.
+    if (page < 1) throw new BadRequestException('page 는 1 이상이어야 합니다');
+
+    const token = await this.oauth.githubTokenFor(userId);
+    // 연결이 없으면 빈 목록이 아니라 400 이다. 빈 목록은 "저장소가 없다"로
+    // 읽혀 사용자가 연결부터 해야 한다는 것을 알 수 없다.
+    if (!token) {
+      throw new BadRequestException('GitHub 계정을 먼저 연결해야 합니다');
+    }
+
+    const res = await this.github.listRepos(cfg, token, page);
+    if (!res.ok) throw toHttpError(res.status, res.retryAfter);
+
+    return {
+      repos: res.value,
+      page,
+      // per_page=100 으로 부르므로 100건이 꽉 찼으면 다음 장이 있다고 본다.
+      // Link 헤더를 파싱하지 않는 이유는 마지막 장에서 한 번 헛걸음하는 것이
+      // 전부이고, 그 대가로 헤더 파서를 두지 않아도 되기 때문이다.
+      hasNext: res.value.length === 100,
+    };
+  }
+}
+
+/**
+ * GitHub 의 실패를 우리 응답으로 옮긴다.
+ *
+ * **429 는 `Retry-After` 를 붙여 그대로 전달한다**(설계 §6) — 앱이 언제 다시
+ * 부를지 알아야 한다. 401 은 토큰이 죽은 것이라 재연결이 답이다.
+ */
+function toHttpError(status: number, retryAfter?: number): HttpException {
+  if (status === 429) {
+    return new HttpException(
+      {
+        statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        message: 'GitHub 요청 한도를 넘었습니다. 잠시 뒤 다시 시도해 주세요.',
+        // 초 단위. 앱이 이 값을 보고 다시 부를 시점을 정한다.
+        retryAfter: retryAfter ?? null,
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
+  }
+  if (status === 401) {
+    return new HttpException(
+      'GitHub 연결이 만료되었습니다. 다시 연결해 주세요.',
+      HttpStatus.UNAUTHORIZED,
+    );
+  }
+
+  // 그 밖(0=네트워크 실패 · 5xx)은 우리 잘못이 아니라는 뜻으로 502 다.
+  return new HttpException(
+    'GitHub 에서 저장소 목록을 받지 못했습니다.',
+    HttpStatus.BAD_GATEWAY,
+  );
+}
