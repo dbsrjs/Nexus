@@ -202,6 +202,9 @@ class CachedMessages extends Table {
   TextColumn get attachments =>
       text().map(const _AttachmentsJson()).withDefault(const Constant(''))();
 
+  /// 저장소 이벤트 id. 있으면 그 push 의 커밋을 열 수 있다(10-3b).
+  TextColumn get repoEventId => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -425,7 +428,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus', web: _webOptions));
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -537,7 +540,7 @@ class AppDatabase extends _$AppDatabase {
       '''
       SELECT id, channel_id, body, created_at, edited_at, deleted_at,
              author_id, author_name, author_avatar_url, reactions, quoted, mentions,
-             pinned, attachments,
+             pinned, attachments, repo_event_id,
              parent_id, reply_count, last_reply_at,
              0 AS queued, 0 AS failed, 0 AS seq
         FROM cached_messages
@@ -546,7 +549,7 @@ class AppDatabase extends _$AppDatabase {
       UNION ALL
       SELECT id, channel_id, body, created_at, NULL, NULL,
              author_id, author_name, author_avatar_url, '[]' AS reactions, quoted,
-             '' AS mentions, 0 AS pinned, attachments,
+             '' AS mentions, 0 AS pinned, attachments, NULL AS repo_event_id,
              parent_id, 0 AS reply_count, NULL AS last_reply_at,
              1 AS queued, failed, seq
         FROM outbox_messages
@@ -594,7 +597,7 @@ class AppDatabase extends _$AppDatabase {
         '''
         SELECT id, channel_id, body, created_at, edited_at, deleted_at,
                author_id, author_name, author_avatar_url, reactions, quoted, mentions,
-             pinned, attachments,
+             pinned, attachments, repo_event_id,
                parent_id, reply_count, last_reply_at,
                0 AS queued, 0 AS failed, 0 AS seq
           FROM cached_messages
@@ -961,6 +964,7 @@ Message _rowToMessage(QueryRow row) {
     attachments:
         const _AttachmentsJson().fromSql(row.read<String>('attachments')),
     pinned: row.read<int>('pinned') == 1,
+    repoEventId: row.readNullable<String>('repo_event_id'),
     // 큐에 있으면서 아직 포기하지 않은 것이 '보내는 중'이다.
     pending: queued && !failed,
     failed: failed,
@@ -987,4 +991,5 @@ CachedMessagesCompanion _toRow(String spaceId, Message message) =>
       mentions: Value(message.mentions),
       attachments: Value(message.attachments),
       pinned: Value(message.pinned),
+      repoEventId: Value(message.repoEventId),
     );

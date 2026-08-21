@@ -68,4 +68,50 @@ class BrowseApi {
       throw ApiException(classifyDioException(e));
     }
   }
+/// 그 push 의 커밋들. **서버가 GitHub 을 부르지 않는다**(설계 §0) —
+  /// repo_events.payload 에 이미 있다.
+  Future<PushEventView> eventCommits(String spaceId, String eventId) async {
+    try {
+      final res = await _client.dio.get<Map<String, dynamic>>(
+        '/spaces/$spaceId/repo-events/$eventId',
+      );
+      return PushEventView.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// 브랜치 이력. 커서는 GitHub 의 page 번호를 그대로 쓴다.
+  Future<({List<CommitSummary> commits, String? nextCursor})> commits(
+    String spaceId,
+    String repoId, {
+    required String ref,
+    String cursor = '',
+  }) async {
+    try {
+      final res = await _client.dio.get<Map<String, dynamic>>(
+        '/spaces/$spaceId/repos/$repoId/commits',
+        queryParameters: {'ref': ref, 'cursor': cursor},
+      );
+      final raw = (res.data?['commits'] as List<dynamic>? ?? const [])
+          .cast<Map<String, dynamic>>();
+      return (
+        commits: raw.map(CommitSummary.fromJson).toList(growable: false),
+        nextCursor: res.data?['nextCursor'] as String?,
+      );
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  Future<CommitDetail> commit(String spaceId, String repoId, String sha) async {
+    try {
+      final res = await _client.dio.get<Map<String, dynamic>>(
+        '/spaces/$spaceId/repos/$repoId/commits/$sha',
+      );
+      return CommitDetail.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
 }

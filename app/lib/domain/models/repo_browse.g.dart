@@ -42,3 +42,77 @@ Map<String, dynamic> _$BlobViewToJson(_BlobView instance) => <String, dynamic>{
   'content': instance.content,
   'omitted': instance.omitted,
 };
+
+_CommitSummary _$CommitSummaryFromJson(Map<String, dynamic> json) =>
+    _CommitSummary(
+      sha: json['sha'] as String,
+      message: json['message'] as String,
+      authorName: json['authorName'] as String?,
+      committedAt: json['committedAt'] == null
+          ? null
+          : DateTime.parse(json['committedAt'] as String),
+      changedCount: (json['changedCount'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$CommitSummaryToJson(_CommitSummary instance) =>
+    <String, dynamic>{
+      'sha': instance.sha,
+      'message': instance.message,
+      'authorName': instance.authorName,
+      'committedAt': instance.committedAt?.toIso8601String(),
+      'changedCount': instance.changedCount,
+    };
+
+_ChangedFile _$ChangedFileFromJson(Map<String, dynamic> json) => _ChangedFile(
+  path: json['path'] as String,
+  status: json['status'] as String,
+);
+
+Map<String, dynamic> _$ChangedFileToJson(_ChangedFile instance) =>
+    <String, dynamic>{'path': instance.path, 'status': instance.status};
+
+_CommitDetail _$CommitDetailFromJson(Map<String, dynamic> json) =>
+    _CommitDetail(
+      sha: json['sha'] as String,
+      message: json['message'] as String,
+      authorName: json['authorName'] as String?,
+      committedAt: json['committedAt'] == null
+          ? null
+          : DateTime.parse(json['committedAt'] as String),
+      files:
+          (json['files'] as List<dynamic>?)
+              ?.map((e) => ChangedFile.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const <ChangedFile>[],
+    );
+
+Map<String, dynamic> _$CommitDetailToJson(_CommitDetail instance) =>
+    <String, dynamic>{
+      'sha': instance.sha,
+      'message': instance.message,
+      'authorName': instance.authorName,
+      'committedAt': instance.committedAt?.toIso8601String(),
+      'files': instance.files,
+    };
+
+_PushEventView _$PushEventViewFromJson(Map<String, dynamic> json) =>
+    _PushEventView(
+      type: json['type'] as String,
+      repoId: json['repoId'] as String,
+      repoFullPath: json['repoFullPath'] as String,
+      ref: json['ref'] as String?,
+      commits:
+          (json['commits'] as List<dynamic>?)
+              ?.map((e) => CommitSummary.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const <CommitSummary>[],
+    );
+
+Map<String, dynamic> _$PushEventViewToJson(_PushEventView instance) =>
+    <String, dynamic>{
+      'type': instance.type,
+      'repoId': instance.repoId,
+      'repoFullPath': instance.repoFullPath,
+      'ref': instance.ref,
+      'commits': instance.commits,
+    };

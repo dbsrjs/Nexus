@@ -821,4 +821,1111 @@ as String?,
 
 }
 
+
+/// @nodoc
+mixin _$CommitSummary {
+
+ String get sha; String get message; String? get authorName; DateTime? get committedAt;/// 바뀐 파일 수. **브랜치 이력에서는 `null`** 이다 — GitHub 목록 API 가
+/// 주지 않는다. 0 으로 두면 "안 바뀐 커밋"으로 읽힌다.
+ int? get changedCount;
+/// Create a copy of CommitSummary
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CommitSummaryCopyWith<CommitSummary> get copyWith => _$CommitSummaryCopyWithImpl<CommitSummary>(this as CommitSummary, _$identity);
+
+  /// Serializes this CommitSummary to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommitSummary&&(identical(other.sha, sha) || other.sha == sha)&&(identical(other.message, message) || other.message == message)&&(identical(other.authorName, authorName) || other.authorName == authorName)&&(identical(other.committedAt, committedAt) || other.committedAt == committedAt)&&(identical(other.changedCount, changedCount) || other.changedCount == changedCount));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sha,message,authorName,committedAt,changedCount);
+
+@override
+String toString() {
+  return 'CommitSummary(sha: $sha, message: $message, authorName: $authorName, committedAt: $committedAt, changedCount: $changedCount)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CommitSummaryCopyWith<$Res>  {
+  factory $CommitSummaryCopyWith(CommitSummary value, $Res Function(CommitSummary) _then) = _$CommitSummaryCopyWithImpl;
+@useResult
+$Res call({
+ String sha, String message, String? authorName, DateTime? committedAt, int? changedCount
+});
+
+
+
+
+}
+/// @nodoc
+class _$CommitSummaryCopyWithImpl<$Res>
+    implements $CommitSummaryCopyWith<$Res> {
+  _$CommitSummaryCopyWithImpl(this._self, this._then);
+
+  final CommitSummary _self;
+  final $Res Function(CommitSummary) _then;
+
+/// Create a copy of CommitSummary
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? sha = null,Object? message = null,Object? authorName = freezed,Object? committedAt = freezed,Object? changedCount = freezed,}) {
+  return _then(_self.copyWith(
+sha: null == sha ? _self.sha : sha // ignore: cast_nullable_to_non_nullable
+as String,message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,authorName: freezed == authorName ? _self.authorName : authorName // ignore: cast_nullable_to_non_nullable
+as String?,committedAt: freezed == committedAt ? _self.committedAt : committedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,changedCount: freezed == changedCount ? _self.changedCount : changedCount // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [CommitSummary].
+extension CommitSummaryPatterns on CommitSummary {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _CommitSummary value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _CommitSummary() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _CommitSummary value)  $default,){
+final _that = this;
+switch (_that) {
+case _CommitSummary():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _CommitSummary value)?  $default,){
+final _that = this;
+switch (_that) {
+case _CommitSummary() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String sha,  String message,  String? authorName,  DateTime? committedAt,  int? changedCount)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _CommitSummary() when $default != null:
+return $default(_that.sha,_that.message,_that.authorName,_that.committedAt,_that.changedCount);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String sha,  String message,  String? authorName,  DateTime? committedAt,  int? changedCount)  $default,) {final _that = this;
+switch (_that) {
+case _CommitSummary():
+return $default(_that.sha,_that.message,_that.authorName,_that.committedAt,_that.changedCount);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String sha,  String message,  String? authorName,  DateTime? committedAt,  int? changedCount)?  $default,) {final _that = this;
+switch (_that) {
+case _CommitSummary() when $default != null:
+return $default(_that.sha,_that.message,_that.authorName,_that.committedAt,_that.changedCount);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _CommitSummary extends CommitSummary {
+  const _CommitSummary({required this.sha, required this.message, this.authorName, this.committedAt, this.changedCount}): super._();
+  factory _CommitSummary.fromJson(Map<String, dynamic> json) => _$CommitSummaryFromJson(json);
+
+@override final  String sha;
+@override final  String message;
+@override final  String? authorName;
+@override final  DateTime? committedAt;
+/// 바뀐 파일 수. **브랜치 이력에서는 `null`** 이다 — GitHub 목록 API 가
+/// 주지 않는다. 0 으로 두면 "안 바뀐 커밋"으로 읽힌다.
+@override final  int? changedCount;
+
+/// Create a copy of CommitSummary
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CommitSummaryCopyWith<_CommitSummary> get copyWith => __$CommitSummaryCopyWithImpl<_CommitSummary>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CommitSummaryToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommitSummary&&(identical(other.sha, sha) || other.sha == sha)&&(identical(other.message, message) || other.message == message)&&(identical(other.authorName, authorName) || other.authorName == authorName)&&(identical(other.committedAt, committedAt) || other.committedAt == committedAt)&&(identical(other.changedCount, changedCount) || other.changedCount == changedCount));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sha,message,authorName,committedAt,changedCount);
+
+@override
+String toString() {
+  return 'CommitSummary(sha: $sha, message: $message, authorName: $authorName, committedAt: $committedAt, changedCount: $changedCount)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CommitSummaryCopyWith<$Res> implements $CommitSummaryCopyWith<$Res> {
+  factory _$CommitSummaryCopyWith(_CommitSummary value, $Res Function(_CommitSummary) _then) = __$CommitSummaryCopyWithImpl;
+@override @useResult
+$Res call({
+ String sha, String message, String? authorName, DateTime? committedAt, int? changedCount
+});
+
+
+
+
+}
+/// @nodoc
+class __$CommitSummaryCopyWithImpl<$Res>
+    implements _$CommitSummaryCopyWith<$Res> {
+  __$CommitSummaryCopyWithImpl(this._self, this._then);
+
+  final _CommitSummary _self;
+  final $Res Function(_CommitSummary) _then;
+
+/// Create a copy of CommitSummary
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? sha = null,Object? message = null,Object? authorName = freezed,Object? committedAt = freezed,Object? changedCount = freezed,}) {
+  return _then(_CommitSummary(
+sha: null == sha ? _self.sha : sha // ignore: cast_nullable_to_non_nullable
+as String,message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,authorName: freezed == authorName ? _self.authorName : authorName // ignore: cast_nullable_to_non_nullable
+as String?,committedAt: freezed == committedAt ? _self.committedAt : committedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,changedCount: freezed == changedCount ? _self.changedCount : changedCount // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$ChangedFile {
+
+ String get path; String get status;
+/// Create a copy of ChangedFile
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ChangedFileCopyWith<ChangedFile> get copyWith => _$ChangedFileCopyWithImpl<ChangedFile>(this as ChangedFile, _$identity);
+
+  /// Serializes this ChangedFile to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChangedFile&&(identical(other.path, path) || other.path == path)&&(identical(other.status, status) || other.status == status));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,path,status);
+
+@override
+String toString() {
+  return 'ChangedFile(path: $path, status: $status)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ChangedFileCopyWith<$Res>  {
+  factory $ChangedFileCopyWith(ChangedFile value, $Res Function(ChangedFile) _then) = _$ChangedFileCopyWithImpl;
+@useResult
+$Res call({
+ String path, String status
+});
+
+
+
+
+}
+/// @nodoc
+class _$ChangedFileCopyWithImpl<$Res>
+    implements $ChangedFileCopyWith<$Res> {
+  _$ChangedFileCopyWithImpl(this._self, this._then);
+
+  final ChangedFile _self;
+  final $Res Function(ChangedFile) _then;
+
+/// Create a copy of ChangedFile
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? status = null,}) {
+  return _then(_self.copyWith(
+path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [ChangedFile].
+extension ChangedFilePatterns on ChangedFile {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ChangedFile value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ChangedFile() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ChangedFile value)  $default,){
+final _that = this;
+switch (_that) {
+case _ChangedFile():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ChangedFile value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ChangedFile() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String path,  String status)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ChangedFile() when $default != null:
+return $default(_that.path,_that.status);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String path,  String status)  $default,) {final _that = this;
+switch (_that) {
+case _ChangedFile():
+return $default(_that.path,_that.status);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String path,  String status)?  $default,) {final _that = this;
+switch (_that) {
+case _ChangedFile() when $default != null:
+return $default(_that.path,_that.status);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _ChangedFile extends ChangedFile {
+  const _ChangedFile({required this.path, required this.status}): super._();
+  factory _ChangedFile.fromJson(Map<String, dynamic> json) => _$ChangedFileFromJson(json);
+
+@override final  String path;
+@override final  String status;
+
+/// Create a copy of ChangedFile
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ChangedFileCopyWith<_ChangedFile> get copyWith => __$ChangedFileCopyWithImpl<_ChangedFile>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ChangedFileToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChangedFile&&(identical(other.path, path) || other.path == path)&&(identical(other.status, status) || other.status == status));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,path,status);
+
+@override
+String toString() {
+  return 'ChangedFile(path: $path, status: $status)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ChangedFileCopyWith<$Res> implements $ChangedFileCopyWith<$Res> {
+  factory _$ChangedFileCopyWith(_ChangedFile value, $Res Function(_ChangedFile) _then) = __$ChangedFileCopyWithImpl;
+@override @useResult
+$Res call({
+ String path, String status
+});
+
+
+
+
+}
+/// @nodoc
+class __$ChangedFileCopyWithImpl<$Res>
+    implements _$ChangedFileCopyWith<$Res> {
+  __$ChangedFileCopyWithImpl(this._self, this._then);
+
+  final _ChangedFile _self;
+  final $Res Function(_ChangedFile) _then;
+
+/// Create a copy of ChangedFile
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? path = null,Object? status = null,}) {
+  return _then(_ChangedFile(
+path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$CommitDetail {
+
+ String get sha; String get message; String? get authorName; DateTime? get committedAt; List<ChangedFile> get files;
+/// Create a copy of CommitDetail
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CommitDetailCopyWith<CommitDetail> get copyWith => _$CommitDetailCopyWithImpl<CommitDetail>(this as CommitDetail, _$identity);
+
+  /// Serializes this CommitDetail to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CommitDetail&&(identical(other.sha, sha) || other.sha == sha)&&(identical(other.message, message) || other.message == message)&&(identical(other.authorName, authorName) || other.authorName == authorName)&&(identical(other.committedAt, committedAt) || other.committedAt == committedAt)&&const DeepCollectionEquality().equals(other.files, files));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sha,message,authorName,committedAt,const DeepCollectionEquality().hash(files));
+
+@override
+String toString() {
+  return 'CommitDetail(sha: $sha, message: $message, authorName: $authorName, committedAt: $committedAt, files: $files)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CommitDetailCopyWith<$Res>  {
+  factory $CommitDetailCopyWith(CommitDetail value, $Res Function(CommitDetail) _then) = _$CommitDetailCopyWithImpl;
+@useResult
+$Res call({
+ String sha, String message, String? authorName, DateTime? committedAt, List<ChangedFile> files
+});
+
+
+
+
+}
+/// @nodoc
+class _$CommitDetailCopyWithImpl<$Res>
+    implements $CommitDetailCopyWith<$Res> {
+  _$CommitDetailCopyWithImpl(this._self, this._then);
+
+  final CommitDetail _self;
+  final $Res Function(CommitDetail) _then;
+
+/// Create a copy of CommitDetail
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? sha = null,Object? message = null,Object? authorName = freezed,Object? committedAt = freezed,Object? files = null,}) {
+  return _then(_self.copyWith(
+sha: null == sha ? _self.sha : sha // ignore: cast_nullable_to_non_nullable
+as String,message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,authorName: freezed == authorName ? _self.authorName : authorName // ignore: cast_nullable_to_non_nullable
+as String?,committedAt: freezed == committedAt ? _self.committedAt : committedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,files: null == files ? _self.files : files // ignore: cast_nullable_to_non_nullable
+as List<ChangedFile>,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [CommitDetail].
+extension CommitDetailPatterns on CommitDetail {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _CommitDetail value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _CommitDetail() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _CommitDetail value)  $default,){
+final _that = this;
+switch (_that) {
+case _CommitDetail():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _CommitDetail value)?  $default,){
+final _that = this;
+switch (_that) {
+case _CommitDetail() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String sha,  String message,  String? authorName,  DateTime? committedAt,  List<ChangedFile> files)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _CommitDetail() when $default != null:
+return $default(_that.sha,_that.message,_that.authorName,_that.committedAt,_that.files);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String sha,  String message,  String? authorName,  DateTime? committedAt,  List<ChangedFile> files)  $default,) {final _that = this;
+switch (_that) {
+case _CommitDetail():
+return $default(_that.sha,_that.message,_that.authorName,_that.committedAt,_that.files);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String sha,  String message,  String? authorName,  DateTime? committedAt,  List<ChangedFile> files)?  $default,) {final _that = this;
+switch (_that) {
+case _CommitDetail() when $default != null:
+return $default(_that.sha,_that.message,_that.authorName,_that.committedAt,_that.files);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _CommitDetail extends CommitDetail {
+  const _CommitDetail({required this.sha, required this.message, this.authorName, this.committedAt, final  List<ChangedFile> files = const <ChangedFile>[]}): _files = files,super._();
+  factory _CommitDetail.fromJson(Map<String, dynamic> json) => _$CommitDetailFromJson(json);
+
+@override final  String sha;
+@override final  String message;
+@override final  String? authorName;
+@override final  DateTime? committedAt;
+ final  List<ChangedFile> _files;
+@override@JsonKey() List<ChangedFile> get files {
+  if (_files is EqualUnmodifiableListView) return _files;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_files);
+}
+
+
+/// Create a copy of CommitDetail
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CommitDetailCopyWith<_CommitDetail> get copyWith => __$CommitDetailCopyWithImpl<_CommitDetail>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CommitDetailToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CommitDetail&&(identical(other.sha, sha) || other.sha == sha)&&(identical(other.message, message) || other.message == message)&&(identical(other.authorName, authorName) || other.authorName == authorName)&&(identical(other.committedAt, committedAt) || other.committedAt == committedAt)&&const DeepCollectionEquality().equals(other._files, _files));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sha,message,authorName,committedAt,const DeepCollectionEquality().hash(_files));
+
+@override
+String toString() {
+  return 'CommitDetail(sha: $sha, message: $message, authorName: $authorName, committedAt: $committedAt, files: $files)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CommitDetailCopyWith<$Res> implements $CommitDetailCopyWith<$Res> {
+  factory _$CommitDetailCopyWith(_CommitDetail value, $Res Function(_CommitDetail) _then) = __$CommitDetailCopyWithImpl;
+@override @useResult
+$Res call({
+ String sha, String message, String? authorName, DateTime? committedAt, List<ChangedFile> files
+});
+
+
+
+
+}
+/// @nodoc
+class __$CommitDetailCopyWithImpl<$Res>
+    implements _$CommitDetailCopyWith<$Res> {
+  __$CommitDetailCopyWithImpl(this._self, this._then);
+
+  final _CommitDetail _self;
+  final $Res Function(_CommitDetail) _then;
+
+/// Create a copy of CommitDetail
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? sha = null,Object? message = null,Object? authorName = freezed,Object? committedAt = freezed,Object? files = null,}) {
+  return _then(_CommitDetail(
+sha: null == sha ? _self.sha : sha // ignore: cast_nullable_to_non_nullable
+as String,message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String,authorName: freezed == authorName ? _self.authorName : authorName // ignore: cast_nullable_to_non_nullable
+as String?,committedAt: freezed == committedAt ? _self.committedAt : committedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,files: null == files ? _self._files : files // ignore: cast_nullable_to_non_nullable
+as List<ChangedFile>,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$PushEventView {
+
+ String get type; String get repoId; String get repoFullPath; String? get ref; List<CommitSummary> get commits;
+/// Create a copy of PushEventView
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PushEventViewCopyWith<PushEventView> get copyWith => _$PushEventViewCopyWithImpl<PushEventView>(this as PushEventView, _$identity);
+
+  /// Serializes this PushEventView to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PushEventView&&(identical(other.type, type) || other.type == type)&&(identical(other.repoId, repoId) || other.repoId == repoId)&&(identical(other.repoFullPath, repoFullPath) || other.repoFullPath == repoFullPath)&&(identical(other.ref, ref) || other.ref == ref)&&const DeepCollectionEquality().equals(other.commits, commits));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,type,repoId,repoFullPath,ref,const DeepCollectionEquality().hash(commits));
+
+@override
+String toString() {
+  return 'PushEventView(type: $type, repoId: $repoId, repoFullPath: $repoFullPath, ref: $ref, commits: $commits)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PushEventViewCopyWith<$Res>  {
+  factory $PushEventViewCopyWith(PushEventView value, $Res Function(PushEventView) _then) = _$PushEventViewCopyWithImpl;
+@useResult
+$Res call({
+ String type, String repoId, String repoFullPath, String? ref, List<CommitSummary> commits
+});
+
+
+
+
+}
+/// @nodoc
+class _$PushEventViewCopyWithImpl<$Res>
+    implements $PushEventViewCopyWith<$Res> {
+  _$PushEventViewCopyWithImpl(this._self, this._then);
+
+  final PushEventView _self;
+  final $Res Function(PushEventView) _then;
+
+/// Create a copy of PushEventView
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? repoId = null,Object? repoFullPath = null,Object? ref = freezed,Object? commits = null,}) {
+  return _then(_self.copyWith(
+type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String,repoId: null == repoId ? _self.repoId : repoId // ignore: cast_nullable_to_non_nullable
+as String,repoFullPath: null == repoFullPath ? _self.repoFullPath : repoFullPath // ignore: cast_nullable_to_non_nullable
+as String,ref: freezed == ref ? _self.ref : ref // ignore: cast_nullable_to_non_nullable
+as String?,commits: null == commits ? _self.commits : commits // ignore: cast_nullable_to_non_nullable
+as List<CommitSummary>,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [PushEventView].
+extension PushEventViewPatterns on PushEventView {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _PushEventView value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _PushEventView() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _PushEventView value)  $default,){
+final _that = this;
+switch (_that) {
+case _PushEventView():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _PushEventView value)?  $default,){
+final _that = this;
+switch (_that) {
+case _PushEventView() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String type,  String repoId,  String repoFullPath,  String? ref,  List<CommitSummary> commits)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _PushEventView() when $default != null:
+return $default(_that.type,_that.repoId,_that.repoFullPath,_that.ref,_that.commits);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String type,  String repoId,  String repoFullPath,  String? ref,  List<CommitSummary> commits)  $default,) {final _that = this;
+switch (_that) {
+case _PushEventView():
+return $default(_that.type,_that.repoId,_that.repoFullPath,_that.ref,_that.commits);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String type,  String repoId,  String repoFullPath,  String? ref,  List<CommitSummary> commits)?  $default,) {final _that = this;
+switch (_that) {
+case _PushEventView() when $default != null:
+return $default(_that.type,_that.repoId,_that.repoFullPath,_that.ref,_that.commits);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _PushEventView implements PushEventView {
+  const _PushEventView({required this.type, required this.repoId, required this.repoFullPath, this.ref, final  List<CommitSummary> commits = const <CommitSummary>[]}): _commits = commits;
+  factory _PushEventView.fromJson(Map<String, dynamic> json) => _$PushEventViewFromJson(json);
+
+@override final  String type;
+@override final  String repoId;
+@override final  String repoFullPath;
+@override final  String? ref;
+ final  List<CommitSummary> _commits;
+@override@JsonKey() List<CommitSummary> get commits {
+  if (_commits is EqualUnmodifiableListView) return _commits;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_commits);
+}
+
+
+/// Create a copy of PushEventView
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$PushEventViewCopyWith<_PushEventView> get copyWith => __$PushEventViewCopyWithImpl<_PushEventView>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PushEventViewToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PushEventView&&(identical(other.type, type) || other.type == type)&&(identical(other.repoId, repoId) || other.repoId == repoId)&&(identical(other.repoFullPath, repoFullPath) || other.repoFullPath == repoFullPath)&&(identical(other.ref, ref) || other.ref == ref)&&const DeepCollectionEquality().equals(other._commits, _commits));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,type,repoId,repoFullPath,ref,const DeepCollectionEquality().hash(_commits));
+
+@override
+String toString() {
+  return 'PushEventView(type: $type, repoId: $repoId, repoFullPath: $repoFullPath, ref: $ref, commits: $commits)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$PushEventViewCopyWith<$Res> implements $PushEventViewCopyWith<$Res> {
+  factory _$PushEventViewCopyWith(_PushEventView value, $Res Function(_PushEventView) _then) = __$PushEventViewCopyWithImpl;
+@override @useResult
+$Res call({
+ String type, String repoId, String repoFullPath, String? ref, List<CommitSummary> commits
+});
+
+
+
+
+}
+/// @nodoc
+class __$PushEventViewCopyWithImpl<$Res>
+    implements _$PushEventViewCopyWith<$Res> {
+  __$PushEventViewCopyWithImpl(this._self, this._then);
+
+  final _PushEventView _self;
+  final $Res Function(_PushEventView) _then;
+
+/// Create a copy of PushEventView
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? repoId = null,Object? repoFullPath = null,Object? ref = freezed,Object? commits = null,}) {
+  return _then(_PushEventView(
+type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String,repoId: null == repoId ? _self.repoId : repoId // ignore: cast_nullable_to_non_nullable
+as String,repoFullPath: null == repoFullPath ? _self.repoFullPath : repoFullPath // ignore: cast_nullable_to_non_nullable
+as String,ref: freezed == ref ? _self.ref : ref // ignore: cast_nullable_to_non_nullable
+as String?,commits: null == commits ? _self._commits : commits // ignore: cast_nullable_to_non_nullable
+as List<CommitSummary>,
+  ));
+}
+
+
+}
+
 // dart format on

@@ -145,6 +145,10 @@ abstract class Message with _$Message {
     /// 채널 상단에 고정됐는지. 답글은 고정할 수 없어 늘 false 다.
     @Default(false) bool pinned,
 
+    /// 저장소 이벤트가 만든 메시지면 그 이벤트 id. **있으면 그 push 의 커밋을
+    /// 열 수 있다**(10-3b). 사람이 쓴 메시지에는 없다.
+    String? repoEventId,
+
     /// 답장이면 가리키는 원본. **`parentId` 와 다른 축이다** — 답장은
     /// 타임라인에 남고, 스레드 답글은 빠진다. 둘을 함께 쓸 수도 있다.
     QuotedMessage? quoted,

@@ -203,6 +203,17 @@ class $CachedMessagesTable extends CachedMessages
       ).withConverter<List<MessageAttachment>>(
         $CachedMessagesTable.$converterattachments,
       );
+  static const VerificationMeta _repoEventIdMeta = const VerificationMeta(
+    'repoEventId',
+  );
+  @override
+  late final GeneratedColumn<String> repoEventId = GeneratedColumn<String>(
+    'repo_event_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -223,6 +234,7 @@ class $CachedMessagesTable extends CachedMessages
     mentions,
     pinned,
     attachments,
+    repoEventId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -306,6 +318,15 @@ class $CachedMessagesTable extends CachedMessages
       context.handle(
         _pinnedMeta,
         pinned.isAcceptableOrUnknown(data['pinned']!, _pinnedMeta),
+      );
+    }
+    if (data.containsKey('repo_event_id')) {
+      context.handle(
+        _repoEventIdMeta,
+        repoEventId.isAcceptableOrUnknown(
+          data['repo_event_id']!,
+          _repoEventIdMeta,
+        ),
       );
     }
     return context;
@@ -405,6 +426,10 @@ class $CachedMessagesTable extends CachedMessages
           data['${effectivePrefix}attachments'],
         )!,
       ),
+      repoEventId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repo_event_id'],
+      ),
     );
   }
 
@@ -464,6 +489,9 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
 
   /// 붙은 파일 요약. 바이트는 여기 없다 — 볼 때 서버에서 받는다.
   final List<MessageAttachment> attachments;
+
+  /// 저장소 이벤트 id. 있으면 그 push 의 커밋을 열 수 있다(10-3b).
+  final String? repoEventId;
   const CachedMessage({
     required this.id,
     required this.spaceId,
@@ -483,6 +511,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     required this.mentions,
     required this.pinned,
     required this.attachments,
+    this.repoEventId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -541,6 +570,9 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
         $CachedMessagesTable.$converterattachments.toSql(attachments),
       );
     }
+    if (!nullToAbsent || repoEventId != null) {
+      map['repo_event_id'] = Variable<String>(repoEventId);
+    }
     return map;
   }
 
@@ -576,6 +608,9 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       mentions: Value(mentions),
       pinned: Value(pinned),
       attachments: Value(attachments),
+      repoEventId: repoEventId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repoEventId),
     );
   }
 
@@ -605,6 +640,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       attachments: serializer.fromJson<List<MessageAttachment>>(
         json['attachments'],
       ),
+      repoEventId: serializer.fromJson<String?>(json['repoEventId']),
     );
   }
   @override
@@ -629,6 +665,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       'mentions': serializer.toJson<List<MessageMention>>(mentions),
       'pinned': serializer.toJson<bool>(pinned),
       'attachments': serializer.toJson<List<MessageAttachment>>(attachments),
+      'repoEventId': serializer.toJson<String?>(repoEventId),
     };
   }
 
@@ -651,6 +688,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     List<MessageMention>? mentions,
     bool? pinned,
     List<MessageAttachment>? attachments,
+    Value<String?> repoEventId = const Value.absent(),
   }) => CachedMessage(
     id: id ?? this.id,
     spaceId: spaceId ?? this.spaceId,
@@ -672,6 +710,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     mentions: mentions ?? this.mentions,
     pinned: pinned ?? this.pinned,
     attachments: attachments ?? this.attachments,
+    repoEventId: repoEventId.present ? repoEventId.value : this.repoEventId,
   );
   CachedMessage copyWithCompanion(CachedMessagesCompanion data) {
     return CachedMessage(
@@ -703,6 +742,9 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
       attachments: data.attachments.present
           ? data.attachments.value
           : this.attachments,
+      repoEventId: data.repoEventId.present
+          ? data.repoEventId.value
+          : this.repoEventId,
     );
   }
 
@@ -726,7 +768,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           ..write('quoted: $quoted, ')
           ..write('mentions: $mentions, ')
           ..write('pinned: $pinned, ')
-          ..write('attachments: $attachments')
+          ..write('attachments: $attachments, ')
+          ..write('repoEventId: $repoEventId')
           ..write(')'))
         .toString();
   }
@@ -751,6 +794,7 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
     mentions,
     pinned,
     attachments,
+    repoEventId,
   );
   @override
   bool operator ==(Object other) =>
@@ -773,7 +817,8 @@ class CachedMessage extends DataClass implements Insertable<CachedMessage> {
           other.quoted == this.quoted &&
           other.mentions == this.mentions &&
           other.pinned == this.pinned &&
-          other.attachments == this.attachments);
+          other.attachments == this.attachments &&
+          other.repoEventId == this.repoEventId);
 }
 
 class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
@@ -795,6 +840,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
   final Value<List<MessageMention>> mentions;
   final Value<bool> pinned;
   final Value<List<MessageAttachment>> attachments;
+  final Value<String?> repoEventId;
   final Value<int> rowid;
   const CachedMessagesCompanion({
     this.id = const Value.absent(),
@@ -815,6 +861,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.mentions = const Value.absent(),
     this.pinned = const Value.absent(),
     this.attachments = const Value.absent(),
+    this.repoEventId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedMessagesCompanion.insert({
@@ -836,6 +883,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     this.mentions = const Value.absent(),
     this.pinned = const Value.absent(),
     this.attachments = const Value.absent(),
+    this.repoEventId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        spaceId = Value(spaceId),
@@ -863,6 +911,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Expression<String>? mentions,
     Expression<bool>? pinned,
     Expression<String>? attachments,
+    Expression<String>? repoEventId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -884,6 +933,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       if (mentions != null) 'mentions': mentions,
       if (pinned != null) 'pinned': pinned,
       if (attachments != null) 'attachments': attachments,
+      if (repoEventId != null) 'repo_event_id': repoEventId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -907,6 +957,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
     Value<List<MessageMention>>? mentions,
     Value<bool>? pinned,
     Value<List<MessageAttachment>>? attachments,
+    Value<String?>? repoEventId,
     Value<int>? rowid,
   }) {
     return CachedMessagesCompanion(
@@ -928,6 +979,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
       mentions: mentions ?? this.mentions,
       pinned: pinned ?? this.pinned,
       attachments: attachments ?? this.attachments,
+      repoEventId: repoEventId ?? this.repoEventId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1005,6 +1057,9 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
         $CachedMessagesTable.$converterattachments.toSql(attachments.value),
       );
     }
+    if (repoEventId.present) {
+      map['repo_event_id'] = Variable<String>(repoEventId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1032,6 +1087,7 @@ class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
           ..write('mentions: $mentions, ')
           ..write('pinned: $pinned, ')
           ..write('attachments: $attachments, ')
+          ..write('repoEventId: $repoEventId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5042,6 +5098,7 @@ typedef $$CachedMessagesTableCreateCompanionBuilder =
       Value<List<MessageMention>> mentions,
       Value<bool> pinned,
       Value<List<MessageAttachment>> attachments,
+      Value<String?> repoEventId,
       Value<int> rowid,
     });
 typedef $$CachedMessagesTableUpdateCompanionBuilder =
@@ -5064,6 +5121,7 @@ typedef $$CachedMessagesTableUpdateCompanionBuilder =
       Value<List<MessageMention>> mentions,
       Value<bool> pinned,
       Value<List<MessageAttachment>> attachments,
+      Value<String?> repoEventId,
       Value<int> rowid,
     });
 
@@ -5185,6 +5243,11 @@ class $$CachedMessagesTableFilterComposer
     column: $table.attachments,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnFilters<String> get repoEventId => $composableBuilder(
+    column: $table.repoEventId,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$CachedMessagesTableOrderingComposer
@@ -5285,6 +5348,11 @@ class $$CachedMessagesTableOrderingComposer
     column: $table.attachments,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get repoEventId => $composableBuilder(
+    column: $table.repoEventId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedMessagesTableAnnotationComposer
@@ -5362,6 +5430,11 @@ class $$CachedMessagesTableAnnotationComposer
     column: $table.attachments,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get repoEventId => $composableBuilder(
+    column: $table.repoEventId,
+    builder: (column) => column,
+  );
 }
 
 class $$CachedMessagesTableTableManager
@@ -5416,6 +5489,7 @@ class $$CachedMessagesTableTableManager
                 Value<bool> pinned = const Value.absent(),
                 Value<List<MessageAttachment>> attachments =
                     const Value.absent(),
+                Value<String?> repoEventId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion(
                 id: id,
@@ -5436,6 +5510,7 @@ class $$CachedMessagesTableTableManager
                 mentions: mentions,
                 pinned: pinned,
                 attachments: attachments,
+                repoEventId: repoEventId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5459,6 +5534,7 @@ class $$CachedMessagesTableTableManager
                 Value<bool> pinned = const Value.absent(),
                 Value<List<MessageAttachment>> attachments =
                     const Value.absent(),
+                Value<String?> repoEventId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedMessagesCompanion.insert(
                 id: id,
@@ -5479,6 +5555,7 @@ class $$CachedMessagesTableTableManager
                 mentions: mentions,
                 pinned: pinned,
                 attachments: attachments,
+                repoEventId: repoEventId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
