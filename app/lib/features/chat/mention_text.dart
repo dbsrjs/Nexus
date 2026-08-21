@@ -1,5 +1,6 @@
 import '../../domain/models/message.dart';
 import '../../shared/markdown/inline.dart';
+import '../../shared/markdown/plain_text.dart';
 
 /// 본문을 그리기 위해 쪼갠 조각.
 ///
@@ -75,19 +76,24 @@ List<MentionSpan> buildMentionSpans(
   return spans;
 }
 
-/// 멘션을 이름으로 바꾼 **평문**.
+/// 멘션을 이름으로 바꾸고 **마크다운 서식까지 벗긴** 평문.
 ///
-/// 인용 블록·답장 미리보기처럼 한 줄로 줄여 보여 주는 자리에서 쓴다. 거기에도
-/// `<@uuid>` 가 보이면 무엇에 답하는지 읽을 수 없다.
+/// 인용 블록·답장 미리보기처럼 한 줄로 줄여 보여 주는 자리에서 쓴다. 거기에
+/// `<@uuid>` 가 보이면 무엇에 답하는지 읽을 수 없고, `**굵게**` 가 보이면
+/// 원문에 없던 글자가 있는 것처럼 읽힌다(마크다운 설계 §3).
 String mentionPlainText(
   String body,
   List<MessageMention> mentions, {
   Map<String, String> fallbackNames = const {},
 }) {
-  if (!body.contains('<@')) return body;
-  return buildMentionSpans(body, mentions, fallbackNames: fallbackNames)
-      .map((span) => span.text)
-      .join();
+  return toPlainText(
+    body,
+    names: {
+      ...fallbackNames,
+      for (final m in mentions)
+        if (m.userId != null && m.name != null) m.userId!: m.name!,
+    },
+  );
 }
 
 /// 이 메시지가 **나를** 불렀는지. 강조 여부를 정한다.

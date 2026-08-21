@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../domain/models/issue.dart';
 import '../../domain/models/issue_comment.dart';
+import '../../shared/markdown/markdown_body.dart';
 import '../../shared/widgets/nexus_avatar.dart';
+import '../space/members_controller.dart';
 import 'board_controller.dart';
 import 'issue_detail_controller.dart';
 import 'issue_planning_row.dart';
@@ -149,7 +151,15 @@ class _Body extends ConsumerWidget {
               if (issue.description != null &&
                   issue.description!.trim().isNotEmpty) ...[
                 const SizedBox(height: NexusSpacing.sp6),
-                Text(issue.description!, style: theme.textTheme.bodyMedium),
+                // 채팅과 **같은 위젯**을 쓴다 — 규칙이 갈라지면 "채팅에서는
+                // 되는데 이슈에서는 안 되는" 일이 생긴다(마크다운 설계 §4).
+                MarkdownBody(
+                  body: issue.description!,
+                  // 이슈에는 서버가 멘션 목록을 실어 주지 않는다. 본문에
+                  // `<@id>` 가 있을 수 있으므로 멤버 이름으로 채운다.
+                  fallbackNames: ref.watch(memberNamesProvider),
+                  style: theme.textTheme.bodyMedium,
+                ),
               ],
               const SizedBox(height: NexusSpacing.sp8),
               Text('댓글', style: theme.textTheme.titleSmall),
@@ -282,13 +292,16 @@ class _Chip extends StatelessWidget {
   }
 }
 
-class _CommentTile extends StatelessWidget {
+/// 댓글도 마크다운을 그린다. **`ConsumerWidget` 인 이유**는 멘션 이름을
+/// 멤버 목록에서 채워야 하기 때문이다 — 이슈 쪽에는 서버가 멘션 목록을
+/// 실어 주지 않는다.
+class _CommentTile extends ConsumerWidget {
   const _CommentTile({required this.comment});
 
   final IssueComment comment;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Padding(
@@ -308,7 +321,11 @@ class _CommentTile extends StatelessWidget {
               children: [
                 Text(comment.author.name, style: theme.textTheme.labelMedium),
                 const SizedBox(height: NexusSpacing.sp1),
-                Text(comment.body, style: theme.textTheme.bodyMedium),
+                MarkdownBody(
+                  body: comment.body,
+                  fallbackNames: ref.watch(memberNamesProvider),
+                  style: theme.textTheme.bodyMedium,
+                ),
               ],
             ),
           ),

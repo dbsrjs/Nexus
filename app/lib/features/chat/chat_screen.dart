@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/message.dart';
+import '../../shared/markdown/markdown_body.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import '../channel/channel_controller.dart';
 import '../realtime/socket_controller.dart';
@@ -309,33 +310,16 @@ class _MessageBody extends ConsumerWidget {
     final theme = Theme.of(context);
     final base = theme.textTheme.bodyMedium;
 
-    if (message.mentions.isEmpty && !message.body.contains('@')) {
-      // 흔한 경우를 빠르게 지나간다.
-      return Text(message.body, style: base);
-    }
-
+    // **마크다운은 멘션까지 함께 그린다** — 파서가 하나이기 때문이다
+    // (마크다운 설계 §0). 서식이 없으면 위젯이 파싱을 건너뛴다.
+    //
     // 아직 보내지 못한 메시지에는 서버가 붙여 주는 멘션 목록이 없다. 멤버
     // 목록으로 이름을 채우지 않으면 큐에 있는 동안만 `@알 수 없음` 으로 보인다.
-    final spans = buildMentionSpans(
-      message.body,
-      message.mentions,
+    return MarkdownBody(
+      body: message.body,
+      mentions: message.mentions,
       fallbackNames: ref.watch(memberNamesProvider),
-    );
-    return Text.rich(
-      TextSpan(
-        children: [
-          for (final span in spans)
-            TextSpan(
-              text: span.text,
-              style: span.isMention
-                  ? base?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                    )
-                  : base,
-            ),
-        ],
-      ),
+      style: base,
     );
   }
 }
