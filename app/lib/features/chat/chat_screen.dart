@@ -211,10 +211,19 @@ class MessageTile extends ConsumerWidget {
       );
     }
 
+    // 저장소 이벤트가 만든 메시지면 그 push 의 커밋으로 들어간다(10-3b).
+    // **`repoEventId` 가 없는 메시지는 탭이 아무 일도 하지 않는다** — 사람이
+    // 쓴 메시지를 눌렀을 때 빈 화면이 열리면 안 된다.
+    final repoEventId = message.repoEventId;
+    final spaceId = ref.watch(currentSpaceIdProvider);
+
     return GestureDetector(
       // 리액션을 다는 입구. 탭은 이미 다른 뜻으로 쓰일 여지가 있어(스레드 등)
       // 길게 누르기로 둔다.
       behavior: HitTestBehavior.opaque,
+      onTap: repoEventId == null || spaceId == null
+          ? null
+          : () => context.push('/s/$spaceId/repo-events/$repoEventId'),
       onLongPress: message.isLocal
           ? null
           : () => _pickReaction(context, ref, message),

@@ -10,6 +10,8 @@ import '../features/issue/issue_detail_screen.dart';
 import '../features/issue/sprint_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/repo/browse_screen.dart';
+import '../features/repo/commit_detail_screen.dart';
+import '../features/repo/commits_screen.dart';
 import '../features/repo/repos_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/space/space_picker_screen.dart';
@@ -78,6 +80,34 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) => BrowseScreen(
               spaceId: state.pathParameters['spaceId']!,
               repoId: state.pathParameters['repoId']!,
+              // 커밋 상세에서 오면 그 sha·경로로 시작한다(10-3b).
+              initialRef: state.uri.queryParameters['ref'],
+              initialPath: state.uri.queryParameters['path'],
+            ),
+          ),
+          // 그 push 에 들어온 커밋들. 채널 메시지에서 들어온다(10-3b).
+          GoRoute(
+            path: 'repo-events/:eventId',
+            builder: (_, state) => CommitsScreen(
+              spaceId: state.pathParameters['spaceId']!,
+              eventId: state.pathParameters['eventId'],
+            ),
+          ),
+          // 브랜치 이력. 탐색 화면의 커밋 버튼에서 들어온다.
+          GoRoute(
+            path: 'repos/:repoId/commits',
+            builder: (_, state) => CommitsScreen(
+              spaceId: state.pathParameters['spaceId']!,
+              repoId: state.pathParameters['repoId']!,
+              branchRef: state.uri.queryParameters['ref'],
+            ),
+          ),
+          GoRoute(
+            path: 'repos/:repoId/commits/:sha',
+            builder: (_, state) => CommitDetailScreen(
+              spaceId: state.pathParameters['spaceId']!,
+              repoId: state.pathParameters['repoId']!,
+              sha: state.pathParameters['sha']!,
             ),
           ),
           // 이슈 보드도 같은 방식이다. 셸 본문을 탭으로 갈아 끼우면

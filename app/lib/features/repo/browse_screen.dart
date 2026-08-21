@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../domain/models/repo_browse.dart';
 import 'browse_controller.dart';
@@ -10,10 +11,22 @@ import 'browse_controller.dart';
 /// 나오는 데 다섯 번을 눌러야 하기 때문이다. 경로는 이 화면의 상태이고,
 /// 되돌아가는 길은 빵부스러기가 맡는다.
 class BrowseScreen extends ConsumerStatefulWidget {
-  const BrowseScreen({super.key, required this.spaceId, required this.repoId});
+  const BrowseScreen({
+    super.key,
+    required this.spaceId,
+    required this.repoId,
+    this.initialRef,
+    this.initialPath,
+  });
 
   final String spaceId;
   final String repoId;
+
+  /// 커밋 상세에서 들어오면 그 sha 로 시작한다 — 그 시점의 전문을 본다(10-3b).
+  final String? initialRef;
+
+  /// 함께 오면 그 파일을 곧바로 연다.
+  final String? initialPath;
 
   @override
   ConsumerState<BrowseScreen> createState() => _BrowseScreenState();
@@ -49,9 +62,18 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
       if (!mounted) return;
       setState(() {
         _branches = res.branches;
-        _ref = res.defaultBranch ??
+        // 커밋 상세에서 왔으면 그 sha 가 기준이다. **드롭다운에는 없는 값이라**
+        // 브랜치 선택기는 비워 둔다(아래 value 계산이 그것을 처리한다).
+        _ref = widget.initialRef ??
+            res.defaultBranch ??
             (res.branches.isEmpty ? '' : res.branches.first.name);
       });
+
+      final path = widget.initialPath;
+      if (path != null && path.isNotEmpty) {
+        await _openFile(path);
+        return;
+      }
       await _openDir('');
     } catch (_) {
       if (!mounted) return;
@@ -126,11 +148,21 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
       appBar: AppBar(
         title: const Text('코드'),
         actions: [
+          IconButton(
+            tooltip: '커밋',
+            icon: const Icon(Icons.history, size: 20),
+            onPressed: () => context.push(
+              '/s/${widget.spaceId}/repos/${widget.repoId}/commits'
+              '?ref=${Uri.encodeQueryComponent(_ref)}',
+            ),
+          ),
           if (_branches.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: DropdownButton<String>(
-                value: _ref.isEmpty ? null : _ref,
+                // sha 로 열렸으면 드롭다운에 없는 값이라 비워 둔다 —
+                // 없는 값을 주면 DropdownButton 이 던진다.
+                value: _branches.any((b) => b.name == _ref) ? _ref : null,
                 underline: const SizedBox.shrink(),
                 items: [
                   for (final b in _branches)
