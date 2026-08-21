@@ -9,6 +9,7 @@ import '../features/issue/board_screen.dart';
 import '../features/issue/issue_detail_screen.dart';
 import '../features/issue/sprint_screen.dart';
 import '../features/auth/login_screen.dart';
+import '../features/repo/browse_screen.dart';
 import '../features/repo/repos_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/space/space_picker_screen.dart';
@@ -69,6 +70,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'repos',
             builder: (_, state) =>
                 ReposScreen(spaceId: state.pathParameters['spaceId']!),
+          ),
+          // 저장소 안 들여다보기. **폴더 이동은 라우트를 쌓지 않는다** —
+          // 경로는 화면의 상태이고 되돌아가는 길은 빵부스러기가 맡는다(설계 §4).
+          GoRoute(
+            path: 'repos/:repoId/browse',
+            builder: (_, state) => BrowseScreen(
+              spaceId: state.pathParameters['spaceId']!,
+              repoId: state.pathParameters['repoId']!,
+            ),
           ),
           // 이슈 보드도 같은 방식이다. 셸 본문을 탭으로 갈아 끼우면
           // "라우트가 진실의 원천"이라는 셸의 전제가 깨진다.

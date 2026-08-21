@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/socket/socket_event.dart';
@@ -149,6 +150,9 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
                     for (final repo in value)
                       _RepoRow(
                         repo: repo,
+                        onOpen: () => context.push(
+                          '/s/${widget.spaceId}/repos/${repo.id}/browse',
+                        ),
                         onReattach: () => _reattach(repo.id),
                         onRemove: () => _remove(repo.id),
                       ),
@@ -165,11 +169,15 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
 class _RepoRow extends StatelessWidget {
   const _RepoRow({
     required this.repo,
+    required this.onOpen,
     required this.onReattach,
     required this.onRemove,
   });
 
   final SpaceRepo repo;
+
+  /// 행을 누르면 저장소 안을 들여다본다(10-3a).
+  final VoidCallback onOpen;
   final VoidCallback onReattach;
   final VoidCallback onRemove;
 
@@ -177,6 +185,7 @@ class _RepoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
+        onTap: onOpen,
         title: Text(repo.fullPath),
         // 훅이 안 걸린 것을 조용히 두면 사용자는 커밋이 왜 안 오는지 모른다.
         subtitle: Text(repo.webhookActive ? '웹훅 연결됨' : '웹훅 등록 실패'),
