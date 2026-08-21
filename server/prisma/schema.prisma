@@ -606,6 +606,9 @@ model Repo {
   defaultBranch     String?      @map("default_branch")
   linkedChannelId   String?      @map("linked_channel_id")
   webhookSecret     String?      @map("webhook_secret")
+  /// GitHub 이 준 훅 id. **없으면 훅이 안 걸린 것**이다 — 등록에 실패했거나
+  /// 수동으로 붙인 행이다. 화면이 "다시 걸기"를 띄우는 근거가 된다.
+  webhookExternalId String?      @map("webhook_external_id")
   syncedAt          DateTime?    @map("synced_at")
   indexedAt         DateTime?    @map("indexed_at")
   indexedCommitSha  String?      @map("indexed_commit_sha")
