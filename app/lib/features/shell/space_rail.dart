@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import '../auth/auth_controller.dart';
 import '../space/space_controller.dart';
+import '../settings/theme_controller.dart';
 
 /// 왼쪽 끝 72px 레일. 스페이스 전환과 내 계정이 여기 있다.
 class SpaceRail extends ConsumerWidget {
@@ -70,12 +71,50 @@ class _AccountButton extends ConsumerWidget {
     if (auth is! AuthSignedIn) return const SizedBox.shrink();
     final user = auth.user;
 
+    final theme = Theme.of(context);
+    final mode = ref.watch(themeModeProvider);
+
+    // 설정 화면이 아직 없다. 갈 곳을 새로 만드는 대신 이미 있는 계정 메뉴에
+    // 넣는다 — 테마는 계정처럼 "나"에 붙는 값이라 자리가 어색하지 않다.
+    PopupMenuItem<String> themeItem(String label, ThemeMode value) {
+      final selected = mode == value;
+      return PopupMenuItem<String>(
+        value: 'theme.${value.name}',
+        child: Row(
+          children: [
+            SizedBox(
+              width: 24,
+              child: selected
+                  ? Icon(Icons.check, size: 16, color: theme.colorScheme.primary)
+                  : null,
+            ),
+            Text(
+              label,
+              style: selected
+                  ? theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    )
+                  : theme.textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      );
+    }
+
     return PopupMenuButton<String>(
       tooltip: user.name,
       offset: const Offset(NexusPaneWidth.rail, 0),
       onSelected: (value) {
-        if (value == 'signOut') {
-          ref.read(authControllerProvider.notifier).signOut();
+        switch (value) {
+          case 'signOut':
+            ref.read(authControllerProvider.notifier).signOut();
+          case 'theme.system':
+            ref.read(themeModeProvider.notifier).set(ThemeMode.system);
+          case 'theme.light':
+            ref.read(themeModeProvider.notifier).set(ThemeMode.light);
+          case 'theme.dark':
+            ref.read(themeModeProvider.notifier).set(ThemeMode.dark);
         }
       },
       itemBuilder: (_) => [
@@ -84,11 +123,20 @@ class _AccountButton extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(user.name, style: Theme.of(context).textTheme.titleSmall),
-              Text(user.email, style: Theme.of(context).textTheme.labelSmall),
+              Text(user.name, style: theme.textTheme.titleSmall),
+              Text(user.email, style: theme.textTheme.labelSmall),
             ],
           ),
         ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          enabled: false,
+          height: 32,
+          child: Text('테마', style: theme.textTheme.labelSmall),
+        ),
+        themeItem('시스템 설정', ThemeMode.system),
+        themeItem('라이트', ThemeMode.light),
+        themeItem('다크', ThemeMode.dark),
         const PopupMenuDivider(),
         const PopupMenuItem<String>(value: 'signOut', child: Text('로그아웃')),
       ],
