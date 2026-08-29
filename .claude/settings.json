@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze *)",
+      "Bash(npm --prefix server run test *)",
+      "Bash(flutter test *)",
+      "Bash(npm run build *)",
+      "Bash(npm run db:up *)",
+      "Bash(npm --prefix server run typecheck *)",
+      "Bash(npm run server:lint *)",
+      "Bash(npm run check:attachments *)",
+      "Bash(npm run server:test *)",
+      "Bash(npm run check:oauth *)",
+      "Bash(dart run build_runner build *)",
+      "Bash(npm run typecheck *)",
+      "Bash(npm test *)",
+      "Bash(npm --prefix server run build *)",
+      "Bash(npm run check:mentions *)",
+      "Bash(git check-ignore *)",
+      "Bash(npx prisma validate *)",
+      "Bash(npm run db:setup *)",
+      "Bash(npm run server:dev *)",
+      "Bash(npm run check:realtime *)",
+      "Bash(npm run check:pins *)",
+      "Bash(npm --prefix server run prisma:generate *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const o=JSON.parse(d);const f=(o.tool_response&&o.tool_response.filePath)||(o.tool_input&&o.tool_input.file_path)||'';process.stdout.write(f);}catch(e){}})\" | { read -r raw; f=$(printf '%s' \"$raw\" | tr '\\\\' '/'); case \"$f\" in *app/lib/*.dart) case \"$f\" in *.g.dart|*.freezed.dart) exit 0;; esac; base=\"${f%.dart}\"; if [ -f \"${base}.g.dart\" ] || [ -f \"${base}.freezed.dart\" ]; then (cd \"C:/Users/dbsrj/LYG/DEV/WorkSpace/Git Projects/nexus/app\" && dart run build_runner build --delete-conflicting-outputs) 2>&1 | tail -30; fi ;; esac; } 2>/dev/null || true",
+            "timeout": 120,
+            "statusMessage": "코드 생성(build_runner) 확인 중..."
+          }
+        ]
+      }
+    ]
+  }
+}
