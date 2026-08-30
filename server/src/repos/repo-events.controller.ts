@@ -19,6 +19,6 @@ export class RepoEventsController {
     @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
     @Param('eventId', new ParseUUIDPipe()) eventId: string,
   ) {
-    return this.browse.eventCommits(spaceId, eventId);
+    return this.browse.eventDetail(spaceId, eventId);
   }
 }
