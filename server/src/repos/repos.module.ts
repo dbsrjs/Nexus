@@ -9,6 +9,7 @@ import { OauthModule } from '../oauth/oauth.module';
 import { GithubReposController } from './github-repos.controller';
 import { RepoConnectService } from './repo-connect.service';
 import { RepoBrowseService } from './repo-browse.service';
+import { RepoAccessService } from './repo-access.service';
 import { RepoEventsController } from './repo-events.controller';
 
 /**
@@ -28,7 +29,13 @@ import { RepoEventsController } from './repo-events.controller';
     GithubReposController,
     RepoEventsController,
   ],
-  providers: [ReposService, WebhooksService, RepoConnectService, RepoBrowseService],
+  providers: [
+    ReposService,
+    WebhooksService,
+    RepoConnectService,
+    RepoBrowseService,
+    RepoAccessService,
+  ],
   exports: [ReposService],
 })
 export class ReposModule {}

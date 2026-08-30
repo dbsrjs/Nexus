@@ -3,8 +3,6 @@ import {
   Controller,
   DefaultValuePipe,
   Get,
-  HttpException,
-  HttpStatus,
   ParseIntPipe,
   Query,
   ServiceUnavailableException,
@@ -14,6 +12,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { resolveGithubOauth } from '../config/oauth.config';
 import { GithubOauthClient } from '../oauth/github-oauth.client';
 import { OauthService } from '../oauth/oauth.service';
+import { toGithubHttpError } from './github-error';
 
 /**
  * 내 GitHub 저장소 목록. **DB 에 두지 않고 프록시한다** — 원본은 GitHub 이고
@@ -54,7 +53,7 @@ export class GithubReposController {
     }
 
     const res = await this.github.listRepos(cfg, token, page);
-    if (!res.ok) throw toHttpError(res.status, res.retryAfter);
+    if (!res.ok) throw toGithubHttpError(res.status, res.retryAfter);
 
     return {
       repos: res.value,
@@ -65,36 +64,4 @@ export class GithubReposController {
       hasNext: res.value.length === 100,
     };
   }
-}
-
-/**
- * GitHub 의 실패를 우리 응답으로 옮긴다.
- *
- * **429 는 `Retry-After` 를 붙여 그대로 전달한다**(설계 §6) — 앱이 언제 다시
- * 부를지 알아야 한다. 401 은 토큰이 죽은 것이라 재연결이 답이다.
- */
-function toHttpError(status: number, retryAfter?: number): HttpException {
-  if (status === 429) {
-    return new HttpException(
-      {
-        statusCode: HttpStatus.TOO_MANY_REQUESTS,
-        message: 'GitHub 요청 한도를 넘었습니다. 잠시 뒤 다시 시도해 주세요.',
-        // 초 단위. 앱이 이 값을 보고 다시 부를 시점을 정한다.
-        retryAfter: retryAfter ?? null,
-      },
-      HttpStatus.TOO_MANY_REQUESTS,
-    );
-  }
-  if (status === 401) {
-    return new HttpException(
-      'GitHub 연결이 만료되었습니다. 다시 연결해 주세요.',
-      HttpStatus.UNAUTHORIZED,
-    );
-  }
-
-  // 그 밖(0=네트워크 실패 · 5xx)은 우리 잘못이 아니라는 뜻으로 502 다.
-  return new HttpException(
-    'GitHub 에서 저장소 목록을 받지 못했습니다.',
-    HttpStatus.BAD_GATEWAY,
-  );
 }
