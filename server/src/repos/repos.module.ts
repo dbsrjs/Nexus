@@ -11,6 +11,8 @@ import { RepoConnectService } from './repo-connect.service';
 import { RepoBrowseService } from './repo-browse.service';
 import { RepoAccessService } from './repo-access.service';
 import { RepoEventsController } from './repo-events.controller';
+import { PullsController } from './pulls.controller';
+import { PullsService } from './pulls.service';
 
 /**
  * 저장소 연동. 웹훅 수신은 `SpaceGuard` 를 지나지 않으므로(부르는 쪽이
@@ -28,6 +30,7 @@ import { RepoEventsController } from './repo-events.controller';
     WebhooksController,
     GithubReposController,
     RepoEventsController,
+    PullsController,
   ],
   providers: [
     ReposService,
@@ -35,6 +38,7 @@ import { RepoEventsController } from './repo-events.controller';
     RepoConnectService,
     RepoBrowseService,
     RepoAccessService,
+    PullsService,
   ],
   exports: [ReposService],
 })
