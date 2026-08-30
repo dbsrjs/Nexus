@@ -1,3 +1,11 @@
+# 로컬 개발용 백엔드 서비스.
+#
+# `npm run db:up:docker` 는 **postgres 하나만** 띄운다. redis · minio 는 프로필
+# 뒤에 있어 기본으로 뜨지 않는다 — 지금 빌드가 둘 다 쓰지 않기 때문이다.
+# 그대로 두면 새 PC 에서 쓰지도 않는 컨테이너가 6379 · 9000 · 9001 을 잡는다.
+#
+#   docker compose -f server/docker-compose.yml --profile redis up -d
+#   docker compose -f server/docker-compose.yml --profile s3    up -d
 services:
   # pgvector 확장이 포함된 Postgres 이미지.
   # 순정 postgres:16 을 쓰면 repo_index_chunks 의 vector 컬럼을 만들 수 없어
@@ -20,18 +28,26 @@ services:
       timeout: 5s
       retries: 10
 
+  # ⚠ 현재 빌드는 Redis 를 쓰지 않는다. redis-io.adapter.ts 는 tsconfig 의
+  #   exclude 에 있고 main.ts 에 등록되지 않았다. 10-3a 에서 열람 캐시를
+  #   검토하며 "Redis 가 이 프로젝트에 없다"고 못 박았다 (CLAUDE.md §4).
+  #   프레즌스나 다중 인스턴스가 실제로 필요해지면 그때 프로필을 뗀다.
   redis:
     image: redis:7
     container_name: nexus-redis
     restart: unless-stopped
+    profiles: ["redis"]
     ports:
       - "6379:6379"
 
-  # 개발용 S3 호환 스토리지. 운영은 Cloudflare R2 를 쓴다.
+  # ⚠ 개발 루프는 STORAGE_DRIVER=local 이라 이것도 뜨지 않는다. 8-1 에서
+  #   "S3 를 개발 루프에 들이지 않는다"고 정했다 — 배포는 R2 · S3 를 쓰고,
+  #   배포 전에 STORAGE_DRIVER=s3 로 한 번 검증할 때만 이 프로필을 켠다.
   minio:
     image: minio/minio
     container_name: nexus-minio
     restart: unless-stopped
+    profiles: ["s3"]
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin

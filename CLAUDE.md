@@ -24,9 +24,11 @@
 git clone https://github.com/dbsrjs/Nexus.git && cd Nexus
 
 npm --prefix server install
-cp server/.env.example server/.env
-# JWT_SECRET 을 채운다. 비어 있으면 서버가 부팅을 거부한다(의도된 동작).
-node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+npm run env:setup    # server/.env 를 만든다. 시크릿 셋(JWT 둘 · OAUTH_TOKEN_KEY)은
+                     # 이 PC 에서 새로 만들어 넣는다 — 무작위 값이라 PC 끼리 같을
+                     # 이유가 없다. 채워진 값은 건드리지 않으니 여러 번 돌려도 된다.
+                     # 만들어 낼 수 없는 것(GITHUB_CLIENT_ID · SECRET ·
+                     # PUBLIC_BASE_URL)은 끝에 목록으로 알려 준다.
 
 npm run db:setup     # (새 PC에서 1회) WSL 안에 Postgres + pgvector 자동 구성
                      #  Docker 를 쓴다면 건너뛰고 db:up:docker 사용
@@ -125,7 +127,8 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | 명령 | 설명 |
 |---|---|
 | `npm run db:up` / `db:down` | WSL Postgres 기동 / `wsl --shutdown` |
-| `npm run db:up:docker` / `db:down:docker` | Docker 환경일 때 |
+| `npm run env:setup` | `server/.env` 생성 · 빈 자리 채우기. **여러 번 돌려도 안전하다** |
+| `npm run db:up:docker` / `db:down:docker` | Docker 환경일 때. **postgres 하나만 뜬다** — redis · minio 는 지금 빌드가 쓰지 않아 프로필(`--profile redis` · `--profile s3`) 뒤에 있다 |
 | `npm run db:seed` · `db:studio` | 시드 · Prisma Studio |
 | `npm run server:dev` · `server:build` | 개발 서버 · 빌드 |
 | `npm --prefix server run typecheck` | 타입 검사만 |

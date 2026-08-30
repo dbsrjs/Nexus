@@ -9,6 +9,7 @@
     "server:build": "npm --prefix server run build",
     "server:test": "npm --prefix server test",
     "server:lint": "npm --prefix server run lint",
+    "env:setup": "node server/scripts/env-setup.mjs",
     "db:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File server/scripts/db-setup-wsl.ps1",
     "db:up": "powershell -NoProfile -ExecutionPolicy Bypass -File server/scripts/db-up.ps1",
     "db:down": "wsl --shutdown",
