@@ -3,6 +3,16 @@ import type { GithubOauthConfig } from '../config/oauth.config';
 // **타입만 가져온다**(런타임 의존이 생기지 않는다). 커밋 요약의 모양이
 // payload 에서 온 것과 GitHub 에서 온 것 사이에서 갈라지지 않도록 한 곳에 둔다.
 import type { CommitSummary } from '../repos/push-commits';
+import {
+  foldReviewState,
+  toPullDetail,
+  toPullFile,
+  toPullSummary,
+  type PullChangedFile,
+  type PullDetail,
+  type PullReviewState,
+  type PullSummary,
+} from '../repos/pull-view';
 
 export interface GithubToken {
   accessToken: string;
@@ -410,6 +420,102 @@ export class GithubOauthClient {
       if (summary) commits.push(summary);
     }
     return { ok: true, value: commits };
+  }
+
+  /** 열린/닫힌 PR 목록. **변경량은 오지 않는다** — 단건에만 있다(설계 §1). */
+  async listPulls(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+    state: 'open' | 'closed',
+    page: number,
+  ): Promise<GithubResult<PullSummary[]>> {
+    const query = new URLSearchParams({
+      state,
+      per_page: '30',
+      page: String(page),
+      sort: 'updated',
+      direction: 'desc',
+    });
+
+    const res = await this.call<Array<Record<string, unknown>>>(
+      `${cfg.apiBase}/repos/${fullName}/pulls?${query.toString()}`,
+      token,
+    );
+    if (!res.ok) return res;
+
+    const pulls: PullSummary[] = [];
+    for (const raw of res.value) {
+      const view = toPullSummary(raw);
+      if (view) pulls.push(view);
+    }
+    return { ok: true, value: pulls };
+  }
+
+  async getPull(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+    num: number,
+  ): Promise<GithubResult<Omit<PullDetail, 'review'>>> {
+    const res = await this.call<Record<string, unknown>>(
+      `${cfg.apiBase}/repos/${fullName}/pulls/${num}`,
+      token,
+    );
+    if (!res.ok) return res;
+
+    const view = toPullDetail(res.value);
+    // 모양이 깨진 응답을 422 로 접는다 — `getCommit` 과 같은 처리다.
+    if (!view) return { ok: false, status: 422 };
+    return { ok: true, value: view };
+  }
+
+  /** 리뷰 목록을 받아 **한 값으로 접어서** 준다(설계 §2). */
+  async getPullReview(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+    num: number,
+  ): Promise<GithubResult<PullReviewState | null>> {
+    const res = await this.call<unknown>(
+      `${cfg.apiBase}/repos/${fullName}/pulls/${num}/reviews?per_page=100`,
+      token,
+    );
+    if (!res.ok) return res;
+    return { ok: true, value: foldReviewState(res.value) };
+  }
+
+  /**
+   * 바뀐 파일. **상한 300** 에서 끊고 `truncated` 로 알린다 — GitHub 이
+   * 페이지당 100개를 주므로 세 장까지 본다. 조용히 자르지 않는 것이 상한을
+   * 둘 수 있는 조건이다(9-1 의 규칙).
+   */
+  async listPullFiles(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+    num: number,
+  ): Promise<GithubResult<{ files: PullChangedFile[]; truncated: boolean }>> {
+    const files: PullChangedFile[] = [];
+
+    for (let page = 1; page <= 3; page++) {
+      const res = await this.call<Array<Record<string, unknown>>>(
+        `${cfg.apiBase}/repos/${fullName}/pulls/${num}/files?per_page=100&page=${page}`,
+        token,
+      );
+      if (!res.ok) return res;
+
+      for (const raw of res.value) {
+        const view = toPullFile(raw);
+        if (view) files.push(view);
+      }
+
+      // 한 장이 덜 찼으면 마지막 장이다.
+      if (res.value.length < 100) return { ok: true, value: { files, truncated: false } };
+    }
+
+    // 세 장이 모두 꽉 찼다 — 더 있을 수 있다.
+    return { ok: true, value: { files, truncated: true } };
   }
 
   async getCommit(
