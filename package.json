@@ -29,6 +29,7 @@
     "check:repos": "node server/scripts/check-repos.mjs",
     "check:oauth": "node server/scripts/check-oauth.mjs",
     "check:browse": "node server/scripts/check-browse.mjs",
+    "check:pulls": "node server/scripts/check-pulls.mjs",
     "check:migrations": "node server/scripts/check-migrations.mjs"
   }
 }

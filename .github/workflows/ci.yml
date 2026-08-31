@@ -85,7 +85,7 @@ jobs:
       - run: flutter test
 
   server-integration:
-    name: 서버 통합 (계약 검증 12종)
+    name: 서버 통합 (계약 검증 13종)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -187,14 +187,14 @@ jobs:
           cat /tmp/server.log
           exit 1
 
-      - name: 계약 검증 12종
+      - name: 계약 검증 13종
         run: |
           set -e
           echo "── check:migrations ──"
           node scripts/check-migrations.mjs
           echo "── check:realtime ──"
           node scripts/check-realtime.mjs "$SEED_PASSWORD"
-          for s in reactions threads quotes mentions pins attachments issues repos oauth browse; do
+          for s in reactions threads quotes mentions pins attachments issues repos oauth browse pulls; do
             echo "── check:$s ──"
             node "scripts/check-$s.mjs"
           done
