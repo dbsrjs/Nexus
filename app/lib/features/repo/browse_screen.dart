@@ -150,6 +150,14 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
         title: const Text('코드'),
         actions: [
           IconButton(
+            tooltip: 'Pull Request',
+            icon: const Icon(Icons.merge_type, size: 20),
+            // PR 은 브랜치에 매이지 않는다 — ref 를 붙이지 않는다.
+            onPressed: () => context.push(
+              '/s/${widget.spaceId}/repos/${widget.repoId}/pulls',
+            ),
+          ),
+          IconButton(
             tooltip: '커밋',
             icon: const Icon(Icons.history, size: 20),
             onPressed: () => context.push(

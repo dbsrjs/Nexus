@@ -6,10 +6,12 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/message.dart';
+import '../../domain/models/repo_browse.dart';
 import '../../shared/markdown/markdown_body.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import '../channel/channel_controller.dart';
 import '../realtime/socket_controller.dart';
+import '../repo/browse_controller.dart';
 import '../space/space_controller.dart';
 import '../../domain/models/space_member.dart';
 import '../auth/auth_controller.dart';
@@ -212,7 +214,7 @@ class MessageTile extends ConsumerWidget {
       );
     }
 
-    // 저장소 이벤트가 만든 메시지면 그 push 의 커밋으로 들어간다(10-3b).
+    // 저장소 이벤트가 만든 메시지면 그 kind 로 갈 곳을 가른다(11단계) —
     // **`repoEventId` 가 없는 메시지는 탭이 아무 일도 하지 않는다** — 사람이
     // 쓴 메시지를 눌렀을 때 빈 화면이 열리면 안 된다.
     final repoEventId = message.repoEventId;
@@ -224,7 +226,7 @@ class MessageTile extends ConsumerWidget {
       behavior: HitTestBehavior.opaque,
       onTap: repoEventId == null || spaceId == null
           ? null
-          : () => context.push('/s/$spaceId/repo-events/$repoEventId'),
+          : () => _openRepoEvent(context, ref, spaceId, repoEventId),
       onLongPress: message.isLocal
           ? null
           : () => _pickReaction(context, ref, message),
@@ -415,6 +417,34 @@ void _openThread(BuildContext context, WidgetRef ref, Message message) {
 /// 자주 쓰는 이모지. 전체 이모지 검색은 나중 일이고, 지금은 **한 번에 손이
 /// 닿는 것**이 목적이라 짧게 둔다.
 const _quickEmojis = ['👍', '🎉', '😄', '👀', '🙏', '🔥', '❤️', '😢'];
+
+/// 저장소 이벤트 메시지를 눌렀을 때 그 `kind` 로 갈 곳을 가른다(11단계).
+/// push 는 그 push 의 커밋 목록으로, pr 은 PR 화면으로 간다. `other`(이슈 ·
+/// 릴리스)는 열 곳이 없어 조용히 아무 일도 하지 않는다 — 눌러 봐야 빈
+/// 화면인 버튼은 없느니만 못하다.
+Future<void> _openRepoEvent(
+  BuildContext context,
+  WidgetRef ref,
+  String spaceId,
+  String repoEventId,
+) async {
+  final RepoEventView view;
+  try {
+    view = await ref.read(browseApiProvider).event(spaceId, repoEventId);
+  } catch (_) {
+    return;
+  }
+  if (!context.mounted) return;
+
+  switch (view.kind) {
+    case 'push':
+      context.push('/s/$spaceId/repo-events/$repoEventId');
+    case 'pr':
+      context.push('/s/$spaceId/repos/${view.repoId}/pulls/${view.number}');
+    case _:
+      break; // other 는 열 곳이 없다
+  }
+}
 
 /// 길게 눌렀을 때 뜨는 이모지 고르기. 이미 누른 것은 표시해 둔다.
 Future<void> _pickReaction(
