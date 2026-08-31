@@ -95,12 +95,13 @@ Map<String, dynamic> _$CommitDetailToJson(_CommitDetail instance) =>
       'files': instance.files,
     };
 
-_PushEventView _$PushEventViewFromJson(Map<String, dynamic> json) =>
-    _PushEventView(
-      type: json['type'] as String,
+_RepoEventView _$RepoEventViewFromJson(Map<String, dynamic> json) =>
+    _RepoEventView(
+      kind: json['kind'] as String,
       repoId: json['repoId'] as String,
-      repoFullPath: json['repoFullPath'] as String,
+      repoFullPath: json['repoFullPath'] as String?,
       ref: json['ref'] as String?,
+      number: (json['number'] as num?)?.toInt(),
       commits:
           (json['commits'] as List<dynamic>?)
               ?.map((e) => CommitSummary.fromJson(e as Map<String, dynamic>))
@@ -108,11 +109,12 @@ _PushEventView _$PushEventViewFromJson(Map<String, dynamic> json) =>
           const <CommitSummary>[],
     );
 
-Map<String, dynamic> _$PushEventViewToJson(_PushEventView instance) =>
+Map<String, dynamic> _$RepoEventViewToJson(_RepoEventView instance) =>
     <String, dynamic>{
-      'type': instance.type,
+      'kind': instance.kind,
       'repoId': instance.repoId,
       'repoFullPath': instance.repoFullPath,
       'ref': instance.ref,
+      'number': instance.number,
       'commits': instance.commits,
     };

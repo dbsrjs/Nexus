@@ -1649,42 +1649,43 @@ as List<ChangedFile>,
 
 
 /// @nodoc
-mixin _$PushEventView {
+mixin _$RepoEventView {
 
- String get type; String get repoId; String get repoFullPath; String? get ref; List<CommitSummary> get commits;
-/// Create a copy of PushEventView
+ String get kind;// push · pr · other
+ String get repoId; String? get repoFullPath; String? get ref; int? get number; List<CommitSummary> get commits;
+/// Create a copy of RepoEventView
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$PushEventViewCopyWith<PushEventView> get copyWith => _$PushEventViewCopyWithImpl<PushEventView>(this as PushEventView, _$identity);
+$RepoEventViewCopyWith<RepoEventView> get copyWith => _$RepoEventViewCopyWithImpl<RepoEventView>(this as RepoEventView, _$identity);
 
-  /// Serializes this PushEventView to a JSON map.
+  /// Serializes this RepoEventView to a JSON map.
   Map<String, dynamic> toJson();
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PushEventView&&(identical(other.type, type) || other.type == type)&&(identical(other.repoId, repoId) || other.repoId == repoId)&&(identical(other.repoFullPath, repoFullPath) || other.repoFullPath == repoFullPath)&&(identical(other.ref, ref) || other.ref == ref)&&const DeepCollectionEquality().equals(other.commits, commits));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RepoEventView&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.repoId, repoId) || other.repoId == repoId)&&(identical(other.repoFullPath, repoFullPath) || other.repoFullPath == repoFullPath)&&(identical(other.ref, ref) || other.ref == ref)&&(identical(other.number, number) || other.number == number)&&const DeepCollectionEquality().equals(other.commits, commits));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,repoId,repoFullPath,ref,const DeepCollectionEquality().hash(commits));
+int get hashCode => Object.hash(runtimeType,kind,repoId,repoFullPath,ref,number,const DeepCollectionEquality().hash(commits));
 
 @override
 String toString() {
-  return 'PushEventView(type: $type, repoId: $repoId, repoFullPath: $repoFullPath, ref: $ref, commits: $commits)';
+  return 'RepoEventView(kind: $kind, repoId: $repoId, repoFullPath: $repoFullPath, ref: $ref, number: $number, commits: $commits)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $PushEventViewCopyWith<$Res>  {
-  factory $PushEventViewCopyWith(PushEventView value, $Res Function(PushEventView) _then) = _$PushEventViewCopyWithImpl;
+abstract mixin class $RepoEventViewCopyWith<$Res>  {
+  factory $RepoEventViewCopyWith(RepoEventView value, $Res Function(RepoEventView) _then) = _$RepoEventViewCopyWithImpl;
 @useResult
 $Res call({
- String type, String repoId, String repoFullPath, String? ref, List<CommitSummary> commits
+ String kind, String repoId, String? repoFullPath, String? ref, int? number, List<CommitSummary> commits
 });
 
 
@@ -1692,22 +1693,23 @@ $Res call({
 
 }
 /// @nodoc
-class _$PushEventViewCopyWithImpl<$Res>
-    implements $PushEventViewCopyWith<$Res> {
-  _$PushEventViewCopyWithImpl(this._self, this._then);
+class _$RepoEventViewCopyWithImpl<$Res>
+    implements $RepoEventViewCopyWith<$Res> {
+  _$RepoEventViewCopyWithImpl(this._self, this._then);
 
-  final PushEventView _self;
-  final $Res Function(PushEventView) _then;
+  final RepoEventView _self;
+  final $Res Function(RepoEventView) _then;
 
-/// Create a copy of PushEventView
+/// Create a copy of RepoEventView
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? repoId = null,Object? repoFullPath = null,Object? ref = freezed,Object? commits = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? kind = null,Object? repoId = null,Object? repoFullPath = freezed,Object? ref = freezed,Object? number = freezed,Object? commits = null,}) {
   return _then(_self.copyWith(
-type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as String,repoId: null == repoId ? _self.repoId : repoId // ignore: cast_nullable_to_non_nullable
-as String,repoFullPath: null == repoFullPath ? _self.repoFullPath : repoFullPath // ignore: cast_nullable_to_non_nullable
-as String,ref: freezed == ref ? _self.ref : ref // ignore: cast_nullable_to_non_nullable
-as String?,commits: null == commits ? _self.commits : commits // ignore: cast_nullable_to_non_nullable
+as String,repoFullPath: freezed == repoFullPath ? _self.repoFullPath : repoFullPath // ignore: cast_nullable_to_non_nullable
+as String?,ref: freezed == ref ? _self.ref : ref // ignore: cast_nullable_to_non_nullable
+as String?,number: freezed == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
+as int?,commits: null == commits ? _self.commits : commits // ignore: cast_nullable_to_non_nullable
 as List<CommitSummary>,
   ));
 }
@@ -1715,8 +1717,8 @@ as List<CommitSummary>,
 }
 
 
-/// Adds pattern-matching-related methods to [PushEventView].
-extension PushEventViewPatterns on PushEventView {
+/// Adds pattern-matching-related methods to [RepoEventView].
+extension RepoEventViewPatterns on RepoEventView {
 /// A variant of `map` that fallback to returning `orElse`.
 ///
 /// It is equivalent to doing:
@@ -1729,10 +1731,10 @@ extension PushEventViewPatterns on PushEventView {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _PushEventView value)?  $default,{required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _RepoEventView value)?  $default,{required TResult orElse(),}){
 final _that = this;
 switch (_that) {
-case _PushEventView() when $default != null:
+case _RepoEventView() when $default != null:
 return $default(_that);case _:
   return orElse();
 
@@ -1751,10 +1753,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _PushEventView value)  $default,){
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _RepoEventView value)  $default,){
 final _that = this;
 switch (_that) {
-case _PushEventView():
+case _RepoEventView():
 return $default(_that);case _:
   throw StateError('Unexpected subclass');
 
@@ -1772,10 +1774,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _PushEventView value)?  $default,){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _RepoEventView value)?  $default,){
 final _that = this;
 switch (_that) {
-case _PushEventView() when $default != null:
+case _RepoEventView() when $default != null:
 return $default(_that);case _:
   return null;
 
@@ -1793,10 +1795,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String type,  String repoId,  String repoFullPath,  String? ref,  List<CommitSummary> commits)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String kind,  String repoId,  String? repoFullPath,  String? ref,  int? number,  List<CommitSummary> commits)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
-case _PushEventView() when $default != null:
-return $default(_that.type,_that.repoId,_that.repoFullPath,_that.ref,_that.commits);case _:
+case _RepoEventView() when $default != null:
+return $default(_that.kind,_that.repoId,_that.repoFullPath,_that.ref,_that.number,_that.commits);case _:
   return orElse();
 
 }
@@ -1814,10 +1816,10 @@ return $default(_that.type,_that.repoId,_that.repoFullPath,_that.ref,_that.commi
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String type,  String repoId,  String repoFullPath,  String? ref,  List<CommitSummary> commits)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String kind,  String repoId,  String? repoFullPath,  String? ref,  int? number,  List<CommitSummary> commits)  $default,) {final _that = this;
 switch (_that) {
-case _PushEventView():
-return $default(_that.type,_that.repoId,_that.repoFullPath,_that.ref,_that.commits);case _:
+case _RepoEventView():
+return $default(_that.kind,_that.repoId,_that.repoFullPath,_that.ref,_that.number,_that.commits);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1834,10 +1836,10 @@ return $default(_that.type,_that.repoId,_that.repoFullPath,_that.ref,_that.commi
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String type,  String repoId,  String repoFullPath,  String? ref,  List<CommitSummary> commits)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String kind,  String repoId,  String? repoFullPath,  String? ref,  int? number,  List<CommitSummary> commits)?  $default,) {final _that = this;
 switch (_that) {
-case _PushEventView() when $default != null:
-return $default(_that.type,_that.repoId,_that.repoFullPath,_that.ref,_that.commits);case _:
+case _RepoEventView() when $default != null:
+return $default(_that.kind,_that.repoId,_that.repoFullPath,_that.ref,_that.number,_that.commits);case _:
   return null;
 
 }
@@ -1848,14 +1850,16 @@ return $default(_that.type,_that.repoId,_that.repoFullPath,_that.ref,_that.commi
 /// @nodoc
 @JsonSerializable()
 
-class _PushEventView implements PushEventView {
-  const _PushEventView({required this.type, required this.repoId, required this.repoFullPath, this.ref, final  List<CommitSummary> commits = const <CommitSummary>[]}): _commits = commits;
-  factory _PushEventView.fromJson(Map<String, dynamic> json) => _$PushEventViewFromJson(json);
+class _RepoEventView implements RepoEventView {
+  const _RepoEventView({required this.kind, required this.repoId, this.repoFullPath, this.ref, this.number, final  List<CommitSummary> commits = const <CommitSummary>[]}): _commits = commits;
+  factory _RepoEventView.fromJson(Map<String, dynamic> json) => _$RepoEventViewFromJson(json);
 
-@override final  String type;
+@override final  String kind;
+// push · pr · other
 @override final  String repoId;
-@override final  String repoFullPath;
+@override final  String? repoFullPath;
 @override final  String? ref;
+@override final  int? number;
  final  List<CommitSummary> _commits;
 @override@JsonKey() List<CommitSummary> get commits {
   if (_commits is EqualUnmodifiableListView) return _commits;
@@ -1864,40 +1868,40 @@ class _PushEventView implements PushEventView {
 }
 
 
-/// Create a copy of PushEventView
+/// Create a copy of RepoEventView
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$PushEventViewCopyWith<_PushEventView> get copyWith => __$PushEventViewCopyWithImpl<_PushEventView>(this, _$identity);
+_$RepoEventViewCopyWith<_RepoEventView> get copyWith => __$RepoEventViewCopyWithImpl<_RepoEventView>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$PushEventViewToJson(this, );
+  return _$RepoEventViewToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PushEventView&&(identical(other.type, type) || other.type == type)&&(identical(other.repoId, repoId) || other.repoId == repoId)&&(identical(other.repoFullPath, repoFullPath) || other.repoFullPath == repoFullPath)&&(identical(other.ref, ref) || other.ref == ref)&&const DeepCollectionEquality().equals(other._commits, _commits));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RepoEventView&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.repoId, repoId) || other.repoId == repoId)&&(identical(other.repoFullPath, repoFullPath) || other.repoFullPath == repoFullPath)&&(identical(other.ref, ref) || other.ref == ref)&&(identical(other.number, number) || other.number == number)&&const DeepCollectionEquality().equals(other._commits, _commits));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,repoId,repoFullPath,ref,const DeepCollectionEquality().hash(_commits));
+int get hashCode => Object.hash(runtimeType,kind,repoId,repoFullPath,ref,number,const DeepCollectionEquality().hash(_commits));
 
 @override
 String toString() {
-  return 'PushEventView(type: $type, repoId: $repoId, repoFullPath: $repoFullPath, ref: $ref, commits: $commits)';
+  return 'RepoEventView(kind: $kind, repoId: $repoId, repoFullPath: $repoFullPath, ref: $ref, number: $number, commits: $commits)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$PushEventViewCopyWith<$Res> implements $PushEventViewCopyWith<$Res> {
-  factory _$PushEventViewCopyWith(_PushEventView value, $Res Function(_PushEventView) _then) = __$PushEventViewCopyWithImpl;
+abstract mixin class _$RepoEventViewCopyWith<$Res> implements $RepoEventViewCopyWith<$Res> {
+  factory _$RepoEventViewCopyWith(_RepoEventView value, $Res Function(_RepoEventView) _then) = __$RepoEventViewCopyWithImpl;
 @override @useResult
 $Res call({
- String type, String repoId, String repoFullPath, String? ref, List<CommitSummary> commits
+ String kind, String repoId, String? repoFullPath, String? ref, int? number, List<CommitSummary> commits
 });
 
 
@@ -1905,22 +1909,23 @@ $Res call({
 
 }
 /// @nodoc
-class __$PushEventViewCopyWithImpl<$Res>
-    implements _$PushEventViewCopyWith<$Res> {
-  __$PushEventViewCopyWithImpl(this._self, this._then);
+class __$RepoEventViewCopyWithImpl<$Res>
+    implements _$RepoEventViewCopyWith<$Res> {
+  __$RepoEventViewCopyWithImpl(this._self, this._then);
 
-  final _PushEventView _self;
-  final $Res Function(_PushEventView) _then;
+  final _RepoEventView _self;
+  final $Res Function(_RepoEventView) _then;
 
-/// Create a copy of PushEventView
+/// Create a copy of RepoEventView
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? repoId = null,Object? repoFullPath = null,Object? ref = freezed,Object? commits = null,}) {
-  return _then(_PushEventView(
-type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+@override @pragma('vm:prefer-inline') $Res call({Object? kind = null,Object? repoId = null,Object? repoFullPath = freezed,Object? ref = freezed,Object? number = freezed,Object? commits = null,}) {
+  return _then(_RepoEventView(
+kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as String,repoId: null == repoId ? _self.repoId : repoId // ignore: cast_nullable_to_non_nullable
-as String,repoFullPath: null == repoFullPath ? _self.repoFullPath : repoFullPath // ignore: cast_nullable_to_non_nullable
-as String,ref: freezed == ref ? _self.ref : ref // ignore: cast_nullable_to_non_nullable
-as String?,commits: null == commits ? _self._commits : commits // ignore: cast_nullable_to_non_nullable
+as String,repoFullPath: freezed == repoFullPath ? _self.repoFullPath : repoFullPath // ignore: cast_nullable_to_non_nullable
+as String?,ref: freezed == ref ? _self.ref : ref // ignore: cast_nullable_to_non_nullable
+as String?,number: freezed == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
+as int?,commits: null == commits ? _self._commits : commits // ignore: cast_nullable_to_non_nullable
 as List<CommitSummary>,
   ));
 }

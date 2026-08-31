@@ -136,17 +136,19 @@ abstract class CommitDetail with _$CommitDetail {
   String get bodyText => message.split('\n').skip(1).join('\n').trim();
 }
 
-/// `repo-events/:eventId` 응답. push 가 아닌 이벤트는 `commits` 가 비어 있다.
+/// `repo-events/:eventId` 응답. `kind` 로 push · pr · other 가 갈린다 —
+/// push 가 아닌 이벤트는 `commits` 가 비어 있다.
 @freezed
-abstract class PushEventView with _$PushEventView {
-  const factory PushEventView({
-    required String type,
+abstract class RepoEventView with _$RepoEventView {
+  const factory RepoEventView({
+    required String kind, // push · pr · other
     required String repoId,
-    required String repoFullPath,
+    String? repoFullPath,
     String? ref,
+    int? number,
     @Default(<CommitSummary>[]) List<CommitSummary> commits,
-  }) = _PushEventView;
+  }) = _RepoEventView;
 
-  factory PushEventView.fromJson(Map<String, dynamic> json) =>
-      _$PushEventViewFromJson(json);
+  factory RepoEventView.fromJson(Map<String, dynamic> json) =>
+      _$RepoEventViewFromJson(json);
 }

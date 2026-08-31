@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/api/browse_api.dart';
+import '../../data/api/pulls_api.dart';
 import '../../domain/models/repo_browse.dart';
 import '../auth/auth_controller.dart';
 
@@ -18,6 +19,10 @@ final browseSourceProvider = Provider<BrowseSource?>((ref) => null);
 
 final browseApiProvider = Provider<BrowseApi>(
   (ref) => BrowseApi(ref.watch(apiClientProvider)),
+);
+
+final pullsApiProvider = Provider<PullsApi>(
+  (ref) => PullsApi(ref.watch(apiClientProvider)),
 );
 
 /// 실제 구현. **`ref` 를 함수로 받는다** — 브랜치를 바꾸면 그 뒤의 호출이

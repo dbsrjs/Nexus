@@ -102,7 +102,7 @@ class _CommitsScreenState extends ConsumerState<CommitsScreen> {
       final api = ref.read(browseApiProvider);
 
       if (widget.eventId != null) {
-        final view = await api.eventCommits(widget.spaceId, widget.eventId!);
+        final view = await api.event(widget.spaceId, widget.eventId!);
         if (!mounted) return;
         setState(() {
           _repoId = view.repoId;

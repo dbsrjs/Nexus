@@ -68,14 +68,14 @@ class BrowseApi {
       throw ApiException(classifyDioException(e));
     }
   }
-/// 그 push 의 커밋들. **서버가 GitHub 을 부르지 않는다**(설계 §0) —
-  /// repo_events.payload 에 이미 있다.
-  Future<PushEventView> eventCommits(String spaceId, String eventId) async {
+/// 그 이벤트의 상세. **서버가 GitHub 을 부르지 않는다**(설계 §0) —
+  /// repo_events.payload 에 이미 있다. `kind` 로 push · pr · other 가 갈린다.
+  Future<RepoEventView> event(String spaceId, String eventId) async {
     try {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/repo-events/$eventId',
       );
-      return PushEventView.fromJson(res.data ?? const {});
+      return RepoEventView.fromJson(res.data ?? const {});
     } on DioException catch (e) {
       throw ApiException(classifyDioException(e));
     }
