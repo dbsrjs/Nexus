@@ -13,6 +13,8 @@ import '../features/auth/login_screen.dart';
 import '../features/repo/browse_screen.dart';
 import '../features/repo/commit_detail_screen.dart';
 import '../features/repo/commits_screen.dart';
+import '../features/repo/pull_detail_screen.dart';
+import '../features/repo/pulls_screen.dart';
 import '../features/repo/repos_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/space/space_picker_screen.dart';
@@ -174,6 +176,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           spaceId: state.pathParameters['spaceId']!,
           repoId: state.pathParameters['repoId']!,
           sha: state.pathParameters['sha']!,
+        ),
+      ),
+      GoRoute(
+        path: '/s/:spaceId/repos/:repoId/pulls',
+        builder: (_, state) => PullsScreen(
+          spaceId: state.pathParameters['spaceId']!,
+          repoId: state.pathParameters['repoId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/s/:spaceId/repos/:repoId/pulls/:number',
+        builder: (_, state) => PullDetailScreen(
+          spaceId: state.pathParameters['spaceId']!,
+          repoId: state.pathParameters['repoId']!,
+          number: int.parse(state.pathParameters['number']!),
         ),
       ),
     ],
