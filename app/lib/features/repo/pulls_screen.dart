@@ -222,7 +222,11 @@ class _PullsError extends StatelessWidget {
     return _Message(
       text: 'GitHub 을 연결하세요',
       action: FilledButton(
-        onPressed: () => context.push('/s/$spaceId/repos'),
+        // **`push` 가 아니라 `go` 다.** 여기는 셸 밖이고 저장소 화면은 셸
+        // 안이라, `push` 하면 `ShellRoute` 가 두 번 쌓여 페이지 키가 겹친다
+        // (`test/router_shell_test.dart`). 뜻으로 봐도 `go` 가 맞다 —
+        // 연결하러 가는 것이지 PR 목록 위에 얹어 보고 돌아올 일이 아니다.
+        onPressed: () => context.go('/s/$spaceId/repos'),
         child: const Text('저장소 화면으로'),
       ),
     );

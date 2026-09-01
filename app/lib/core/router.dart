@@ -53,7 +53,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (onAuthPage || path == '/') return '/spaces';
       return null;
     },
-    routes: [
+    routes: appRoutes(),
+  );
+});
+
+/// 라우트 트리. **provider 밖에 둔 이유는 테스트가 구조를 검사하기 위해서다** —
+/// 저장소 갈래가 셸 안으로 되돌아오면 `router_shell_test.dart` 가 잡는다.
+List<RouteBase> appRoutes() => [
       GoRoute(path: '/', builder: (_, _) => const _SplashScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const _SignupPlaceholder()),
@@ -119,18 +125,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) =>
                     ReposScreen(spaceId: state.pathParameters['spaceId']!),
               ),
-              // 저장소 안 들여다보기. **폴더 이동은 라우트를 쌓지 않는다** —
-              // 경로는 화면의 상태이고 되돌아가는 길은 빵부스러기가 맡는다.
-              GoRoute(
-                path: 'repos/:repoId/browse',
-                builder: (_, state) => BrowseScreen(
-                  spaceId: state.pathParameters['spaceId']!,
-                  repoId: state.pathParameters['repoId']!,
-                  // 커밋 상세에서 오면 그 sha·경로로 시작한다(10-3b).
-                  initialRef: state.uri.queryParameters['ref'],
-                  initialPath: state.uri.queryParameters['path'],
-                ),
-              ),
               // 채널을 연 상태. 셸은 같고 본문만 대화로 바뀐다.
               GoRoute(
                 path: 'c/:channelId',
@@ -145,6 +139,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       //
       // 특정 메시지 · 특정 저장소에서 파고드는 것이라 돌아오는 길이 분명한
       // 편이 낫다. 이것은 원래 판단이고 그대로 지킨다.
+      //
+      // **저장소 갈래는 넷이 다 여기 있어야 한다**(browse · commits ·
+      // commit 상세 · pulls). 하나라도 셸 안에 두면 셸 밖 화면에서 그리로
+      // `push` 할 때 `ShellRoute` 가 두 번 쌓인다 — go_router 는 셸 페이지
+      // 키를 `ValueKey(route.hashCode)` 로 매기므로 **언제나 같은 키**라
+      // `!keyReservation.contains(key)` 로 죽는다. 실제로 browse 만 셸 안에
+      // 있었고, PR · 커밋 상세에서 파일을 누르면 빨간 화면이 떴다.
+      // 근거와 재현은 `test/router_shell_test.dart` 에 있다.
+      GoRoute(
+        // 저장소 안 들여다보기. **폴더 이동은 라우트를 쌓지 않는다** —
+        // 경로는 화면의 상태이고 되돌아가는 길은 빵부스러기가 맡는다.
+        path: '/s/:spaceId/repos/:repoId/browse',
+        builder: (_, state) => BrowseScreen(
+          spaceId: state.pathParameters['spaceId']!,
+          repoId: state.pathParameters['repoId']!,
+          // 커밋 상세 · PR 상세에서 오면 그 sha·브랜치와 경로로 시작한다.
+          initialRef: state.uri.queryParameters['ref'],
+          initialPath: state.uri.queryParameters['path'],
+        ),
+      ),
       GoRoute(
         path: '/s/:spaceId/c/:channelId/t/:messageId',
         builder: (_, state) => ThreadScreen(
@@ -193,9 +207,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           number: int.parse(state.pathParameters['number']!),
         ),
       ),
-    ],
-  );
-});
+    ];
 
 /// 토큰 복원이 끝날 때까지 보여 준다. 서버가 꺼져 있으면 타임아웃까지 여기 머문다.
 class _SplashScreen extends StatelessWidget {
