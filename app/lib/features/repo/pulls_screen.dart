@@ -57,16 +57,25 @@ class PullList extends StatelessWidget {
     super.key,
     required this.pulls,
     required this.onTap,
+    this.state = 'open',
     this.onMore,
   });
 
   final List<PullSummary> pulls;
+
+  /// 빈 목록 문구가 필터를 따라가야 한다. 「닫힘」 을 골랐는데 «열린 PR 이
+  /// 없습니다» 라고 하면 필터가 안 먹은 것으로 읽힌다.
+  final String state;
   final void Function(PullSummary pull) onTap;
   final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) {
-    if (pulls.isEmpty) return const Center(child: Text('열린 PR 이 없습니다'));
+    if (pulls.isEmpty) {
+      return Center(
+        child: Text(state == 'closed' ? '닫힌 PR 이 없습니다' : '열린 PR 이 없습니다'),
+      );
+    }
 
     return ListView.builder(
       itemCount: pulls.length + (onMore == null ? 0 : 1),
@@ -111,6 +120,13 @@ class _PullsScreenState extends ConsumerState<PullsScreen> {
   int? _extraNextPage;
   var _loadingMore = false;
 
+  /// **다음 장 번호를 `_extra` 가 비었는지로 고르면 안 된다.** 이어 받은 장이
+  /// 빈 배열이면 `_extra` 가 그대로 비어 첫 장의 `nextPage` 로 되돌아가고,
+  /// 버튼이 사라지지 않은 채 같은 장을 무한히 다시 부른다 — PR 이 정확히
+  /// 30건일 때(2장이 빈 배열) 실제로 걸린다. 한 번이라도 이어 받았는지를
+  /// 따로 들고 있어야 한다.
+  var _pagedOnce = false;
+
   PullListKey get _key =>
       (spaceId: widget.spaceId, repoId: widget.repoId, state: _state);
 
@@ -120,6 +136,7 @@ class _PullsScreenState extends ConsumerState<PullsScreen> {
       _state = state;
       _extra.clear();
       _extraNextPage = null;
+      _pagedOnce = false;
     });
   }
 
@@ -133,6 +150,9 @@ class _PullsScreenState extends ConsumerState<PullsScreen> {
       setState(() {
         _extra.addAll(res.pulls);
         _extraNextPage = res.nextPage;
+        // 빈 장을 받아도 «이어 받았다»는 사실은 남는다. 이것이 없으면
+        // 다음 장 번호가 첫 장의 것으로 되돌아간다.
+        _pagedOnce = true;
         _loadingMore = false;
       });
     } catch (_) {
@@ -175,18 +195,19 @@ class _PullsScreenState extends ConsumerState<PullsScreen> {
           spaceId: widget.spaceId,
           onRetry: () => ref.invalidate(pullsProvider(_key)),
         ),
-      AsyncData(:final value) => PullList(
-          pulls: [...value.pulls, ..._extra],
-          onMore: _loadingMore
-              ? null
-              : (_extra.isEmpty ? value.nextPage : _extraNextPage) == null
-                  ? null
-                  : () => _loadMore(
-                      (_extra.isEmpty ? value.nextPage : _extraNextPage)!),
-          onTap: (p) => context.push(
-            '/s/${widget.spaceId}/repos/${widget.repoId}/pulls/${p.number}',
-          ),
-        ),
+      AsyncData(:final value) => () {
+          final nextPage = _pagedOnce ? _extraNextPage : value.nextPage;
+          return PullList(
+            pulls: [...value.pulls, ..._extra],
+            state: _state,
+            onMore: _loadingMore || nextPage == null
+                ? null
+                : () => _loadMore(nextPage),
+            onTap: (p) => context.push(
+              '/s/${widget.spaceId}/repos/${widget.repoId}/pulls/${p.number}',
+            ),
+          );
+        }(),
       _ => const Center(child: CircularProgressIndicator()),
     };
   }

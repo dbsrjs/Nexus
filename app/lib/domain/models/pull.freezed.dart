@@ -15,7 +15,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PullSummary {
 
- int get number; String get title; PullState get state; bool get draft; String? get authorLogin; String? get authorAvatarUrl; String? get sourceBranch; String? get targetBranch; String? get htmlUrl; String? get openedAt; String? get mergedAt; String? get closedAt;
+ int get number; String get title; PullState get state; bool get draft; String? get authorLogin; String? get authorAvatarUrl; String? get sourceBranch;/// **파일을 열 때 쓰는 것은 브랜치가 아니라 이 sha 다.** 포크에서 온
+/// PR 의 `sourceBranch` 는 포크 쪽 브랜치라 우리가 붙인 저장소에는 없어
+/// 404 가 된다(진짜 GitHub 으로 확인했다).
+ String? get headSha; String? get targetBranch; String? get htmlUrl; String? get openedAt; String? get mergedAt; String? get closedAt;
 /// Create a copy of PullSummary
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +31,16 @@ $PullSummaryCopyWith<PullSummary> get copyWith => _$PullSummaryCopyWithImpl<Pull
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullSummary&&(identical(other.number, number) || other.number == number)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.authorLogin, authorLogin) || other.authorLogin == authorLogin)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.sourceBranch, sourceBranch) || other.sourceBranch == sourceBranch)&&(identical(other.targetBranch, targetBranch) || other.targetBranch == targetBranch)&&(identical(other.htmlUrl, htmlUrl) || other.htmlUrl == htmlUrl)&&(identical(other.openedAt, openedAt) || other.openedAt == openedAt)&&(identical(other.mergedAt, mergedAt) || other.mergedAt == mergedAt)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullSummary&&(identical(other.number, number) || other.number == number)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.authorLogin, authorLogin) || other.authorLogin == authorLogin)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.sourceBranch, sourceBranch) || other.sourceBranch == sourceBranch)&&(identical(other.headSha, headSha) || other.headSha == headSha)&&(identical(other.targetBranch, targetBranch) || other.targetBranch == targetBranch)&&(identical(other.htmlUrl, htmlUrl) || other.htmlUrl == htmlUrl)&&(identical(other.openedAt, openedAt) || other.openedAt == openedAt)&&(identical(other.mergedAt, mergedAt) || other.mergedAt == mergedAt)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,number,title,state,draft,authorLogin,authorAvatarUrl,sourceBranch,targetBranch,htmlUrl,openedAt,mergedAt,closedAt);
+int get hashCode => Object.hash(runtimeType,number,title,state,draft,authorLogin,authorAvatarUrl,sourceBranch,headSha,targetBranch,htmlUrl,openedAt,mergedAt,closedAt);
 
 @override
 String toString() {
-  return 'PullSummary(number: $number, title: $title, state: $state, draft: $draft, authorLogin: $authorLogin, authorAvatarUrl: $authorAvatarUrl, sourceBranch: $sourceBranch, targetBranch: $targetBranch, htmlUrl: $htmlUrl, openedAt: $openedAt, mergedAt: $mergedAt, closedAt: $closedAt)';
+  return 'PullSummary(number: $number, title: $title, state: $state, draft: $draft, authorLogin: $authorLogin, authorAvatarUrl: $authorAvatarUrl, sourceBranch: $sourceBranch, headSha: $headSha, targetBranch: $targetBranch, htmlUrl: $htmlUrl, openedAt: $openedAt, mergedAt: $mergedAt, closedAt: $closedAt)';
 }
 
 
@@ -48,7 +51,7 @@ abstract mixin class $PullSummaryCopyWith<$Res>  {
   factory $PullSummaryCopyWith(PullSummary value, $Res Function(PullSummary) _then) = _$PullSummaryCopyWithImpl;
 @useResult
 $Res call({
- int number, String title, PullState state, bool draft, String? authorLogin, String? authorAvatarUrl, String? sourceBranch, String? targetBranch, String? htmlUrl, String? openedAt, String? mergedAt, String? closedAt
+ int number, String title, PullState state, bool draft, String? authorLogin, String? authorAvatarUrl, String? sourceBranch, String? headSha, String? targetBranch, String? htmlUrl, String? openedAt, String? mergedAt, String? closedAt
 });
 
 
@@ -65,7 +68,7 @@ class _$PullSummaryCopyWithImpl<$Res>
 
 /// Create a copy of PullSummary
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? number = null,Object? title = null,Object? state = null,Object? draft = null,Object? authorLogin = freezed,Object? authorAvatarUrl = freezed,Object? sourceBranch = freezed,Object? targetBranch = freezed,Object? htmlUrl = freezed,Object? openedAt = freezed,Object? mergedAt = freezed,Object? closedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? number = null,Object? title = null,Object? state = null,Object? draft = null,Object? authorLogin = freezed,Object? authorAvatarUrl = freezed,Object? sourceBranch = freezed,Object? headSha = freezed,Object? targetBranch = freezed,Object? htmlUrl = freezed,Object? openedAt = freezed,Object? mergedAt = freezed,Object? closedAt = freezed,}) {
   return _then(_self.copyWith(
 number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -74,6 +77,7 @@ as PullState,draft: null == draft ? _self.draft : draft // ignore: cast_nullable
 as bool,authorLogin: freezed == authorLogin ? _self.authorLogin : authorLogin // ignore: cast_nullable_to_non_nullable
 as String?,authorAvatarUrl: freezed == authorAvatarUrl ? _self.authorAvatarUrl : authorAvatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,sourceBranch: freezed == sourceBranch ? _self.sourceBranch : sourceBranch // ignore: cast_nullable_to_non_nullable
+as String?,headSha: freezed == headSha ? _self.headSha : headSha // ignore: cast_nullable_to_non_nullable
 as String?,targetBranch: freezed == targetBranch ? _self.targetBranch : targetBranch // ignore: cast_nullable_to_non_nullable
 as String?,htmlUrl: freezed == htmlUrl ? _self.htmlUrl : htmlUrl // ignore: cast_nullable_to_non_nullable
 as String?,openedAt: freezed == openedAt ? _self.openedAt : openedAt // ignore: cast_nullable_to_non_nullable
@@ -164,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int number,  String title,  PullState state,  bool draft,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int number,  String title,  PullState state,  bool draft,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? headSha,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PullSummary() when $default != null:
-return $default(_that.number,_that.title,_that.state,_that.draft,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt);case _:
+return $default(_that.number,_that.title,_that.state,_that.draft,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.headSha,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt);case _:
   return orElse();
 
 }
@@ -185,10 +189,10 @@ return $default(_that.number,_that.title,_that.state,_that.draft,_that.authorLog
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int number,  String title,  PullState state,  bool draft,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int number,  String title,  PullState state,  bool draft,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? headSha,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt)  $default,) {final _that = this;
 switch (_that) {
 case _PullSummary():
-return $default(_that.number,_that.title,_that.state,_that.draft,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt);case _:
+return $default(_that.number,_that.title,_that.state,_that.draft,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.headSha,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -205,10 +209,10 @@ return $default(_that.number,_that.title,_that.state,_that.draft,_that.authorLog
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int number,  String title,  PullState state,  bool draft,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int number,  String title,  PullState state,  bool draft,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? headSha,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _PullSummary() when $default != null:
-return $default(_that.number,_that.title,_that.state,_that.draft,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt);case _:
+return $default(_that.number,_that.title,_that.state,_that.draft,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.headSha,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt);case _:
   return null;
 
 }
@@ -220,7 +224,7 @@ return $default(_that.number,_that.title,_that.state,_that.draft,_that.authorLog
 @JsonSerializable()
 
 class _PullSummary implements PullSummary {
-  const _PullSummary({required this.number, required this.title, required this.state, this.draft = false, this.authorLogin, this.authorAvatarUrl, this.sourceBranch, this.targetBranch, this.htmlUrl, this.openedAt, this.mergedAt, this.closedAt});
+  const _PullSummary({required this.number, required this.title, required this.state, this.draft = false, this.authorLogin, this.authorAvatarUrl, this.sourceBranch, this.headSha, this.targetBranch, this.htmlUrl, this.openedAt, this.mergedAt, this.closedAt});
   factory _PullSummary.fromJson(Map<String, dynamic> json) => _$PullSummaryFromJson(json);
 
 @override final  int number;
@@ -230,6 +234,10 @@ class _PullSummary implements PullSummary {
 @override final  String? authorLogin;
 @override final  String? authorAvatarUrl;
 @override final  String? sourceBranch;
+/// **파일을 열 때 쓰는 것은 브랜치가 아니라 이 sha 다.** 포크에서 온
+/// PR 의 `sourceBranch` 는 포크 쪽 브랜치라 우리가 붙인 저장소에는 없어
+/// 404 가 된다(진짜 GitHub 으로 확인했다).
+@override final  String? headSha;
 @override final  String? targetBranch;
 @override final  String? htmlUrl;
 @override final  String? openedAt;
@@ -249,16 +257,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullSummary&&(identical(other.number, number) || other.number == number)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.authorLogin, authorLogin) || other.authorLogin == authorLogin)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.sourceBranch, sourceBranch) || other.sourceBranch == sourceBranch)&&(identical(other.targetBranch, targetBranch) || other.targetBranch == targetBranch)&&(identical(other.htmlUrl, htmlUrl) || other.htmlUrl == htmlUrl)&&(identical(other.openedAt, openedAt) || other.openedAt == openedAt)&&(identical(other.mergedAt, mergedAt) || other.mergedAt == mergedAt)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullSummary&&(identical(other.number, number) || other.number == number)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.authorLogin, authorLogin) || other.authorLogin == authorLogin)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.sourceBranch, sourceBranch) || other.sourceBranch == sourceBranch)&&(identical(other.headSha, headSha) || other.headSha == headSha)&&(identical(other.targetBranch, targetBranch) || other.targetBranch == targetBranch)&&(identical(other.htmlUrl, htmlUrl) || other.htmlUrl == htmlUrl)&&(identical(other.openedAt, openedAt) || other.openedAt == openedAt)&&(identical(other.mergedAt, mergedAt) || other.mergedAt == mergedAt)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,number,title,state,draft,authorLogin,authorAvatarUrl,sourceBranch,targetBranch,htmlUrl,openedAt,mergedAt,closedAt);
+int get hashCode => Object.hash(runtimeType,number,title,state,draft,authorLogin,authorAvatarUrl,sourceBranch,headSha,targetBranch,htmlUrl,openedAt,mergedAt,closedAt);
 
 @override
 String toString() {
-  return 'PullSummary(number: $number, title: $title, state: $state, draft: $draft, authorLogin: $authorLogin, authorAvatarUrl: $authorAvatarUrl, sourceBranch: $sourceBranch, targetBranch: $targetBranch, htmlUrl: $htmlUrl, openedAt: $openedAt, mergedAt: $mergedAt, closedAt: $closedAt)';
+  return 'PullSummary(number: $number, title: $title, state: $state, draft: $draft, authorLogin: $authorLogin, authorAvatarUrl: $authorAvatarUrl, sourceBranch: $sourceBranch, headSha: $headSha, targetBranch: $targetBranch, htmlUrl: $htmlUrl, openedAt: $openedAt, mergedAt: $mergedAt, closedAt: $closedAt)';
 }
 
 
@@ -269,7 +277,7 @@ abstract mixin class _$PullSummaryCopyWith<$Res> implements $PullSummaryCopyWith
   factory _$PullSummaryCopyWith(_PullSummary value, $Res Function(_PullSummary) _then) = __$PullSummaryCopyWithImpl;
 @override @useResult
 $Res call({
- int number, String title, PullState state, bool draft, String? authorLogin, String? authorAvatarUrl, String? sourceBranch, String? targetBranch, String? htmlUrl, String? openedAt, String? mergedAt, String? closedAt
+ int number, String title, PullState state, bool draft, String? authorLogin, String? authorAvatarUrl, String? sourceBranch, String? headSha, String? targetBranch, String? htmlUrl, String? openedAt, String? mergedAt, String? closedAt
 });
 
 
@@ -286,7 +294,7 @@ class __$PullSummaryCopyWithImpl<$Res>
 
 /// Create a copy of PullSummary
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? number = null,Object? title = null,Object? state = null,Object? draft = null,Object? authorLogin = freezed,Object? authorAvatarUrl = freezed,Object? sourceBranch = freezed,Object? targetBranch = freezed,Object? htmlUrl = freezed,Object? openedAt = freezed,Object? mergedAt = freezed,Object? closedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? number = null,Object? title = null,Object? state = null,Object? draft = null,Object? authorLogin = freezed,Object? authorAvatarUrl = freezed,Object? sourceBranch = freezed,Object? headSha = freezed,Object? targetBranch = freezed,Object? htmlUrl = freezed,Object? openedAt = freezed,Object? mergedAt = freezed,Object? closedAt = freezed,}) {
   return _then(_PullSummary(
 number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -295,6 +303,7 @@ as PullState,draft: null == draft ? _self.draft : draft // ignore: cast_nullable
 as bool,authorLogin: freezed == authorLogin ? _self.authorLogin : authorLogin // ignore: cast_nullable_to_non_nullable
 as String?,authorAvatarUrl: freezed == authorAvatarUrl ? _self.authorAvatarUrl : authorAvatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,sourceBranch: freezed == sourceBranch ? _self.sourceBranch : sourceBranch // ignore: cast_nullable_to_non_nullable
+as String?,headSha: freezed == headSha ? _self.headSha : headSha // ignore: cast_nullable_to_non_nullable
 as String?,targetBranch: freezed == targetBranch ? _self.targetBranch : targetBranch // ignore: cast_nullable_to_non_nullable
 as String?,htmlUrl: freezed == htmlUrl ? _self.htmlUrl : htmlUrl // ignore: cast_nullable_to_non_nullable
 as String?,openedAt: freezed == openedAt ? _self.openedAt : openedAt // ignore: cast_nullable_to_non_nullable
@@ -311,7 +320,10 @@ as String?,
 /// @nodoc
 mixin _$PullDetail {
 
- int get number; String get title; PullState get state; bool get draft; String? get body; String? get authorLogin; String? get authorAvatarUrl; String? get sourceBranch; String? get targetBranch; String? get htmlUrl; String? get openedAt; String? get mergedAt; String? get closedAt;/// **서버가 모르면 `null` 이다.** 0 으로 두면 "안 바뀐 PR"로 읽힌다.
+ int get number; String get title; PullState get state; bool get draft; String? get body; String? get authorLogin; String? get authorAvatarUrl; String? get sourceBranch;/// **파일을 열 때 쓰는 것은 브랜치가 아니라 이 sha 다.** 포크에서 온
+/// PR 의 `sourceBranch` 는 포크 쪽 브랜치라 우리가 붙인 저장소에는 없어
+/// 404 가 된다(진짜 GitHub 으로 확인했다).
+ String? get headSha; String? get targetBranch; String? get htmlUrl; String? get openedAt; String? get mergedAt; String? get closedAt;/// **서버가 모르면 `null` 이다.** 0 으로 두면 "안 바뀐 PR"로 읽힌다.
  int? get additions; int? get deletions; int? get changedFiles; PullReviewState? get review;
 /// Create a copy of PullDetail
 /// with the given fields replaced by the non-null parameter values.
@@ -325,16 +337,16 @@ $PullDetailCopyWith<PullDetail> get copyWith => _$PullDetailCopyWithImpl<PullDet
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullDetail&&(identical(other.number, number) || other.number == number)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.body, body) || other.body == body)&&(identical(other.authorLogin, authorLogin) || other.authorLogin == authorLogin)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.sourceBranch, sourceBranch) || other.sourceBranch == sourceBranch)&&(identical(other.targetBranch, targetBranch) || other.targetBranch == targetBranch)&&(identical(other.htmlUrl, htmlUrl) || other.htmlUrl == htmlUrl)&&(identical(other.openedAt, openedAt) || other.openedAt == openedAt)&&(identical(other.mergedAt, mergedAt) || other.mergedAt == mergedAt)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt)&&(identical(other.additions, additions) || other.additions == additions)&&(identical(other.deletions, deletions) || other.deletions == deletions)&&(identical(other.changedFiles, changedFiles) || other.changedFiles == changedFiles)&&(identical(other.review, review) || other.review == review));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullDetail&&(identical(other.number, number) || other.number == number)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.body, body) || other.body == body)&&(identical(other.authorLogin, authorLogin) || other.authorLogin == authorLogin)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.sourceBranch, sourceBranch) || other.sourceBranch == sourceBranch)&&(identical(other.headSha, headSha) || other.headSha == headSha)&&(identical(other.targetBranch, targetBranch) || other.targetBranch == targetBranch)&&(identical(other.htmlUrl, htmlUrl) || other.htmlUrl == htmlUrl)&&(identical(other.openedAt, openedAt) || other.openedAt == openedAt)&&(identical(other.mergedAt, mergedAt) || other.mergedAt == mergedAt)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt)&&(identical(other.additions, additions) || other.additions == additions)&&(identical(other.deletions, deletions) || other.deletions == deletions)&&(identical(other.changedFiles, changedFiles) || other.changedFiles == changedFiles)&&(identical(other.review, review) || other.review == review));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,number,title,state,draft,body,authorLogin,authorAvatarUrl,sourceBranch,targetBranch,htmlUrl,openedAt,mergedAt,closedAt,additions,deletions,changedFiles,review);
+int get hashCode => Object.hash(runtimeType,number,title,state,draft,body,authorLogin,authorAvatarUrl,sourceBranch,headSha,targetBranch,htmlUrl,openedAt,mergedAt,closedAt,additions,deletions,changedFiles,review);
 
 @override
 String toString() {
-  return 'PullDetail(number: $number, title: $title, state: $state, draft: $draft, body: $body, authorLogin: $authorLogin, authorAvatarUrl: $authorAvatarUrl, sourceBranch: $sourceBranch, targetBranch: $targetBranch, htmlUrl: $htmlUrl, openedAt: $openedAt, mergedAt: $mergedAt, closedAt: $closedAt, additions: $additions, deletions: $deletions, changedFiles: $changedFiles, review: $review)';
+  return 'PullDetail(number: $number, title: $title, state: $state, draft: $draft, body: $body, authorLogin: $authorLogin, authorAvatarUrl: $authorAvatarUrl, sourceBranch: $sourceBranch, headSha: $headSha, targetBranch: $targetBranch, htmlUrl: $htmlUrl, openedAt: $openedAt, mergedAt: $mergedAt, closedAt: $closedAt, additions: $additions, deletions: $deletions, changedFiles: $changedFiles, review: $review)';
 }
 
 
@@ -345,7 +357,7 @@ abstract mixin class $PullDetailCopyWith<$Res>  {
   factory $PullDetailCopyWith(PullDetail value, $Res Function(PullDetail) _then) = _$PullDetailCopyWithImpl;
 @useResult
 $Res call({
- int number, String title, PullState state, bool draft, String? body, String? authorLogin, String? authorAvatarUrl, String? sourceBranch, String? targetBranch, String? htmlUrl, String? openedAt, String? mergedAt, String? closedAt, int? additions, int? deletions, int? changedFiles, PullReviewState? review
+ int number, String title, PullState state, bool draft, String? body, String? authorLogin, String? authorAvatarUrl, String? sourceBranch, String? headSha, String? targetBranch, String? htmlUrl, String? openedAt, String? mergedAt, String? closedAt, int? additions, int? deletions, int? changedFiles, PullReviewState? review
 });
 
 
@@ -362,7 +374,7 @@ class _$PullDetailCopyWithImpl<$Res>
 
 /// Create a copy of PullDetail
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? number = null,Object? title = null,Object? state = null,Object? draft = null,Object? body = freezed,Object? authorLogin = freezed,Object? authorAvatarUrl = freezed,Object? sourceBranch = freezed,Object? targetBranch = freezed,Object? htmlUrl = freezed,Object? openedAt = freezed,Object? mergedAt = freezed,Object? closedAt = freezed,Object? additions = freezed,Object? deletions = freezed,Object? changedFiles = freezed,Object? review = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? number = null,Object? title = null,Object? state = null,Object? draft = null,Object? body = freezed,Object? authorLogin = freezed,Object? authorAvatarUrl = freezed,Object? sourceBranch = freezed,Object? headSha = freezed,Object? targetBranch = freezed,Object? htmlUrl = freezed,Object? openedAt = freezed,Object? mergedAt = freezed,Object? closedAt = freezed,Object? additions = freezed,Object? deletions = freezed,Object? changedFiles = freezed,Object? review = freezed,}) {
   return _then(_self.copyWith(
 number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -372,6 +384,7 @@ as bool,body: freezed == body ? _self.body : body // ignore: cast_nullable_to_no
 as String?,authorLogin: freezed == authorLogin ? _self.authorLogin : authorLogin // ignore: cast_nullable_to_non_nullable
 as String?,authorAvatarUrl: freezed == authorAvatarUrl ? _self.authorAvatarUrl : authorAvatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,sourceBranch: freezed == sourceBranch ? _self.sourceBranch : sourceBranch // ignore: cast_nullable_to_non_nullable
+as String?,headSha: freezed == headSha ? _self.headSha : headSha // ignore: cast_nullable_to_non_nullable
 as String?,targetBranch: freezed == targetBranch ? _self.targetBranch : targetBranch // ignore: cast_nullable_to_non_nullable
 as String?,htmlUrl: freezed == htmlUrl ? _self.htmlUrl : htmlUrl // ignore: cast_nullable_to_non_nullable
 as String?,openedAt: freezed == openedAt ? _self.openedAt : openedAt // ignore: cast_nullable_to_non_nullable
@@ -466,10 +479,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int number,  String title,  PullState state,  bool draft,  String? body,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt,  int? additions,  int? deletions,  int? changedFiles,  PullReviewState? review)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int number,  String title,  PullState state,  bool draft,  String? body,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? headSha,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt,  int? additions,  int? deletions,  int? changedFiles,  PullReviewState? review)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PullDetail() when $default != null:
-return $default(_that.number,_that.title,_that.state,_that.draft,_that.body,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt,_that.additions,_that.deletions,_that.changedFiles,_that.review);case _:
+return $default(_that.number,_that.title,_that.state,_that.draft,_that.body,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.headSha,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt,_that.additions,_that.deletions,_that.changedFiles,_that.review);case _:
   return orElse();
 
 }
@@ -487,10 +500,10 @@ return $default(_that.number,_that.title,_that.state,_that.draft,_that.body,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int number,  String title,  PullState state,  bool draft,  String? body,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt,  int? additions,  int? deletions,  int? changedFiles,  PullReviewState? review)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int number,  String title,  PullState state,  bool draft,  String? body,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? headSha,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt,  int? additions,  int? deletions,  int? changedFiles,  PullReviewState? review)  $default,) {final _that = this;
 switch (_that) {
 case _PullDetail():
-return $default(_that.number,_that.title,_that.state,_that.draft,_that.body,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt,_that.additions,_that.deletions,_that.changedFiles,_that.review);case _:
+return $default(_that.number,_that.title,_that.state,_that.draft,_that.body,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.headSha,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt,_that.additions,_that.deletions,_that.changedFiles,_that.review);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -507,10 +520,10 @@ return $default(_that.number,_that.title,_that.state,_that.draft,_that.body,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int number,  String title,  PullState state,  bool draft,  String? body,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt,  int? additions,  int? deletions,  int? changedFiles,  PullReviewState? review)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int number,  String title,  PullState state,  bool draft,  String? body,  String? authorLogin,  String? authorAvatarUrl,  String? sourceBranch,  String? headSha,  String? targetBranch,  String? htmlUrl,  String? openedAt,  String? mergedAt,  String? closedAt,  int? additions,  int? deletions,  int? changedFiles,  PullReviewState? review)?  $default,) {final _that = this;
 switch (_that) {
 case _PullDetail() when $default != null:
-return $default(_that.number,_that.title,_that.state,_that.draft,_that.body,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt,_that.additions,_that.deletions,_that.changedFiles,_that.review);case _:
+return $default(_that.number,_that.title,_that.state,_that.draft,_that.body,_that.authorLogin,_that.authorAvatarUrl,_that.sourceBranch,_that.headSha,_that.targetBranch,_that.htmlUrl,_that.openedAt,_that.mergedAt,_that.closedAt,_that.additions,_that.deletions,_that.changedFiles,_that.review);case _:
   return null;
 
 }
@@ -522,7 +535,7 @@ return $default(_that.number,_that.title,_that.state,_that.draft,_that.body,_tha
 @JsonSerializable()
 
 class _PullDetail implements PullDetail {
-  const _PullDetail({required this.number, required this.title, required this.state, this.draft = false, this.body, this.authorLogin, this.authorAvatarUrl, this.sourceBranch, this.targetBranch, this.htmlUrl, this.openedAt, this.mergedAt, this.closedAt, this.additions, this.deletions, this.changedFiles, this.review});
+  const _PullDetail({required this.number, required this.title, required this.state, this.draft = false, this.body, this.authorLogin, this.authorAvatarUrl, this.sourceBranch, this.headSha, this.targetBranch, this.htmlUrl, this.openedAt, this.mergedAt, this.closedAt, this.additions, this.deletions, this.changedFiles, this.review});
   factory _PullDetail.fromJson(Map<String, dynamic> json) => _$PullDetailFromJson(json);
 
 @override final  int number;
@@ -533,6 +546,10 @@ class _PullDetail implements PullDetail {
 @override final  String? authorLogin;
 @override final  String? authorAvatarUrl;
 @override final  String? sourceBranch;
+/// **파일을 열 때 쓰는 것은 브랜치가 아니라 이 sha 다.** 포크에서 온
+/// PR 의 `sourceBranch` 는 포크 쪽 브랜치라 우리가 붙인 저장소에는 없어
+/// 404 가 된다(진짜 GitHub 으로 확인했다).
+@override final  String? headSha;
 @override final  String? targetBranch;
 @override final  String? htmlUrl;
 @override final  String? openedAt;
@@ -557,16 +574,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullDetail&&(identical(other.number, number) || other.number == number)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.body, body) || other.body == body)&&(identical(other.authorLogin, authorLogin) || other.authorLogin == authorLogin)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.sourceBranch, sourceBranch) || other.sourceBranch == sourceBranch)&&(identical(other.targetBranch, targetBranch) || other.targetBranch == targetBranch)&&(identical(other.htmlUrl, htmlUrl) || other.htmlUrl == htmlUrl)&&(identical(other.openedAt, openedAt) || other.openedAt == openedAt)&&(identical(other.mergedAt, mergedAt) || other.mergedAt == mergedAt)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt)&&(identical(other.additions, additions) || other.additions == additions)&&(identical(other.deletions, deletions) || other.deletions == deletions)&&(identical(other.changedFiles, changedFiles) || other.changedFiles == changedFiles)&&(identical(other.review, review) || other.review == review));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullDetail&&(identical(other.number, number) || other.number == number)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.body, body) || other.body == body)&&(identical(other.authorLogin, authorLogin) || other.authorLogin == authorLogin)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.sourceBranch, sourceBranch) || other.sourceBranch == sourceBranch)&&(identical(other.headSha, headSha) || other.headSha == headSha)&&(identical(other.targetBranch, targetBranch) || other.targetBranch == targetBranch)&&(identical(other.htmlUrl, htmlUrl) || other.htmlUrl == htmlUrl)&&(identical(other.openedAt, openedAt) || other.openedAt == openedAt)&&(identical(other.mergedAt, mergedAt) || other.mergedAt == mergedAt)&&(identical(other.closedAt, closedAt) || other.closedAt == closedAt)&&(identical(other.additions, additions) || other.additions == additions)&&(identical(other.deletions, deletions) || other.deletions == deletions)&&(identical(other.changedFiles, changedFiles) || other.changedFiles == changedFiles)&&(identical(other.review, review) || other.review == review));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,number,title,state,draft,body,authorLogin,authorAvatarUrl,sourceBranch,targetBranch,htmlUrl,openedAt,mergedAt,closedAt,additions,deletions,changedFiles,review);
+int get hashCode => Object.hash(runtimeType,number,title,state,draft,body,authorLogin,authorAvatarUrl,sourceBranch,headSha,targetBranch,htmlUrl,openedAt,mergedAt,closedAt,additions,deletions,changedFiles,review);
 
 @override
 String toString() {
-  return 'PullDetail(number: $number, title: $title, state: $state, draft: $draft, body: $body, authorLogin: $authorLogin, authorAvatarUrl: $authorAvatarUrl, sourceBranch: $sourceBranch, targetBranch: $targetBranch, htmlUrl: $htmlUrl, openedAt: $openedAt, mergedAt: $mergedAt, closedAt: $closedAt, additions: $additions, deletions: $deletions, changedFiles: $changedFiles, review: $review)';
+  return 'PullDetail(number: $number, title: $title, state: $state, draft: $draft, body: $body, authorLogin: $authorLogin, authorAvatarUrl: $authorAvatarUrl, sourceBranch: $sourceBranch, headSha: $headSha, targetBranch: $targetBranch, htmlUrl: $htmlUrl, openedAt: $openedAt, mergedAt: $mergedAt, closedAt: $closedAt, additions: $additions, deletions: $deletions, changedFiles: $changedFiles, review: $review)';
 }
 
 
@@ -577,7 +594,7 @@ abstract mixin class _$PullDetailCopyWith<$Res> implements $PullDetailCopyWith<$
   factory _$PullDetailCopyWith(_PullDetail value, $Res Function(_PullDetail) _then) = __$PullDetailCopyWithImpl;
 @override @useResult
 $Res call({
- int number, String title, PullState state, bool draft, String? body, String? authorLogin, String? authorAvatarUrl, String? sourceBranch, String? targetBranch, String? htmlUrl, String? openedAt, String? mergedAt, String? closedAt, int? additions, int? deletions, int? changedFiles, PullReviewState? review
+ int number, String title, PullState state, bool draft, String? body, String? authorLogin, String? authorAvatarUrl, String? sourceBranch, String? headSha, String? targetBranch, String? htmlUrl, String? openedAt, String? mergedAt, String? closedAt, int? additions, int? deletions, int? changedFiles, PullReviewState? review
 });
 
 
@@ -594,7 +611,7 @@ class __$PullDetailCopyWithImpl<$Res>
 
 /// Create a copy of PullDetail
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? number = null,Object? title = null,Object? state = null,Object? draft = null,Object? body = freezed,Object? authorLogin = freezed,Object? authorAvatarUrl = freezed,Object? sourceBranch = freezed,Object? targetBranch = freezed,Object? htmlUrl = freezed,Object? openedAt = freezed,Object? mergedAt = freezed,Object? closedAt = freezed,Object? additions = freezed,Object? deletions = freezed,Object? changedFiles = freezed,Object? review = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? number = null,Object? title = null,Object? state = null,Object? draft = null,Object? body = freezed,Object? authorLogin = freezed,Object? authorAvatarUrl = freezed,Object? sourceBranch = freezed,Object? headSha = freezed,Object? targetBranch = freezed,Object? htmlUrl = freezed,Object? openedAt = freezed,Object? mergedAt = freezed,Object? closedAt = freezed,Object? additions = freezed,Object? deletions = freezed,Object? changedFiles = freezed,Object? review = freezed,}) {
   return _then(_PullDetail(
 number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -604,6 +621,7 @@ as bool,body: freezed == body ? _self.body : body // ignore: cast_nullable_to_no
 as String?,authorLogin: freezed == authorLogin ? _self.authorLogin : authorLogin // ignore: cast_nullable_to_non_nullable
 as String?,authorAvatarUrl: freezed == authorAvatarUrl ? _self.authorAvatarUrl : authorAvatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,sourceBranch: freezed == sourceBranch ? _self.sourceBranch : sourceBranch // ignore: cast_nullable_to_non_nullable
+as String?,headSha: freezed == headSha ? _self.headSha : headSha // ignore: cast_nullable_to_non_nullable
 as String?,targetBranch: freezed == targetBranch ? _self.targetBranch : targetBranch // ignore: cast_nullable_to_non_nullable
 as String?,htmlUrl: freezed == htmlUrl ? _self.htmlUrl : htmlUrl // ignore: cast_nullable_to_non_nullable
 as String?,openedAt: freezed == openedAt ? _self.openedAt : openedAt // ignore: cast_nullable_to_non_nullable

@@ -23,6 +23,10 @@ abstract class PullSummary with _$PullSummary {
     String? authorLogin,
     String? authorAvatarUrl,
     String? sourceBranch,
+    /// **파일을 열 때 쓰는 것은 브랜치가 아니라 이 sha 다.** 포크에서 온
+    /// PR 의 `sourceBranch` 는 포크 쪽 브랜치라 우리가 붙인 저장소에는 없어
+    /// 404 가 된다(진짜 GitHub 으로 확인했다).
+    String? headSha,
     String? targetBranch,
     String? htmlUrl,
     String? openedAt,
@@ -45,6 +49,10 @@ abstract class PullDetail with _$PullDetail {
     String? authorLogin,
     String? authorAvatarUrl,
     String? sourceBranch,
+    /// **파일을 열 때 쓰는 것은 브랜치가 아니라 이 sha 다.** 포크에서 온
+    /// PR 의 `sourceBranch` 는 포크 쪽 브랜치라 우리가 붙인 저장소에는 없어
+    /// 404 가 된다(진짜 GitHub 으로 확인했다).
+    String? headSha,
     String? targetBranch,
     String? htmlUrl,
     String? openedAt,

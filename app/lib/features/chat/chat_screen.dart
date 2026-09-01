@@ -431,7 +431,14 @@ Future<void> _openRepoEvent(
   final RepoEventView view;
   try {
     view = await ref.read(browseApiProvider).event(spaceId, repoEventId);
-  } catch (_) {
+  } on ApiException catch (e) {
+    // **조용히 삼키지 않는다.** 10-3b 에서는 곧바로 화면을 열어 그 화면이
+    // 자기 오류를 보여 줬는데, 여기서 먼저 서버를 부르게 되면서 실패가
+    // 아무 표시도 없이 사라졌다 — 오프라인에서 누르면 «고장난 버튼» 과
+    // 구분되지 않는다.
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(messageFor(e.failure))));
     return;
   }
   if (!context.mounted) return;

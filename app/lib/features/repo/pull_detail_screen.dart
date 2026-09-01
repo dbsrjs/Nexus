@@ -214,11 +214,17 @@ class _PullDetailBody extends StatelessWidget {
         const SizedBox(height: NexusSpacing.sp4),
         PullFileList(
           files: view.files,
-          // **diff 를 그리지 않는다** — 10-3a 의 파일 보기를 head 브랜치로
+          // **diff 를 그리지 않는다** — 10-3a 의 파일 보기를 head 시점으로
           // 연다(10-3b 의 커밋 상세와 같은 판단).
+          //
+          // **브랜치 이름이 아니라 sha 다.** 포크에서 온 PR 의 head 브랜치는
+          // 포크 쪽에 있어 우리가 붙인 저장소의 contents API 가 404 를 준다 —
+          // 진짜 GitHub 으로 확인했다(브랜치 404 · sha 200). sha 는 불변이라
+          // 그 뒤에 push 가 와도 리뷰한 그 시점을 가리킨다. sha 가 없는
+          // 응답에서만 브랜치로 떨어진다.
           onTap: (f) => context.push(
             '/s/$spaceId/repos/$repoId/browse'
-            '?ref=${Uri.encodeQueryComponent(pull.sourceBranch ?? '')}'
+            '?ref=${Uri.encodeQueryComponent(pull.headSha ?? pull.sourceBranch ?? '')}'
             '&path=${Uri.encodeQueryComponent(f.path)}',
           ),
         ),

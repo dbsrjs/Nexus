@@ -6,7 +6,7 @@ const OPEN = {
   state: 'open',
   draft: false,
   user: { login: 'dbsrjs', avatar_url: 'https://avatars/1' },
-  head: { ref: 'feat/x' },
+  head: { ref: 'feat/x', sha: 'abc123' },
   base: { ref: 'main' },
   html_url: 'https://github.com/o/r/pull/12',
   created_at: '2026-08-01T00:00:00Z',
@@ -36,6 +36,17 @@ describe('toPullSummary', () => {
 
   it('number 가 없으면 null 이다 — 남이 보내는 값이라 모양을 강제할 수 없다', () => {
     expect(toPullSummary({ ...OPEN, number: undefined })).toBeNull();
+  });
+
+  // **포크에서 온 PR 은 head.ref 로 파일을 열 수 없다.** 그 브랜치는 포크 쪽에
+  // 있어 base 저장소의 contents API 가 404 를 준다(진짜 GitHub 으로 확인했다).
+  // sha 는 base 의 네트워크에서 풀린다 — 앱이 파일을 열 때 이것을 쓴다.
+  it('head sha 를 싣는다 — 포크 PR 의 파일을 여는 유일한 길이다', () => {
+    expect(toPullSummary(OPEN)?.headSha).toBe('abc123');
+  });
+
+  it('sha 가 없으면 null 이다', () => {
+    expect(toPullSummary({ ...OPEN, head: { ref: 'feat/x' } })?.headSha).toBeNull();
   });
 });
 

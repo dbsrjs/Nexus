@@ -14,6 +14,14 @@ export interface PullSummary {
   authorLogin: string | null;
   authorAvatarUrl: string | null;
   sourceBranch: string | null;
+  /**
+   * head 커밋의 sha. **파일을 열 때는 브랜치 이름이 아니라 이것을 쓴다.**
+   * 포크에서 온 PR 의 `head.ref` 는 포크 쪽 브랜치라 base 저장소에 없어
+   * contents API 가 404 를 준다 — 실제 GitHub 으로 확인했다(브랜치 이름 404,
+   * sha 200). sha 는 base 저장소의 네트워크에서 풀리고, 무엇보다 불변이라
+   * 그 뒤 push 가 와도 리뷰한 그 시점을 가리킨다.
+   */
+  headSha: string | null;
   targetBranch: string | null;
   htmlUrl: string | null;
   openedAt: string | null;
@@ -65,6 +73,7 @@ export function toPullSummary(raw: unknown): PullSummary | null {
     authorLogin: str(rec(pr.user)?.login),
     authorAvatarUrl: str(rec(pr.user)?.avatar_url),
     sourceBranch: str(rec(pr.head)?.ref),
+    headSha: str(rec(pr.head)?.sha),
     targetBranch: str(rec(pr.base)?.ref),
     // **html_url 은 싣는다** — 토큰 없이 열리는 공개 주소다. diff_url ·
     // patch_url · _links 는 싣지 않는다.
