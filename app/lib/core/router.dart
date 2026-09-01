@@ -17,6 +17,7 @@ import '../features/repo/pull_detail_screen.dart';
 import '../features/repo/pulls_screen.dart';
 import '../features/repo/repos_screen.dart';
 import '../features/shell/app_shell.dart';
+import '../shared/widgets/nexus_logo.dart';
 import '../features/space/space_picker_screen.dart';
 
 /// 라우트는 docs/앱-설계.md §5 를 따른다. 슬라이스 2 시점에서
@@ -210,12 +211,13 @@ List<RouteBase> appRoutes() => [
     ];
 
 /// 토큰 복원이 끝날 때까지 보여 준다. 서버가 꺼져 있으면 타임아웃까지 여기 머문다.
+/// 그 시간이 짧지 않을 수 있어 **브랜드 마크를 둔다**(`NexusSplash`) — 빈
+/// 스피너 하나만 있으면 «켜지는 중» 인지 «멈춘 것» 인지 구분되지 않는다.
 class _SplashScreen extends StatelessWidget {
   const _SplashScreen();
 
   @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: CircularProgressIndicator()));
+  Widget build(BuildContext context) => const NexusSplash();
 }
 
 /// 회원가입은 아직 범위 밖이다. 시드 계정으로 로그인해 검증한다.

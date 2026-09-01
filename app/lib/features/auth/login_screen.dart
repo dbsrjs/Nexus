@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../data/api/auth_api.dart';
+import '../../shared/widgets/nexus_logo.dart';
 import 'auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -71,10 +72,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Nexus', style: theme.textTheme.headlineSmall),
-                  const SizedBox(height: NexusSpacing.sp2),
+                  // **워드마크가 그림 안에 있어 'Nexus' 글자를 따로 두지
+                  // 않는다.** 둘 다 두면 같은 이름이 두 번 나온다.
+                  const Center(child: NexusLogo()),
+                  const SizedBox(height: NexusSpacing.sp5),
                   Text('대화 · 파일 · 이슈 · 저장소를 한곳에',
-                      style: theme.textTheme.bodySmall),
+                      style: theme.textTheme.bodySmall,
+                      textAlign: TextAlign.center),
                   const SizedBox(height: NexusSpacing.sp9),
                   TextFormField(
                     controller: _email,

@@ -1,11 +1,11 @@
 {
-    "name": "nexus_app",
-    "short_name": "nexus_app",
+    "name": "Nexus",
+    "short_name": "Nexus",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "description": "개발자를 위한 커뮤니케이션 허브 — 대화 · 파일 · 이슈 · 저장소 · AI 를 한곳에",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

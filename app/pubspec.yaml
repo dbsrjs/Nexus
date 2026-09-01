@@ -75,6 +75,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # 브랜드 마크. **원본은 design-system/logo/build_logo.py 다** — 여기 있는
+  # PNG 는 그 스크립트가 만든 것이니 손으로 고치지 말 것.
+  assets:
+    - assets/logo/
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
