@@ -108,4 +108,21 @@ void main() {
   test('빈 본문은 블록이 없다', () {
     expect(parseBlocks(''), isEmpty);
   });
+
+  test('CRLF 로 온 본문도 LF 와 같게 그린다 — GitHub 본문이 그렇다', () {
+    // **화면을 봐야만 드러난 결함이다.** PR 본문은 GitHub 이 CRLF 로 준다.
+    // `'\n'` 으로만 쪼개면 줄 끝에 `\r` 이 남는데, Dart 에서 `.` 는 `\r` 을
+    // 줄 종료 문자로 보아 건너뛰지 못하고 `$` 는 입력 끝에서만 맞는다. 그래서
+    // `$` 로 끝나는 제목 · 번호목록 정규식만 조용히 매치에 실패했다 —
+    // 인용은 `startsWith('>')` 라 멀쩡했고, 그 비대칭이 증상이었다.
+    final blocks = parseBlocks('## Summary\r\n> 설명\r\n\r\n1. 하나\r\n');
+
+    expect(dump(blocks), 'heading(Summary)+quote(설명)+list(하나)');
+    expect(blocks[0].level, 2);
+    expect(blocks[2].ordered, isTrue);
+  });
+
+  test('CR 만 쓰는 본문도 같게 그린다', () {
+    expect(dump(parseBlocks('# 제목\r본문')), 'heading(제목)+paragraph(본문)');
+  });
 }

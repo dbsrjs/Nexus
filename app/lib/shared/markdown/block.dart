@@ -33,13 +33,24 @@ class BlockNode {
   final List<List<String>> rows;
 }
 
+/// **줄바꿈 셋을 모두 받는다.** `'\n'` 으로만 쪼개면 CRLF 본문의 줄 끝에 `\r`
+/// 이 남는데, Dart 에서 `.` 는 `\r` 을 줄 종료 문자로 보아 지나치지 못하고
+/// `$` 는 입력 끝에서만 맞는다. 그래서 아래 `$` 로 끝나는 정규식들만 조용히
+/// 매치에 실패했다 — `startsWith` 로 보는 인용 · 코드블록은 멀쩡해서, 같은
+/// 본문에서 인용은 그려지고 제목만 안 그려졌다. **GitHub 이 주는 PR · 이슈
+/// 본문이 CRLF 라 11단계에서 화면으로 드러났다.**
+///
+/// 여기서 한 번 털면 아래 넷이 모두 산다 — 줄마다 `trimRight()` 를 뿌리면
+/// 코드블록 안의 뜻 있는 공백까지 함께 지운다.
+final _lineBreak = RegExp(r'\r\n|\r|\n');
+
 final _heading = RegExp(r'^(#{1,3})\s+(.*)$');
 final _bullet = RegExp(r'^[-*]\s+(.*)$');
 final _ordered = RegExp(r'^\d+[.)]\s+(.*)$');
 final _tableDivider = RegExp(r'^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$');
 
 List<BlockNode> parseBlocks(String source) {
-  final lines = source.split('\n');
+  final lines = source.split(_lineBreak);
   final blocks = <BlockNode>[];
   var i = 0;
 
