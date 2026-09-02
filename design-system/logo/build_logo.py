@@ -20,7 +20,6 @@ PNG 를 손으로 그려 저장소에 넣으면 크기마다 미세하게 갈라
 """
 from __future__ import annotations
 
-import math
 import os
 from PIL import Image, ImageDraw
 
