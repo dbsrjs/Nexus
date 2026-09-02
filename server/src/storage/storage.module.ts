@@ -11,7 +11,8 @@ import { StorageDriver } from './storage.driver';
  * 로컬에서는 경로, S3 에서는 오브젝트 키가 된다.
  *
  * S3 구현을 붙이는 절차: `S3Driver` 를 만들고 아래 분기에 넣은 뒤
- * `.env` 의 `STORAGE_DRIVER=s3`. `minio` 패키지가 이미 의존성에 있다.
+ * `.env` 의 `STORAGE_DRIVER=s3`. **SDK 는 그때 깐다** — 드라이버가 없는 채로
+ * `minio` 를 의존성에 두었더니, 쓰지도 않는 패키지를 새 PC 마다 내려받았다.
  */
 @Module({
   providers: [

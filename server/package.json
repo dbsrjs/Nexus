@@ -42,7 +42,6 @@
     "cookie-parser": "^1.4.6",
     "image-size": "^1.2.1",
     "ioredis": "^5.11.1",
-    "minio": "^8",
     "passport": "^0.7",
     "passport-jwt": "^4",
     "reflect-metadata": "^0.2",
