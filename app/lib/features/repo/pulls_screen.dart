@@ -13,8 +13,13 @@ typedef PullListKey = ({String spaceId, String repoId, String state});
 /// provider 가 아니라 `_PullsScreenState` 가 직접 이어 붙인다 — 커밋 목록과
 /// 같은 이유다: 필터 전환은 목록을 통째로 바꾸는 일이고, 더 불러오기는 그
 /// 위에 쌓는 일이라 성격이 다르다.
-final pullsProvider =
-    FutureProvider.family<({List<PullSummary> pulls, int? nextPage}), PullListKey>(
+///
+/// **`autoDispose` 다.** PR 은 캐시하지 않는다 — 파일 목록 · 이슈 상세 · 댓글 ·
+/// 라벨 · 번다운과 같은 취급이다. 빼 두었더니 화면을 떠나도 결과가 남아,
+/// GitHub 에서 머지된 PR 이 다시 들어와도 「열림」 으로 굳어 있었다. 나가서
+/// 다시 들어오는 것이 곧 새로고침이 된다.
+final pullsProvider = FutureProvider.autoDispose
+    .family<({List<PullSummary> pulls, int? nextPage}), PullListKey>(
   (ref, key) =>
       ref.read(pullsApiProvider).list(key.spaceId, key.repoId, state: key.state),
 );
@@ -59,6 +64,7 @@ class PullList extends StatelessWidget {
     required this.onTap,
     this.state = 'open',
     this.onMore,
+    this.loadingMore = false,
   });
 
   final List<PullSummary> pulls;
@@ -69,6 +75,10 @@ class PullList extends StatelessWidget {
   final void Function(PullSummary pull) onTap;
   final VoidCallback? onMore;
 
+  /// 이어 받는 중. **버튼을 없애지 않고 자리를 지킨 채 스피너로 바꾼다** —
+  /// 사라지면 목록이 튀고, 누른 것이 먹었는지 알 수 없다.
+  final bool loadingMore;
+
   @override
   Widget build(BuildContext context) {
     if (pulls.isEmpty) {
@@ -77,11 +87,24 @@ class PullList extends StatelessWidget {
       );
     }
 
+    final hasMoreRow = onMore != null || loadingMore;
+
     return ListView.builder(
-      itemCount: pulls.length + (onMore == null ? 0 : 1),
+      itemCount: pulls.length + (hasMoreRow ? 1 : 0),
       itemBuilder: (_, i) {
         if (i == pulls.length) {
-          return TextButton(onPressed: onMore, child: const Text('더 불러오기'));
+          return loadingMore
+              ? const Padding(
+                  padding: EdgeInsets.all(NexusSpacing.sp4),
+                  child: Center(
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                )
+              : TextButton(onPressed: onMore, child: const Text('더 불러오기'));
         }
 
         final p = pulls[i];
@@ -200,9 +223,12 @@ class _PullsScreenState extends ConsumerState<PullsScreen> {
           return PullList(
             pulls: [...value.pulls, ..._extra],
             state: _state,
+            // 이어 받는 중에는 `onMore` 를 끊어 두 번 눌리지 않게 하되,
+            // 행 자체는 `loadingMore` 가 지킨다.
             onMore: _loadingMore || nextPage == null
                 ? null
                 : () => _loadMore(nextPage),
+            loadingMore: _loadingMore,
             onTap: (p) => context.push(
               '/s/${widget.spaceId}/repos/${widget.repoId}/pulls/${p.number}',
             ),
@@ -214,10 +240,12 @@ class _PullsScreenState extends ConsumerState<PullsScreen> {
 }
 
 /// 목록을 못 받았을 때. **가장 흔한 원인은 GitHub 미연결이다** — 저장소를
-/// 붙인 뒤 나중에 연결을 해제하면(10-2a) 서버가 400 을 주는데, 그 실패는
-/// `ApiFailure.server` 로 접힌다(400 은 classifyDioException 이 딱히 갈래를
-/// 두지 않은 코드다). 그 밖의 실패(찾을 수 없음 · 네트워크)는 다시 확인으로
-/// 충분하다.
+/// 붙인 뒤 나중에 연결을 해제하면(10-2a) 서버가 400 을 준다.
+///
+/// 예전에는 400 이 `ApiFailure.server` 로 접혀 **진짜 서버 오류에도 «GitHub 을
+/// 연결하세요» 가 떴다.** 이제 `badRequest` 로 갈라져, 그 경우에만 연결하러
+/// 가는 길을 보여 준다. 그 밖의 실패(찾을 수 없음 · 네트워크 · 서버 오류)는
+/// 다시 확인으로 충분하다.
 class _PullsError extends StatelessWidget {
   const _PullsError({
     required this.error,
@@ -233,9 +261,9 @@ class _PullsError extends StatelessWidget {
   Widget build(BuildContext context) {
     final failure = error is ApiException ? (error as ApiException).failure : null;
 
-    if (failure != null && failure != ApiFailure.server) {
+    if (failure != ApiFailure.badRequest) {
       return _Message(
-        text: messageFor(failure),
+        text: failure == null ? messageFor(ApiFailure.server) : messageFor(failure),
         action: OutlinedButton(onPressed: onRetry, child: const Text('다시 확인')),
       );
     }

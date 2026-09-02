@@ -14,7 +14,11 @@ typedef PullView = ({PullDetail pull, List<PullChangedFile> files, bool truncate
 
 /// 상세와 바뀐 파일을 **한 provider 가 함께** 받는다 — 화면은 스피너 하나만
 /// 그리면 되고, 위젯 테스트가 override 할 자리도 하나다.
-final pullDetailProvider = FutureProvider.family<PullView, PullKey>((ref, key) async {
+///
+/// **`autoDispose` 다**(목록과 같은 이유). 빼 두었더니 상세가 앱을 끌 때까지
+/// 굳어, 머지된 PR 을 다시 열어도 옛 상태가 보였다.
+final pullDetailProvider =
+    FutureProvider.autoDispose.family<PullView, PullKey>((ref, key) async {
   final api = ref.read(pullsApiProvider);
   final pull = await api.detail(key.spaceId, key.repoId, key.number);
   final files = await api.files(key.spaceId, key.repoId, key.number);
@@ -145,6 +149,21 @@ class PullDetailScreen extends ConsumerWidget {
   }
 }
 
+/// 변경량 한 줄. **아는 것만 이어 붙인다** — 셋 다 모르면 `null` 이라 화면이
+/// 그 줄 자체를 만들지 않는다.
+String? changeSummary(PullDetail pull) {
+  final parts = <String>[
+    if (pull.additions != null && pull.deletions != null)
+      '+${pull.additions} −${pull.deletions}'
+    else if (pull.additions != null)
+      '+${pull.additions}'
+    else if (pull.deletions != null)
+      '−${pull.deletions}',
+    if (pull.changedFiles != null) '파일 ${pull.changedFiles}개',
+  ];
+  return parts.isEmpty ? null : parts.join(' · ');
+}
+
 class _PullDetailBody extends StatelessWidget {
   const _PullDetailBody({
     required this.spaceId,
@@ -183,12 +202,12 @@ class _PullDetailBody extends StatelessWidget {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         // **모르면 말하지 않는다** — 0 으로 그리면 "안 바뀐 PR" 로 읽힌다.
-        if (pull.additions != null) ...[
+        // 셋이 각각 nullable 이라 **하나만 보고 셋을 그리면 안 된다** —
+        // `additions` 만 검사했더니 나머지가 빌 때 «−null · 파일 null개» 가
+        // 찍혔다. 규칙을 지키려던 코드가 정작 더 나쁜 표시를 냈다.
+        if (changeSummary(pull) case final summary?) ...[
           const SizedBox(height: NexusSpacing.sp4),
-          Text(
-            '+${pull.additions} −${pull.deletions} · 파일 ${pull.changedFiles}개',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          Text(summary, style: Theme.of(context).textTheme.bodySmall),
         ],
         if ((pull.body ?? '').isNotEmpty) ...[
           const SizedBox(height: NexusSpacing.sp6),

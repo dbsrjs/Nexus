@@ -56,12 +56,12 @@ export class GithubReposController {
     if (!res.ok) throw toGithubHttpError(res.status, res.retryAfter);
 
     return {
-      repos: res.value,
+      repos: res.value.items,
       page,
-      // per_page=100 으로 부르므로 100건이 꽉 찼으면 다음 장이 있다고 본다.
-      // Link 헤더를 파싱하지 않는 이유는 마지막 장에서 한 번 헛걸음하는 것이
-      // 전부이고, 그 대가로 헤더 파서를 두지 않아도 되기 때문이다.
-      hasNext: res.value.length === 100,
+      // 한 장이 꽉 찼으면 다음 장이 있다고 본다. **그 판단은 클라이언트가
+      // 걸러내기 전 개수로 한다**(`Paged`) — Link 헤더를 파싱하지 않는 이유는
+      // 마지막 장에서 한 번 헛걸음하는 것이 전부이기 때문이다.
+      hasNext: res.value.hasMore,
     };
   }
 }

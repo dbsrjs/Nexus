@@ -35,9 +35,11 @@ export class PullsService {
     if (!res.ok) throw toGithubHttpError(res.status, res.retryAfter);
 
     return {
-      pulls: res.value,
-      // per_page=30 이 꽉 찼으면 다음 장이 있다고 본다(커밋 목록과 같다).
-      nextPage: res.value.length === 30 ? page + 1 : null,
+      pulls: res.value.items,
+      // 꽉 찼으면 다음 장이 있다고 본다(커밋 목록과 같다). **모양이 깨진
+      // 항목을 걸러내기 전 개수로 판단한다** — 그러지 않으면 30건 중 하나만
+      // 깨져도 29가 되어 다음 장이 조용히 사라진다.
+      nextPage: res.value.hasMore ? page + 1 : null,
     };
   }
 

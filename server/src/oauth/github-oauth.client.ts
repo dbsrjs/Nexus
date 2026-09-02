@@ -14,6 +14,17 @@ import {
   type PullSummary,
 } from '../repos/pull-view';
 
+/**
+ * 한 장의 목록. **`hasMore` 는 걸러내기 전 원본 개수로 정한다** — 모양이
+ * 깨진 항목 하나 때문에 페이지가 덜 찬 것으로 보이면 다음 장이 조용히
+ * 사라진다. 그 판단을 서비스로 넘기면 원본 개수를 볼 수 없어 같은 실수가
+ * 세 곳에서 반복된다.
+ */
+export interface Paged<T> {
+  items: T[];
+  hasMore: boolean;
+}
+
 export interface GithubToken {
   accessToken: string;
   scope: string | null;
@@ -204,7 +215,7 @@ export class GithubOauthClient {
     cfg: GithubOauthConfig,
     token: string,
     page: number,
-  ): Promise<GithubResult<GithubRepoView[]>> {
+  ): Promise<GithubResult<Paged<GithubRepoView>>> {
     const query = new URLSearchParams({
       sort: 'updated',
       affiliation: 'owner,collaborator,organization_member',
@@ -223,7 +234,9 @@ export class GithubOauthClient {
       const view = toRepoView(raw);
       if (view) views.push(view);
     }
-    return { ok: true, value: views };
+    // **다음 장 여부는 걸러내기 전 개수로 판단한다.** 걸러낸 뒤 세면 100건
+    // 중 하나라도 모양이 깨져 99가 되는 순간 다음 장이 조용히 사라진다.
+    return { ok: true, value: { items: views, hasMore: res.value.length >= 100 } };
   }
 
   async listBranches(
@@ -404,7 +417,7 @@ export class GithubOauthClient {
     fullName: string,
     ref: string,
     page: number,
-  ): Promise<GithubResult<CommitSummary[]>> {
+  ): Promise<GithubResult<Paged<CommitSummary>>> {
     const query = new URLSearchParams({ per_page: '30', page: String(page) });
     if (ref) query.set('sha', ref);
 
@@ -419,7 +432,7 @@ export class GithubOauthClient {
       const summary = toCommitSummary(raw);
       if (summary) commits.push(summary);
     }
-    return { ok: true, value: commits };
+    return { ok: true, value: { items: commits, hasMore: res.value.length >= 30 } };
   }
 
   /** 열린/닫힌 PR 목록. **변경량은 오지 않는다** — 단건에만 있다(설계 §1). */
@@ -429,7 +442,7 @@ export class GithubOauthClient {
     fullName: string,
     state: 'open' | 'closed',
     page: number,
-  ): Promise<GithubResult<PullSummary[]>> {
+  ): Promise<GithubResult<Paged<PullSummary>>> {
     const query = new URLSearchParams({
       state,
       per_page: '30',
@@ -449,7 +462,7 @@ export class GithubOauthClient {
       const view = toPullSummary(raw);
       if (view) pulls.push(view);
     }
-    return { ok: true, value: pulls };
+    return { ok: true, value: { items: pulls, hasMore: res.value.length >= 30 } };
   }
 
   async getPull(
@@ -470,19 +483,36 @@ export class GithubOauthClient {
     return { ok: true, value: view };
   }
 
-  /** 리뷰 목록을 받아 **한 값으로 접어서** 준다(설계 §2). */
+  /**
+   * 리뷰 목록을 받아 **한 값으로 접어서** 준다(설계 §2).
+   *
+   * **끝까지 넘긴다.** GitHub 은 리뷰를 오래된 것부터 주므로 첫 장만 받으면
+   * 리뷰가 100건을 넘는 PR 에서 **최신 리뷰가 통째로 빠진다** — 「리뷰어마다
+   * 마지막 것만」 이라는 규칙이 정작 깨지고, 이미 해결된 「변경 요청됨」 이
+   * 계속 뜬다. 5장(500건)에서 멈추는 것은 그보다 많은 리뷰가 달린 PR 을
+   * 상상하기 어렵고, 무한 루프를 만들지 않기 위해서다.
+   */
   async getPullReview(
     cfg: GithubOauthConfig,
     token: string,
     fullName: string,
     num: number,
   ): Promise<GithubResult<PullReviewState | null>> {
-    const res = await this.call<unknown>(
-      `${cfg.apiBase}/repos/${fullName}/pulls/${num}/reviews?per_page=100`,
-      token,
-    );
-    if (!res.ok) return res;
-    return { ok: true, value: foldReviewState(res.value) };
+    const all: unknown[] = [];
+
+    for (let page = 1; page <= 5; page++) {
+      const res = await this.call<unknown>(
+        `${cfg.apiBase}/repos/${fullName}/pulls/${num}/reviews?per_page=100&page=${page}`,
+        token,
+      );
+      if (!res.ok) return res;
+      if (!Array.isArray(res.value)) break;
+
+      all.push(...res.value);
+      if (res.value.length < 100) break;
+    }
+
+    return { ok: true, value: foldReviewState(all) };
   }
 
   /**
@@ -514,8 +544,17 @@ export class GithubOauthClient {
       if (res.value.length < 100) return { ok: true, value: { files, truncated: false } };
     }
 
-    // 세 장이 모두 꽉 찼다 — 더 있을 수 있다.
-    return { ok: true, value: { files, truncated: true } };
+    // 세 장이 모두 꽉 찼다. **«정확히 300» 과 «300 초과» 를 구분한다** —
+    // 네 장째를 한 건만 엿본다. 예전에는 구분하지 못해 정확히 300개인 PR 도
+    // «더 있습니다» 로 표시했다. 요청 하나를 더 쓰지만 300개를 넘는 PR 에서만
+    // 일어나고, 「조용히 자르지 않는다」 는 규칙은 표시가 정확해야 뜻이 있다.
+    const peek = await this.call<Array<Record<string, unknown>>>(
+      `${cfg.apiBase}/repos/${fullName}/pulls/${num}/files?per_page=1&page=301`,
+      token,
+    );
+    // 엿보기가 실패하면 모르는 것이므로 truncated 쪽으로 기운다.
+    const truncated = !peek.ok || peek.value.length > 0;
+    return { ok: true, value: { files, truncated } };
   }
 
   async getCommit(

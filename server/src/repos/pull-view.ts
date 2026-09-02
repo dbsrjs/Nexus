@@ -59,12 +59,16 @@ function num(value: unknown): number | null {
 
 export function toPullSummary(raw: unknown): PullSummary | null {
   const pr = rec(raw);
-  if (!pr || typeof pr.number !== 'number') return null;
+  // **`typeof === 'number'` 로는 부족하다** — NaN 도 number 라 그대로 통과해
+  // `/pulls/NaN` 같은 경로가 만들어진다. 남이 보내는 값이라 모양을 강제할 수
+  // 없으므로 여기서 거른다.
+  const number = pr ? num(pr.number) : null;
+  if (!pr || number === null) return null;
 
   const mergedAt = str(pr.merged_at);
 
   return {
-    number: pr.number,
+    number,
     title: str(pr.title) ?? '',
     // **GitHub 의 state 를 그대로 쓰지 않는다.** 거기엔 open · closed 뿐이고
     // 머지 여부는 merged_at 에 있다. 둘은 사람에게 전혀 다른 일이다.

@@ -45,6 +45,12 @@ describe('toPullSummary', () => {
     expect(toPullSummary(OPEN)?.headSha).toBe('abc123');
   });
 
+  it('NaN 은 번호가 아니다 — typeof 로는 못 거른다', () => {
+    // NaN 도 typeof 가 'number' 라 그대로 통과하면 `/pulls/NaN` 이 만들어진다.
+    expect(toPullSummary({ ...OPEN, number: Number.NaN })).toBeNull();
+    expect(toPullSummary({ ...OPEN, number: Number.POSITIVE_INFINITY })).toBeNull();
+  });
+
   it('sha 가 없으면 null 이다', () => {
     expect(toPullSummary({ ...OPEN, head: { ref: 'feat/x' } })?.headSha).toBeNull();
   });

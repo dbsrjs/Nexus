@@ -19,6 +19,13 @@ enum ApiFailure {
   /// 파일이 서버 한도를 넘었다 (413). 재시도해도 같으므로 다른 문구가 필요하다.
   tooLarge,
 
+  /// 요청이 조건을 못 채웠다 (400). **`server` 와 갈라 두는 이유는 사용자가
+  /// 할 일이 다르기 때문이다** — 서버 오류는 기다렸다 다시 하면 되지만, 400 은
+  /// 무언가를 먼저 해야 한다(가장 흔한 것이 «GitHub 계정을 먼저 연결해야
+  /// 합니다»). 갈라 두기 전에는 둘 다 `server` 로 접혀, 진짜 500 에도
+  /// «GitHub 을 연결하세요» 가 떴다.
+  badRequest,
+
   /// 그 밖의 서버 오류.
   server,
 }
@@ -42,6 +49,8 @@ ApiFailure classifyDioException(DioException e) {
       return ApiFailure.notFound;
     case 413:
       return ApiFailure.tooLarge;
+    case 400:
+      return ApiFailure.badRequest;
   }
 
   switch (e.type) {
@@ -61,5 +70,8 @@ String messageFor(ApiFailure failure) => switch (failure) {
       ApiFailure.notFound => '찾을 수 없습니다.',
       ApiFailure.network => '서버에 연결할 수 없습니다.',
       ApiFailure.tooLarge => '파일이 너무 큽니다.',
+      // 무엇을 먼저 해야 하는지는 부르는 화면이 안다. 여기서는 일반적인
+      // 문구만 두고, 화면이 필요하면 자기 문구로 덮는다.
+      ApiFailure.badRequest => '요청을 처리할 수 없습니다.',
       ApiFailure.server => '문제가 생겼습니다. 잠시 후 다시 시도해 주세요.',
     };

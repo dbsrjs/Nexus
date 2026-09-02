@@ -105,4 +105,33 @@ void main() {
 
     expect(find.textContaining('300개'), findsOneWidget);
   });
+
+  group('변경량 한 줄 — 아는 것만 말한다', () {
+    PullDetail base({int? additions, int? deletions, int? changedFiles}) => PullDetail(
+          number: 1,
+          title: 't',
+          state: PullState.open,
+          additions: additions,
+          deletions: deletions,
+          changedFiles: changedFiles,
+        );
+
+    test('셋을 다 알면 다 말한다', () {
+      expect(changeSummary(base(additions: 12, deletions: 3, changedFiles: 2)),
+          '+12 −3 · 파일 2개');
+    });
+
+    // **예전에는 additions 하나만 검사하고 셋을 그렸다** — 나머지가 비면
+    // «−null · 파일 null개» 가 찍혔다. 모르는 것은 말하지 않는 규칙이
+    // 정작 더 나쁜 표시를 냈다.
+    test('일부만 알면 아는 것만 말한다', () {
+      expect(changeSummary(base(additions: 12)), '+12');
+      expect(changeSummary(base(additions: 12, changedFiles: 2)), '+12 · 파일 2개');
+      expect(changeSummary(base(changedFiles: 2)), '파일 2개');
+    });
+
+    test('셋 다 모르면 줄 자체를 만들지 않는다', () {
+      expect(changeSummary(base()), isNull);
+    });
+  });
 }

@@ -147,9 +147,10 @@ export class RepoBrowseService {
 
     return {
       ref: useRef,
-      commits: res.value,
-      // per_page=30 이 꽉 찼으면 다음 장이 있다고 본다(10-2b 의 저장소 목록과 같다).
-      nextCursor: res.value.length === 30 ? String(page + 1) : null,
+      commits: res.value.items,
+      // 꽉 찼으면 다음 장이 있다고 본다(10-2b 의 저장소 목록과 같다).
+      // **걸러내기 전 개수로 판단한다** — 세 곳이 같은 규칙을 쓴다.
+      nextCursor: res.value.hasMore ? String(page + 1) : null,
     };
   }
 

@@ -23,4 +23,16 @@ describe('toGithubHttpError', () => {
   it('그 밖은 502 다 — 우리 잘못이 아니라 GitHub 에서 못 받은 것이다', () => {
     expect(toGithubHttpError(500).getStatus()).toBe(HttpStatus.BAD_GATEWAY);
   });
+
+  // **본문을 객체로 넘겨야 `error` 라벨이 채워진다.** 문자열로 넘기면 전역
+  // 필터의 그 갈래가 라벨을 채우지 않아 기본값 InternalServerError 가 남는다 —
+  // 401 응답이 `{"statusCode":401, …, "error":"InternalServerError"}` 로 나갔다.
+  it.each([
+    [404, 'NotFound'],
+    [401, 'Unauthorized'],
+    [500, 'BadGateway'],
+    [429, 'TooManyRequests'],
+  ])('%s 는 error 라벨이 %s 다', (status, label) => {
+    expect(toGithubHttpError(status).getResponse()).toMatchObject({ error: label });
+  });
 });

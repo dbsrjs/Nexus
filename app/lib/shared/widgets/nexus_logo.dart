@@ -23,24 +23,32 @@ const _plateRadiusRatio = 0.225;
 
 /// 메인 심볼. `width` 는 판이 아니라 **그림의 폭**이다.
 ///
-/// 원본이 321×231 라스터라 그보다 크게 그리면 가장자리가 뭉갠다. 기본값을
-/// 160 으로 둔 것은 2배 화면에서 320px 이 되어 원본과 거의 같기 때문이다.
+/// 원본이 321×231 라스터라 그보다 크게 그리면 가장자리가 뭉갠다. 132 는 2배
+/// 화면에서 264px 이라 원본 안쪽에 있다.
+///
+/// **160 에서 줄였다.** 다크에서는 판이 배경에 거의 녹아 문제가 없었지만,
+/// 라이트 테마(`#EFF0F1`)에서는 그 검은 판이 화면에서 가장 무거운 요소가 되어
+/// 로그인 버튼보다 먼저 눈에 들어왔다 — 브랜드에 녹아든 것이 아니라 붙여 놓은
+/// 것처럼 보인다. 판을 없애는 대신(그러면 라이트에서 워드마크가 사라진다)
+/// 줄이고 여백을 늘려 무게를 덜었다.
 class NexusLogo extends StatelessWidget {
-  const NexusLogo({super.key, this.width = 160});
+  const NexusLogo({super.key, this.width = 132});
 
   final double width;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      // 여백을 그림 폭의 10/6% 에서 14/10% 로 늘렸다. 판이 작아진 만큼
+      // 마크 주위가 좁아 보이는 것을 막는다.
       padding: EdgeInsets.symmetric(
-        horizontal: width * 0.10,
-        vertical: width * 0.06,
+        horizontal: width * 0.14,
+        vertical: width * 0.10,
       ),
       decoration: BoxDecoration(
         color: _plateColor,
-        // 반경은 **판의 너비** 기준이다. 판은 그림 좌우로 10% 씩 더 넓다.
-        borderRadius: BorderRadius.circular(width * 1.2 * _plateRadiusRatio),
+        // 반경은 **판의 너비** 기준이다. 판은 그림 좌우로 14% 씩 더 넓다.
+        borderRadius: BorderRadius.circular(width * 1.28 * _plateRadiusRatio),
       ),
       child: Image.asset(
         'assets/logo/nexus-monolith.png',
