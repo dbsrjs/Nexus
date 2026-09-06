@@ -23,7 +23,10 @@ class MentionQuery {
 ///
 /// 반환이 null 이면 자동완성을 띄우지 않는다.
 MentionQuery? findMentionQuery(String text, int cursor) {
-  if (cursor < 0 || cursor > text.length) return null;
+  // **커서가 맨 앞이면 왼쪽에 `@` 가 있을 수 없다.** 0 을 통과시키면
+  // 아래가 `lastIndexOf('@', -1)` 이 되어 RangeError 로 던진다 —
+  // 전송 직후 입력창이 비면 정확히 그 상태(text 는 '', cursor 는 0)가 된다.
+  if (cursor <= 0 || cursor > text.length) return null;
 
   final at = text.lastIndexOf('@', cursor - 1);
   if (at < 0) return null;

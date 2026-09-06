@@ -159,6 +159,14 @@ void main() {
     test('@ 가 없으면 null', () {
       expect(findMentionQuery('그냥 글', 3), isNull);
     });
+
+    // 전송하면 입력창이 비워져 text = '' · cursor = 0 이 된다. 그때
+    // lastIndexOf('@', -1) 이 RangeError 를 던져 전송이 통째로 중단됐다.
+    test('★ 커서가 맨 앞이면 null - 왼쪽에 @ 가 있을 수 없다', () {
+      expect(findMentionQuery('', 0), isNull);
+      expect(findMentionQuery('안녕', 0), isNull);
+      expect(findMentionQuery('@홍', 0), isNull);
+    });
   });
 
   group('filterMembers', () {
