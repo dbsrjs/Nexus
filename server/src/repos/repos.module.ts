@@ -17,6 +17,7 @@ import { IndexChunksRepository } from './indexing/index-chunks.repository';
 import { IndexQueueService } from './indexing/index-queue.service';
 import { IndexingService } from './indexing/indexing.service';
 import { IndexingWorker } from './indexing/indexing.worker';
+import { IndexingController } from './indexing/indexing.controller';
 
 /**
  * 저장소 연동. 웹훅 수신은 `SpaceGuard` 를 지나지 않으므로(부르는 쪽이
@@ -35,6 +36,7 @@ import { IndexingWorker } from './indexing/indexing.worker';
     GithubReposController,
     RepoEventsController,
     PullsController,
+    IndexingController,
   ],
   providers: [
     ReposService,

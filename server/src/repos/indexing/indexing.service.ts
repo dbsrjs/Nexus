@@ -1,10 +1,16 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GithubOauthClient, GithubTreeEntry } from '../../oauth/github-oauth.client';
 import { OauthService } from '../../oauth/oauth.service';
 import { resolveGithubOauth, type GithubOauthConfig } from '../../config/oauth.config';
 import { ConfigService } from '@nestjs/config';
-import { RepoProvider } from '@prisma/client';
+import { RepoIndexReason, RepoProvider } from '@prisma/client';
 import { resolveBlobBody } from '../blob-content';
 import {
   EMBEDDING_PROVIDER,
@@ -54,6 +60,79 @@ export class IndexingService {
     @Inject(EMBEDDING_PROVIDER)
     private readonly embedder: EmbeddingProvider | null,
   ) {}
+
+  /**
+   * 인덱싱 상태.
+   *
+   * **한 번도 인덱싱하지 않았으면 `state: 'none'` 이다.** `null` 을 돌려
+   * 「없음」과 「모름」을 헷갈리게 하지 않는다(10-3b · 11 의 규칙).
+   */
+  async status(spaceId: string, repoId: string) {
+    const repo = await this.prisma.repo.findFirst({
+      where: { id: repoId, spaceId },
+      select: { indexedAt: true, indexedCommitSha: true },
+    });
+    // 403 이 아니라 404 다 — 403 은 그 저장소가 존재한다를 알려 준다.
+    if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
+
+    const job = await this.prisma.repoIndexJob.findUnique({ where: { repoId } });
+    const chunkCount = await this.chunks.countFor(spaceId, repoId);
+
+    return {
+      state: job?.state ?? 'none',
+      reason: job?.reason ?? null,
+      indexedAt: repo.indexedAt,
+      indexedCommitSha: repo.indexedCommitSha,
+      chunkCount,
+      truncated: job?.truncated ?? false,
+      attempts: job?.attempts ?? 0,
+      lastError: job?.lastError ?? null,
+    };
+  }
+
+  /** 사람이 다시 태운다. **전체 재인덱싱**이다 — `baseSha` 를 비운다. */
+  async requeue(spaceId: string, repoId: string) {
+    const repo = await this.prisma.repo.findFirst({
+      where: { id: repoId, spaceId },
+      select: { id: true },
+    });
+    if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
+
+    await this.queue.enqueue({
+      spaceId,
+      repoId,
+      reason: RepoIndexReason.manual,
+      headSha: null,
+      baseSha: null,
+    });
+    // 깨우지 않는다. 서비스가 워커를 부르면 둘이 서로를 참조해 순환 의존이
+    // 된다(IndexingWorker 가 이미 IndexingService 를 쓴다). 깨우는 것은
+    // 컨트롤러의 일이다.
+    return { state: 'queued' as const };
+  }
+
+  /**
+   * 벡터 검색. **13단계 AI 가 그대로 쓸 자리다.**
+   *
+   * 질문을 임베딩하는 데도 인덱싱과 같은 provider 를 쓴다 — 다른 것으로
+   * 임베딩한 벡터끼리는 거리가 뜻을 갖지 않는다.
+   */
+  async search(spaceId: string, repoId: string, query: string, topK: number) {
+    const repo = await this.prisma.repo.findFirst({
+      where: { id: repoId, spaceId },
+      select: { id: true },
+    });
+    if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
+
+    if (!this.embedder) {
+      throw new ServiceUnavailableException(
+        '임베딩이 설정되지 않아 검색할 수 없습니다.',
+      );
+    }
+
+    const [vector] = await this.embedder.embed([query]);
+    return { chunks: await this.chunks.search(spaceId, repoId, vector, topK) };
+  }
 
   async runOne(job: LeasedJob): Promise<void> {
     try {
