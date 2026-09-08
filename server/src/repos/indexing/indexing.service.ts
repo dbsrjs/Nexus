@@ -112,11 +112,26 @@ export class IndexingService {
 
     let done = 0;
     for (const batch of chunked(targets, FETCH_CONCURRENCY)) {
-      await Promise.all(
+      // **`index()` 가 반환할 때 떠 있는 요청이 없어야 한다.** `Promise.all` 은
+      // 먼저 실패한 것만 알려 주고 나머지를 취소하지 않아, 낙오된 쓰기가
+      // 재시도의 `deleteRepo()` 뒤에 착지하면 옛 커밋의 청크가 남는다.
+      // `allSettled` 로 배치 전체가 정착하기를 기다린 뒤에야 실패를 판단한다.
+      const results = await Promise.allSettled(
         batch.map((entry) =>
           this.indexOneFile(job, cfg, token, repo.fullPath, entry, headSha as string),
         ),
       );
+      const rejections = results.filter(
+        (r): r is PromiseRejectedResult => r.status === 'rejected',
+      );
+      if (rejections.length > 0) {
+        // 거부가 여럿이면 IndexingAbort 를 먼저 던진다 — 실패 종류(시도 횟수로
+        // 셀지, Retry-After 가 얼마인지)를 담고 있어 runOne() 이 그 정보로
+        // 큐를 다룬다. 없으면 첫 거부를 그대로 던진다. 다음 배치로 넘어가지
+        // 않도록 배치 루프 안에서 던진다.
+        const abort = rejections.find((r) => r.reason instanceof IndexingAbort);
+        throw abort ? (abort.reason as IndexingAbort) : (rejections[0].reason as unknown);
+      }
       done += batch.length;
       if (done % RENEW_EVERY < FETCH_CONCURRENCY) await this.queue.renew(job.repoId);
     }
