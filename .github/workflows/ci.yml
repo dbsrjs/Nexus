@@ -85,7 +85,7 @@ jobs:
       - run: flutter test
 
   server-integration:
-    name: 서버 통합 (계약 검증 13종)
+    name: 서버 통합 (계약 검증 14종)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -135,6 +135,9 @@ jobs:
       # 가짜 GitHub 이 훅 URL 을 검사하지 않으므로 아무 http 주소면 된다.
       # 비우면 check:oauth · check:browse 가 준비 단계에서 중단된다.
       PUBLIC_BASE_URL: http://127.0.0.1:3000
+      # 인덱싱 검증은 결정적 임베딩을 쓴다. 진짜 provider 를 부르면 CI 가
+      # 외부 API 키에 묶인다 (설계 §8).
+      EMBEDDING_PROVIDER: fake
       # check:realtime 만 시드 계정으로 로그인한다. 시드는 기존 계정의
       # 비밀번호를 덮어쓰지 않지만(upsert 의 update 가 name 만 건드린다)
       # CI 는 DB 가 매번 새것이라 이 값으로 생성된다.
@@ -187,14 +190,14 @@ jobs:
           cat /tmp/server.log
           exit 1
 
-      - name: 계약 검증 13종
+      - name: 계약 검증 14종
         run: |
           set -e
           echo "── check:migrations ──"
           node scripts/check-migrations.mjs
           echo "── check:realtime ──"
           node scripts/check-realtime.mjs "$SEED_PASSWORD"
-          for s in reactions threads quotes mentions pins attachments issues repos oauth browse pulls; do
+          for s in reactions threads quotes mentions pins attachments issues repos oauth browse pulls indexing; do
             echo "── check:$s ──"
             node "scripts/check-$s.mjs"
           done
