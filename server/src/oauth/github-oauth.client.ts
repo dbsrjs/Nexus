@@ -74,6 +74,22 @@ export interface GithubContentDir {
   }>;
 }
 
+/** 재귀 트리의 한 항목. **blob 만 담는다** — 디렉터리는 인덱싱 대상이 아니다. */
+export interface GithubTreeEntry {
+  path: string;
+  sha: string;
+  size: number;
+}
+
+export interface GithubTree {
+  entries: GithubTreeEntry[];
+  /**
+   * GitHub 이 10만 항목 / 7MB 에서 잘랐다. **이 규모에서는 닿지 않지만
+   * 조용히 숨기지 않는다** — 9-1 이 컬럼 상한에서 정한 규칙이다.
+   */
+  truncated: boolean;
+}
+
 export interface ChangedFile {
   path: string;
   status: 'added' | 'removed' | 'modified';
@@ -582,6 +598,98 @@ export class GithubOauthClient {
     }
 
     return { ok: true, value: { summary, files } };
+  }
+
+  /**
+   * 저장소 전체 목록을 **한 번에** 받는다.
+   *
+   * **10-3a 는 이것을 일부러 쓰지 않았다** — 사람이 폴더 하나를 여는 상황에서는
+   * 쓰지도 않을 수만 항목을 받는 낭비였다. 인덱싱은 정의상 전수 순회라 그
+   * 계산이 뒤집힌다: contents API 로는 **디렉터리마다 한 번씩** 부른다 (설계 §0).
+   *
+   * 항목마다 `size` 가 함께 오므로 **요청을 쓰기 전에** 큰 파일을 거를 수 있다.
+   */
+  async getTree(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+    ref: string,
+  ): Promise<GithubResult<GithubTree>> {
+    const res = await this.call<{
+      tree?: Array<{ path?: string; type?: string; sha?: string; size?: number }>;
+      truncated?: boolean;
+    }>(
+      `${cfg.apiBase}/repos/${fullName}/git/trees/${encodeURIComponent(ref)}?recursive=1`,
+      token,
+    );
+    if (!res.ok) return res;
+
+    const entries: GithubTreeEntry[] = [];
+    for (const raw of res.value.tree ?? []) {
+      // blob 만 본다. tree(디렉터리) · commit(서브모듈)은 인덱싱할 내용이 없다.
+      if (raw.type !== 'blob') continue;
+      if (!raw.path || !raw.sha) continue;
+      entries.push({ path: raw.path, sha: raw.sha, size: raw.size ?? 0 });
+    }
+
+    return { ok: true, value: { entries, truncated: res.value.truncated === true } };
+  }
+
+  /**
+   * blob 하나의 본문.
+   *
+   * contents API 가 아니라 이쪽을 쓰는 이유는 트리가 이미 sha 를 줘서 경로를
+   * sha 로 바꾸는 호출이 필요 없고, **blob 은 내용 주소**라 sha 가 같으면
+   * 내용이 같기 때문이다.
+   *
+   * `encoding` 이 base64 가 아니면 본문을 못 읽은 것으로 본다 —
+   * `resolveBlobBody()` 가 `unavailable` 로 접는다.
+   */
+  async getBlob(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+    sha: string,
+  ): Promise<GithubResult<{ contentBase64: string | null; size: number }>> {
+    const res = await this.call<{ content?: string; encoding?: string; size?: number }>(
+      `${cfg.apiBase}/repos/${fullName}/git/blobs/${encodeURIComponent(sha)}`,
+      token,
+    );
+    if (!res.ok) return res;
+
+    const usable = res.value.encoding === 'base64' && typeof res.value.content === 'string';
+    return {
+      ok: true,
+      value: {
+        // base64 에 줄바꿈이 섞여 오는데 Buffer.from 이 무시한다.
+        contentBase64: usable ? (res.value.content as string) : null,
+        size: res.value.size ?? 0,
+      },
+    };
+  }
+
+  /**
+   * 브랜치의 현재 head sha.
+   *
+   * **저장소 연결로 깨어난 작업은 목표 커밋을 모른다** — 웹훅과 달리 payload 가
+   * 없다. 그때 워커가 이것을 한 번 부른다 (설계 §2).
+   */
+  async branchHead(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+    branch: string,
+  ): Promise<GithubResult<string>> {
+    const res = await this.call<{ commit?: { sha?: string } }>(
+      `${cfg.apiBase}/repos/${fullName}/branches/${encodeURIComponent(branch)}`,
+      token,
+    );
+    if (!res.ok) return res;
+
+    const sha = res.value.commit?.sha;
+    // 200 인데 sha 가 없으면 우리가 모르는 모양이다. GitHub 의 실패로 접는다.
+    if (!sha) return { ok: false, status: 502 };
+    return { ok: true, value: sha };
   }
 
   /** 인증 헤더와 오류 해석이 같아 한 곳에 모은다. */
