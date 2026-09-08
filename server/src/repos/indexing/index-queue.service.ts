@@ -35,9 +35,21 @@ export class IndexQueueService {
   /**
    * 작업을 넣는다. 이미 있으면 목표만 갱신한다.
    *
-   * **돌고 있는 중이면 `state` 를 건드리지 않는다.** 워커가 리스를 쥐고 있는
-   * 작업을 `queued` 로 되돌리면 같은 저장소를 둘이 돌게 된다. 대신 `headSha`
-   * 만 바뀌고, 워커가 끝낼 때 그것이 달라진 것을 보고 다시 `queued` 로 둔다.
+   * **단일 raw SQL upsert 다.** `SELECT` 후 분기하거나 `updateMany` 를 상태별로
+   * 둘로 나누면 그 사이에 워커가 상태를 바꿀 틈이 생긴다 — 특히 `running` 용
+   * 문장과 그 밖의 문장으로 나누면, 두 문장 사이에 `lease()` 나 `succeed()` 가
+   * 끼어들 때 **적재 자체가 통째로 사라지는 인터리브**가 있다. `ON CONFLICT`
+   * 한 문장이면 그 틈이 없다.
+   *
+   * **`running` 이면 `state` · `attempts` · `lastError` · `truncated` ·
+   * `finishedAt` · `leaseUntil` 을 그대로 두고 목표(`reason` · `headSha` ·
+   * `baseSha`)만 갱신한다.** 워커가 리스를 쥐고 있는 작업을 `queued` 로
+   * 되돌리면, `renew()` 는 `state: running` 인 행만 찾으므로 그 순간부터
+   * 리스가 더 이상 연장되지 않는다 — 원래 리스가 만료되면 아직 살아서 돌고
+   * 있는 저장소를 다른 워커가 다시 잡는다(같은 작업을 둘이 도는 사고, 설계
+   * §2). `attempts` 를 건드리지 않는 것도 같은 이유다 — `fail()` 은 DB 에
+   * 쌓인 값을 이어서 세므로, 여기서 0으로 되돌리면 push 가 잦은 저장소는
+   * `MAX_ATTEMPTS` 를 영영 못 채워 실패가 조용히 사라진다.
    */
   async enqueue(input: {
     spaceId: string;
@@ -48,28 +60,38 @@ export class IndexQueueService {
   }): Promise<void> {
     const { spaceId, repoId, reason, headSha, baseSha } = input;
 
-    await this.prisma.repoIndexJob.upsert({
-      where: { repoId },
-      create: {
-        repoId,
-        spaceId,
-        reason,
-        headSha,
-        baseSha,
-        state: RepoIndexState.queued,
-      },
-      update: {
-        reason,
-        headSha,
-        baseSha,
-        // running 은 그대로 둔다(위 주석). 그 밖에는 다시 줄을 세운다.
-        state: RepoIndexState.queued,
-        attempts: 0,
-        lastError: null,
-        truncated: false,
-        finishedAt: null,
-      },
-    });
+    await this.prisma.$executeRaw`
+      INSERT INTO repo_index_jobs
+        (repo_id, space_id, state, reason, head_sha, base_sha, updated_at)
+      VALUES
+        (${repoId}, ${spaceId}, 'queued'::"RepoIndexState", ${reason}::"RepoIndexReason", ${headSha}, ${baseSha}, now())
+      ON CONFLICT (repo_id) DO UPDATE SET
+        reason = EXCLUDED.reason,
+        head_sha = EXCLUDED.head_sha,
+        base_sha = EXCLUDED.base_sha,
+        updated_at = now(),
+        -- running 이면 그대로 둔다(위 JSDoc). 그 밖에는 다시 줄을 세운다.
+        state = CASE WHEN repo_index_jobs.state = 'running'::"RepoIndexState"
+                      THEN repo_index_jobs.state
+                      ELSE 'queued'::"RepoIndexState"
+                 END,
+        attempts = CASE WHEN repo_index_jobs.state = 'running'::"RepoIndexState"
+                         THEN repo_index_jobs.attempts
+                         ELSE 0
+                    END,
+        last_error = CASE WHEN repo_index_jobs.state = 'running'::"RepoIndexState"
+                           THEN repo_index_jobs.last_error
+                           ELSE NULL
+                      END,
+        truncated = CASE WHEN repo_index_jobs.state = 'running'::"RepoIndexState"
+                          THEN repo_index_jobs.truncated
+                          ELSE false
+                     END,
+        finished_at = CASE WHEN repo_index_jobs.state = 'running'::"RepoIndexState"
+                            THEN repo_index_jobs.finished_at
+                            ELSE NULL
+                       END
+    `;
   }
 
   /**
