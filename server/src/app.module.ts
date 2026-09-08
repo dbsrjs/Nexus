@@ -18,6 +18,7 @@ import { SprintsModule } from './sprints/sprints.module';
 import { ReposModule } from './repos/repos.module';
 import { OauthModule } from './oauth/oauth.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { EmbeddingModule } from './embedding/embedding.module';
 
 /**
  * 전환 3단계 시점의 모듈 구성 (docs/전환-계획.md §6).
@@ -47,6 +48,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     ReposModule,
     OauthModule,
     RealtimeModule,
+    EmbeddingModule,
   ],
   providers: [
     {
