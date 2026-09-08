@@ -55,3 +55,6 @@ coverage/
 # Python 캐시 — design-system/logo/build_logo.py 를 import 하면 생긴다
 __pycache__/
 *.pyc
+
+# 서브에이전트 실행 기록(SDD). git 으로 옮기지 않는다 — PC 마다 따로다.
+.superpowers/
