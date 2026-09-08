@@ -92,6 +92,21 @@ enum RepoEventType {
   release
 }
 
+/// 인덱싱 작업의 상태. 저장소마다 한 행이므로 이것이 곧 저장소의 인덱싱 상태다.
+enum RepoIndexState {
+  queued
+  running
+  done
+  failed
+}
+
+/// 무엇이 이 작업을 깨웠나. 전체 재인덱싱이 왜 돌았는지 나중에 설명할 수 있어야 한다.
+enum RepoIndexReason {
+  connect
+  push
+  manual
+}
+
 enum PullRequestState {
   open
   merged
@@ -238,6 +253,7 @@ model Space {
   repoEvents  RepoEvent[]
   pullRequests PullRequest[]
   indexChunks RepoIndexChunk[]
+  indexJobs   RepoIndexJob[]
   notifications Notification[]
   aiRuns      AiRun[]
 
@@ -620,6 +636,7 @@ model Repo {
   events        RepoEvent[]
   pullRequests  PullRequest[]
   indexChunks   RepoIndexChunk[]
+  indexJob      RepoIndexJob?
 
   @@unique([spaceId, provider, externalProjectId])
   @@map("repos")
@@ -678,6 +695,43 @@ model PullRequest {
   @@unique([repoId, number])
   @@index([spaceId, state])
   @@map("pull_requests")
+}
+
+/// 인덱싱 작업 큐. **저장소마다 한 행**이라 `repoId` 가 기본 키다 —
+/// push 가 열 번 와도 인덱싱은 한 번이다(합침이 구조가 된다).
+///
+/// 부분 유니크 인덱스(`WHERE state='queued'`)로도 같은 것을 할 수 있지만 그건
+/// Prisma 가 표현하지 못하는 손 관리 객체를 하나 더 만드는 일이다 — HNSW
+/// 인덱스로 네 번 데인 자리에 다섯 번째를 만들지 않는다 (설계 §2).
+///
+/// `repos` 에 컬럼으로 얹지 않은 이유는 경합이다. 그 행은 웹훅 수신 · 열람 ·
+/// 훅 재등록이 모두 읽고 쓰는데, 워커의 리스가 거기 끼면 서로 막는다.
+model RepoIndexJob {
+  repoId  String          @id @map("repo_id")
+  spaceId String          @map("space_id")
+  state   RepoIndexState  @default(queued)
+  reason  RepoIndexReason
+  /// 인덱싱 목표 커밋. **null 이 정상인 경우가 있다** — 연결 시점에는 모른다.
+  /// 그때는 워커가 default 브랜치의 head 를 먼저 조회해 정한다.
+  headSha String?         @map("head_sha")
+  /// 증분 기준. null 이면 전체 인덱싱이다.
+  baseSha String?         @map("base_sha")
+  attempts Int            @default(0)
+  lastError String?       @map("last_error")
+  /// 재귀 트리가 10만 항목 / 7MB 에서 잘렸다. 조용히 숨기지 않는다 (설계 §3).
+  truncated Boolean       @default(false)
+  /// 이 시각까지 이 작업은 누군가의 것이다. 지나면 다시 잡힌다 = 크래시 복구.
+  leaseUntil DateTime?    @map("lease_until")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+  startedAt  DateTime?    @map("started_at")
+  finishedAt DateTime?    @map("finished_at")
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  repo  Repo  @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@index([state, createdAt])
+  @@map("repo_index_jobs")
 }
 
 /// AI 코드 질의용 벡터 인덱스 (설계 §8.1의 전제).
