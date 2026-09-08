@@ -1,0 +1,214 @@
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { GithubOauthClient, GithubTreeEntry } from '../../oauth/github-oauth.client';
+import { OauthService } from '../../oauth/oauth.service';
+import { resolveGithubOauth, type GithubOauthConfig } from '../../config/oauth.config';
+import { ConfigService } from '@nestjs/config';
+import { RepoProvider } from '@prisma/client';
+import { resolveBlobBody } from '../blob-content';
+import {
+  EMBEDDING_PROVIDER,
+  EmbeddingProvider,
+  assertDimensions,
+} from '../../embedding/embedding.provider';
+import { IndexChunksRepository } from './index-chunks.repository';
+import { IndexQueueService, LeasedJob } from './index-queue.service';
+import { chunkText } from './chunker';
+import { isGenerated, isTooLarge, langOf } from './index-filter';
+
+/** 동시에 몇 개의 blob 을 받나. 분당 900점 한도에 여유 있게 못 미친다 (설계 §3). */
+const FETCH_CONCURRENCY = 4;
+
+/** 이만큼 처리할 때마다 리스를 갱신한다. */
+const RENEW_EVERY = 20;
+
+/** GitHub 이 아니라 우리 쪽 사정으로 실패했다는 표시. */
+class IndexingAbort extends Error {
+  constructor(
+    message: string,
+    readonly countsAsAttempt: boolean,
+    readonly retryAfterSec?: number,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * 저장소 하나를 인덱싱한다.
+ *
+ * **토큰은 저장소를 붙인 사람이 아니라 「지금 이 스페이스의 누군가」의 것을
+ * 쓴다** — 등록자를 기록해 두면 그 사람이 연결을 해제한 순간 아무도 인덱싱할
+ * 수 없게 된다(10-2b 가 훅 관리에서 한 판단과 같다).
+ */
+@Injectable()
+export class IndexingService {
+  private readonly logger = new Logger(IndexingService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly github: GithubOauthClient,
+    private readonly oauth: OauthService,
+    private readonly chunks: IndexChunksRepository,
+    private readonly queue: IndexQueueService,
+    @Inject(EMBEDDING_PROVIDER)
+    private readonly embedder: EmbeddingProvider | null,
+  ) {}
+
+  async runOne(job: LeasedJob): Promise<void> {
+    try {
+      await this.index(job);
+    } catch (err) {
+      if (err instanceof IndexingAbort) {
+        await this.queue.fail(job.repoId, err.message, {
+          countsAsAttempt: err.countsAsAttempt,
+          retryAfterSec: err.retryAfterSec,
+        });
+        return;
+      }
+      // 우리 코드의 버그다. 시도 횟수로 세고 세 번이면 포기한다.
+      this.logger.error(`인덱싱 중 예기치 못한 오류: repo=${job.repoId}`, err as Error);
+      await this.queue.fail(job.repoId, (err as Error).message, { countsAsAttempt: true });
+    }
+  }
+
+  private async index(job: LeasedJob): Promise<void> {
+    if (!this.embedder) {
+      // **부팅을 막지 않고 여기서 멈춘다.** 상태 조회가 이 문구를 그대로 말한다.
+      throw new IndexingAbort(
+        'EMBEDDING_PROVIDER 가 설정되지 않아 인덱싱할 수 없습니다.',
+        false,
+      );
+    }
+
+    const { repo, cfg, token } = await this.ready(job);
+
+    // 목표 커밋. 연결로 깨어난 작업은 모르므로 여기서 정한다 (설계 §2).
+    let headSha = job.headSha;
+    if (!headSha) {
+      if (!repo.defaultBranch) {
+        throw new IndexingAbort('저장소의 default 브랜치를 알 수 없습니다.', true);
+      }
+      const res = await this.github.branchHead(cfg, token, repo.fullPath, repo.defaultBranch);
+      if (!res.ok) throw this.abortFor(res.status, res.retryAfter, 'default 브랜치 조회');
+      headSha = res.value;
+      await this.prisma.repoIndexJob.update({
+        where: { repoId: job.repoId },
+        data: { headSha },
+      });
+    }
+
+    const tree = await this.github.getTree(cfg, token, repo.fullPath, headSha);
+    if (!tree.ok) throw this.abortFor(tree.status, tree.retryAfter, '트리 조회');
+
+    // **전체 재인덱싱이다.** 증분은 12-3(Task 13·14)에서 이 자리에 붙는다.
+    await this.chunks.deleteRepo(job.spaceId, job.repoId);
+
+    const targets = tree.value.entries.filter((e) => !isTooLarge(e.size));
+    this.logger.log(
+      `인덱싱 시작: ${repo.fullPath}@${headSha.slice(0, 7)} ` +
+        `대상 ${targets.length}/${tree.value.entries.length}`,
+    );
+
+    let done = 0;
+    for (const batch of chunked(targets, FETCH_CONCURRENCY)) {
+      await Promise.all(
+        batch.map((entry) =>
+          this.indexOneFile(job, cfg, token, repo.fullPath, entry, headSha as string),
+        ),
+      );
+      done += batch.length;
+      if (done % RENEW_EVERY < FETCH_CONCURRENCY) await this.queue.renew(job.repoId);
+    }
+
+    await this.queue.succeed(job.repoId, headSha, tree.value.truncated);
+  }
+
+  private async indexOneFile(
+    job: LeasedJob,
+    cfg: GithubOauthConfig,
+    token: string,
+    fullPath: string,
+    entry: GithubTreeEntry,
+    headSha: string,
+  ): Promise<void> {
+    const blob = await this.github.getBlob(cfg, token, fullPath, entry.sha);
+    if (!blob.ok) throw this.abortFor(blob.status, blob.retryAfter, `blob ${entry.path}`);
+
+    // 바이너리 판별을 새로 쓰지 않는다 — 열람이 쓰는 것과 같은 함수다.
+    const body = resolveBlobBody(blob.value.contentBase64, blob.value.size);
+    if (body.content === null) return;
+    if (isGenerated(body.content)) return;
+
+    const chunks = chunkText(body.content);
+    if (chunks.length === 0) return;
+
+    const vectors = await (this.embedder as EmbeddingProvider).embed(
+      chunks.map((c) => c.content),
+    );
+    assertDimensions(vectors);
+
+    await this.chunks.replaceFile({
+      spaceId: job.spaceId,
+      repoId: job.repoId,
+      path: entry.path,
+      lang: langOf(entry.path),
+      commitSha: headSha,
+      chunks,
+      embeddings: vectors,
+    });
+  }
+
+  /**
+   * 저장소 · 설정 · 토큰.
+   *
+   * `RepoAccessService.ready()` 를 그대로 쓰지 못하는 이유는 **그쪽이 요청한
+   * 사람의 userId 를 받기 때문이다.** 워커에는 요청한 사람이 없다 — 그 스페이스
+   * 에서 GitHub 을 연결해 둔 아무나의 토큰을 쓴다.
+   */
+  private async ready(job: LeasedJob) {
+    const repo = await this.prisma.repo.findFirst({
+      where: { id: job.repoId, spaceId: job.spaceId, provider: RepoProvider.github },
+      select: { fullPath: true, defaultBranch: true },
+    });
+    if (!repo) throw new IndexingAbort('저장소를 찾을 수 없습니다.', true);
+
+    const cfg = resolveGithubOauth(this.config);
+    if (!cfg) throw new IndexingAbort('GitHub 연결이 설정되지 않았습니다.', false);
+
+    const members = await this.prisma.spaceMember.findMany({
+      where: { spaceId: job.spaceId },
+      select: { userId: true },
+    });
+    for (const member of members) {
+      const token = await this.oauth.githubTokenFor(member.userId);
+      if (token) return { repo, cfg, token };
+    }
+
+    // **시도 횟수로 세지 않는다.** 아무도 연결하지 않은 것은 우리 잘못이
+    // 아니고, 누군가 연결하면 그대로 풀린다.
+    throw new IndexingAbort(
+      '이 스페이스에 GitHub 을 연결한 사람이 없습니다.',
+      false,
+    );
+  }
+
+  private abortFor(status: number, retryAfter: number | undefined, what: string): IndexingAbort {
+    // 0 은 네트워크 자체가 실패한 것이다(클라이언트 규약).
+    if (status === 0) return new IndexingAbort(`${what} 중 네트워크 실패`, false);
+    if (status === 429) {
+      return new IndexingAbort(`GitHub 요청 한도를 넘었습니다 (${what})`, false, retryAfter);
+    }
+    // 다시 걸어도 같다. 즉시 포기한다.
+    if (status === 401) return new IndexingAbort('GitHub 연결이 만료되었습니다.', true, undefined);
+    if (status === 404) return new IndexingAbort(`${what}: 찾을 수 없습니다.`, true);
+    return new IndexingAbort(`${what}: GitHub 이 ${status} 를 주었습니다.`, true);
+  }
+}
+
+/** 배열을 n개씩 자른다. */
+function chunked<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}

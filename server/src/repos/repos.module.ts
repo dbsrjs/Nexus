@@ -13,6 +13,10 @@ import { RepoAccessService } from './repo-access.service';
 import { RepoEventsController } from './repo-events.controller';
 import { PullsController } from './pulls.controller';
 import { PullsService } from './pulls.service';
+import { IndexChunksRepository } from './indexing/index-chunks.repository';
+import { IndexQueueService } from './indexing/index-queue.service';
+import { IndexingService } from './indexing/indexing.service';
+import { IndexingWorker } from './indexing/indexing.worker';
 
 /**
  * 저장소 연동. 웹훅 수신은 `SpaceGuard` 를 지나지 않으므로(부르는 쪽이
@@ -39,6 +43,10 @@ import { PullsService } from './pulls.service';
     RepoBrowseService,
     RepoAccessService,
     PullsService,
+    IndexChunksRepository,
+    IndexQueueService,
+    IndexingService,
+    IndexingWorker,
   ],
   exports: [ReposService],
 })

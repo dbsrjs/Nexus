@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
-import { RepoProvider } from '@prisma/client';
+import { RepoIndexReason, RepoProvider } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { resolveGithubOauth, type GithubOauthConfig } from '../config/oauth.config';
 import { resolvePublicBaseUrl } from '../config/public-url.config';
@@ -16,6 +16,8 @@ import { GithubOauthClient } from '../oauth/github-oauth.client';
 import { OauthService } from '../oauth/oauth.service';
 import { ConnectRepoDto } from './dto/connect-repo.dto';
 import { REPO_SELECT } from './repos.service';
+import { IndexQueueService } from './indexing/index-queue.service';
+import { IndexingWorker } from './indexing/indexing.worker';
 
 /**
  * 자동 등록. **10-1 의 `ReposService` 와 파일을 가른 이유**는 그쪽이 DB 만
@@ -35,6 +37,8 @@ export class RepoConnectService {
     private readonly config: ConfigService,
     private readonly oauth: OauthService,
     private readonly github: GithubOauthClient,
+    private readonly queue: IndexQueueService,
+    private readonly worker: IndexingWorker,
   ) {}
 
   /**
@@ -69,7 +73,16 @@ export class RepoConnectService {
     const row = await this.upsertRow(spaceId, repo, dto.linkedChannelId);
 
     // 3) 훅을 건다. 실패해도 행을 지우지 않는다.
-    return this.attachHook(row.id, repo.fullName, row.webhookSecret, baseUrl, cfg, token);
+    const view = await this.attachHook(
+      row.id,
+      repo.fullName,
+      row.webhookSecret,
+      baseUrl,
+      cfg,
+      token,
+    );
+    await this.queueIndex(spaceId, row.id);
+    return view;
   }
 
   /**
@@ -258,6 +271,29 @@ export class RepoConnectService {
       data: { webhookExternalId: String(created.value) },
     });
     return this.view(repoId);
+  }
+
+  /**
+   * 연결 직후 첫 인덱싱을 적재한다.
+   *
+   * **실패해도 연결은 성공이다** — 훅은 이미 걸렸고, 다음 push 가 같은 자리를
+   * 다시 깨운다. 여기서 던지면 훅이 걸린 저장소가 「연결 실패」로 보인다.
+   */
+  private async queueIndex(spaceId: string, repoId: string): Promise<void> {
+    try {
+      await this.queue.enqueue({
+        spaceId,
+        repoId,
+        reason: RepoIndexReason.connect,
+        // **연결 시점에는 목표 커밋을 모른다.** 웹훅과 달리 payload 가 없다 —
+        // 워커가 default 브랜치의 head 를 먼저 조회해 정한다 (설계 §2).
+        headSha: null,
+        baseSha: null,
+      });
+      this.worker.kick();
+    } catch (err) {
+      this.logger.error('인덱싱 적재 실패 — 다음 push 가 이어서 받는다', err as Error);
+    }
   }
 
   private async freshSecret(repoId: string): Promise<string> {
