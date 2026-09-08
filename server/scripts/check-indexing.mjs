@@ -209,8 +209,17 @@ async function main() {
     body: { query: 'reconnect socket with fresh token', topK: 20 },
   });
   check('검색이 200/201 이다', hits.status === 201 || hits.status === 200, String(hits.status));
-  const paths = new Set((hits.json?.chunks ?? []).map((c) => c.path));
+  const chunks = hits.json?.chunks ?? [];
+  const paths = new Set(chunks.map((c) => c.path));
   check('사람이 쓴 파일이 인덱싱됐다', paths.has('lib/socket.dart'));
+  // 검색이 완전히 깨져 chunks 가 비면 paths 가 빈 Set 이 되어 아래 부정
+  // 단언들이 전부 자동으로 참이 된다 — "빠졌다"는 "있는데 그 안에 없다"는
+  // 뜻이라, 결과 자체가 없으면 그 단언은 아무것도 증명하지 못한다.
+  abortUnless(
+    chunks.length > 0,
+    '검색 결과가 비어 있어 거르기 단언을 확인할 수 없습니다',
+    hits.json,
+  );
   check('바이너리는 빠졌다', !paths.has('logo.png'));
   check('256KB 를 넘는 파일은 빠졌다', !paths.has('huge.txt'));
   check('생성 파일은 빠졌다', !paths.has('lib/model.freezed.dart'));
@@ -261,9 +270,14 @@ async function main() {
   const redone = await waitForIndex(owner.token, spaceId, repoId);
   check('다시 태워도 끝난다', redone?.state === 'done');
   check('GitHub 을 실제로 다시 불렀다', apiHits > before);
+  // 둘 다 폴링이 타임아웃하면 `chunkCount` 가 둘 다 undefined 가 되어
+  // `===` 비교만으로는 "같다"로 거짓 통과한다(10-2b 에서 겪은 사고).
+  // 숫자인 것부터 확인해야 "늘지 않았다"는 비교가 뜻을 가진다.
   check(
     '청크 수가 그대로다 — 지우고 다시 쌓아도 늘지 않는다',
-    redone?.chunkCount === state?.chunkCount,
+    typeof state?.chunkCount === 'number' &&
+      typeof redone?.chunkCount === 'number' &&
+      redone.chunkCount === state.chunkCount,
     `${state?.chunkCount} → ${redone?.chunkCount}`,
   );
 }
