@@ -66,6 +66,11 @@ const TREE = { sha: HEAD_SHA, truncated: false, tree: Object.keys(BLOBS).map(ent
 
 const NEXT_SHA = 'next2222222222222222222222222222222222cd';
 
+// force-push 케이스 전용 — NEXT_SHA 를 재사용하면 그 시점 indexedCommitSha
+// 도 이미 NEXT_SHA 라 baseSha === headSha 조기 반환에 걸려 compare() 자체가
+// 안 불린다(발견 1). 다른 값이어야 compare 가 실제로 불리고 404 갈래를 탄다.
+const THIRD_SHA = 'thrd3333333333333333333333333333333333ef';
+
 /** 두 번째 커밋의 내용. socket 을 고치고, orphan 을 지우고, 새 파일을 더한다. */
 const NEXT_BLOBS = {
   sha_socket2: {
@@ -88,6 +93,16 @@ function entryForAll(sha) {
 
 /** 가짜 GitHub 이 받은 요청 수. 예산 단언(다시 태우면 다시 부른다)에 쓴다. */
 let apiHits = 0;
+
+/**
+ * compare 요청이 404 로 답한 횟수.
+ *
+ * **발견 1 대응** — 예전에는 "세 번째 push 가 끝난다"만 확인해, 조기 반환
+ * (`baseSha === headSha`)으로 compare() 자체가 안 불려도 케이스가 통과했다.
+ * 404 로 답한 횟수를 세어 두면 그 웹훅 전후로 실제로 늘었는지 단언할 수
+ * 있다 — 늘지 않으면 "전체로 떨어졌다"가 아니라 "할 일이 없었다"일 뿐이다.
+ */
+let compare404Hits = 0;
 
 const fake = createServer((req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${FAKE_PORT}`);
@@ -166,6 +181,7 @@ const fake = createServer((req, res) => {
     const base = decodeURIComponent(compare[1]);
     // base 가 우리가 아는 커밋이 아니면 404 — force-push 를 흉내 낸다.
     if (base !== HEAD_SHA) {
+      compare404Hits++;
       json(404, { message: 'Not Found' });
       return;
     }
@@ -378,27 +394,45 @@ async function main() {
     token: owner.token,
     body: { query: 'reconnect socket rotated token cleanup orphans added', topK: 20 },
   });
-  const paths2 = new Set((hits2.json?.chunks ?? []).map((c) => c.path));
-  check('지워진 파일의 청크가 사라졌다', !paths2.has('src/orphan.ts'));
+  const chunks2 = hits2.json?.chunks ?? [];
+  const paths2 = new Set(chunks2.map((c) => c.path));
+  // 첫 검색 블록과 같은 관행이다(262행) — 양성 단언 뒤 · 음성 단언 앞에 둔다.
+  // 검색이 완전히 깨져 chunks2 가 비면 뒤의 부정 단언(!paths2.has(...))이
+  // 전부 공짜로 통과한다(발견 3).
   check('새 파일이 인덱싱됐다', paths2.has('src/added.ts'));
+  abortUnless(
+    chunks2.length > 0,
+    '증분 검색 결과가 비어 있어 거르기 단언을 확인할 수 없습니다',
+    hits2.json,
+  );
+  check('지워진 파일의 청크가 사라졌다', !paths2.has('src/orphan.ts'));
 
   const socketChunk = (hits2.json?.chunks ?? []).find((c) => c.path === 'lib/socket.dart');
   check('바뀐 파일은 새 커밋 sha 를 갖는다', socketChunk?.commitSha === NEXT_SHA);
 
-  // **핵심 단언** — 증분이면 바뀐 파일만 받는다. 전체(5개)보다 적어야 한다.
+  // **핵심 단언** — 증분이면 바뀐 파일만 받는다.
+  // 실측(check:indexing 로 직접 찍어 봄): 정상 증분은 **4 회**
+  // (compare 1 + tree 1 + blob 2 — socket.dart · added.ts, orphan.ts 는
+  // removed 라 안 받는다). 이 push 가 몰래 전체로 떨어지면 compare 1 +
+  // tree 1 + blob 4(too-large 로 걸러지는 huge.txt 를 뺀 나머지 전부) = **6 회**
+  // 다. **`< 8` 은 둘 다 통과시켜 아무것도 가르지 못했다**(발견 2) —
+  // `< 5` 라야 4 와 6 을 실제로 가른다.
   const spent = apiHits - beforeIncremental;
-  check('증분은 전체보다 적은 요청을 쓴다', spent < 8, `요청 ${spent}회`);
+  check('증분은 전체보다 적은 요청을 쓴다', spent < 5, `요청 ${spent}회`);
 
   // ── base 가 사라지면 전체로 떨어진다 ────────────
   //
   // 가짜 GitHub 은 base 가 HEAD_SHA 가 아니면 404 를 준다 = force-push.
-  // 지금 indexedCommitSha 는 NEXT_SHA 라 다음 push 의 compare 가 404 가 되고,
-  // 그래도 인덱싱은 끝나야 한다 — 여기서 던지면 force-push 한 번에 인덱스가
-  // 영영 낡는다.
+  // **`after` 를 NEXT_SHA 로 재사용하면 안 된다(발견 1)** — 지금
+  // indexedCommitSha 가 이미 NEXT_SHA 라 `planFor()` 의 `baseSha === headSha`
+  // 조기 반환에 걸려 compare() 자체가 안 불린다. THIRD_SHA 로 다른 값을 써야
+  // baseSha(NEXT_SHA) !== headSha(THIRD_SHA) 가 되어 compare 가 실제로 불리고,
+  // 가짜 GitHub 이 base(NEXT_SHA) !== HEAD_SHA 조건으로 404 를 준다.
+  const compare404Before = compare404Hits;
   const body3 = JSON.stringify({
     ref: 'refs/heads/main',
-    after: NEXT_SHA,
-    commits: [{ id: NEXT_SHA, message: '세 번째', author: { name: 'octocat' } }],
+    after: THIRD_SHA,
+    commits: [{ id: THIRD_SHA, message: '세 번째', author: { name: 'octocat' } }],
     repository: { full_name: REPO.full_name },
     pusher: { name: 'octocat' },
   });
@@ -420,6 +454,14 @@ async function main() {
     'compare 가 404 여도 전체 재인덱싱으로 끝난다',
     after3?.state === 'done',
     JSON.stringify(after3),
+  );
+  // **발견 1 의 핵심 단언** — "끝났다"는 조기 반환(할 일 없음)으로도 참이 될
+  // 수 있다. compare 가 404 로 실제로 응답한 횟수가 이 웹훅 전후로 늘어난
+  // 것까지 봐야 "전체로 떨어졌다"를 증명한다.
+  check(
+    '세 번째 push 가 compare 의 404(force-push) 갈래를 실제로 태웠다',
+    compare404Hits > compare404Before,
+    `compare 404 횟수 ${compare404Before} → ${compare404Hits}`,
   );
 
   // ── 다른 브랜치는 아무 일도 없다 ───────────────
