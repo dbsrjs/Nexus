@@ -6,6 +6,7 @@
 //
 // 사용: npm run check:indexing
 import { createServer } from 'node:http';
+import { createHmac } from 'node:crypto';
 
 import { requireServer, abortUnless, PreflightAbort } from './lib/preflight.mjs';
 import { BASE, stamp, api, signup } from './lib/api.mjs';
@@ -63,6 +64,28 @@ function entryFor(sha) {
 
 const TREE = { sha: HEAD_SHA, truncated: false, tree: Object.keys(BLOBS).map(entryFor) };
 
+const NEXT_SHA = 'next2222222222222222222222222222222222cd';
+
+/** 두 번째 커밋의 내용. socket 을 고치고, orphan 을 지우고, 새 파일을 더한다. */
+const NEXT_BLOBS = {
+  sha_socket2: {
+    path: 'lib/socket.dart',
+    text: SOCKET_FILE.replace('reconnectWithFreshToken', 'reconnectWithRotatedToken'),
+  },
+  sha_added: { path: 'src/added.ts', text: 'export const added = true;\n' },
+};
+
+/** 지금 어느 커밋을 서비스하나. 검증이 이 값을 바꿔 두 번째 push 를 흉내 낸다. */
+let serving = 'first';
+
+const ALL_BLOBS = { ...BLOBS, ...NEXT_BLOBS };
+
+function entryForAll(sha) {
+  const b = ALL_BLOBS[sha];
+  const bytes = b.bytes ?? Buffer.from(b.text);
+  return { path: b.path, type: 'blob', sha, size: bytes.byteLength };
+}
+
 /** 가짜 GitHub 이 받은 요청 수. 예산 단언(다시 태우면 다시 부른다)에 쓴다. */
 let apiHits = 0;
 
@@ -112,7 +135,7 @@ const fake = createServer((req, res) => {
   // 삼킨다(check-browse 가 /commits/:sha 에서 겪은 것과 같다).
   const blob = url.pathname.match(/^\/repos\/[^/]+\/[^/]+\/git\/blobs\/(.+)$/);
   if (req.method === 'GET' && blob) {
-    const found = BLOBS[decodeURIComponent(blob[1])];
+    const found = ALL_BLOBS[decodeURIComponent(blob[1])];
     if (!found) {
       json(404, { message: 'Not Found' });
       return;
@@ -128,7 +151,31 @@ const fake = createServer((req, res) => {
 
   const tree = url.pathname.match(/^\/repos\/[^/]+\/[^/]+\/git\/trees\/(.+)$/);
   if (req.method === 'GET' && tree) {
+    if (serving === 'second') {
+      // socket 은 새 sha 로, orphan 은 빠지고, added 가 들어온다.
+      const shas = ['sha_socket2', 'sha_generated', 'sha_binary', 'sha_big', 'sha_added'];
+      json(200, { sha: NEXT_SHA, truncated: false, tree: shas.map(entryForAll) });
+      return;
+    }
     json(200, TREE);
+    return;
+  }
+
+  const compare = url.pathname.match(/^\/repos\/[^/]+\/[^/]+\/compare\/(.+)\.\.\.(.+)$/);
+  if (req.method === 'GET' && compare) {
+    const base = decodeURIComponent(compare[1]);
+    // base 가 우리가 아는 커밋이 아니면 404 — force-push 를 흉내 낸다.
+    if (base !== HEAD_SHA) {
+      json(404, { message: 'Not Found' });
+      return;
+    }
+    json(200, {
+      files: [
+        { filename: 'lib/socket.dart', status: 'modified' },
+        { filename: 'src/orphan.ts', status: 'removed' },
+        { filename: 'src/added.ts', status: 'added' },
+      ],
+    });
     return;
   }
 
@@ -280,6 +327,131 @@ async function main() {
       redone.chunkCount === state.chunkCount,
     `${state?.chunkCount} → ${redone?.chunkCount}`,
   );
+
+  // ── 증분 재인덱싱 ──────────────────────────────
+  //
+  // **다시 태우기(manual)로는 증분을 태울 수 없다** — 그쪽은 baseSha 를 비워
+  // 언제나 전체다. 증분은 push 웹훅이 깨우므로 서명된 요청을 직접 보낸다.
+  //
+  // **자동 등록 응답에는 webhookSecret 이 없다**(설계상 등록·재발급 응답에만
+  // 실린다). 재발급으로 받아 온다 — 그 순간부터 옛 시크릿은 무효지만 이
+  // 저장소는 우리만 쓴다.
+  serving = 'second';
+  const beforeIncremental = apiHits;
+
+  const reissued = await api('POST', `/spaces/${spaceId}/repos/${repoId}/secret`, {
+    token: owner.token,
+  });
+  abortUnless(
+    typeof reissued.json?.webhookSecret === 'string',
+    '웹훅 시크릿 재발급 실패',
+    reissued.json,
+  );
+
+  const body = JSON.stringify({
+    ref: 'refs/heads/main',
+    after: NEXT_SHA,
+    commits: [{ id: NEXT_SHA, message: '두 번째', author: { name: 'octocat' } }],
+    repository: { full_name: REPO.full_name },
+    pusher: { name: 'octocat' },
+  });
+  const sig =
+    'sha256=' +
+    createHmac('sha256', reissued.json.webhookSecret).update(body).digest('hex');
+  const hook = await fetch(`${BASE}/webhooks/github/${repoId}`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-github-event': 'push',
+      'x-github-delivery': `d-${stamp}-2`,
+      'x-hub-signature-256': sig,
+    },
+    body,
+  });
+  check('push 웹훅이 200 이다', hook.status === 200, String(hook.status));
+
+  const after2 = await waitForIndex(owner.token, spaceId, repoId);
+  check('두 번째 인덱싱이 끝난다', after2?.state === 'done', JSON.stringify(after2));
+  check('새 커밋을 기록한다', after2?.indexedCommitSha === NEXT_SHA);
+
+  const hits2 = await api('POST', `/spaces/${spaceId}/repos/${repoId}/index/search`, {
+    token: owner.token,
+    body: { query: 'reconnect socket rotated token cleanup orphans added', topK: 20 },
+  });
+  const paths2 = new Set((hits2.json?.chunks ?? []).map((c) => c.path));
+  check('지워진 파일의 청크가 사라졌다', !paths2.has('src/orphan.ts'));
+  check('새 파일이 인덱싱됐다', paths2.has('src/added.ts'));
+
+  const socketChunk = (hits2.json?.chunks ?? []).find((c) => c.path === 'lib/socket.dart');
+  check('바뀐 파일은 새 커밋 sha 를 갖는다', socketChunk?.commitSha === NEXT_SHA);
+
+  // **핵심 단언** — 증분이면 바뀐 파일만 받는다. 전체(5개)보다 적어야 한다.
+  const spent = apiHits - beforeIncremental;
+  check('증분은 전체보다 적은 요청을 쓴다', spent < 8, `요청 ${spent}회`);
+
+  // ── base 가 사라지면 전체로 떨어진다 ────────────
+  //
+  // 가짜 GitHub 은 base 가 HEAD_SHA 가 아니면 404 를 준다 = force-push.
+  // 지금 indexedCommitSha 는 NEXT_SHA 라 다음 push 의 compare 가 404 가 되고,
+  // 그래도 인덱싱은 끝나야 한다 — 여기서 던지면 force-push 한 번에 인덱스가
+  // 영영 낡는다.
+  const body3 = JSON.stringify({
+    ref: 'refs/heads/main',
+    after: NEXT_SHA,
+    commits: [{ id: NEXT_SHA, message: '세 번째', author: { name: 'octocat' } }],
+    repository: { full_name: REPO.full_name },
+    pusher: { name: 'octocat' },
+  });
+  const sig3 =
+    'sha256=' +
+    createHmac('sha256', reissued.json.webhookSecret).update(body3).digest('hex');
+  await fetch(`${BASE}/webhooks/github/${repoId}`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-github-event': 'push',
+      'x-github-delivery': `d-${stamp}-3`,
+      'x-hub-signature-256': sig3,
+    },
+    body: body3,
+  });
+  const after3 = await waitForIndex(owner.token, spaceId, repoId);
+  check(
+    'compare 가 404 여도 전체 재인덱싱으로 끝난다',
+    after3?.state === 'done',
+    JSON.stringify(after3),
+  );
+
+  // ── 다른 브랜치는 아무 일도 없다 ───────────────
+  const before4 = apiHits;
+  const body4 = JSON.stringify({
+    ref: 'refs/heads/feature/whatever',
+    after: 'feature999999999999999999999999999999999a',
+    commits: [],
+    repository: { full_name: REPO.full_name },
+    pusher: { name: 'octocat' },
+  });
+  const sig4 =
+    'sha256=' +
+    createHmac('sha256', reissued.json.webhookSecret).update(body4).digest('hex');
+  const hook4 = await fetch(`${BASE}/webhooks/github/${repoId}`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-github-event': 'push',
+      'x-github-delivery': `d-${stamp}-4`,
+      'x-hub-signature-256': sig4,
+    },
+    body: body4,
+  });
+  check('기능 브랜치 push 도 200 이다', hook4.status === 200);
+  // 워커가 깨어날 시간을 준다. 깨어나면 안 되는 것이 이 케이스의 주제다.
+  await new Promise((r) => setTimeout(r, 1500));
+  const idle = await api('GET', `/spaces/${spaceId}/repos/${repoId}/index`, {
+    token: owner.token,
+  });
+  check('default 브랜치가 아니면 인덱싱하지 않는다', idle.json?.state === 'done');
+  check('GitHub 을 부르지도 않았다', apiHits === before4, `${before4} → ${apiHits}`);
 }
 
 await new Promise((resolve) => fake.listen(FAKE_PORT, '127.0.0.1', resolve));
