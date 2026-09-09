@@ -54,6 +54,12 @@ const BLOBS = {
   },
   sha_binary: { path: 'logo.png', bytes: Buffer.from([0x89, 0x50, 0x00, 0x01]) },
   sha_big: { path: 'huge.txt', text: 'a'.repeat(300 * 1024) },
+  // 두 번째 push 에서 이름이 바뀔 파일이다. 첫 인덱싱에 포함돼 있어야
+  // 「옛 경로의 청크가 사라졌다」를 확인할 대상이 생긴다(발견 3).
+  sha_legacy: {
+    path: 'src/legacy.ts',
+    text: 'export function legacyHelper() {\n  // 곧 이름이 바뀐다\n}\n',
+  },
 };
 
 function entryFor(sha) {
@@ -71,13 +77,20 @@ const NEXT_SHA = 'next2222222222222222222222222222222222cd';
 // 안 불린다(발견 1). 다른 값이어야 compare 가 실제로 불리고 404 갈래를 탄다.
 const THIRD_SHA = 'thrd3333333333333333333333333333333333ef';
 
-/** 두 번째 커밋의 내용. socket 을 고치고, orphan 을 지우고, 새 파일을 더한다. */
+/**
+ * 두 번째 커밋의 내용. socket 을 고치고, orphan 을 지우고, 새 파일을 더하고,
+ * legacy.ts 를 renamed.ts 로 이름을 바꾼다(발견 3 — `renamed` 갈래 계약 검증).
+ */
 const NEXT_BLOBS = {
   sha_socket2: {
     path: 'lib/socket.dart',
     text: SOCKET_FILE.replace('reconnectWithFreshToken', 'reconnectWithRotatedToken'),
   },
   sha_added: { path: 'src/added.ts', text: 'export const added = true;\n' },
+  sha_renamed: {
+    path: 'src/renamed.ts',
+    text: 'export function legacyHelper() {\n  // 이름이 바뀌었다\n}\n',
+  },
 };
 
 /** 지금 어느 커밋을 서비스하나. 검증이 이 값을 바꿔 두 번째 push 를 흉내 낸다. */
@@ -167,8 +180,16 @@ const fake = createServer((req, res) => {
   const tree = url.pathname.match(/^\/repos\/[^/]+\/[^/]+\/git\/trees\/(.+)$/);
   if (req.method === 'GET' && tree) {
     if (serving === 'second') {
-      // socket 은 새 sha 로, orphan 은 빠지고, added 가 들어온다.
-      const shas = ['sha_socket2', 'sha_generated', 'sha_binary', 'sha_big', 'sha_added'];
+      // socket 은 새 sha 로, orphan 은 빠지고, added 가 들어오고, legacy 는
+      // renamed 로 이름이 바뀐다.
+      const shas = [
+        'sha_socket2',
+        'sha_generated',
+        'sha_binary',
+        'sha_big',
+        'sha_added',
+        'sha_renamed',
+      ];
       json(200, { sha: NEXT_SHA, truncated: false, tree: shas.map(entryForAll) });
       return;
     }
@@ -190,6 +211,11 @@ const fake = createServer((req, res) => {
         { filename: 'lib/socket.dart', status: 'modified' },
         { filename: 'src/orphan.ts', status: 'removed' },
         { filename: 'src/added.ts', status: 'added' },
+        {
+          filename: 'src/renamed.ts',
+          status: 'renamed',
+          previous_filename: 'src/legacy.ts',
+        },
       ],
     });
     return;
@@ -407,18 +433,25 @@ async function main() {
   );
   check('지워진 파일의 청크가 사라졌다', !paths2.has('src/orphan.ts'));
 
+  // **발견 3** — `renamed` 갈래. 지금까지 가짜 compare 응답은 `modified` ·
+  // `removed` · `added` 셋뿐이었고, `previousPath` 의 청크가 실제 DB 에서
+  // 지워지는지는 `planFromCompare` 단위 테스트(판정 로직만 본다)로는 확인할
+  // 수 없었다. 여기서 새 경로가 검색되고 옛 경로가 사라지는 것을 함께 본다.
+  check('이름이 바뀐 파일이 새 경로로 인덱싱됐다', paths2.has('src/renamed.ts'));
+  check('이름이 바뀐 파일의 옛 경로 청크가 사라졌다', !paths2.has('src/legacy.ts'));
+
   const socketChunk = (hits2.json?.chunks ?? []).find((c) => c.path === 'lib/socket.dart');
   check('바뀐 파일은 새 커밋 sha 를 갖는다', socketChunk?.commitSha === NEXT_SHA);
 
   // **핵심 단언** — 증분이면 바뀐 파일만 받는다.
-  // 실측(check:indexing 로 직접 찍어 봄): 정상 증분은 **4 회**
-  // (compare 1 + tree 1 + blob 2 — socket.dart · added.ts, orphan.ts 는
-  // removed 라 안 받는다). 이 push 가 몰래 전체로 떨어지면 compare 1 +
-  // tree 1 + blob 4(too-large 로 걸러지는 huge.txt 를 뺀 나머지 전부) = **6 회**
-  // 다. **`< 8` 은 둘 다 통과시켜 아무것도 가르지 못했다**(발견 2) —
-  // `< 5` 라야 4 와 6 을 실제로 가른다.
+  // 실측(check:indexing 로 직접 찍어 봄): 정상 증분은 **5 회**
+  // (compare 1 + tree 1 + blob 3 — socket.dart · added.ts · renamed.ts.
+  // orphan.ts 는 removed 라 안 받고, legacy.ts 는 옛 경로라 청크만 지운다).
+  // 이 push 가 몰래 전체로 떨어지면 compare 1 + tree 1 + blob 5(too-large 로
+  // 걸러지는 huge.txt 를 뺀 나머지 전부 — socket2 · generated · binary ·
+  // added · renamed) = **7 회**다. `< 6` 이라야 5 와 7 을 실제로 가른다.
   const spent = apiHits - beforeIncremental;
-  check('증분은 전체보다 적은 요청을 쓴다', spent < 5, `요청 ${spent}회`);
+  check('증분은 전체보다 적은 요청을 쓴다', spent < 6, `요청 ${spent}회`);
 
   // ── base 가 사라지면 전체로 떨어진다 ────────────
   //
