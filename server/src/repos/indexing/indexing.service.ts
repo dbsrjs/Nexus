@@ -214,6 +214,21 @@ export class IndexingService {
     const targets = tree.value.entries.filter(
       (e) => !isTooLarge(e.size) && (wanted === null || wanted.has(e.path)),
     );
+
+    // **범위(plan.reindex)에는 들어왔지만 크기 상한에 걸려 targets 에서
+    // 빠진 파일의 옛 청크를 지운다.** compare 는 이 파일을 `modified` 로
+    // 보고할 뿐 새로 넘긴 크기까지는 모른다 — 지우지 않으면 낡은 내용이
+    // 옛 commitSha 를 단 채 검색 결과에 계속 나오고, 전체 재인덱싱 전까지
+    // 스스로 낫지 않는다.
+    if (plan !== null) {
+      const targetPaths = new Set(targets.map((e) => e.path));
+      for (const path of plan.reindex) {
+        if (!targetPaths.has(path)) {
+          await this.chunks.deleteFile(job.spaceId, job.repoId, path);
+        }
+      }
+    }
+
     this.logger.log(
       `인덱싱 시작: ${repo.fullPath}@${headSha.slice(0, 7)} ` +
         `대상 ${targets.length}/${tree.value.entries.length}`,
@@ -289,8 +304,19 @@ export class IndexingService {
 
     // 바이너리 판별을 새로 쓰지 않는다 — 열람이 쓰는 것과 같은 함수다.
     const body = resolveBlobBody(blob.value.contentBase64, blob.value.size);
-    if (body.content === null) return;
-    if (isGenerated(body.content)) return;
+    if (body.content === null) {
+      // 텍스트였다가 바이너리가 된 파일이다. 범위(plan.reindex)에는 들어왔지만
+      // 인덱싱하지 않기로 했으면 옛 청크를 지운다 — 안 지우면 낡은 내용이
+      // 옛 commitSha 를 달고 검색 결과에 계속 나오고, 전체 재인덱싱 전까지
+      // 낫지 않는다.
+      await this.chunks.deleteFile(job.spaceId, job.repoId, entry.path);
+      return;
+    }
+    if (isGenerated(body.content)) {
+      // 생성 파일 표시가 새로 붙은 파일이다. 위와 같은 이유로 옛 청크를 지운다.
+      await this.chunks.deleteFile(job.spaceId, job.repoId, entry.path);
+      return;
+    }
 
     const chunks = chunkText(body.content);
     if (chunks.length === 0) return;
