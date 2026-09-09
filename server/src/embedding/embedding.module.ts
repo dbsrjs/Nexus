@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { EMBEDDING_PROVIDER, EmbeddingProvider } from './embedding.provider';
 import { resolveEmbedding } from './embedding.config';
 import { FakeEmbeddingProvider } from './fake-embedding.provider';
+import { GeminiEmbeddingProvider } from './gemini-embedding.provider';
+import { LocalEmbeddingProvider } from './local-embedding.provider';
 
 /**
  * 설정을 보고 provider 를 하나 고른다.
@@ -33,10 +35,8 @@ import { FakeEmbeddingProvider } from './fake-embedding.provider';
 
         logger.log(`임베딩 provider: ${resolved.provider} (${resolved.model})`);
         if (resolved.provider === 'fake') return new FakeEmbeddingProvider();
-
-        // gemini · local 은 Task 10 에서 붙인다. 그때까지는 미설정과 같게 둔다.
-        logger.warn(`${resolved.provider} 어댑터가 아직 없습니다.`);
-        return null;
+        if (resolved.provider === 'local') return new LocalEmbeddingProvider(resolved);
+        return new GeminiEmbeddingProvider(resolved);
       },
     },
   ],

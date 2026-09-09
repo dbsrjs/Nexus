@@ -6,6 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmbeddingHttpError } from '../../embedding/gemini-embedding.provider';
 import { GithubOauthClient, GithubTreeEntry } from '../../oauth/github-oauth.client';
 import { OauthService } from '../../oauth/oauth.service';
 import { resolveGithubOauth, type GithubOauthConfig } from '../../config/oauth.config';
@@ -138,6 +139,15 @@ export class IndexingService {
     try {
       await this.index(job);
     } catch (err) {
+      if (err instanceof EmbeddingHttpError) {
+        // provider 의 429 도 GitHub 의 것과 같게 다룬다 — 시도 횟수로 세지
+        // 않고 미룬다. 우리 잘못이 아니라 "잠시 뒤 다시"라는 뜻이다.
+        await this.queue.fail(job.repoId, err.message, {
+          countsAsAttempt: err.status !== 429,
+          retryAfterSec: err.retryAfterSec,
+        });
+        return;
+      }
       if (err instanceof IndexingAbort) {
         await this.queue.fail(job.repoId, err.message, {
           countsAsAttempt: err.countsAsAttempt,
