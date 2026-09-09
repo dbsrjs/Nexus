@@ -319,7 +319,13 @@ export class IndexingService {
     }
 
     const chunks = chunkText(body.content);
-    if (chunks.length === 0) return;
+    if (chunks.length === 0) {
+      // 내용을 통째로 지운 파일(또는 공백뿐인 파일)이 여기로 온다. 위와 같은
+      // 이유로 옛 청크를 지운다 — 안 지우면 지워진 내용이 옛 commitSha 를
+      // 달고 검색 결과에 계속 나온다.
+      await this.chunks.deleteFile(job.spaceId, job.repoId, entry.path);
+      return;
+    }
 
     const vectors = await (this.embedder as EmbeddingProvider).embed(
       chunks.map((c) => c.content),
