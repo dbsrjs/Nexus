@@ -192,7 +192,7 @@ export class IndexQueueService {
   async fail(
     repoId: string,
     message: string,
-    options: { countsAsAttempt: boolean; retryAfterSec?: number },
+    options: { countsAsAttempt: boolean; retryAfterSec?: number; fatal?: boolean },
   ): Promise<void> {
     const job = await this.prisma.repoIndexJob.findUnique({
       where: { repoId },
@@ -201,7 +201,9 @@ export class IndexQueueService {
     if (!job) return;
 
     const attempts = options.countsAsAttempt ? job.attempts + 1 : job.attempts;
-    const giveUp = options.countsAsAttempt && attempts >= MAX_ATTEMPTS;
+    // **다시 걸어도 같은 실패는 세 번을 기다리지 않는다** — 401(토큰 만료) ·
+    // 404(저장소 사라짐)가 그렇다. 6-2 의 전송 큐가 같은 구분을 했다.
+    const giveUp = options.fatal === true || (options.countsAsAttempt && attempts >= MAX_ATTEMPTS);
 
     const wait = options.retryAfterSec ? options.retryAfterSec * 1000 : BACKOFF_MS;
 

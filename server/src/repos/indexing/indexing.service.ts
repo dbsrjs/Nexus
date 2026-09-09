@@ -22,6 +22,7 @@ import { IndexChunksRepository } from './index-chunks.repository';
 import { IndexQueueService, LeasedJob } from './index-queue.service';
 import { chunkText } from './chunker';
 import { isGenerated, isTooLarge, langOf } from './index-filter';
+import { planFromCompare, ReindexPlan } from './changed-files';
 
 /** 동시에 몇 개의 blob 을 받나. 분당 900점 한도에 여유 있게 못 미친다 (설계 §3). */
 const FETCH_CONCURRENCY = 4;
@@ -35,6 +36,7 @@ class IndexingAbort extends Error {
     message: string,
     readonly countsAsAttempt: boolean,
     readonly retryAfterSec?: number,
+    readonly fatal = false,
   ) {
     super(message);
   }
@@ -152,6 +154,7 @@ export class IndexingService {
         await this.queue.fail(job.repoId, err.message, {
           countsAsAttempt: err.countsAsAttempt,
           retryAfterSec: err.retryAfterSec,
+          fatal: err.fatal,
         });
         return;
       }
@@ -187,13 +190,30 @@ export class IndexingService {
       });
     }
 
+    // **증분으로 갈 수 있나.** baseSha 가 있고 compare 가 성공하고 잘리지
+    // 않았을 때만이다. 하나라도 어긋나면 전체다 (설계 §4).
+    const plan = await this.planFor(job, cfg, token, repo.fullPath, headSha);
+
+    if (plan === null) {
+      // 전체 재인덱싱. **조용히 하지 않는다** — 왜 갑자기 500 요청을 썼는지
+      // 나중에 설명할 수 있어야 한다.
+      this.logger.log(`전체 재인덱싱: ${repo.fullPath} (base=${job.baseSha ?? '없음'})`);
+      await this.chunks.deleteRepo(job.spaceId, job.repoId);
+    } else {
+      for (const path of plan.remove) {
+        await this.chunks.deleteFile(job.spaceId, job.repoId, path);
+      }
+    }
+
     const tree = await this.github.getTree(cfg, token, repo.fullPath, headSha);
     if (!tree.ok) throw this.abortFor(tree.status, tree.retryAfter, '트리 조회');
 
-    // **전체 재인덱싱이다.** 증분은 12-3(Task 13·14)에서 이 자리에 붙는다.
-    await this.chunks.deleteRepo(job.spaceId, job.repoId);
-
-    const targets = tree.value.entries.filter((e) => !isTooLarge(e.size));
+    // 증분이면 바뀐 것만 남긴다. **트리는 여전히 한 번 받는다** — sha 와 size 가
+    // 거기 있고, 그것 없이는 blob 을 부를 수 없다.
+    const wanted = plan === null ? null : new Set(plan.reindex);
+    const targets = tree.value.entries.filter(
+      (e) => !isTooLarge(e.size) && (wanted === null || wanted.has(e.path)),
+    );
     this.logger.log(
       `인덱싱 시작: ${repo.fullPath}@${headSha.slice(0, 7)} ` +
         `대상 ${targets.length}/${tree.value.entries.length}`,
@@ -226,6 +246,34 @@ export class IndexingService {
     }
 
     await this.queue.succeed(job.repoId, headSha, tree.value.truncated);
+  }
+
+  /**
+   * 증분 지시. **`null` 이면 전체 재인덱싱이다.**
+   *
+   * 전체로 떨어지는 조건 셋 — baseSha 가 없다(첫 인덱싱) · compare 가
+   * 404 다(force-push 로 base 가 사라졌다) · 목록이 잘렸다 (설계 §4).
+   */
+  private async planFor(
+    job: LeasedJob,
+    cfg: GithubOauthConfig,
+    token: string,
+    fullPath: string,
+    headSha: string,
+  ): Promise<ReindexPlan | null> {
+    if (!job.baseSha) return null;
+    if (job.baseSha === headSha) return { reindex: [], remove: [] };
+
+    const res = await this.github.compare(cfg, token, fullPath, job.baseSha, headSha);
+    if (!res.ok) {
+      // 404 는 base 가 사라진 것이다 — 전체로 떨어진다. 여기서 던지면
+      // force-push 한 번에 인덱스가 영영 낡는다.
+      if (res.status === 404) return null;
+      throw this.abortFor(res.status, res.retryAfter, 'compare');
+    }
+    if (res.value.truncated) return null;
+
+    return planFromCompare(res.value.files);
   }
 
   private async indexOneFile(
@@ -303,9 +351,13 @@ export class IndexingService {
     if (status === 429) {
       return new IndexingAbort(`GitHub 요청 한도를 넘었습니다 (${what})`, false, retryAfter);
     }
-    // 다시 걸어도 같다. 즉시 포기한다.
-    if (status === 401) return new IndexingAbort('GitHub 연결이 만료되었습니다.', true, undefined);
-    if (status === 404) return new IndexingAbort(`${what}: 찾을 수 없습니다.`, true);
+    // 다시 걸어도 같다. 세 번 기다리지 않고 즉시 포기한다.
+    if (status === 401) {
+      return new IndexingAbort('GitHub 연결이 만료되었습니다.', true, undefined, true);
+    }
+    if (status === 404) {
+      return new IndexingAbort(`${what}: 찾을 수 없습니다.`, true, undefined, true);
+    }
     return new IndexingAbort(`${what}: GitHub 이 ${status} 를 주었습니다.`, true);
   }
 }

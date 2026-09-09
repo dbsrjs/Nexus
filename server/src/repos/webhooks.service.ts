@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, Repo, RepoProvider, User } from '@prisma/client';
+import { Prisma, Repo, RepoIndexReason, RepoProvider, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { describeGithubEvent } from './event-message';
+import { IndexQueueService } from './indexing/index-queue.service';
+import { IndexingWorker } from './indexing/indexing.worker';
 
 /**
  * 같은 배달을 두 번 처리하지 않기 위해 보는 창.
@@ -31,6 +33,8 @@ export class WebhooksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeEmitter,
+    private readonly queue: IndexQueueService,
+    private readonly worker: IndexingWorker,
   ) {}
 
   /**
@@ -120,7 +124,48 @@ export class WebhooksService {
       }
     }
 
+    // **default 브랜치의 push 만 인덱싱한다.** 기능 브랜치까지 태우면 인덱스가
+    // 어느 브랜치의 코드인지 알 수 없게 된다.
+    await this.maybeIndex(repo, event, payload);
+
     return { stored: true, posted: message !== null, duplicate: false };
+  }
+
+  /**
+   * default 브랜치 push 면 인덱싱을 적재한다.
+   *
+   * **적재 트랜잭션 밖이고, 실패해도 웹훅은 성공이다.** 안에 넣으면 큐 쓰기
+   * 실패가 웹훅 전체를 넘어뜨리는데, GitHub 은 실패에 재시도하고 저장소 설정
+   * 화면이 빨개진다(10-1).
+   *
+   * 밖에 두어도 **스스로 낫는다** — 놓친 push 는 다음 push 때
+   * `compare(indexedCommitSha → 새 head)` 안에 통째로 들어온다 (설계 §2).
+   */
+  private async maybeIndex(repo: Repo, event: string, payload: unknown): Promise<void> {
+    if (event !== 'push' || !repo.defaultBranch) return;
+
+    const body = payload as { ref?: unknown; after?: unknown };
+    if (body?.ref !== `refs/heads/${repo.defaultBranch}`) return;
+    const after = typeof body?.after === 'string' ? body.after : null;
+    if (!after) return;
+
+    try {
+      const indexed = await this.prisma.repo.findUnique({
+        where: { id: repo.id },
+        select: { indexedCommitSha: true },
+      });
+      await this.queue.enqueue({
+        spaceId: repo.spaceId,
+        repoId: repo.id,
+        reason: RepoIndexReason.push,
+        headSha: after,
+        // 기준이 없으면 전체다. 있으면 그 사이만 본다.
+        baseSha: indexed?.indexedCommitSha ?? null,
+      });
+      this.worker.kick();
+    } catch (err) {
+      this.logger.error('인덱싱 적재 실패 — 다음 push 가 이어서 받는다', err as Error);
+    }
   }
 
   private async alreadyHandled(
