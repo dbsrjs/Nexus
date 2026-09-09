@@ -15,6 +15,7 @@ import { createHmac } from 'node:crypto';
 import { requireServer, abortUnless, PreflightAbort } from './lib/preflight.mjs';
 import { BASE, stamp, api, signup } from './lib/api.mjs';
 import { check, summary } from './lib/checks.mjs';
+import { settleIndexing } from './lib/indexing.mjs';
 await requireServer(BASE);
 const FAKE_PORT = 4599;
 
@@ -247,6 +248,14 @@ async function main() {
   const repoId = connected.json.id;
   const at = (p, q = '') => `/spaces/${spaceId}/repos/${repoId}/${p}${q}`;
 
+  // **인덱싱 워커가 조용해질 때까지 기다린다.** 저장소를 붙이면 12단계의
+  // 워커가 깨어나 백그라운드로 GitHub 을 부르는데, 그 호출이 아래
+  // 「GitHub 을 부르지 않았다」 스냅샷 구간에 착지하면 그 단언이 간헐적으로
+  // 깨진다 — **실제로 CI 에서 깨졌다**(`23 → 24`). 여기서 한 번 재우면
+  // 이 스크립트 안에서도, 4599 를 물려받는 다음 스크립트에서도 조용하다.
+  await settleIndexing(alice.token, spaceId, repoId);
+
+
   // ── 브랜치 ───────────────────────────────────────────
   const branches = await api('GET', at('branches'), { token: alice.token });
   check('브랜치 200', branches.status === 200, String(branches.status));
@@ -407,6 +416,13 @@ async function main() {
   });
   const botMsg = msgs.json?.items?.find((m) => m.repoEventId);
   check('메시지에 repoEventId 가 실린다', !!botMsg, JSON.stringify(msgs.json?.items?.[0]));
+
+  // **스냅샷 직전에 인덱싱 워커를 재운다.** 바로 위 push 웹훅은
+  // `refs/heads/main`(기본 브랜치)이라 12단계의 인덱싱을 적재하고, 워커가
+  // 깨어나 백그라운드로 GitHub 을 부른다. 그 호출이 아래 스냅샷 구간에
+  // 착지하면 「GitHub 을 부르지 않았다」가 깨진다 — **실제로 CI 에서
+  // 깨졌다**(`23 → 24`). 연결 직후에 재운 것만으로는 부족하다.
+  await settleIndexing(alice.token, spaceId, repoId);
 
   const hitsBefore = apiHits;
   const evt = await api('GET', `/spaces/${spaceId}/repo-events/${botMsg?.repoEventId}`, {

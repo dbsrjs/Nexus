@@ -29,6 +29,7 @@ import { createServer } from 'node:http';
 import { requireServer, abortUnless, PreflightAbort } from './lib/preflight.mjs';
 import { BASE, stamp, api, signup } from './lib/api.mjs';
 import { check, summary } from './lib/checks.mjs';
+import { settleIndexingForSpace } from './lib/indexing.mjs';
 await requireServer(BASE);
 const FAKE_PORT = 4599;
 
@@ -523,6 +524,13 @@ async function main() {
     '없는 연결을 또 해제해도 204 (멱등)',
     (await api('DELETE', '/me/connections/github', { token: alice.token })).status === 204,
   );
+
+  // **인덱싱 워커를 재우고 끝낸다.** 이 스크립트는 저장소를 넷 붙이는데,
+  // 그 작업이 남아 있으면 4599 를 물려받는 다음 스크립트(`check:browse`)의
+  // 가짜 GitHub 을 때려 「GitHub 을 부르지 않았다」 단언을 깬다 —
+  // **실제로 CI 에서 깨졌다**(`23 → 24`).
+  await settleIndexingForSpace(alice.token, spaceId);
+  await settleIndexingForSpace(alice.token, promoId);
 }
 
 await new Promise((resolve) => fake.listen(FAKE_PORT, '127.0.0.1', resolve));
