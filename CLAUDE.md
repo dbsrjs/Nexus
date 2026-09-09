@@ -154,7 +154,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run check:oauth` | GitHub **연동 전체** 계약 검증(설정된 서버에서 76개) — 계정 연결(10-2a)과 저장소 목록 · 자동 등록 · 승격 · 훅 재등록/삭제(10-2b). **가짜 GitHub(4599)을 스스로 띄운다** — `.env` 에 `GITHUB_*_BASE` · `OAUTH_TOKEN_KEY` · `PUBLIC_BASE_URL` 을 넣고 서버를 재시작해야 한다. 미설정 503 분기는 그 값들을 비운 채로 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
 | `npm run check:browse` | 저장소 열람 계약 검증(56개) — 브랜치 · 트리 · 파일(10-3a)과 커밋(10-3b). **가짜 GitHub(4599)을 스스로 띄운다** — `check:oauth` 와 같은 `.env` 를 쓴다. 연결 · 등록이 주제인 그쪽과 섞지 않았다 |
 | `npm run check:pulls` | PR 열람 계약 검증(35개) — 목록 · 상세 · 바뀐 파일(11단계). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 를 쓴다 |
-| `npm run check:indexing` | 저장소 인덱싱 계약 검증(32개) — 연결 시 적재 · 거르기(바이너리 · 대용량 · 생성 파일) · 벡터 검색 순위 · 증분 재인덱싱(push 웹훅 → compare) · force-push(compare 404 로 실제로 응답한 횟수까지 확인) · 기능 브랜치 무시(12단계). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 에 **`EMBEDDING_PROVIDER=fake` 가 더 필요하다** |
+| `npm run check:indexing` | 저장소 인덱싱 계약 검증(34개) — 연결 시 적재 · 거르기(바이너리 · 대용량 · 생성 파일) · 벡터 검색 순위 · 증분 재인덱싱(push 웹훅 → compare, 이름 변경(renamed) 갈래 포함) · force-push(compare 404 로 실제로 응답한 횟수까지 확인) · 기능 브랜치 무시(12단계). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 에 **`EMBEDDING_PROVIDER=fake` 가 더 필요하다** |
 | `npm run check:migrations` | 마이그레이션에 **수동 관리 객체를 지우는 구문**이 섞였는지 검사. DB 도 서버도 필요 없다 — CI 서버 잡이 매번 돈다 |
 | `npm run check:issues` | 이슈 · 스프린트 계약 검증(89개). 자체 계정을 쓴다. **컬럼 상한(200)과 재채번까지 태우므로 다른 스크립트보다 오래 걸린다** |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
@@ -1499,9 +1499,9 @@ push 는 여전히 커밋 목록으로 가고 이슈는 아무 일도 안 하는
 | CI 에 `EMBEDDING_PROVIDER=fake` 를 더하자 `check:browse` 의 `apiHits` 단언과 경합이 생겼다 | 401 · 404 실패를 재시도 대기열에 남겨 두면 백그라운드 워커가 나중에 다시 GitHub 을 불러 다른 스크립트의 "GitHub 을 부르지 않았다" 단언을 깬다 — 즉시 `failed` 로 닫아 재시도 자체를 없앴다 |
 | force-push 케이스가 `compare()` 를 한 번도 안 부르고도 통과했다 | 세 번째 push 의 `after` 가 `NEXT_SHA` 를 재사용했는데 그 시점 `indexedCommitSha` 도 이미 `NEXT_SHA` 라 `planFor()` 의 `baseSha === headSha` 조기 반환에 걸려 `compare()` 자체가 안 불렸다 — "끝난다"만 보면 이 조기 반환도 참이라 거짓 통과였다. **코드 리뷰로 잡았고 테스트로는 드러나지 않았다.** `after` 를 새 sha(`THIRD_SHA`)로 바꿔 실제로 `baseSha !== headSha` 가 되게 하고, 가짜 GitHub 이 준 404 횟수를 세어 그 웹훅 전후로 늘었는지까지 단언하게 했다. 같은 리뷰가 `spent < 8`(증분이 전체보다 적은 요청을 쓴다)도 잡았다 — 실측하면 정상 증분 4회 · 전체 폴백 6회로 둘 다 8 미만이라 상한만 볼 뿐 가르지 못했다. `< 5` 로 좁혔다 |
 
-**확인한 것**: `npm run check:indexing` **32개**(연결·완주·거르기·순위·테넌트
-격리·입력 검증·다시 태우기 20개 + 증분 재인덱싱·force-push·기능 브랜치
-12개) · `check:browse` 56/56 · `check:oauth` 76/76 회귀 없음 · 서버 단위
+**확인한 것**: `npm run check:indexing` **34개**(연결·완주·거르기·순위·테넌트
+격리·입력 검증·다시 태우기 20개 + 증분 재인덱싱(이름 변경 갈래 포함)·
+force-push·기능 브랜치 14개) · `check:browse` 56/56 · `check:oauth` 76/76 회귀 없음 · 서버 단위
 테스트 **236개**(임베딩 어댑터 18개, 그중 gemini 6개) · `EXPLAIN` 이
 `Index Scan using repo_index_chunks_embedding_hnsw_idx` 를 고르는 것 확인
 (`SET enable_seqscan = off` 에서 — 청크가 14개뿐인 기본 계획은 `Seq Scan`
@@ -1529,6 +1529,11 @@ push 는 여전히 커밋 목록으로 가고 이슈는 아무 일도 안 하는
   다시 잡히는 것(크래시 복구, 10분 대기 필요) · 재귀 트리가 10만 항목에서
   잘리는 경우(방어를 일부러 넣지 않았다) · 다중 인스턴스 실측(리스는 그렇게
   짰지만 인스턴스는 하나다) · 운영 규모에서 기본 쿼리 계획이 HNSW 를 고르는지
+- **CI 잔여 경합**: 잡 레벨 `EMBEDDING_PROVIDER=fake` 때문에 `check:browse`
+  의 `repos/connect` 도 워커를 깨워 `branchHead` 로 그쪽 가짜 GitHub 을
+  **한 번** 때린다(`fatal` 덕에 재시도는 없다). 그 한 번이 `check-browse.mjs`
+  의 `apiHits` 스냅샷 사이에 착지할 확률은 사실상 0 이지만 구조적으로 0 은
+  아니다 — **언젠가 CI 가 그 자리에서 간헐 실패하면 원인이 여기다**
 
 **아직 없는 것**: DM, AI.
 멘션 **알림**(푸시 · 알림 센터)은 범위 밖이다 -
@@ -1591,7 +1596,7 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 
 ### 알려진 빚
 
-- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 181개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 2026-08-21 부터 CI 에서 push 마다 돈다 — 14종 506 케이스**(12단계에서 `check:indexing` 32개가 더해져 13종 474 에서 늘었다. 그 전엔 11단계에서 `check:pulls` 35개가 더해져 12종 439 에서 늘었다)(`서버 통합` 잡, 계약 검증 단계 19초). 그 전까지는 사람이 기억해 타이핑할 때만 돌았다. 헬퍼 중복도 2026-08-21 에 걷었다 — `api()` 11벌 · `signup()` 10벌 등이 `server/scripts/lib/` 넷으로 모였다(스크립트에서 473줄이 지워졌다). **남은 빚은 러너가 아니라 단언 규율이다** — 10-2b 의 `undefined === undefined` 는 프레임워크로 바꿔도 통과한다(`assert.strictEqual(undefined, undefined)`). 그 케이스는 손으로 고쳐 뒀고, 같은 종류가 다시 나오면 그때 장치를 만든다.
+- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 236개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 2026-08-21 부터 CI 에서 push 마다 돈다 — 14종 508 케이스**(12단계에서 `check:indexing` 34개가 더해져 13종 474 에서 늘었다. 그 전엔 11단계에서 `check:pulls` 35개가 더해져 12종 439 에서 늘었다)(`서버 통합` 잡, 계약 검증 단계 19초). 그 전까지는 사람이 기억해 타이핑할 때만 돌았다. 헬퍼 중복도 2026-08-21 에 걷었다 — `api()` 11벌 · `signup()` 10벌 등이 `server/scripts/lib/` 넷으로 모였다(스크립트에서 473줄이 지워졌다). **남은 빚은 러너가 아니라 단언 규율이다** — 10-2b 의 `undefined === undefined` 는 프레임워크로 바꿔도 통과한다(`assert.strictEqual(undefined, undefined)`). 그 케이스는 손으로 고쳐 뒀고, 같은 종류가 다시 나오면 그때 장치를 만든다.
 - `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다.
 - GitHub OAuth 는 스키마(`oauth_accounts`)만 있고 미구현. 저장소 연동 단계에서 만든다.
 - **`updateMemberRole` 의 `rooms:invalidate`(`member.role`)는 자동 검증되지 않는다.** 두 번째 admin 계정과 역할 왕복이 필요해 `check:realtime` 에서 뺐다. 코드 리뷰로만 확인.
