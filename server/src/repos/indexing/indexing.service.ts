@@ -24,8 +24,17 @@ import { chunkText } from './chunker';
 import { isGenerated, isTooLarge, langOf } from './index-filter';
 import { planFromCompare, ReindexPlan } from './changed-files';
 
+/**
+ * 전체 재인덱싱으로 떨어진 이유. `planFor()` 가 `null` 을 돌려주는 세
+ * 지점을 로그에서 가르는 유일한 단서다(브랜치 전체 리뷰 발견 1).
+ */
+type FullReindexReason = 'first' | 'force-push' | 'truncated';
+
 /** 동시에 몇 개의 blob 을 받나. 분당 900점 한도에 여유 있게 못 미친다 (설계 §3). */
 const FETCH_CONCURRENCY = 4;
+
+/** `search-index.dto.ts` 의 기본값과 같다 — DTO 를 거치지 않는 호출도 같은 기본을 본다. */
+const DEFAULT_TOP_K = 8;
 
 /** 이만큼 처리할 때마다 리스를 갱신한다. */
 const RENEW_EVERY = 20;
@@ -115,7 +124,8 @@ export class IndexingService {
   }
 
   /**
-   * 벡터 검색. **13단계 AI 가 그대로 쓸 자리다.**
+   * 벡터 검색. **13단계 AI 가 DTO 없이 이 메서드를 직접 부를 자리다** —
+   * 그래서 `topK` 를 컨트롤러의 DTO 검증에만 기대지 않고 여기서도 좁힌다.
    *
    * 질문을 임베딩하는 데도 인덱싱과 같은 provider 를 쓴다 — 다른 것으로
    * 임베딩한 벡터끼리는 거리가 뜻을 갖지 않는다.
@@ -133,8 +143,25 @@ export class IndexingService {
       );
     }
 
+    // DTO 는 컨트롤러 경로에서만 막는다. 13단계가 이 메서드를 직접 부르면
+    // 그 그물이 없어, 여기서 한 번 더 막는다 — 상하한은 DTO 의 기본 8 ·
+    // 최대 20 과 같게 둔다(search-index.dto.ts).
+    const safeTopK =
+      Number.isInteger(topK) && topK >= 1 && topK <= 20 ? topK : DEFAULT_TOP_K;
+
     const [vector] = await this.embedder.embed([query]);
-    return { chunks: await this.chunks.search(spaceId, repoId, vector, topK) };
+    // provider 가 `{ embeddings: [] }` 를 주면 `assertDimensions([])` 는
+    // 빈 배열을 그대로 통과시킨다 — 「청크 수 ≠ 임베딩 수」 검사가 있는
+    // 인덱싱 쪽(replaceFile)과 달리 검색에는 그 그물이 없어, vector 가
+    // undefined 인 채로 넘어가면 toVectorLiteral 이 `.map of undefined` 로
+    // 던진다(브랜치 전체 리뷰 발견 2). 여기서 먼저 막아 500 대신 뜻이
+    // 통하는 오류를 준다.
+    if (!vector) {
+      throw new ServiceUnavailableException('임베딩을 만들지 못했습니다.');
+    }
+    assertDimensions([vector]);
+
+    return { chunks: await this.chunks.search(spaceId, repoId, vector, safeTopK) };
   }
 
   async runOne(job: LeasedJob): Promise<void> {
@@ -192,15 +219,26 @@ export class IndexingService {
 
     // **증분으로 갈 수 있나.** baseSha 가 있고 compare 가 성공하고 잘리지
     // 않았을 때만이다. 하나라도 어긋나면 전체다 (설계 §4).
-    const plan = await this.planFor(job, cfg, token, repo.fullPath, headSha);
+    const planned = await this.planFor(job, cfg, token, repo.fullPath, headSha);
 
-    if (plan === null) {
-      // 전체 재인덱싱. **조용히 하지 않는다** — 왜 갑자기 500 요청을 썼는지
-      // 나중에 설명할 수 있어야 한다.
-      this.logger.log(`전체 재인덱싱: ${repo.fullPath} (base=${job.baseSha ?? '없음'})`);
+    if (planned.plan === null) {
+      // 전체 재인덱싱. **조용히 하지 않는다** — 왜 갑자기 500 요청을 썼는지,
+      // 그리고 셋 중 어느 이유였는지 나중에 설명할 수 있어야 한다.
+      this.logger.log(
+        `전체 재인덱싱: ${repo.fullPath} 이유=${planned.reason} (base=${job.baseSha ?? '없음'})`,
+      );
+      // **기준을 먼저 무효화한다.** 지운 뒤 다시 쌓지 못한 채 죽으면
+      // indexedCommitSha 가 인덱스보다 앞서고, 다음 push 가 그 기준으로
+      // 증분을 돌아 빠진 파일이 영영 채워지지 않는다 — 상태는 done 이라
+      // 아무도 모른다(브랜치 전체 리뷰 발견 1). baseSha === null 이 이미
+      // 「전체」를 뜻하므로 다음 작업은 자동으로 전체다.
+      await this.prisma.repo.update({
+        where: { id: job.repoId },
+        data: { indexedCommitSha: null },
+      });
       await this.chunks.deleteRepo(job.spaceId, job.repoId);
     } else {
-      for (const path of plan.remove) {
+      for (const path of planned.plan.remove) {
         await this.chunks.deleteFile(job.spaceId, job.repoId, path);
       }
     }
@@ -210,7 +248,7 @@ export class IndexingService {
 
     // 증분이면 바뀐 것만 남긴다. **트리는 여전히 한 번 받는다** — sha 와 size 가
     // 거기 있고, 그것 없이는 blob 을 부를 수 없다.
-    const wanted = plan === null ? null : new Set(plan.reindex);
+    const wanted = planned.plan === null ? null : new Set(planned.plan.reindex);
     const targets = tree.value.entries.filter(
       (e) => !isTooLarge(e.size) && (wanted === null || wanted.has(e.path)),
     );
@@ -220,9 +258,9 @@ export class IndexingService {
     // 보고할 뿐 새로 넘긴 크기까지는 모른다 — 지우지 않으면 낡은 내용이
     // 옛 commitSha 를 단 채 검색 결과에 계속 나오고, 전체 재인덱싱 전까지
     // 스스로 낫지 않는다.
-    if (plan !== null) {
+    if (planned.plan !== null) {
       const targetPaths = new Set(targets.map((e) => e.path));
-      for (const path of plan.reindex) {
+      for (const path of planned.plan.reindex) {
         if (!targetPaths.has(path)) {
           await this.chunks.deleteFile(job.spaceId, job.repoId, path);
         }
@@ -264,10 +302,14 @@ export class IndexingService {
   }
 
   /**
-   * 증분 지시. **`null` 이면 전체 재인덱싱이다.**
+   * 증분 지시. **`plan: null` 이면 전체 재인덱싱이다.**
    *
    * 전체로 떨어지는 조건 셋 — baseSha 가 없다(첫 인덱싱) · compare 가
    * 404 다(force-push 로 base 가 사라졌다) · 목록이 잘렸다 (설계 §4).
+   * **셋을 `reason` 으로 구분해 돌려준다** — 셋 다 결과(전체 재인덱싱)는
+   * 같지만 원인은 다르고, 그 자리가 유일한 사후 단서다(브랜치 전체 리뷰
+   * 발견 1). 이유 없이 `null` 하나로 뭉치면 로그만 보고는 첫 인덱싱인지
+   * force-push 인지 목록이 잘렸는지 가릴 수 없다.
    */
   private async planFor(
     job: LeasedJob,
@@ -275,20 +317,20 @@ export class IndexingService {
     token: string,
     fullPath: string,
     headSha: string,
-  ): Promise<ReindexPlan | null> {
-    if (!job.baseSha) return null;
-    if (job.baseSha === headSha) return { reindex: [], remove: [] };
+  ): Promise<{ plan: ReindexPlan } | { plan: null; reason: FullReindexReason }> {
+    if (!job.baseSha) return { plan: null, reason: 'first' };
+    if (job.baseSha === headSha) return { plan: { reindex: [], remove: [] } };
 
     const res = await this.github.compare(cfg, token, fullPath, job.baseSha, headSha);
     if (!res.ok) {
       // 404 는 base 가 사라진 것이다 — 전체로 떨어진다. 여기서 던지면
       // force-push 한 번에 인덱스가 영영 낡는다.
-      if (res.status === 404) return null;
+      if (res.status === 404) return { plan: null, reason: 'force-push' };
       throw this.abortFor(res.status, res.retryAfter, 'compare');
     }
-    if (res.value.truncated) return null;
+    if (res.value.truncated) return { plan: null, reason: 'truncated' };
 
-    return planFromCompare(res.value.files);
+    return { plan: planFromCompare(res.value.files) };
   }
 
   private async indexOneFile(
