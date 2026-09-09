@@ -96,6 +96,25 @@ export interface ChangedFile {
 }
 
 /**
+ * compare 응답의 파일 하나.
+ *
+ * **`ChangedFile` 을 쓰지 않는다** — 그쪽 `toStatus()` 는 `renamed` 를
+ * `modified` 로 접는데(화면이 할 일이 같아서다), 인덱싱은 옛 경로의 청크를
+ * 지워야 해서 그 구분이 필요하다.
+ */
+export interface GithubComparedFile {
+  path: string;
+  status: 'added' | 'modified' | 'removed' | 'renamed';
+  previousPath: string | null;
+}
+
+export interface GithubCompare {
+  files: GithubComparedFile[];
+  /** GitHub 이 파일 목록을 300개에서 잘랐다. 그러면 전체 재인덱싱으로 떨어진다. */
+  truncated: boolean;
+}
+
+/**
  * 실패를 상태 코드째로 준다.
  *
  * `exchangeCode()` · `fetchUser()` 가 실패를 `null` 로 접은 것과 다르다 —
@@ -692,6 +711,43 @@ export class GithubOauthClient {
     return { ok: true, value: sha };
   }
 
+  /**
+   * 두 커밋 사이에 바뀐 파일. **한 번의 요청으로 끝난다.**
+   *
+   * `repos.indexedCommitSha` 하나만 있으면 되므로 **새 컬럼이 필요 없다**
+   * (설계 §4). base 가 사라졌으면(force-push) 404 가 오고, 그때는 전체
+   * 재인덱싱으로 떨어진다.
+   */
+  async compare(
+    cfg: GithubOauthConfig,
+    token: string,
+    fullName: string,
+    base: string,
+    head: string,
+  ): Promise<GithubResult<GithubCompare>> {
+    const res = await this.call<{
+      files?: Array<{ filename?: string; status?: string; previous_filename?: string }>;
+    }>(
+      `${cfg.apiBase}/repos/${fullName}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`,
+      token,
+    );
+    if (!res.ok) return res;
+
+    const raw = res.value.files ?? [];
+    const files: GithubComparedFile[] = [];
+    for (const f of raw) {
+      if (!f.filename) continue;
+      files.push({
+        path: f.filename,
+        status: toCompareStatus(f.status),
+        previousPath: f.previous_filename ?? null,
+      });
+    }
+
+    // GitHub 은 compare 의 파일 목록을 300개에서 자른다. 꽉 찼으면 잘렸다고 본다.
+    return { ok: true, value: { files, truncated: raw.length >= 300 } };
+  }
+
   /** 인증 헤더와 오류 해석이 같아 한 곳에 모은다. */
   private async call<T>(
     url: string,
@@ -757,5 +813,14 @@ function toCommitSummary(raw: Record<string, unknown>): CommitSummary | null {
 function toStatus(value: unknown): ChangedFile['status'] {
   if (value === 'added') return 'added';
   if (value === 'removed') return 'removed';
+  return 'modified';
+}
+
+/** compare 전용. **`renamed` 를 접지 않는다** — 옛 경로를 지워야 한다. */
+function toCompareStatus(value: unknown): GithubComparedFile['status'] {
+  if (value === 'added') return 'added';
+  if (value === 'removed') return 'removed';
+  if (value === 'renamed') return 'renamed';
+  // `changed` · `copied` · `unchanged` 는 다시 인덱싱하면 그만이다.
   return 'modified';
 }
