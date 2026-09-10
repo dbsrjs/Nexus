@@ -1,6 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RepoIndexReason, RepoIndexState } from '@prisma/client';
+import { Prisma, RepoIndexReason, RepoIndexState } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+
+/**
+ * **raw SQL 에서 `now()` 를 쓰지 않는다.**
+ *
+ * 이 테이블의 시각 컬럼은 `TIMESTAMP(3)` = `timestamp without time zone` 인데,
+ * **Prisma 는 거기에 UTC 를 쓰고 `now()` 는 DB 의 로컬 시간을 준다.** 이 PC 의
+ * Postgres 는 `Asia/Seoul` 이라 아홉 시간이 어긋나, `lease_until < now()` 가
+ * **언제나 참**이 됐다 — 리스가 아무것도 막지 못했다.
+ *
+ * 그 결과가 둘이었다: ① 실패 뒤 `BACKOFF_MS` 만큼 물러서야 하는데 곧바로 다시
+ * 잡혀 **초당 한 번씩 재시도하는 회전**이 됐고(429 를 주는 provider 에서 실제로
+ * 겪었다), ② 돌고 있는 작업을 다른 인스턴스가 곧바로 가져갈 수 있었다.
+ * 인스턴스가 하나일 때는 워커의 `running` 플래그가 ②를 가려 준다.
+ *
+ * **가짜 GitHub 은 전부 빨리 성공해 물러설 일이 없어** 계약 검증이 못 잡았다.
+ */
+const UTC_NOW = Prisma.sql`(now() at time zone 'utc')`;
 
 /** 한 번 잡으면 이만큼 내 것이다. 지나면 다른 인스턴스가 가져간다 = 크래시 복구. */
 const LEASE_MS = 10 * 60 * 1000;
@@ -62,14 +79,14 @@ export class IndexQueueService {
 
     await this.prisma.$executeRaw`
       INSERT INTO repo_index_jobs
-        (repo_id, space_id, state, reason, head_sha, base_sha, updated_at)
+        (repo_id, space_id, state, reason, head_sha, base_sha, created_at, updated_at)
       VALUES
-        (${repoId}, ${spaceId}, 'queued'::"RepoIndexState", ${reason}::"RepoIndexReason", ${headSha}, ${baseSha}, now())
+        (${repoId}, ${spaceId}, 'queued'::"RepoIndexState", ${reason}::"RepoIndexReason", ${headSha}, ${baseSha}, ${UTC_NOW}, ${UTC_NOW})
       ON CONFLICT (repo_id) DO UPDATE SET
         reason = EXCLUDED.reason,
         head_sha = EXCLUDED.head_sha,
         base_sha = EXCLUDED.base_sha,
-        updated_at = now(),
+        updated_at = ${UTC_NOW},
         -- running 이면 그대로 둔다(위 JSDoc). 그 밖에는 다시 줄을 세운다.
         state = CASE WHEN repo_index_jobs.state = 'running'::"RepoIndexState"
                       THEN repo_index_jobs.state
@@ -110,7 +127,7 @@ export class IndexQueueService {
       const picked = await tx.$queryRaw<Array<{ repo_id: string }>>`
         SELECT repo_id FROM repo_index_jobs
          WHERE state IN ('queued', 'running')
-           AND (lease_until IS NULL OR lease_until < now())
+           AND (lease_until IS NULL OR lease_until < ${UTC_NOW})
          ORDER BY created_at
          LIMIT 1
          FOR UPDATE SKIP LOCKED
@@ -214,7 +231,7 @@ export class IndexQueueService {
         attempts,
         lastError: message,
         // 포기하지 않았으면 곧바로 다시 잡히지 않게 미룬다. `lease` 가
-        // `lease_until < now()` 를 보므로 이 값이 곧 대기다.
+        // `lease_until < UTC_NOW` 를 보므로 이 값이 곧 대기다.
         leaseUntil: giveUp ? null : new Date(Date.now() + wait),
         finishedAt: giveUp ? new Date() : null,
       },

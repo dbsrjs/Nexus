@@ -31,6 +31,7 @@
     "check:browse": "node server/scripts/check-browse.mjs",
     "check:pulls": "node server/scripts/check-pulls.mjs",
     "check:indexing": "node server/scripts/check-indexing.mjs",
-    "check:migrations": "node server/scripts/check-migrations.mjs"
+    "check:migrations": "node server/scripts/check-migrations.mjs",
+    "check:sql-time": "node server/scripts/check-sql-time.mjs"
   }
 }

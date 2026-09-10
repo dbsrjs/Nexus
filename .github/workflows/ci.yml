@@ -40,6 +40,13 @@ jobs:
       - name: 마이그레이션에 수동 관리 객체 삭제가 섞였는지 검사
         run: node scripts/check-migrations.mjs
 
+      # raw SQL 이 now() 를 쓰면 DB 의 로컬 시간이 들어오는데, Prisma 는 같은
+      # 컬럼(timestamp without time zone)에 UTC 를 쓴다. 개발 PC 가 Asia/Seoul
+      # 이라 아홉 시간이 어긋나 인덱싱 리스가 한 번도 동작하지 않았다(2026-09-10).
+      # CI 가 UTC 면 로컬에서만 틀리고 여기는 초록이라, 값이 아니라 코드를 본다.
+      - name: raw SQL 이 DB 시계를 쓰는지 검사
+        run: node scripts/check-sql-time.mjs
+
       - run: npm run lint
 
       - run: npm run build
@@ -195,6 +202,8 @@ jobs:
           set -e
           echo "── check:migrations ──"
           node scripts/check-migrations.mjs
+          echo "── check:sql-time ──"
+          node scripts/check-sql-time.mjs
           echo "── check:realtime ──"
           node scripts/check-realtime.mjs "$SEED_PASSWORD"
           for s in reactions threads quotes mentions pins attachments issues repos oauth browse pulls indexing; do
