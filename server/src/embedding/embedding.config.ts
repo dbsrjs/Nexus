@@ -57,8 +57,25 @@ export function resolveEmbedding(config: ConfigService): EmbeddingConfig | null 
   };
 }
 
+/**
+ * **`local` 의 기본은 `embeddinggemma` 다.** 두 번 바꿔서 여기까지 왔고,
+ * 두 번 다 실측이 뒤집었다 (2026-09-10).
+ *
+ * | 모델 | 왜 탈락했나 |
+ * |---|---|
+ * | `nomic-embed-text`(v1.5) | **한국어를 못 한다.** 전체 인덱싱 뒤 재니 한국어 질의 5개가 0/5 였고, **서로 다른 다섯 질의의 1위가 모두 같은 청크**였다 — 한국어가 벡터 공간의 한 자리로 뭉개진다 |
+ * | `nomic-embed-text-v2-moe` | 다국어는 되는데 **컨텍스트가 512 토큰**이다. 약 1,000자를 넘으면 **오류 없이 뒤를 통째로 버린다**(잘린 앞부분만 임베딩된다). 60줄 청크가 안 들어간다 |
+ *
+ * `embeddinggemma`(300M)는 셋을 동시에 만족한다 — **768차원 네이티브**(잘라
+ * 쓰지 않으니 재정규화도 불필요) · **2,048 토큰**(우리 청크 상한이 들어간다) ·
+ * 100개 이상 언어. 한국어 질의 4개로 재니 4/4 였고 정답과 오답의 간격도 컸다
+ * (0.52~0.62 vs 0.13~0.27).
+ *
+ * **차원이 768 인 것이 이 선택의 조건이다** — `vector(768)` 이 스키마와 HNSW
+ * 인덱스에 박혀 있어, 바꾸면 전체 재인덱싱을 강제한다.
+ */
 function defaultModel(provider: EmbeddingProviderName): string {
   if (provider === 'gemini') return 'gemini-embedding-001';
-  if (provider === 'local') return 'nomic-embed-text';
+  if (provider === 'local') return 'embeddinggemma';
   return 'fake';
 }
