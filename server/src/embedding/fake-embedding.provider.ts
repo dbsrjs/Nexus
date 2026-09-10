@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import {
   EMBEDDING_DIMENSIONS,
   EmbeddingProvider,
+  EmbeddingTask,
   normalize,
 } from './embedding.provider';
 
@@ -18,7 +19,14 @@ import {
 export class FakeEmbeddingProvider implements EmbeddingProvider {
   readonly dimensions = EMBEDDING_DIMENSIONS;
 
-  async embed(texts: string[]): Promise<number[][]> {
+  /**
+   * **`task` 를 일부러 무시한다.** 진짜 provider 는 문서와 질의를 다르게
+   * 다루지만(taskType · 접두사), 여기서 그것을 흉내 내면 접두사 낱말이
+   * 벡터에 섞여 **문서와 질의가 서로 멀어진다** — 낱말 겹침으로 순위를
+   * 단언하는 `check:indexing` 이 통째로 무너진다. 대칭인 것이 이 구현의
+   * 요구 조건이다.
+   */
+  async embed(texts: string[], _task: EmbeddingTask): Promise<number[][]> {
     return texts.map((text) => this.one(text));
   }
 

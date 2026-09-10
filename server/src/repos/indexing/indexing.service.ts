@@ -149,7 +149,8 @@ export class IndexingService {
     const safeTopK =
       Number.isInteger(topK) && topK >= 1 && topK <= 20 ? topK : DEFAULT_TOP_K;
 
-    const [vector] = await this.embedder.embed([query]);
+    // 검색하는 쪽이다 — 문서와 다른 신호를 받아야 한다(EmbeddingTask).
+    const [vector] = await this.embedder.embed([query], 'query');
     // provider 가 `{ embeddings: [] }` 를 주면 `assertDimensions([])` 는
     // 빈 배열을 그대로 통과시킨다 — 「청크 수 ≠ 임베딩 수」 검사가 있는
     // 인덱싱 쪽(replaceFile)과 달리 검색에는 그 그물이 없어, vector 가
@@ -369,8 +370,11 @@ export class IndexingService {
       return;
     }
 
+    // 검색되는 쪽이다. 이 짝(document ↔ query)이 어긋나면 검색이 조용히
+    // 나빠진다 — 오류가 아니라 순위가 틀릴 뿐이라 눈치채기 어렵다.
     const vectors = await (this.embedder as EmbeddingProvider).embed(
       chunks.map((c) => c.content),
+      'document',
     );
     assertDimensions(vectors);
 

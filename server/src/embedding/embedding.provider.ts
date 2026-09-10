@@ -4,10 +4,21 @@
  */
 export const EMBEDDING_DIMENSIONS = 768;
 
+/**
+ * 이 텍스트가 **검색되는 쪽인지 검색하는 쪽인지.**
+ *
+ * **모델이 둘을 다르게 다룬다.** `gemini-embedding-001` 은 `taskType` 을,
+ * `nomic-embed-text` 는 `search_document:` · `search_query:` 접두사를 받는데
+ * 둘 다 **문서가 요구하는 것이지 선택지가 아니다** — 안 주면 검색 품질이
+ * 떨어진다. 처음에는 이 구분 없이 `embed(texts)` 하나였고, 그래서 두 어댑터가
+ * 나란히 그 신호를 빠뜨리고 있었다.
+ */
+export type EmbeddingTask = 'document' | 'query';
+
 export interface EmbeddingProvider {
   readonly dimensions: number;
   /** 넣은 순서 그대로, 같은 개수를 돌려준다. */
-  embed(texts: string[]): Promise<number[][]>;
+  embed(texts: string[], task: EmbeddingTask): Promise<number[][]>;
 }
 
 /**
