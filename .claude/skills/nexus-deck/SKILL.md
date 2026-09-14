@@ -28,7 +28,7 @@ description: Use when making any presentation, slide deck, PPT or .pptx about Ne
    ```
    `lib.js` 는 pptxgenjs · jszip 을 **실행한 폴더(cwd)에서** 찾는다.
 2. **사실부터 모은다. 숫자를 지어내지 않는다.** 커밋 수 · 테스트 수 · 계약 검증
-   케이스 · 단계 상태는 `CLAUDE.md` §4 · §5, `docs/전환-계획.md`, `git log` 에서
+   케이스 · 단계 상태는 `CLAUDE.md` §5, `docs/진행-기록.md`, `docs/전환-계획.md`, `git log` 에서
    가져온다. 기능 범위는 `docs/제품-기획.md`. 예시 덱의 숫자는 9/11 기준이라 낡았다.
    날짜를 쓰면 요일을 코드로 확인한다(공휴일 · 연휴도).
 3. 빌드 스크립트를 쓴다 — `require('<저장소>/.claude/skills/nexus-deck/scripts/lib')`.

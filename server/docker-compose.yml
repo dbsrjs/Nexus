@@ -30,7 +30,7 @@ services:
 
   # ⚠ 현재 빌드는 Redis 를 쓰지 않는다. redis-io.adapter.ts 는 tsconfig 의
   #   exclude 에 있고 main.ts 에 등록되지 않았다. 10-3a 에서 열람 캐시를
-  #   검토하며 "Redis 가 이 프로젝트에 없다"고 못 박았다 (CLAUDE.md §4).
+  #   검토하며 "Redis 가 이 프로젝트에 없다"고 못 박았다 (docs/진행-기록.md «10-3a»).
   #   프레즌스나 다중 인스턴스가 실제로 필요해지면 그때 프로필을 뗀다.
   redis:
     image: redis:7

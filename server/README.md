@@ -190,3 +190,62 @@ prisma/
 └─ seed.ts
 docker-compose.yml    # pgvector/postgres + redis + minio
 ```
+
+## 인덱싱을 진짜로 돌리려면 — Ollama 와 모델이 필요하다
+
+`EMBEDDING_PROVIDER=fake` 는 **검증 전용**이다(해시 벡터라 의미를 모른다).
+실제로 쓰려면 `local` 이고, 그러면 이 PC 에 Ollama 데몬과 모델이 있어야 한다.
+
+```bash
+# winget install Ollama.Ollama   (한 번만)
+ollama pull embeddinggemma              # 622MB. 100개+ 언어 · 768차원 · 2,048 토큰
+```
+
+`.env` 는 `EMBEDDING_PROVIDER=local` 이면 된다(`EMBEDDING_MODEL` 을 비우면
+`embeddinggemma` 가 기본이다). 데몬은 트레이 앱이 띄우고, 안 떠 있으면
+`ollama serve`. 확인: `curl http://127.0.0.1:11434/api/tags`.
+
+**`nomic-embed-text` 계열을 쓰지 말 것** — v1.5 는 한국어를 못 하고, v2-moe 는
+컨텍스트가 **512 토큰**이라 1,000자를 넘으면 **오류 없이 뒤를 버린다**(잘린
+앞부분만 임베딩된다). 둘 다 실측으로 걸렀다 — 근거는 [진행 기록 «12 실제 태우기»](../docs/진행-기록.md).
+
+**모델을 바꾸면 반드시 전체 재인덱싱한다** — 문서 벡터와 질의 벡터가 같은
+모델에서 나와야 한다. `POST /spaces/:spaceId/repos/:repoId/index` 가 전체
+재인덱싱이다(`baseSha=null` 이라 `planFor` 가 `first` 로 떨어진다).
+**그냥 두고 push 만 하면 증분이 돌아 옛 모델 벡터와 새 모델 벡터가 섞인다** —
+`repo_index_chunks` 에 어떤 모델로 만들었는지가 없어 아무도 눈치채지 못한다.
+
+**속도**: 이 저장소 전체가 이 PC 의 CPU 로 **약 1시간**이다(분당 33청크).
+임베딩이 병목이라 GPU 가 있는 PC 에서는 크게 빨라진다.
+
+## 실제 GitHub 에 웹훅을 붙이는 법 — PC 를 옮기면 다시 해야 한다
+
+**저장소 등록은 DB 에 있고 DB 는 PC 마다 따로다.** 아래 절차는 새 PC 에서
+그대로 반복한다. 등록된 저장소도, 웹훅 시크릿도 옮겨지지 않는다.
+
+```bash
+# 1) 터널 — GitHub 이 이 PC 에 닿을 주소를 만든다
+#    winget install Cloudflare.cloudflared  (한 번만)
+cloudflared tunnel --url http://localhost:3000
+#    → https://<임의의-말>.trycloudflare.com 이 로그에 찍힌다
+
+# 2) 저장소 등록 — 응답의 webhookSecret 을 적어 둔다(다시 볼 수 없다)
+curl -X POST http://127.0.0.1:3000/api/spaces/<spaceId>/repos   -H "authorization: Bearer <accessToken>" -H "content-type: application/json"   -d '{"provider":"github","fullPath":"소유자/이름","linkedChannelId":"<channelId>"}'
+```
+
+3) GitHub 저장소 → Settings → Webhooks → Add webhook
+
+| 칸 | 값 |
+|---|---|
+| Payload URL | `https://<터널>/api/webhooks/github/<repoId>` |
+| Content type | **`application/json`** — 기본값 `form` 이면 서명이 안 맞는다 |
+| Secret | 2번에서 받은 `whsec_…` |
+
+**함정 셋을 실제로 겪었다.**
+
+- **터널을 다시 띄우면 주소가 바뀐다.** 무료 quick tunnel 은 매번 새 도메인이라
+  GitHub 쪽 Payload URL 도 함께 고쳐야 한다. 안 고치면 **530**(터널 없음)이 뜬다
+- `Add webhook` 직후 GitHub 이 **ping** 을 보낸다. 우리는 모르는 이벤트로
+  200 을 주므로 **초록 체크가 뜨는 것이 정상**이다(적재는 하지 않는다)
+- 시크릿을 잃어버리면 `POST /spaces/:spaceId/repos/:repoId/secret` 으로 재발급한다.
+  **옛 시크릿은 그 순간부터 401** 이므로 GitHub 쪽도 함께 고친다
