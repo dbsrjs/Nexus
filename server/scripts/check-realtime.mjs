@@ -306,6 +306,60 @@ async function main() {
   });
   check('새 채널의 메시지도 받는다', (await newChannelEvent)?.channelId === created.json.id);
 
+  // ── 역할 변경 ──
+  // CLAUDE.md §5 의 빚이었다 — "두 번째 admin 계정이 필요하다"고 봐서 뺐지만,
+  // owner 는 member 를 넘어서므로 **시드 owner 와 위에서 초대한 outsider 로 충분하다.**
+  // 역할은 JWT 에 담지 않으므로 소켓에 알릴 것은 "룸을 다시 계산하라" 하나뿐이다.
+  console.log('\n── rooms:invalidate (역할 변경) ──');
+
+  const members = await api('GET', `/spaces/${spaceId}/members`, { token: ownerToken });
+  const outsiderUserId = signup.json.user?.id;
+  const outsiderMember = (members.json ?? []).find((m) => m.userId === outsiderUserId);
+  // 값이 있는지부터 본다 — 둘 다 undefined 면 뒤 단언이 거짓 통과한다(10-2b).
+  check('역할 변경 대상(초대된 멤버)을 찾았다', typeof outsiderMember?.role === 'string', JSON.stringify(outsiderMember));
+  const originalRole = outsiderMember?.role;
+  const nextRole = originalRole === 'guest' ? 'member' : 'guest';
+
+  const roleEvent = waitFor(outsider, 'rooms:invalidate');
+  const actorShouldNotGet = waitFor(owner, 'rooms:invalidate', 1500);
+  const changed = await api('PATCH', `/spaces/${spaceId}/members/${outsiderUserId}`, {
+    token: ownerToken,
+    body: { role: nextRole },
+  });
+  check('역할 변경 200', changed.status === 200, `${changed.status} ${JSON.stringify(changed.json)}`);
+  check('역할이 실제로 바뀌었다', changed.json?.role === nextRole, JSON.stringify(changed.json));
+  const roleInvalidated = await roleEvent;
+  check(
+    '대상의 소켓에 rooms:invalidate(member.role) 도착',
+    roleInvalidated?.reason === 'member.role',
+    JSON.stringify(roleInvalidated),
+  );
+  // toUser 라 바꾼 사람에게는 가지 않는다. 스페이스 전체로 뿌리면 모두가
+  // 쓸데없이 룸을 다시 계산한다.
+  check('바꾼 사람에게는 가지 않는다', (await actorShouldNotGet) === null);
+
+  const afterRoleSync = await emitWithAck(outsider, 'rooms:sync', {});
+  check('역할이 바뀐 뒤에도 rooms:sync 에 스페이스가 있다', afterRoleSync?.spaces?.includes(spaceId), JSON.stringify(afterRoleSync?.spaces));
+
+  // 거부된 변경은 아무것도 알리지 않는다 — 자기 역할은 스스로 못 바꾼다.
+  const ownerUserId = (members.json ?? []).find((m) => m.role === 'owner')?.userId;
+  const deniedShouldNotGet = waitFor(owner, 'rooms:invalidate', 1500);
+  const denied = await api('PATCH', `/spaces/${spaceId}/members/${ownerUserId}`, {
+    token: ownerToken,
+    body: { role: 'member' },
+  });
+  check('자기 역할 변경은 403', denied.status === 403, `${denied.status} ${JSON.stringify(denied.json)}`);
+  check('거부된 변경은 rooms:invalidate 를 보내지 않는다', (await deniedShouldNotGet) === null);
+
+  // 시드 스페이스를 오염시키지 않도록 되돌린다. 실행할 때마다 outsider 가 새로
+  // 생기지만, 역할까지 틀어진 채 남기면 다음 사람이 읽을 때 헷갈린다.
+  if (originalRole) {
+    await api('PATCH', `/spaces/${spaceId}/members/${outsiderUserId}`, {
+      token: ownerToken,
+      body: { role: originalRole },
+    });
+  }
+
   report();
 }
 
