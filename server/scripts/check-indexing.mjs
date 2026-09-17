@@ -77,6 +77,41 @@ const NEXT_SHA = 'next2222222222222222222222222222222222cd';
 // 안 불린다(발견 1). 다른 값이어야 compare 가 실제로 불리고 404 갈래를 탄다.
 const THIRD_SHA = 'thrd3333333333333333333333333333333333ef';
 
+/** 모델 변경 케이스 전용. 앞의 어느 커밋과도 달라야 `baseSha === headSha` 조기 반환을 피한다. */
+const FOURTH_SHA = 'frth4444444444444444444444444444444444aa';
+
+/** `FakeEmbeddingProvider.modelId`. 서버는 `EMBEDDING_PROVIDER=fake` 로 떠 있어야 한다. */
+const FAKE_MODEL = 'fake:fake';
+
+/**
+ * 기록된 모델을 DB 에서 직접 바꾼다. 바뀐 행 수를 돌려준다.
+ *
+ * **@prisma/client 는 이 함수 안에서만 불러온다** — 다른 케이스가 DB 접속
+ * 설정에 묶이지 않게 한다. `DATABASE_URL` 은 CI 에서는 잡의 환경변수로 오고,
+ * 로컬에서는 `server/.env` 에서 읽는다(`npm run` 을 저장소 루트에서 돌리므로
+ * Prisma 가 스스로 찾으리라 기대하지 않는다).
+ */
+async function setIndexedModel(repoId, model) {
+  if (!process.env.DATABASE_URL) {
+    try {
+      process.loadEnvFile(new URL('../.env', import.meta.url));
+    } catch {
+      // 없으면 아래 PrismaClient 가 알아듣는 오류로 던진다.
+    }
+  }
+  const { PrismaClient } = await import('@prisma/client');
+  const prisma = new PrismaClient();
+  try {
+    const res = await prisma.repo.updateMany({
+      where: { id: repoId },
+      data: { indexedEmbeddingModel: model },
+    });
+    return res.count;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 /**
  * 두 번째 커밋의 내용. socket 을 고치고, orphan 을 지우고, 새 파일을 더하고,
  * legacy.ts 를 renamed.ts 로 이름을 바꾼다(발견 3 — `renamed` 갈래 계약 검증).
@@ -116,6 +151,9 @@ let apiHits = 0;
  * 있다 — 늘지 않으면 "전체로 떨어졌다"가 아니라 "할 일이 없었다"일 뿐이다.
  */
 let compare404Hits = 0;
+
+/** compare 요청 수(응답 코드와 무관). 모델 변경 케이스가 「compare 를 건너뛰었다」를 단언한다. */
+let compareHits = 0;
 
 const fake = createServer((req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${FAKE_PORT}`);
@@ -199,6 +237,7 @@ const fake = createServer((req, res) => {
 
   const compare = url.pathname.match(/^\/repos\/[^/]+\/[^/]+\/compare\/(.+)\.\.\.(.+)$/);
   if (req.method === 'GET' && compare) {
+    compareHits++;
     const base = decodeURIComponent(compare[1]);
     // base 가 우리가 아는 커밋이 아니면 404 — force-push 를 흉내 낸다.
     if (base !== HEAD_SHA) {
@@ -289,6 +328,11 @@ async function main() {
   const state = await waitForIndex(owner.token, spaceId, repoId);
   check('연결하면 인덱싱이 끝난다', state?.state === 'done', JSON.stringify(state));
   check('인덱싱한 커밋을 기록한다', state?.indexedCommitSha === HEAD_SHA);
+  check(
+    '인덱싱한 임베딩 모델을 기록한다',
+    state?.indexedEmbeddingModel === FAKE_MODEL,
+    String(state?.indexedEmbeddingModel),
+  );
   check('청크가 쌓였다', (state?.chunkCount ?? 0) > 0);
   check('트리가 잘리지 않았다고 말한다', state?.truncated === false);
 
@@ -495,6 +539,60 @@ async function main() {
     '세 번째 push 가 compare 의 404(force-push) 갈래를 실제로 태웠다',
     compare404Hits > compare404Before,
     `compare 404 횟수 ${compare404Before} → ${compare404Hits}`,
+  );
+
+  // ── 임베딩 모델이 바뀌면 전체로 떨어진다 ──────────
+  //
+  // **서버의 모델은 실행 중에 바꿀 수 없다**(부팅 때 `.env` 로 정해진다). 그래서
+  // 반대쪽 — 기록된 모델 — 을 DB 에서 직접 옛 이름으로 바꿔 「다른 모델로 만든
+  // 인덱스」를 흉내 낸다. 계약 검증에서 DB 를 직접 만지는 곳은 여기뿐이다.
+  //
+  // 바로 앞의 force-push 로 indexedCommitSha 는 THIRD_SHA 다. 이 상태에서 push 가
+  // 오면 모델이 같을 때는 compare 를 부른다(가짜 GitHub 이 404 → 전체). **그래서
+  // 「전체로 끝났다」만으로는 모델 판정을 증명하지 못한다** — compare 를 한 번도
+  // 부르지 않았다는 것까지 봐야 한다.
+  const tampered = await setIndexedModel(repoId, 'local:nomic-embed-text');
+  abortUnless(tampered === 1, '기록된 모델을 바꾸지 못했습니다', { updated: tampered });
+
+  const compareBefore = compareHits;
+  const body5 = JSON.stringify({
+    ref: 'refs/heads/main',
+    after: FOURTH_SHA,
+    commits: [{ id: FOURTH_SHA, message: '네 번째', author: { name: 'octocat' } }],
+    repository: { full_name: REPO.full_name },
+    pusher: { name: 'octocat' },
+  });
+  const sig5 =
+    'sha256=' +
+    createHmac('sha256', reissued.json.webhookSecret).update(body5).digest('hex');
+  await fetch(`${BASE}/webhooks/github/${repoId}`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-github-event': 'push',
+      'x-github-delivery': `d-${stamp}-5`,
+      'x-hub-signature-256': sig5,
+    },
+    body: body5,
+  });
+  const after5 = await waitForIndex(owner.token, spaceId, repoId);
+  check('모델이 바뀐 뒤의 push 도 끝난다', after5?.state === 'done', JSON.stringify(after5));
+  check('새 커밋을 기록한다 (모델 변경)', after5?.indexedCommitSha === FOURTH_SHA);
+  check(
+    '모델이 바뀌면 compare 없이 전체로 떨어진다',
+    compareHits === compareBefore,
+    `compare 횟수 ${compareBefore} → ${compareHits}`,
+  );
+  check(
+    '전체 재인덱싱 뒤 지금 모델로 다시 기록한다',
+    after5?.indexedEmbeddingModel === FAKE_MODEL,
+    String(after5?.indexedEmbeddingModel),
+  );
+  // 숫자인지부터 본다 — 둘 다 undefined 면 비교가 거짓 통과한다(10-2b).
+  check(
+    '전체 재인덱싱 뒤에도 청크가 있다',
+    typeof after5?.chunkCount === 'number' && after5.chunkCount > 0,
+    String(after5?.chunkCount),
   );
 
   // ── 다른 브랜치는 아무 일도 없다 ───────────────

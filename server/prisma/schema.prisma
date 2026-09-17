@@ -628,7 +628,11 @@ model Repo {
   syncedAt          DateTime?    @map("synced_at")
   indexedAt         DateTime?    @map("indexed_at")
   indexedCommitSha  String?      @map("indexed_commit_sha")
-  createdAt         DateTime     @default(now()) @map("created_at")
+  /// 인덱스를 만든 임베딩 모델(`provider:model`). **지금 설정과 다르면 증분이
+  /// 아니라 전체 재인덱싱이다** — 다른 모델의 벡터가 섞이면 오류 없이 순위만
+  /// 틀린다. `null` 은 모른다는 뜻이라 역시 전체로 떨어진다.
+  indexedEmbeddingModel String?  @map("indexed_embedding_model")
+  createdAt        DateTime     @default(now()) @map("created_at")
   updatedAt         DateTime     @updatedAt @map("updated_at")
 
   space         Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)

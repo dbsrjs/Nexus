@@ -17,6 +17,12 @@ export type EmbeddingTask = 'document' | 'query';
 
 export interface EmbeddingProvider {
   readonly dimensions: number;
+  /**
+   * `provider:model`. 인덱스에 이 값을 기록해 두고, 다르면 전체 재인덱싱한다.
+   * **provider 이름까지 넣는 이유**는 같은 모델 이름이라도 provider 마다
+   * 출력 차원을 자르는 방식 · 정규화가 달라 벡터가 호환된다고 볼 수 없어서다.
+   */
+  readonly modelId: string;
   /** 넣은 순서 그대로, 같은 개수를 돌려준다. */
   embed(texts: string[], task: EmbeddingTask): Promise<number[][]>;
 }

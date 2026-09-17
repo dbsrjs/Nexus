@@ -1,5 +1,25 @@
 import { GithubComparedFile } from '../../oauth/github-oauth.client';
 
+/**
+ * compare 를 부르기도 전에 전체로 떨어지는 이유. 없으면 `null` — 증분을 시도한다.
+ *
+ * **모델 비교가 `baseSha === headSha` 보다 먼저다.** 같은 커밋이라도 모델이
+ * 바뀌었으면 할 일이 없는 게 아니라 전부 다시 해야 한다. 순서를 뒤집으면
+ * 사람이 모델을 바꾼 뒤 같은 커밋으로 다시 태울 때 조용히 건너뛴다.
+ *
+ * **기록이 `null` 이어도 전체다.** 이 컬럼이 생기기 전에 만든 인덱스는 어떤
+ * 모델로 만들었는지 모른다 — 모르면 섞였다고 본다(§3 판단 2 · 7).
+ */
+export function fullReindexBeforeCompare(input: {
+  baseSha: string | null;
+  indexedModel: string | null;
+  currentModel: string;
+}): 'first' | 'model-changed' | null {
+  if (!input.baseSha) return 'first';
+  if (input.indexedModel !== input.currentModel) return 'model-changed';
+  return null;
+}
+
 export interface ReindexPlan {
   /** 받아서 다시 청킹할 경로. */
   reindex: string[];

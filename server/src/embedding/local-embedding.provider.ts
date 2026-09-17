@@ -70,6 +70,10 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
 
   constructor(private readonly config: EmbeddingConfig) {}
 
+  get modelId(): string {
+    return `local:${this.config.model}`;
+  }
+
   async embed(texts: string[], task: EmbeddingTask): Promise<number[][]> {
     const base = this.config.base ?? DEFAULT_BASE;
     const prefix = prefixesFor(this.config.model)[task];

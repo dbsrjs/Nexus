@@ -85,6 +85,10 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
 
   constructor(private readonly config: EmbeddingConfig) {}
 
+  get modelId(): string {
+    return `gemini:${this.config.model}`;
+  }
+
   async embed(texts: string[], task: EmbeddingTask): Promise<number[][]> {
     const out: number[][] = [];
     for (let i = 0; i < texts.length; i += this.config.batchSize) {

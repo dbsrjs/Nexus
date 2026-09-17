@@ -169,7 +169,12 @@ export class IndexQueueService {
    * **`headSha` 가 그사이 바뀌었으면 `done` 이 아니라 `queued` 다** — 돌고 있는
    * 중에 push 가 들어온 경우다. 추가 컬럼 없이 이것이 처리된다 (설계 §2).
    */
-  async succeed(repoId: string, indexedSha: string, truncated: boolean): Promise<void> {
+  async succeed(
+    repoId: string,
+    indexedSha: string,
+    truncated: boolean,
+    embeddingModel: string,
+  ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const job = await tx.repoIndexJob.findUnique({
         where: { repoId },
@@ -191,9 +196,15 @@ export class IndexQueueService {
 
       // 저장소 전체의 기준은 여기 하나다. 청크의 commit_sha 는 "그 청크의
       // 내용을 뜬 시점"이라 파일마다 다를 수 있다 (설계 §4).
+      // 모델도 커밋과 **같은 쓰기**에 넣는다 — 둘이 어긋나면 다음 push 가
+      // 옛 모델을 새 모델로 믿고 증분을 돈다.
       await tx.repo.update({
         where: { id: repoId },
-        data: { indexedAt: new Date(), indexedCommitSha: indexedSha },
+        data: {
+          indexedAt: new Date(),
+          indexedCommitSha: indexedSha,
+          indexedEmbeddingModel: embeddingModel,
+        },
       });
     });
 

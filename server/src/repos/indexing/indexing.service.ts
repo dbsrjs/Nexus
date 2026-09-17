@@ -22,13 +22,13 @@ import { IndexChunksRepository } from './index-chunks.repository';
 import { IndexQueueService, LeasedJob } from './index-queue.service';
 import { chunkText } from './chunker';
 import { isGenerated, isTooLarge, langOf } from './index-filter';
-import { planFromCompare, ReindexPlan } from './changed-files';
+import { fullReindexBeforeCompare, planFromCompare, ReindexPlan } from './changed-files';
 
 /**
- * 전체 재인덱싱으로 떨어진 이유. `planFor()` 가 `null` 을 돌려주는 세
+ * 전체 재인덱싱으로 떨어진 이유. `planFor()` 가 `null` 을 돌려주는 네
  * 지점을 로그에서 가르는 유일한 단서다(브랜치 전체 리뷰 발견 1).
  */
-type FullReindexReason = 'first' | 'force-push' | 'truncated';
+type FullReindexReason = 'first' | 'model-changed' | 'force-push' | 'truncated';
 
 /** 동시에 몇 개의 blob 을 받나. 분당 900점 한도에 여유 있게 못 미친다 (설계 §3). */
 const FETCH_CONCURRENCY = 4;
@@ -82,7 +82,7 @@ export class IndexingService {
   async status(spaceId: string, repoId: string) {
     const repo = await this.prisma.repo.findFirst({
       where: { id: repoId, spaceId },
-      select: { indexedAt: true, indexedCommitSha: true },
+      select: { indexedAt: true, indexedCommitSha: true, indexedEmbeddingModel: true },
     });
     // 403 이 아니라 404 다 — 403 은 그 저장소가 존재한다를 알려 준다.
     if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
@@ -95,6 +95,7 @@ export class IndexingService {
       reason: job?.reason ?? null,
       indexedAt: repo.indexedAt,
       indexedCommitSha: repo.indexedCommitSha,
+      indexedEmbeddingModel: repo.indexedEmbeddingModel,
       chunkCount,
       truncated: job?.truncated ?? false,
       attempts: job?.attempts ?? 0,
@@ -220,13 +221,21 @@ export class IndexingService {
 
     // **증분으로 갈 수 있나.** baseSha 가 있고 compare 가 성공하고 잘리지
     // 않았을 때만이다. 하나라도 어긋나면 전체다 (설계 §4).
-    const planned = await this.planFor(job, cfg, token, repo.fullPath, headSha);
+    const planned = await this.planFor(
+      job,
+      cfg,
+      token,
+      repo.fullPath,
+      headSha,
+      repo.indexedEmbeddingModel,
+    );
 
     if (planned.plan === null) {
       // 전체 재인덱싱. **조용히 하지 않는다** — 왜 갑자기 500 요청을 썼는지,
       // 그리고 셋 중 어느 이유였는지 나중에 설명할 수 있어야 한다.
       this.logger.log(
-        `전체 재인덱싱: ${repo.fullPath} 이유=${planned.reason} (base=${job.baseSha ?? '없음'})`,
+        `전체 재인덱싱: ${repo.fullPath} 이유=${planned.reason} (base=${job.baseSha ?? '없음'}, ` +
+          `모델=${repo.indexedEmbeddingModel ?? '모름'} → ${(this.embedder as EmbeddingProvider).modelId})`,
       );
       // **기준을 먼저 무효화한다.** 지운 뒤 다시 쌓지 못한 채 죽으면
       // indexedCommitSha 가 인덱스보다 앞서고, 다음 push 가 그 기준으로
@@ -235,7 +244,9 @@ export class IndexingService {
       // 「전체」를 뜻하므로 다음 작업은 자동으로 전체다.
       await this.prisma.repo.update({
         where: { id: job.repoId },
-        data: { indexedCommitSha: null },
+        // 모델 기록도 함께 비운다 — 커밋 기준만 비우고 모델을 남기면 둘이
+        // 서로 다른 인덱스를 가리키게 된다.
+        data: { indexedCommitSha: null, indexedEmbeddingModel: null },
       });
       await this.chunks.deleteRepo(job.spaceId, job.repoId);
     } else {
@@ -299,15 +310,21 @@ export class IndexingService {
       if (done % RENEW_EVERY < FETCH_CONCURRENCY) await this.queue.renew(job.repoId);
     }
 
-    await this.queue.succeed(job.repoId, headSha, tree.value.truncated);
+    await this.queue.succeed(
+      job.repoId,
+      headSha,
+      tree.value.truncated,
+      (this.embedder as EmbeddingProvider).modelId,
+    );
   }
 
   /**
    * 증분 지시. **`plan: null` 이면 전체 재인덱싱이다.**
    *
-   * 전체로 떨어지는 조건 셋 — baseSha 가 없다(첫 인덱싱) · compare 가
-   * 404 다(force-push 로 base 가 사라졌다) · 목록이 잘렸다 (설계 §4).
-   * **셋을 `reason` 으로 구분해 돌려준다** — 셋 다 결과(전체 재인덱싱)는
+   * 전체로 떨어지는 조건 넷 — baseSha 가 없다(첫 인덱싱) · 임베딩 모델이
+   * 바뀌었다 · compare 가 404 다(force-push 로 base 가 사라졌다) · 목록이
+   * 잘렸다 (설계 §4).
+   * **넷을 `reason` 으로 구분해 돌려준다** — 모두 결과(전체 재인덱싱)는
    * 같지만 원인은 다르고, 그 자리가 유일한 사후 단서다(브랜치 전체 리뷰
    * 발견 1). 이유 없이 `null` 하나로 뭉치면 로그만 보고는 첫 인덱싱인지
    * force-push 인지 목록이 잘렸는지 가릴 수 없다.
@@ -318,8 +335,15 @@ export class IndexingService {
     token: string,
     fullPath: string,
     headSha: string,
+    indexedModel: string | null,
   ): Promise<{ plan: ReindexPlan } | { plan: null; reason: FullReindexReason }> {
-    if (!job.baseSha) return { plan: null, reason: 'first' };
+    const early = fullReindexBeforeCompare({
+      baseSha: job.baseSha,
+      indexedModel,
+      currentModel: (this.embedder as EmbeddingProvider).modelId,
+    });
+    // `!job.baseSha` 는 위 함수가 이미 'first' 로 걸렀다. 타입 좁히기만 남긴다.
+    if (early || !job.baseSha) return { plan: null, reason: early ?? 'first' };
     if (job.baseSha === headSha) return { plan: { reindex: [], remove: [] } };
 
     const res = await this.github.compare(cfg, token, fullPath, job.baseSha, headSha);
@@ -399,7 +423,7 @@ export class IndexingService {
   private async ready(job: LeasedJob) {
     const repo = await this.prisma.repo.findFirst({
       where: { id: job.repoId, spaceId: job.spaceId, provider: RepoProvider.github },
-      select: { fullPath: true, defaultBranch: true },
+      select: { fullPath: true, defaultBranch: true, indexedEmbeddingModel: true },
     });
     if (!repo) throw new IndexingAbort('저장소를 찾을 수 없습니다.', true);
 

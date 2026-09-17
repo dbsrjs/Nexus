@@ -1,4 +1,42 @@
-import { planFromCompare } from './changed-files';
+import { fullReindexBeforeCompare, planFromCompare } from './changed-files';
+
+describe('fullReindexBeforeCompare', () => {
+  const same = { indexedModel: 'local:embeddinggemma', currentModel: 'local:embeddinggemma' };
+
+  it('기준 커밋이 없으면 첫 인덱싱이다', () => {
+    expect(fullReindexBeforeCompare({ ...same, baseSha: null })).toBe('first');
+  });
+
+  it('모델이 같으면 증분을 시도한다', () => {
+    expect(fullReindexBeforeCompare({ ...same, baseSha: 'abc' })).toBeNull();
+  });
+
+  it('모델이 바뀌면 전체다', () => {
+    expect(
+      fullReindexBeforeCompare({
+        baseSha: 'abc',
+        indexedModel: 'local:nomic-embed-text',
+        currentModel: 'local:embeddinggemma',
+      }),
+    ).toBe('model-changed');
+  });
+
+  it('모델 이름이 같아도 provider 가 다르면 전체다', () => {
+    expect(
+      fullReindexBeforeCompare({
+        baseSha: 'abc',
+        indexedModel: 'gemini:embeddinggemma',
+        currentModel: 'local:embeddinggemma',
+      }),
+    ).toBe('model-changed');
+  });
+
+  it('기록이 없는 옛 인덱스는 모델을 모르므로 전체다', () => {
+    expect(
+      fullReindexBeforeCompare({ baseSha: 'abc', indexedModel: null, currentModel: 'fake:fake' }),
+    ).toBe('model-changed');
+  });
+});
 
 describe('planFromCompare', () => {
   it('추가 · 수정은 다시 인덱싱한다', () => {

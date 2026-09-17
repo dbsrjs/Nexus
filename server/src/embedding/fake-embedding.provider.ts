@@ -18,6 +18,7 @@ import {
  */
 export class FakeEmbeddingProvider implements EmbeddingProvider {
   readonly dimensions = EMBEDDING_DIMENSIONS;
+  readonly modelId = 'fake:fake';
 
   /**
    * **`task` 를 일부러 무시한다.** 진짜 provider 는 문서와 질의를 다르게
