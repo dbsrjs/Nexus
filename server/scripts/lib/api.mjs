@@ -32,7 +32,7 @@ export async function api(method, path, { token, body } = {}) {
 }
 
 // 검증용 계정을 만든다. 비밀번호는 어디서도 재사용되지 않으므로(로그인하는
-// 스크립트는 check-realtime 하나뿐이고 그것은 시드 계정을 쓴다) 상수로 둔다.
+// 스크립트가 없다 — 모두 가입 응답의 토큰을 쓴다) 상수로 둔다.
 const PASSWORD = 'check-harness-1234';
 
 /**

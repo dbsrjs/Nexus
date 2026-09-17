@@ -134,7 +134,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run server:dev` · `server:build` | 개발 서버 · 빌드 |
 | `npm --prefix server run typecheck` | 타입 검사만 |
 | `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint |
-| `npm run check:realtime -- <시드비밀번호>` | 실서버 · 실DB · 실소켓으로 소켓 계약 검증 (`db:up` · `server:dev` 실행 중이어야 함) |
+| `npm run check:realtime` | 실서버 · 실DB · 실소켓으로 소켓 계약 검증(49개) (`db:up` · `server:dev` 실행 중이어야 함). **2026-09-17 부터 시드 비밀번호가 필요 없다** — 자체 계정 · 스페이스를 쓴다 |
 | `npm run check:reactions` | 리액션 계약 검증(24개). **자체 계정·스페이스를 만들어 쓰므로 비밀번호가 필요 없다** |
 | `npm run check:threads` | 스레드 계약 검증(25개). 위와 같이 자체 계정을 쓴다 |
 | `npm run check:quotes` | 답장(인용) 계약 검증(17개) |

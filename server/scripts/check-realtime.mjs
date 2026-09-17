@@ -2,22 +2,21 @@
 //
 // 사전 조건:
 //   npm run db:up && npm run server:dev   (다른 터미널)
-//   npm run db:seed 로 만든 비밀번호를 인자로 넘긴다
 //
-// 사용: npm run check:realtime -- <시드비밀번호>
+// 사용: npm run check:realtime
+//
+// **시드 계정을 쓰지 않는다 — 자체 계정 · 자체 스페이스를 만든다.** 4단계에서
+// 처음 만든 스크립트라 시드 계정으로 로그인했는데, 그 비밀번호는 시드가 임의로
+// 만들어 한 번만 찍기 때문에 받아 적지 않은 PC 에서는 영영 돌 수 없었다
+// (2026-08-21 에 이미 "이 PC 에서 못 돈다"로 적혀 있었다). 시드 스페이스에
+// 검증용 사용자 · 채널 · 메시지가 쌓이는 것도 함께 사라진다. 7단계부터의
+// 다른 스크립트가 처음부터 이렇게 했다.
 
 import { requireServer } from './lib/preflight.mjs';
-import { BASE, api } from './lib/api.mjs';
+import { BASE, api, signup, stamp } from './lib/api.mjs';
 import { check, summary } from './lib/checks.mjs';
 import { connect, waitFor } from './lib/socket.mjs';
 await requireServer(BASE);
-const OWNER_EMAIL = 'dbsrjs1224@gmail.com';
-const OWNER_PASSWORD = process.argv[2];
-
-if (!OWNER_PASSWORD) {
-  console.error('사용: npm run check:realtime -- <시드 비밀번호>');
-  process.exit(1);
-}
 
 
 /** 소켓 하나를 연결한다. 성공하면 소켓, 실패하면 Error 를 돌려준다(던지지 않는다). */
@@ -40,14 +39,8 @@ function track(socket) {
 }
 
 async function main() {
-  const login = await api('POST', '/auth/login', {
-    body: { email: OWNER_EMAIL, password: OWNER_PASSWORD },
-  });
-  if (login.status !== 200) {
-    console.error('로그인 실패 — 시드 비밀번호를 확인하십시오.', login.json);
-    process.exit(1);
-  }
-  const ownerToken = login.json.accessToken;
+  const ownerAccount = await signup('realtime', 'owner');
+  const ownerToken = ownerAccount.token;
 
   console.log('\n── 인증 ──');
 
@@ -67,10 +60,18 @@ async function main() {
 
   console.log('\n── 룸 ──');
 
-  const spaces = await api('GET', '/spaces', { token: ownerToken });
-  const spaceId = spaces.json[0].id;
+  // **영문으로 짓는다** — slug 가 한글을 떨어뜨려 이름 둘이 같은 slug 를 요구한다(10-2b).
+  const space = await api('POST', '/spaces', {
+    token: ownerToken,
+    body: { name: `RealtimeSpace ${stamp}` },
+  });
+  check('검증용 스페이스 생성', space.status === 201, JSON.stringify(space.json));
+  const spaceId = space.json.id;
   const channels = await api('GET', `/spaces/${spaceId}/channels`, { token: ownerToken });
   const channelIds = channels.json.map((c) => c.id);
+  // 새 스페이스는 기본 채널을 갖고 태어난다. 비어 있으면 아래 "채널 목록이 같다"가
+  // 0 === 0 으로 공허하게 통과하고 channelIds[0] 이 undefined 가 된다.
+  check('새 스페이스에 기본 채널이 있다', channelIds.length > 0, JSON.stringify(channels.json));
 
   const sync = await emitWithAck(owner, 'rooms:sync', {});
   check('rooms:sync 가 ack 을 준다', sync?.ok === true, JSON.stringify(sync));
@@ -85,13 +86,8 @@ async function main() {
   console.log('\n── 메시지 브로드캐스트 ──');
 
   // 두 번째 사용자를 만들어 초대로 같은 스페이스에 넣는다.
-  const outsiderEmail = `check-outsider-${Date.now()}@example.com`;
-  const outsiderPassword = 'check-outsider-password-1234';
-  const signup = await api('POST', '/auth/signup', {
-    body: { email: outsiderEmail, password: outsiderPassword, name: '검증용 외부인' },
-  });
-  check('두 번째 사용자 가입', signup.status === 201, JSON.stringify(signup.json));
-  const outsiderToken = signup.json.accessToken;
+  const outsiderAccount = await signup('realtime', 'outsider');
+  const outsiderToken = outsiderAccount.token;
 
   // 아직 스페이스 멤버가 아닌 상태로 연결한다.
   const outsider = track(await connect(outsiderToken));
@@ -265,13 +261,8 @@ async function main() {
   // outsider 는 위 "메시지 브로드캐스트" 절에서 초대를 수락해 이미 스페이스
   // 멤버가 됐다. 진짜 비멤버로 거부 분기(not_a_member)를 확인하려면 그
   // 스페이스에 한 번도 들어간 적 없는 사용자가 필요해 여기서 새로 만든다.
-  const strangerEmail = `check-stranger-${Date.now()}@example.com`;
-  const strangerPassword = 'check-stranger-password-1234';
-  const strangerSignup = await api('POST', '/auth/signup', {
-    body: { email: strangerEmail, password: strangerPassword, name: '읽음 검증용 비멤버' },
-  });
-  check('읽음 검증용 비멤버 가입', strangerSignup.status === 201, JSON.stringify(strangerSignup.json));
-  const stranger = track(await connect(strangerSignup.json.accessToken));
+  const strangerAccount = await signup('realtime', 'stranger');
+  const stranger = track(await connect(strangerAccount.token));
 
   const foreignAck = await emitWithAck(stranger, 'read', {
     spaceId,
@@ -308,12 +299,12 @@ async function main() {
 
   // ── 역할 변경 ──
   // CLAUDE.md §5 의 빚이었다 — "두 번째 admin 계정이 필요하다"고 봐서 뺐지만,
-  // owner 는 member 를 넘어서므로 **시드 owner 와 위에서 초대한 outsider 로 충분하다.**
+  // owner 는 member 를 넘어서므로 **owner 와 위에서 초대한 outsider 로 충분하다.**
   // 역할은 JWT 에 담지 않으므로 소켓에 알릴 것은 "룸을 다시 계산하라" 하나뿐이다.
   console.log('\n── rooms:invalidate (역할 변경) ──');
 
   const members = await api('GET', `/spaces/${spaceId}/members`, { token: ownerToken });
-  const outsiderUserId = signup.json.user?.id;
+  const outsiderUserId = outsiderAccount.userId;
   const outsiderMember = (members.json ?? []).find((m) => m.userId === outsiderUserId);
   // 값이 있는지부터 본다 — 둘 다 undefined 면 뒤 단언이 거짓 통과한다(10-2b).
   check('역할 변경 대상(초대된 멤버)을 찾았다', typeof outsiderMember?.role === 'string', JSON.stringify(outsiderMember));
@@ -342,7 +333,7 @@ async function main() {
   check('역할이 바뀐 뒤에도 rooms:sync 에 스페이스가 있다', afterRoleSync?.spaces?.includes(spaceId), JSON.stringify(afterRoleSync?.spaces));
 
   // 거부된 변경은 아무것도 알리지 않는다 — 자기 역할은 스스로 못 바꾼다.
-  const ownerUserId = (members.json ?? []).find((m) => m.role === 'owner')?.userId;
+  const ownerUserId = ownerAccount.userId;
   const deniedShouldNotGet = waitFor(owner, 'rooms:invalidate', 1500);
   const denied = await api('PATCH', `/spaces/${spaceId}/members/${ownerUserId}`, {
     token: ownerToken,
@@ -350,15 +341,6 @@ async function main() {
   });
   check('자기 역할 변경은 403', denied.status === 403, `${denied.status} ${JSON.stringify(denied.json)}`);
   check('거부된 변경은 rooms:invalidate 를 보내지 않는다', (await deniedShouldNotGet) === null);
-
-  // 시드 스페이스를 오염시키지 않도록 되돌린다. 실행할 때마다 outsider 가 새로
-  // 생기지만, 역할까지 틀어진 채 남기면 다음 사람이 읽을 때 헷갈린다.
-  if (originalRole) {
-    await api('PATCH', `/spaces/${spaceId}/members/${outsiderUserId}`, {
-      token: ownerToken,
-      body: { role: originalRole },
-    });
-  }
 
   report();
 }

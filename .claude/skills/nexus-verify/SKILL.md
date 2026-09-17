@@ -16,8 +16,8 @@ description: Use when running or debugging Nexus's check:* contract verification
 1. `npm run db:up` — WSL Postgres 가 떠 있어야 한다.
 2. `npm run server:dev` — 서버가 떠 있어야 한다(대부분의 check:* 가 요구).
    `check:migrations` 는 예외 — DB·서버 둘 다 필요 없다(SQL 파일만 읽는다).
-3. 자체 계정·스페이스를 새로 만들어 쓰는 스크립트가 대부분이라 **비밀번호가
-   필요 없다**. `check:realtime` 만 시드 비밀번호 인자를 받는다.
+3. 모든 스크립트가 자체 계정·스페이스를 새로 만들어 쓰므로 **비밀번호가
+   필요 없다**. (`check:realtime` 도 2026-09-17 부터 시드 비밀번호 인자를 받지 않는다.)
 
 ## 특별 취급이 필요한 것
 

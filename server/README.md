@@ -123,12 +123,12 @@ WSL 배포판에 systemd 가 켜져 있으면(`/etc/wsl.conf` 의 `[boot] system
 
 | 스크립트 | 대상 |
 |---|---|
-| `npm run check:realtime -- <시드비밀번호>` | 소켓 계약 41개 |
+| `npm run check:realtime` | 소켓 계약 49개 |
 | `npm run check:reactions` | 리액션 24개 |
 | `npm run check:threads` | 스레드 25개 |
 | `npm run check:quotes` | 답장(인용) 17개 |
 
-뒤의 셋은 **자체 계정 · 자체 스페이스를 만들어 쓴다** — 시드 비밀번호가 필요 없고
+전부 **자체 계정 · 자체 스페이스를 만들어 쓴다** — 시드 비밀번호가 필요 없고
 기존 데이터를 건드리지 않는다.
 
 > **단위 테스트로 DB 동작을 증명하려 하지 말 것.** Prisma 를 스텁으로 대체해 22개를
