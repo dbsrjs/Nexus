@@ -799,11 +799,22 @@ model AiRun {
   error            String?
   createdAt        DateTime  @default(now()) @map("created_at")
   finishedAt       DateTime? @map("finished_at")
+  /// 무엇을 요약·질의하는지. `{channelId, messageIds}` ·
+  /// `{repoId, question, channelId?}`. **적재 시점에 고정된다** — 인덱싱 큐와
+  /// 달리 도는 중에 목표가 바뀌지 않는다 (설계 §2).
+  input      Json
+  /// 한 번 잡으면 이만큼 내 것이다. 지나면 다른 인스턴스가 가져간다 = 크래시 복구.
+  /// **인덱싱의 10분이 아니라 3분이다** — LLM 한 번이 그보다 오래 걸리면
+  /// 뭔가 잘못된 것이다.
+  leaseUntil DateTime? @map("lease_until")
+  attempts   Int       @default(0)
+  startedAt  DateTime? @map("started_at")
 
   space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([spaceId, createdAt])
   @@index([promptHash])
+  @@index([state, createdAt])
   @@map("ai_runs")
 }
