@@ -30,6 +30,5 @@ module.exports = {
     '/notifications/',
     '/files/',
     '/gitlab/',
-    '/ai/',
   ],
 };

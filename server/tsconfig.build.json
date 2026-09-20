@@ -20,7 +20,6 @@
     "src/realtime/redis-io.adapter.ts",
     "src/permissions/**",
     "src/notifications/**",
-    "src/gitlab/**",
-    "src/ai/**"
+    "src/gitlab/**"
   ]
 }
