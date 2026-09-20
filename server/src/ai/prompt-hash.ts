@@ -12,14 +12,22 @@ import { LlmMessage } from '../llm/llm.provider';
  *
  * 역할까지 함께 해시한다 — 내용만 이어 붙이면 system 과 user 가 뒤바뀐
  * 프롬프트가 같은 키를 갖는다.
+ *
+ * **구분자는 공백이 아니라 NUL(`\u0000`) 문자다.** `content` 는
+ * `buildTranscript` 가 만든 대화 원문이라 공백을 얼마든지 담을 수 있는
+ * 사용자 통제 값이다 — 공백으로 이으면 메시지 경계가 사라져 서로 다른
+ * 두 대화가 같은 해시를 가질 수 있다. NUL 문자는 일반 문자열에 나타날 수
+ * 없으므로 경계가 보장된다.
  */
 export function promptHash(
   kind: string,
   modelId: string,
   messages: LlmMessage[],
 ): string {
-  const body = messages.map((m) => `${m.role} ${m.content}`).join(' ');
+  const body = messages
+    .map((m) => `${m.role}\u0000${m.content}`)
+    .join('\u0000');
   return createHash('sha256')
-    .update([kind, modelId, body].join(' '))
+    .update([kind, modelId, body].join('\u0000'))
     .digest('hex');
 }

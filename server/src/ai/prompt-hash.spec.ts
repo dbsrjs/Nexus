@@ -45,4 +45,19 @@ describe('promptHash', () => {
   it('sha256 16진 문자열이다', () => {
     expect(promptHash('summarize', 'fake:fake', msgs)).toMatch(/^[0-9a-f]{64}$/);
   });
+
+  it('★ 메시지 경계가 다르면 이어 붙인 내용이 같아도 해시가 다르다 - 캐시가 남의 답을 주면 안 된다', () => {
+    // 공백으로 이으면 메시지 두 개("system"+"a", "user"+"b")를 이어 붙인
+    // 결과와, 메시지 한 개("system"+"a user b")를 이어 붙인 결과가
+    // 똑같이 "system a user b" 로 펴진다 — content 는 buildTranscript 가
+    // 만든 대화 원문이라 공백을 얼마든지 담을 수 있는 사용자 통제 값이다.
+    const twoMessages: LlmMessage[] = [
+      { role: 'system', content: 'a' },
+      { role: 'user', content: 'b' },
+    ];
+    const oneMessage: LlmMessage[] = [{ role: 'system', content: 'a user b' }];
+    expect(promptHash('summarize', 'fake:fake', twoMessages)).not.toBe(
+      promptHash('summarize', 'fake:fake', oneMessage),
+    );
+  });
 });
