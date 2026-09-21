@@ -23,6 +23,8 @@ import 'mention_composer_controller.dart';
 import 'mention_text.dart';
 import 'message_controller.dart';
 import '../issue/new_issue_sheet.dart';
+import 'selection_app_bar.dart';
+import 'selection_controller.dart';
 
 /// 채널 하나의 대화. 메시지 리스트 + 입력창.
 class ChatScreen extends ConsumerWidget {
@@ -32,10 +34,22 @@ class ChatScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final channel = ref.watch(currentChannelProvider);
     final messages = ref.watch(messagesProvider);
+    final selection = ref.watch(selectionControllerProvider);
+
+    // 채널을 옮기면 선택이 뜻을 잃는다 — 다른 대화의 메시지를 고른 채로
+    // 남으면 안 된다. build 안에서 다른 provider 를 직접 고치면 build 중
+    // 상태 변경 예외가 나므로(8-2 에서 겪었다) `ref.listen` 으로 채널
+    // 변경만 듣는다.
+    ref.listen<String?>(currentChannelIdProvider, (previous, next) {
+      ref.read(selectionControllerProvider.notifier).clear();
+    });
 
     return Column(
       children: [
-        if (channel != null) _ChannelHeader(name: channel.name, topic: channel.topic),
+        if (selection.active)
+          SelectionAppBar(onSummarize: _onSummarize)
+        else if (channel != null)
+          _ChannelHeader(name: channel.name, topic: channel.topic),
         Expanded(
           child: messages.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -53,6 +67,10 @@ class ChatScreen extends ConsumerWidget {
     );
   }
 }
+
+/// 「요약」 버튼의 콜백. 지금은 받아 두기만 한다 — 실제 동작(요청 · 결과
+/// 화면)은 13-1 의 다음 작업(Task 13)이 잇는다.
+void _onSummarize() {}
 
 class _ChannelHeader extends StatelessWidget {
   const _ChannelHeader({required this.name, this.topic});
@@ -198,6 +216,8 @@ class MessageTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final selection = ref.watch(selectionControllerProvider);
+    final selected = selection.ids.contains(message.id);
 
     if (message.isDeleted) {
       return Padding(
@@ -224,10 +244,16 @@ class MessageTile extends ConsumerWidget {
       // 리액션을 다는 입구. 탭은 이미 다른 뜻으로 쓰일 여지가 있어(스레드 등)
       // 길게 누르기로 둔다.
       behavior: HitTestBehavior.opaque,
-      onTap: repoEventId == null || spaceId == null
-          ? null
-          : () => _openRepoEvent(context, ref, spaceId, repoEventId),
-      onLongPress: message.isLocal
+      // 선택 모드면 탭이 고르고 빼는 일을 한다 — **평소의 탭 동작은 그대로
+      // 둔다**(선택 모드가 아닐 때는 이 분기에 닿지 않는다).
+      onTap: selection.active
+          ? () => ref
+              .read(selectionControllerProvider.notifier)
+              .toggle(message.id)
+          : (repoEventId == null || spaceId == null
+              ? null
+              : () => _openRepoEvent(context, ref, spaceId, repoEventId)),
+      onLongPress: message.isLocal || selection.active
           ? null
           : () => _pickReaction(context, ref, message),
       child: Padding(
@@ -243,6 +269,17 @@ class MessageTile extends ConsumerWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 선택 모드일 때만 붙는다 — 체크박스도 탭과 같은 toggle 을 부른다.
+            if (selection.active)
+              Padding(
+                padding: const EdgeInsets.only(right: NexusSpacing.sp2),
+                child: Checkbox(
+                  value: selected,
+                  onChanged: (_) => ref
+                      .read(selectionControllerProvider.notifier)
+                      .toggle(message.id),
+                ),
+              ),
             SizedBox(
               width: 36,
               child: grouped
@@ -535,6 +572,16 @@ Future<void> _pickReaction(
                 subtitle: const Text('채널 상단에서 언제든 찾을 수 있다'),
                 onTap: () => Navigator.of(sheetContext).pop(_pinAction),
               ),
+            // 여러 메시지를 함께 요약하는 입구. 9-2b 의 「이슈로 만들기」는
+            // 한 개만 고르지만(originMessageId 가 단수), 요약은 구간이
+            // 필요해 다중 선택 모드로 들어간다.
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.checklist_outlined),
+              title: const Text('선택'),
+              subtitle: const Text('여러 메시지를 함께 골라 요약한다'),
+              onTap: () => Navigator.of(sheetContext).pop(_selectAction),
+            ),
           ],
         ),
       ),
@@ -558,6 +605,10 @@ Future<void> _pickReaction(
     if (context.mounted) await showNewIssueSheet(context, fromMessage: message);
     return;
   }
+  if (picked == _selectAction) {
+    ref.read(selectionControllerProvider.notifier).start(message.id);
+    return;
+  }
   await ref.read(messageActionsProvider).toggleReaction(message, picked);
 }
 
@@ -567,6 +618,7 @@ const _threadAction = ' thread';
 const _replyAction = ' reply';
 const _pinAction = ' pin';
 const _issueAction = ' issue';
+const _selectAction = ' select';
 
 /// 메시지에 달린 이모지들. 누르면 켜고 꺼진다.
 class _ReactionBar extends ConsumerWidget {
