@@ -70,10 +70,33 @@ class _Failed extends StatelessWidget {
       Padding(padding: const EdgeInsets.all(24), child: Text(message));
 }
 
-class _Ready extends StatelessWidget {
+/// **StatefulWidget 이다** — 「채널에 붙이기」가 진행 중인지를 여기서 직접
+/// 들고 있어야 한다. 버튼을 막지 않으면 두 번 빠르게 눌러 **같은 요약이
+/// 채널에 두 번** 올라간다. 메시지는 소프트 삭제라 한 번 올라간 것을 깨끗이
+/// 되돌릴 수 없고 모두에게 보이므로, 여기서 반드시 막는다.
+class _Ready extends StatefulWidget {
   const _Ready({required this.markdown, required this.onPost});
   final String markdown;
   final Future<void> Function() onPost;
+
+  @override
+  State<_Ready> createState() => _ReadyState();
+}
+
+class _ReadyState extends State<_Ready> {
+  bool _posting = false;
+
+  Future<void> _handlePost() async {
+    if (_posting) return;
+    setState(() => _posting = true);
+    try {
+      await widget.onPost();
+    } finally {
+      // 성공하면 곧 시트가 닫히지만, 실패해서 시트가 남으면 다시 누를 수
+      // 있어야 한다 — 계속 막아 두면 사용자가 되돌릴 방법이 없어진다.
+      if (mounted) setState(() => _posting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -85,13 +108,19 @@ class _Ready extends StatelessWidget {
         Flexible(
           child: SingleChildScrollView(
             // `body:` 다 — `source:` 가 아니다 (markdown_body.dart:16).
-            child: MarkdownBody(body: markdown),
+            child: MarkdownBody(body: widget.markdown),
           ),
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
-          onPressed: onPost,
-          icon: const Icon(Icons.send_outlined),
+          onPressed: _posting ? null : _handlePost,
+          icon: _posting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.send_outlined),
           label: const Text('채널에 붙이기'),
         ),
       ],
