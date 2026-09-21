@@ -40,7 +40,7 @@ export class AiService {
   ): Promise<StartResult> {
     const llm = this.requireLlm();
     const messages = await this.loadMessages(spaceId, userId, dto);
-    const names = await this.mentionNames(messages.map((m) => m.body));
+    const names = await this.mentionNames(spaceId, messages.map((m) => m.body));
 
     const prompt = summarizePrompt(
       buildTranscript(toTranscript(messages), names),
@@ -69,7 +69,7 @@ export class AiService {
       orderBy: { createdAt: 'asc' },
       select: MESSAGE_SELECT,
     });
-    const names = await this.mentionNames(messages.map((m) => m.body));
+    const names = await this.mentionNames(spaceId, messages.map((m) => m.body));
     return summarizePrompt(buildTranscript(toTranscript(messages), names));
   }
 
@@ -159,33 +159,50 @@ export class AiService {
     // 볼 수 없으면 404. 403 은 "그 채널이 존재한다"를 알려 준다.
     if (!channel) throw new NotFoundException('채널을 찾을 수 없습니다');
 
+    // 중복 id 는 먼저 접는다. SQL `IN` 도 중복을 접으므로 접지 않으면 중복
+    // 만으로 개수가 안 맞아 "일부 누락"(판단 #4)으로 오판해 404 가 난다 —
+    // 판단 #4 의 취지는 누락 방지이지 중복 거부가 아니다. 상한 검사는 위에서
+    // 이미 원본 길이로 했으므로, 여기서 접어도 상한을 우회하는 통로가 되지
+    // 않는다.
+    const ids = [...new Set(dto.messageIds)];
+
     const messages = await this.prisma.message.findMany({
-      where: { id: { in: dto.messageIds }, spaceId, channelId: dto.channelId },
+      where: { id: { in: ids }, spaceId, channelId: dto.channelId },
       orderBy: { createdAt: 'asc' },
       select: MESSAGE_SELECT,
     });
 
     // **일부만 요약하지 않는다** (판단 #4). 고른 것 중 하나라도 없으면 404 다 —
     // 조용히 빼면 사용자는 전부 요약됐다고 믿는다.
-    if (messages.length !== dto.messageIds.length) {
+    if (messages.length !== ids.length) {
       throw new NotFoundException('메시지를 찾을 수 없습니다');
     }
     return messages;
   }
 
-  /** 본문들에서 `<@id>` 를 모아 이름을 한 번에 조회한다. */
-  private async mentionNames(bodies: string[]): Promise<Map<string, string>> {
+  /**
+   * 본문들에서 `<@id>` 를 모아 이름을 조회한다. **스페이스 멤버 중에서만
+   * 찾는다** — 본문의 `<@id>` 는 검증되지 않은 사용자 입력이라 다른
+   * 스페이스 사람의 id 를 담을 수 있다. 전역 `User` 테이블로 찾으면 그
+   * 사람의 실명이 이 스페이스의 요약문에 새어 나간다(테넌트 격리 위반).
+   * 스페이스 밖 id 는 이 Map 에 없으므로 `buildTranscript` 의
+   * `withNames()` 가 이미 가진 `@(알 수 없음)` 폴백이 그대로 처리한다.
+   */
+  private async mentionNames(
+    spaceId: string,
+    bodies: string[],
+  ): Promise<Map<string, string>> {
     const ids = new Set<string>();
     for (const body of bodies) {
       for (const m of body.matchAll(MENTION)) ids.add(m[1]);
     }
     if (ids.size === 0) return new Map();
 
-    const users = await this.prisma.user.findMany({
-      where: { id: { in: [...ids] } },
-      select: { id: true, name: true },
+    const members = await this.prisma.spaceMember.findMany({
+      where: { spaceId, userId: { in: [...ids] } },
+      select: { userId: true, user: { select: { name: true } } },
     });
-    return new Map(users.map((u) => [u.id, u.name]));
+    return new Map(members.map((m) => [m.userId, m.user.name]));
   }
 }
 
