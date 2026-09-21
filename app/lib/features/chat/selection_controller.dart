@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 메시지 다중 선택 상태.
@@ -8,7 +10,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// `clear()` 를 부른다 — 여기서 채널 id 를 들고 있지 않는 이유는, 그러면
 /// 이 컨트롤러가 라우팅을 알아야 하기 때문이다.
 class SelectionState {
-  const SelectionState({required this.active, required this.ids});
+  /// **`ids` 는 항상 불변 뷰로 감싼다.** 그냥 `Set` 을 노출하면 밖에서
+  /// `.add()`/`.remove()` 로 직접 고칠 수 있어, `state =` 대입 없이 내부가
+  /// 바뀌어 리스너 통지 없이 상태가 어긋난다 — 겉보기엔 안전해 보이지만
+  /// 조용히 깨지는 부류라 `UnmodifiableSetView` 로 그 경로 자체를 막는다.
+  SelectionState({required this.active, required Set<String> ids})
+      : ids = UnmodifiableSetView(ids);
 
   const SelectionState.off() : active = false, ids = const {};
 

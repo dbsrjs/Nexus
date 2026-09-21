@@ -82,7 +82,9 @@ class _ChannelHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      height: 52,
+      // 선택 모드로 바뀔 때 쓰는 SelectionAppBar 와 높이를 맞춘다 — 한쪽만
+      // 고치면 전환할 때 본문이 튄다. 상수는 그쪽이 원본이다.
+      height: SelectionAppBar.height,
       padding: const EdgeInsets.symmetric(horizontal: NexusSpacing.sp5),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: theme.dividerColor)),
@@ -220,6 +222,10 @@ class MessageTile extends ConsumerWidget {
     final selected = selection.ids.contains(message.id);
 
     if (message.isDeleted) {
+      // 선택해 둔 메시지를 다른 사람이 지우면 그 id 가 선택에 남는다 —
+      // **골라 둔 것을 뺄 길**이 있어야 한다(전체 닫기 말고). 그래서 지워진
+      // 타일도 선택 모드에서는 체크박스를 보이고 탭 · 체크박스 둘 다 toggle
+      // 을 부른다. 요약에 넣을 본문은 없지만 선택에서 빼는 것은 가능해야 한다.
       return Padding(
         padding: const EdgeInsets.fromLTRB(
           NexusSpacing.sp5,
@@ -227,9 +233,32 @@ class MessageTile extends ConsumerWidget {
           NexusSpacing.sp5,
           NexusSpacing.sp1,
         ),
-        child: Text(
-          '삭제된 메시지입니다.',
-          style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: selection.active
+              ? () => ref
+                  .read(selectionControllerProvider.notifier)
+                  .toggle(message.id)
+              : null,
+          child: Row(
+            children: [
+              if (selection.active)
+                Padding(
+                  padding: const EdgeInsets.only(right: NexusSpacing.sp2),
+                  child: Checkbox(
+                    value: selected,
+                    onChanged: (_) => ref
+                        .read(selectionControllerProvider.notifier)
+                        .toggle(message.id),
+                  ),
+                ),
+              Text(
+                '삭제된 메시지입니다.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -292,33 +321,46 @@ class MessageTile extends ConsumerWidget {
             ),
             const SizedBox(width: NexusSpacing.sp3),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!grouped)
-                    Row(
-                      children: [
-                        Text(message.author.name,
-                            style: theme.textTheme.titleSmall),
-                        const SizedBox(width: NexusSpacing.sp2),
-                        Text(_hhmm(message.createdAt),
-                            style: theme.textTheme.labelSmall),
-                      ],
-                    ),
-                  if (message.quoted != null) _QuoteBlock(quoted: message.quoted!),
-                  // 본문이 비어 있을 수 있다 — 첨부만 보낸 메시지다.
-                  if (message.body.isNotEmpty || message.attachments.isEmpty)
-                    _MessageBody(message: message),
-                  for (final attachment in message.attachments)
-                    AttachmentRow(attachment: attachment, message: message),
-                  if (message.editedAt != null)
-                    Text('(수정됨)', style: theme.textTheme.labelSmall),
-                  if (message.reactions.isNotEmpty)
-                    _ReactionBar(message: message),
-                  if (message.pinned) const _PinnedMark(),
-                  if (message.hasThread) _ThreadSummary(message: message),
-                  if (message.failed) _FailedActions(message: message),
-                ],
+              // **선택 모드에서는 본문 영역 안쪽의 제스처를 전부 죽인다.**
+              // 답글 진입(`_ThreadSummary`) · 마크다운 링크 · 첨부 이미지 전체
+              // 보기 · 재시도·삭제(`_FailedActions`) 는 각자 자기 탭 인식기를
+              // 갖고 있고, Flutter 는 같은 포인터에 대해 **자식 인식기를 부모보다
+              // 먼저** 아레나에 올린다 — 바깥 `GestureDetector` 의 `selection.active`
+              // 분기만으로는 막히지 않고, 선택 모드에서 이 항목들을 누르면
+              // 선택 대신 스레드로 들어가거나 이미지가 열려 사용자가 선택 모드
+              // 밖으로 밀려난다(실제로 재현했다). 안쪽 제스처를 하나씩 감싸는
+              // 대신 `IgnorePointer` 로 이 서브트리 전체를 한번에 막아, 바깥
+              // `GestureDetector`(HitTestBehavior.opaque) 만 탭을 받게 한다.
+              child: IgnorePointer(
+                ignoring: selection.active,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!grouped)
+                      Row(
+                        children: [
+                          Text(message.author.name,
+                              style: theme.textTheme.titleSmall),
+                          const SizedBox(width: NexusSpacing.sp2),
+                          Text(_hhmm(message.createdAt),
+                              style: theme.textTheme.labelSmall),
+                        ],
+                      ),
+                    if (message.quoted != null) _QuoteBlock(quoted: message.quoted!),
+                    // 본문이 비어 있을 수 있다 — 첨부만 보낸 메시지다.
+                    if (message.body.isNotEmpty || message.attachments.isEmpty)
+                      _MessageBody(message: message),
+                    for (final attachment in message.attachments)
+                      AttachmentRow(attachment: attachment, message: message),
+                    if (message.editedAt != null)
+                      Text('(수정됨)', style: theme.textTheme.labelSmall),
+                    if (message.reactions.isNotEmpty)
+                      _ReactionBar(message: message),
+                    if (message.pinned) const _PinnedMark(),
+                    if (message.hasThread) _ThreadSummary(message: message),
+                    if (message.failed) _FailedActions(message: message),
+                  ],
+                ),
               ),
             ),
           ],
