@@ -50,6 +50,8 @@ import { IndexingController } from './indexing/indexing.controller';
     IndexingService,
     IndexingWorker,
   ],
-  exports: [ReposService],
+  // IndexingService 도 내보낸다 — 13-3 코드 질의가 AiModule 에서
+  // 이 서비스의 search() 를 직접 부를 자리다(미리 배선해 둔다).
+  exports: [ReposService, IndexingService],
 })
 export class ReposModule {}

@@ -19,15 +19,18 @@ import { ReposModule } from './repos/repos.module';
 import { OauthModule } from './oauth/oauth.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { EmbeddingModule } from './embedding/embedding.module';
+import { LlmModule } from './llm/llm.module';
+import { AiModule } from './ai/ai.module';
 
 /**
  * 전환 3단계 시점의 모듈 구성 (docs/전환-계획.md §6).
  *
  * 아직 spaceId 기준으로 이관하지 않은 모듈들 — permissions ·
- * notifications · files · issues · gitlab · ai — 은 여기서 등록을 뺐고,
+ * notifications · files · gitlab — 은 여기서 등록을 뺐고,
  * tsconfig 의 exclude 로 컴파일 대상에서도 제외했다.
  * 되살리는 절차: tsconfig(.build).json 의 exclude 에서 해당 경로를 지우고
  * 여기 imports 에 다시 넣는다.
+ * (issues 는 9-1 에서, ai 는 13-1 에서 각각 다시 써 편입했다.)
  */
 @Module({
   imports: [
@@ -49,6 +52,8 @@ import { EmbeddingModule } from './embedding/embedding.module';
     OauthModule,
     RealtimeModule,
     EmbeddingModule,
+    LlmModule,
+    AiModule,
   ],
   providers: [
     {
