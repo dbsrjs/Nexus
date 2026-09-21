@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +25,8 @@ import 'mention_composer_controller.dart';
 import 'mention_text.dart';
 import 'message_controller.dart';
 import '../issue/new_issue_sheet.dart';
+import '../ai/ai_controller.dart';
+import '../ai/ai_result_sheet.dart';
 import 'selection_app_bar.dart';
 import 'selection_controller.dart';
 
@@ -47,7 +51,9 @@ class ChatScreen extends ConsumerWidget {
     return Column(
       children: [
         if (selection.active)
-          SelectionAppBar(onSummarize: _onSummarize)
+          SelectionAppBar(
+            onSummarize: () => _onSummarize(context, ref, selection.ids),
+          )
         else if (channel != null)
           _ChannelHeader(name: channel.name, topic: channel.topic),
         Expanded(
@@ -68,9 +74,39 @@ class ChatScreen extends ConsumerWidget {
   }
 }
 
-/// 「요약」 버튼의 콜백. 지금은 받아 두기만 한다 — 실제 동작(요청 · 결과
-/// 화면)은 13-1 의 다음 작업(Task 13)이 잇는다.
-void _onSummarize() {}
+/// 「요약」 버튼의 콜백.
+///
+/// **`run()` 을 기다리지 않고 시트부터 연다.** `run()` 은 호출되는 순간
+/// 첫 `await` 전까지 동기로 돌아 상태를 `AiRunning('')` 으로 바꿔 두므로,
+/// 시트가 뜰 때는 이미 진행 표시를 그릴 준비가 돼 있다. 시트가 닫히면
+/// (붙였든 「기다리지 않기」를 눌렀든) 선택을 비운다.
+void _onSummarize(
+  BuildContext context,
+  WidgetRef ref,
+  Set<String> messageIds,
+) {
+  final spaceId = ref.read(currentSpaceIdProvider);
+  final channelId = ref.read(currentChannelIdProvider);
+  if (spaceId == null || channelId == null) return;
+
+  unawaited(
+    ref.read(aiSummaryControllerProvider.notifier).run(
+          spaceId: spaceId,
+          channelId: channelId,
+          messageIds: messageIds.toList(),
+        ),
+  );
+
+  showAiResultSheet(
+    context,
+    // 「채널에 붙이기」는 평범한 메시지 전송이다 — 서버에 새 경로가 없다.
+    onPost: (markdown) => ref.read(messageActionsProvider).send(markdown),
+  ).then((_) {
+    if (context.mounted) {
+      ref.read(selectionControllerProvider.notifier).clear();
+    }
+  });
+}
 
 class _ChannelHeader extends StatelessWidget {
   const _ChannelHeader({required this.name, this.topic});
