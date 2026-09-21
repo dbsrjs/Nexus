@@ -73,6 +73,15 @@ export class AiService {
     return summarizePrompt(buildTranscript(toTranscript(messages), names));
   }
 
+  /** 러너가 「포기했는가」를 판정하는 데만 쓴다. */
+  async getRunState(runId: string): Promise<AiRunState | null> {
+    const run = await this.prisma.aiRun.findUnique({
+      where: { id: runId },
+      select: { state: true },
+    });
+    return run?.state ?? null;
+  }
+
   async getRun(spaceId: string, userId: string, runId: string) {
     // **본인 것만.** 같은 스페이스라도 남의 질문과 답을 읽을 이유가 없다.
     const run = await this.prisma.aiRun.findFirst({
