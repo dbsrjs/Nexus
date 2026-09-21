@@ -173,6 +173,20 @@ class ReadSynced extends SocketEvent {
   final String? lastReadMessageId;
 }
 
+/// AI 실행이 끝났다(성공이든 실패든).
+///
+/// **결과 본문이 실리지 않는다** — 앱이 `GET runs/:runId` 로 가져온다
+/// (설계 §10). 소켓을 놓친 경우와 받은 경우가 같은 코드 경로를 탄다.
+///
+/// 개인 룸(`user:{userId}`)으로만 온다 — 남의 실행이 내게 오지 않는다.
+class AiRunDone extends SocketEvent {
+  const AiRunDone({required this.runId, required this.kind, required this.state});
+
+  final String runId;
+  final String kind;
+  final String state;
+}
+
 /// 볼 수 있는 채널 집합이 바뀌었다. 룸을 다시 계산해야 한다.
 class RoomsInvalidated extends SocketEvent {
   const RoomsInvalidated(this.reason);

@@ -61,6 +61,7 @@ class SocketClient {
       ..on('issue:deleted', _onIssueDeleted)
       ..on('read:synced', _onReadSynced)
       ..on('oauth:connected', _onOauthConnected)
+      ..on('ai:run:done', _onAiRunDone)
       ..on('rooms:invalidate', _onRoomsInvalidate);
 
     _socket = socket;
@@ -255,6 +256,18 @@ class SocketClient {
     if (provider is! String || login is! String) return;
 
     _emit(OauthConnected(provider: provider, login: login));
+  }
+
+  void _onAiRunDone(dynamic data) {
+    final map = _asMap(data);
+    final runId = map?['runId'];
+    if (map == null || runId is! String) return;
+
+    _emit(AiRunDone(
+      runId: runId,
+      kind: map['kind'] as String? ?? 'summarize',
+      state: map['state'] as String? ?? 'done',
+    ));
   }
 
   void _onRoomsInvalidate(dynamic data) {
