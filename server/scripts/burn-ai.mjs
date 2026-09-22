@@ -6,6 +6,9 @@
 // 사전 조건: server/.env 에 LLM_PROVIDER=gemini · EMBEDDING_PROVIDER=gemini ·
 //            GITHUB_*_BASE=http://127.0.0.1:4599 (check:indexing 과 같다)
 // 사용: node server/scripts/burn-ai.mjs
+//       node server/scripts/burn-ai.mjs --serve   가짜 GitHub 만 띄워 둔다(Ctrl+C 로 끝)
+//         — 태우기로 만든 스페이스를 앱에서 열어 인용을 눌러 볼 때 쓴다. 저장소
+//           내용은 파일에서 매번 다시 읽으므로 같은 id(9313)로 같은 파일이 열린다.
 //
 // **가짜 GitHub 이 이 저장소의 실제 소스 파일 몇 개를 서비스한다.** 진짜
 // GitHub 저장소를 다시 붙이지 않고도 「진짜 임베딩 + 진짜 LLM」 경로를 탄다.
@@ -73,14 +76,49 @@ const fake = createServer((req, res) => {
     });
   }
   if (/\/branches\//.test(url.pathname)) return json(200, { name: 'main', commit: { sha: HEAD_SHA } });
+  // 코드 화면(10-3a)이 부르는 둘 — 브랜치 목록과 contents.
+  if (/\/branches$/.test(url.pathname)) return json(200, [{ name: 'main', protected: false }]);
+  const contents = url.pathname.match(/\/contents\/?(.*)$/);
+  if (contents) {
+    const path = decodeURIComponent(contents[1] ?? '');
+    const file = Object.values(BLOBS).find((b) => b.path === path);
+    if (file) {
+      return json(200, {
+        type: 'file',
+        name: path.split('/').pop(),
+        path,
+        size: Buffer.byteLength(file.text),
+        content: Buffer.from(file.text).toString('base64'),
+      });
+    }
+    // 디렉터리 — 바로 아래 항목만 준다.
+    const prefix = path ? `${path}/` : '';
+    const seen = new Map();
+    for (const b of Object.values(BLOBS)) {
+      if (!b.path.startsWith(prefix)) continue;
+      const [head, ...rest] = b.path.slice(prefix.length).split('/');
+      seen.set(head, {
+        name: head,
+        path: prefix + head,
+        type: rest.length ? 'dir' : 'file',
+        size: rest.length ? 0 : Buffer.byteLength(b.text),
+      });
+    }
+    return seen.size ? json(200, [...seen.values()]) : json(404, { message: 'Not Found' });
+  }
   res.writeHead(404).end();
 });
 await new Promise((r) => fake.listen(FAKE_PORT, r));
 
+if (process.argv.includes('--serve')) {
+  console.log(`가짜 GitHub 이 ${FAKE_PORT} 에서 떠 있다 — Ctrl+C 로 끝낸다.`);
+  await new Promise(() => {});
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function waitRun(token, spaceId, runId) {
-  // 5분. Gemini 가 503 을 주면 러너가 60초 간격으로 세 번까지 다시 건다.
+  // 5분. Gemini 가 503 을 주면 러너가 몇 초 간격으로 다섯 번까지 다시 건다.
   for (let i = 0; i < 1200; i++) {
     const r = await api('GET', `/spaces/${spaceId}/ai/runs/${runId}`, { token });
     if (r.json?.state === 'done' || r.json?.state === 'failed') return r.json;
