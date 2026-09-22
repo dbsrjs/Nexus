@@ -18,7 +18,8 @@ import {
   EmbeddingProvider,
   assertDimensions,
 } from '../../embedding/embedding.provider';
-import { IndexChunksRepository } from './index-chunks.repository';
+import { ChunkHit, IndexChunksRepository } from './index-chunks.repository';
+import { searchBlocker } from './search-guard';
 import { IndexQueueService, LeasedJob } from './index-queue.service';
 import { chunkText } from './chunker';
 import { isGenerated, isTooLarge, langOf } from './index-filter';
@@ -134,7 +135,7 @@ export class IndexingService {
   async search(spaceId: string, repoId: string, query: string, topK: number) {
     const repo = await this.prisma.repo.findFirst({
       where: { id: repoId, spaceId },
-      select: { id: true },
+      select: { id: true, indexedEmbeddingModel: true },
     });
     if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
 
@@ -143,6 +144,11 @@ export class IndexingService {
         '임베딩이 설정되지 않아 검색할 수 없습니다.',
       );
     }
+
+    // 기록된 모델이 지금 모델과 다르면(또는 없으면) 거절한다 — search-guard.ts.
+    // 12단계의 `index/search` 와 13-2 의 AI 가 같은 기준으로 답하게 여기 둔다.
+    const blocked = searchBlocker(repo.indexedEmbeddingModel, this.embedder.modelId);
+    if (blocked) throw new ServiceUnavailableException(blocked);
 
     // DTO 는 컨트롤러 경로에서만 막는다. 13단계가 이 메서드를 직접 부르면
     // 그 그물이 없어, 여기서 한 번 더 막는다 — 상하한은 DTO 의 기본 8 ·
@@ -164,6 +170,15 @@ export class IndexingService {
     assertDimensions([vector]);
 
     return { chunks: await this.chunks.search(spaceId, repoId, vector, safeTopK) };
+  }
+
+  /**
+   * 청크를 id 로 다시 읽는다. **AI 워커가 적재 때 고른 청크를 그대로 쓰기
+   * 위한 것이다**(13-2 설계 D6) — 실행 때 다시 검색하면 캐시 키와 실제
+   * 프롬프트가 어긋난다. 순서는 `ids` 순서, 없는 것은 빠진다(판단은 호출자).
+   */
+  async chunksByIds(spaceId: string, repoId: string, ids: string[]): Promise<ChunkHit[]> {
+    return this.chunks.findByIds(spaceId, repoId, ids);
   }
 
   async runOne(job: LeasedJob): Promise<void> {

@@ -96,6 +96,32 @@ export class IndexChunksRepository {
     `;
   }
 
+  /**
+   * id 로 청크를 읽는다. `ids` 순서를 지킨다 — 인용 번호([1] [2]…)가 이
+   * 순서에 묶여 있다. 다른 스페이스 · 저장소의 id 는 `WHERE` 가 걸러낸다.
+   * `score` 는 검색이 아니라서 0 이다.
+   */
+  async findByIds(spaceId: string, repoId: string, ids: string[]): Promise<ChunkHit[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.prisma.repoIndexChunk.findMany({
+      where: { id: { in: ids }, spaceId, repoId },
+      select: {
+        id: true,
+        path: true,
+        lang: true,
+        startLine: true,
+        endLine: true,
+        content: true,
+        commitSha: true,
+      },
+    });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    return ids.flatMap((id) => {
+      const r = byId.get(id);
+      return r ? [{ ...r, score: 0 }] : [];
+    });
+  }
+
   async countFor(spaceId: string, repoId: string): Promise<number> {
     const rows = await this.prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*) AS count FROM repo_index_chunks
