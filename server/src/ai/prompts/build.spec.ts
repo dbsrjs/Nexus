@@ -5,7 +5,7 @@ import { summarizePrompt } from './summarize';
 const material = { transcript: '[01:00] 가영: 안녕', chunks: [] };
 
 describe('buildAskPrompt', () => {
-  it('summary 프리셋은 13-1 요약 프롬프트와 바이트 단위로 같다', () => {
+  it('summary 프리셋은 요약 프롬프트(summarizePrompt)와 같다', () => {
     const out = buildAskPrompt({ instruction: null, preset: 'summary' }, material);
     expect(out.kind).toBe(AiRunKind.summarize);
     expect(out.json).toBe(false);
