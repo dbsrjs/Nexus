@@ -19,7 +19,7 @@ import {
   assertDimensions,
 } from '../../embedding/embedding.provider';
 import { ChunkHit, IndexChunksRepository } from './index-chunks.repository';
-import { searchBlocker } from './search-guard';
+import { searchBlocker, shouldHealIndex } from './search-guard';
 import { IndexQueueService, LeasedJob } from './index-queue.service';
 import { chunkText } from './chunker';
 import { isGenerated, isTooLarge, langOf } from './index-filter';
@@ -148,7 +148,12 @@ export class IndexingService {
     // 기록된 모델이 지금 모델과 다르면(또는 없으면) 거절한다 — search-guard.ts.
     // 12단계의 `index/search` 와 13-2 의 AI 가 같은 기준으로 답하게 여기 둔다.
     const blocked = searchBlocker(repo.indexedEmbeddingModel, this.embedder.modelId);
-    if (blocked) throw new ServiceUnavailableException(blocked);
+    if (blocked) {
+      const healing = await this.healIndex(spaceId, repoId);
+      throw new ServiceUnavailableException(
+        healing ? `${blocked} 다시 인덱싱을 시작했습니다.` : blocked,
+      );
+    }
 
     // DTO 는 컨트롤러 경로에서만 막는다. 13단계가 이 메서드를 직접 부르면
     // 그 그물이 없어, 여기서 한 번 더 막는다 — 상하한은 DTO 의 기본 8 ·
@@ -170,6 +175,30 @@ export class IndexingService {
     assertDimensions([vector]);
 
     return { chunks: await this.chunks.search(spaceId, repoId, vector, safeTopK) };
+  }
+
+  /**
+   * 막힌 인덱스에 전체 재인덱싱을 건다(search-guard.ts 의 `shouldHealIndex`).
+   * 걸었으면 true. 깨우지는 않는다 — 서비스가 워커를 부르면 순환 의존이라
+   * 30초 크론이 받는다(`requeue()` 와 같은 이유).
+   */
+  private async healIndex(spaceId: string, repoId: string): Promise<boolean> {
+    const job = await this.prisma.repoIndexJob.findUnique({
+      where: { repoId },
+      select: { state: true },
+    });
+    const chunkCount = await this.chunks.countFor(spaceId, repoId);
+    if (!shouldHealIndex(job?.state ?? null, chunkCount)) return false;
+
+    await this.queue.enqueue({
+      spaceId,
+      repoId,
+      reason: RepoIndexReason.manual,
+      headSha: null,
+      baseSha: null,
+    });
+    this.logger.log(`검색이 막힌 인덱스를 다시 인덱싱: repo=${repoId}`);
+    return true;
   }
 
   /**

@@ -18,3 +18,20 @@ export function searchBlocker(recorded: string | null, current: string): string 
   }
   return null;
 }
+
+/**
+ * 막힌 검색이 스스로 다시 인덱싱을 걸어야 하는지.
+ *
+ * **막힘을 사람이 풀어야만 풀리게 두지 않는다.** 기록이 없는 옛 인덱스
+ * (2026-09-17 마이그레이션 전에 만든 것 — 기록을 NULL 로 두었다)와 모델이
+ * 바뀐 인덱스는 push 가 와야 전체로 다시 돈다. push 가 없는 저장소는 그때까지
+ * 검색 · AI 코드 질문이 503 에 묶인다 — 13-2 최종 검토에서 드러났다.
+ *
+ * 청크가 있어야 건다 — 한 번도 끝나지 않은(대개 실패한) 저장소를 검색마다
+ * 두드리지 않는다. 이미 줄을 섰거나 도는 중이면 또 걸지 않는다 — 도는 작업의
+ * 목표를 덮으면 끝난 뒤 한 번 더 돈다(`succeed()` 의 stale 판정).
+ */
+export function shouldHealIndex(jobState: string | null, chunkCount: number): boolean {
+  if (jobState === 'queued' || jobState === 'running') return false;
+  return chunkCount > 0;
+}
