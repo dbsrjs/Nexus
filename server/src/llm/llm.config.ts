@@ -49,7 +49,9 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
     model: trimmed(config, 'LLM_MODEL') ?? defaultModel(provider),
     apiKey,
     base: trimmed(config, 'LLM_BASE'),
-    maxTokens: parsed > 0 ? parsed : 1024,
+    // 2048 — 코드 질문 답은 코드 블록을 담는다. 1024 는 13-1 의 세 항목
+    // 요약에 맞춘 값이었다(13-2 설계 D10).
+    maxTokens: parsed > 0 ? parsed : 2048,
   };
 }
 

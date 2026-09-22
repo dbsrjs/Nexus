@@ -1,5 +1,5 @@
 import { AiRunKind } from '@prisma/client';
-import { AiRunnerService, classifyFailure } from './ai-runner.service';
+import { AiRunnerService, classifyFailure, resultOf } from './ai-runner.service';
 import { LlmHttpError, LlmProvider } from '../llm/llm.provider';
 import { LeasedRun } from './ai-queue.service';
 
@@ -56,7 +56,12 @@ describe('classifyFailure', () => {
 function service(llm: LlmProvider) {
   const queue = { succeed: jest.fn(), fail: jest.fn() };
   const ai = {
-    loadPrompt: jest.fn().mockResolvedValue([]),
+    loadPrompt: jest.fn().mockResolvedValue({
+      kind: AiRunKind.summarize,
+      messages: [],
+      json: false,
+      citations: [],
+    }),
     getRunState: jest.fn().mockResolvedValue('failed'),
   };
   const realtime = { toUser: jest.fn() };
@@ -80,7 +85,53 @@ function leasedRun(): LeasedRun {
   };
 }
 
+describe('resultOf', () => {
+  const cites = [{ n: 1, path: 'a.ts', startLine: 1, endLine: 2, commitSha: 'x' }];
+
+  it('요약 · 자유 질문은 마크다운과 인용이다', () => {
+    expect(resultOf(AiRunKind.ask, '답', cites)).toEqual({ markdown: '답', citations: cites });
+    expect(resultOf(AiRunKind.summarize, '요약', [])).toEqual({ markdown: '요약', citations: [] });
+  });
+
+  it('이슈 초안은 제목 · 본문 · 인용이다', () => {
+    expect(
+      resultOf(AiRunKind.draft_issue, '{"title":"t","description":"d"}', []),
+    ).toEqual({ title: 't', description: 'd', citations: [] });
+  });
+
+  it('★ 이슈 초안이 JSON 이 아니면 던진다 — 러너가 fatal 로 친다', () => {
+    expect(() => resultOf(AiRunKind.draft_issue, '제목: 버튼', [])).toThrow();
+    expect(classifyFailure(new Error('x'))).toEqual({ countsAsAttempt: true, fatal: true });
+  });
+});
+
 describe('AiRunnerService.runOne', () => {
+  it('이슈 초안이면 json 옵션을 넘긴다 — 어댑터가 구조화 출력으로 번역한다', async () => {
+    const complete = jest.fn().mockResolvedValue({
+      text: '{"title":"t","description":"d"}',
+      promptTokens: 1,
+      completionTokens: 1,
+      model: 'm',
+    });
+    const llm: LlmProvider = { modelId: 'fake:fake', maxTokens: 2048, complete };
+    const { runner, ai, queue } = service(llm);
+    ai.loadPrompt.mockResolvedValue({
+      kind: AiRunKind.draft_issue,
+      messages: [],
+      json: true,
+      citations: [],
+    });
+
+    await runner.runOne(leasedRun());
+
+    expect(complete).toHaveBeenCalledWith([], expect.objectContaining({ json: true }));
+    expect(queue.succeed).toHaveBeenCalledWith(
+      'run-1',
+      { title: 't', description: 'd', citations: [] },
+      expect.anything(),
+    );
+  });
+
   it(
     '★ LLM_MAX_TOKENS 설정값이 complete() 에 그대로 넘어간다 - 러너의 ' +
       '하드코딩 상수를 쓰지 않는다(최종 리뷰 ②)',

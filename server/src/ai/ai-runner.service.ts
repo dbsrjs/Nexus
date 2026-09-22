@@ -4,8 +4,10 @@ import { LLM_PROVIDER, LlmHttpError, LlmProvider } from '../llm/llm.provider';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { AiFailOptions, AiQueueService, LeasedRun } from './ai-queue.service';
 import { AiService } from './ai.service';
+import { Citation } from './code-context';
+import { parseIssueDraft } from './prompts/issue';
 
-/** 요약은 사실을 뽑는 일이라 흔들 이유가 없다. */
+/** 요약 · 이슈 초안 · 자유 질문 모두 자료에 근거한 답이라 흔들 이유가 없다. */
 const TEMPERATURE = 0.2;
 
 /**
@@ -55,14 +57,15 @@ export class AiRunnerService {
     }
 
     try {
-      const prompt = await this.ai.loadPrompt(run.spaceId, run.kind, run.input);
+      const prompt = await this.ai.loadPrompt(run.spaceId, run.input);
       // **하드코딩 상수를 쓰지 않는다** — `this.llm.maxTokens` 는
       // `LLM_MAX_TOKENS`(`llm.config.ts`)에서 온 값이다. 러너가 자기
       // 상수를 넘기면 그 설정이 아무 일도 하지 않는다(최종 whole-branch
       // 리뷰 Important ②).
-      const out = await this.llm.complete(prompt, {
+      const out = await this.llm.complete(prompt.messages, {
         maxTokens: this.llm.maxTokens,
         temperature: TEMPERATURE,
+        json: prompt.json,
       });
 
       // **빈 응답을 성공으로 굳히지 않는다.** Gemini 가 `finishReason:
@@ -77,7 +80,7 @@ export class AiRunnerService {
         throw new Error('LLM 이 빈 응답을 주었습니다.');
       }
 
-      await this.queue.succeed(run.id, resultOf(run.kind, out.text), {
+      await this.queue.succeed(run.id, resultOf(prompt.kind, out.text, prompt.citations), {
         model: out.model,
         promptTokens: out.promptTokens,
         completionTokens: out.completionTokens,
@@ -116,8 +119,12 @@ export class AiRunnerService {
   }
 }
 
-/** `kind` 마다 결과 모양이 다르다. 13-1 은 요약 하나다. */
-function resultOf(kind: AiRunKind, text: string): object {
-  if (kind === AiRunKind.summarize) return { markdown: text };
-  throw new Error(`아직 지원하지 않는 종류입니다: ${kind}`);
+/**
+ * `kind` 마다 결과 모양이 다르다 (13-2 설계 §5). **이슈 초안을 못 읽으면
+ * 던진다** — `classifyFailure` 가 fatal 로 친다. 인용은 셋 모두에 싣는다
+ * (저장소가 없으면 빈 배열).
+ */
+export function resultOf(kind: AiRunKind, text: string, citations: Citation[]): object {
+  if (kind === AiRunKind.draft_issue) return { ...parseIssueDraft(text), citations };
+  return { markdown: text, citations };
 }

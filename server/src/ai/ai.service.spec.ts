@@ -5,7 +5,9 @@ import { promptHash } from './prompt-hash';
 import { summarizePrompt } from './prompts/summarize';
 import { FakeLlmProvider } from '../llm/fake-llm.provider';
 
-function service(over: { prisma?: unknown; llm?: unknown; queue?: unknown } = {}) {
+function service(
+  over: { prisma?: unknown; llm?: unknown; queue?: unknown; indexing?: unknown } = {},
+) {
   const prisma = over.prisma ?? {
     channel: { findFirst: jest.fn().mockResolvedValue({ id: 'c-1' }) },
     message: { findMany: jest.fn().mockResolvedValue([]) },
@@ -16,16 +18,17 @@ function service(over: { prisma?: unknown; llm?: unknown; queue?: unknown } = {}
     prisma as never,
     over.llm === undefined ? new FakeLlmProvider() : (over.llm as never),
     queue as never,
+    (over.indexing ?? { search: jest.fn(), chunksByIds: jest.fn() }) as never,
   );
 }
 
-describe('AiService.summarize', () => {
+describe('AiService.ask — 요약 프리셋(13-1 에서 옮김)', () => {
   it('LLM 미설정이면 503 이다 — 서버는 떠 있고 AI 만 멈춘다', async () => {
     await expect(
-      service({ llm: null }).summarize('s-1', 'u-1', {
-        channelId: 'c-1',
-        messageIds: ['m-1'],
-      }),
+      service({ llm: null }).ask('s-1', 'u-1', {
+      preset: 'summary',
+      context: { channelId: 'c-1', messageIds: ['m-1'] },
+    }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
@@ -36,23 +39,29 @@ describe('AiService.summarize', () => {
       aiRun: { findFirst: jest.fn() },
     };
     await expect(
-      service({ prisma }).summarize('s-1', 'u-1', {
-        channelId: 'c-1',
-        messageIds: ['m-1'],
-      }),
+      service({ prisma }).ask('s-1', 'u-1', {
+      preset: 'summary',
+      context: { channelId: 'c-1', messageIds: ['m-1'] },
+    }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('상한을 넘으면 400 이다 — 조용히 자르지 않는다 (판단 #4)', async () => {
     const ids = Array.from({ length: MAX_TRANSCRIPT_MESSAGES + 1 }, (_, i) => `m-${i}`);
     await expect(
-      service().summarize('s-1', 'u-1', { channelId: 'c-1', messageIds: ids }),
+      service().ask('s-1', 'u-1', {
+      preset: 'summary',
+      context: { channelId: 'c-1', messageIds: ids },
+    }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('빈 선택은 400 이다', async () => {
     await expect(
-      service().summarize('s-1', 'u-1', { channelId: 'c-1', messageIds: [] }),
+      service().ask('s-1', 'u-1', {
+      preset: 'summary',
+      context: { channelId: 'c-1', messageIds: [] },
+    }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -75,10 +84,10 @@ describe('AiService.summarize', () => {
       aiRun: { findFirst: jest.fn() },
     };
     await expect(
-      service({ prisma }).summarize('s-1', 'u-1', {
-        channelId: 'c-1',
-        messageIds: ['m-1', 'm-2'],
-      }),
+      service({ prisma }).ask('s-1', 'u-1', {
+      preset: 'summary',
+      context: { channelId: 'c-1', messageIds: ['m-1', 'm-2'] },
+    }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -110,9 +119,9 @@ describe('AiService.summarize', () => {
     };
     const queue = { enqueue: jest.fn().mockResolvedValue('run-1') };
 
-    await service({ prisma, queue }).summarize('s-1', 'u-1', {
-      channelId: 'c-1',
-      messageIds: ['m-1'],
+    await service({ prisma, queue }).ask('s-1', 'u-1', {
+      preset: 'summary',
+      context: { channelId: 'c-1', messageIds: ['m-1'] },
     });
 
     // 스페이스 밖이라 이름을 못 찾으므로 "(알 수 없음)" 으로 남아야 한다.
@@ -169,9 +178,9 @@ describe('AiService.summarize', () => {
     };
     const queue = { enqueue: jest.fn().mockResolvedValue('run-1') };
 
-    const result = await service({ prisma, queue }).summarize('s-1', 'u-1', {
-      channelId: 'c-1',
-      messageIds: ['m-1', 'm-1'],
+    const result = await service({ prisma, queue }).ask('s-1', 'u-1', {
+      preset: 'summary',
+      context: { channelId: 'c-1', messageIds: ['m-1', 'm-1'] },
     });
 
     expect(result).toEqual({ runId: 'run-1', state: 'queued' });
@@ -200,10 +209,10 @@ describe('AiService.summarize', () => {
       };
       const queue = { enqueue: jest.fn().mockResolvedValue('run-1') };
 
-      await service({ prisma, queue }).summarize('s-1', 'bob', {
-        channelId: 'c-1',
-        messageIds: ['m-1'],
-      });
+      await service({ prisma, queue }).ask('s-1', 'bob', {
+      preset: 'summary',
+      context: { channelId: 'c-1', messageIds: ['m-1'] },
+    });
 
       expect(prisma.aiRun.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -212,6 +221,146 @@ describe('AiService.summarize', () => {
       );
     },
   );
+});
+
+const row = (id: string, body = '안녕') => ({
+  id,
+  body,
+  deletedAt: null,
+  createdAt: new Date('2026-01-01T00:00:00Z'),
+  author: { name: '가영' },
+  attachments: [],
+});
+
+const chunk = (id: string) => ({
+  id,
+  path: 'lib/a.dart',
+  lang: 'dart',
+  startLine: 1,
+  endLine: 3,
+  content: 'x',
+  commitSha: 'sha',
+  score: 0.5,
+});
+
+function prismaWith(messages: unknown[]) {
+  return {
+    channel: { findFirst: jest.fn().mockResolvedValue({ id: 'c-1' }) },
+    message: { findMany: jest.fn().mockResolvedValue(messages) },
+    aiRun: { findFirst: jest.fn().mockResolvedValue(null) },
+    spaceMember: { findMany: jest.fn().mockResolvedValue([]) },
+  };
+}
+
+describe('AiService.ask — 13-2', () => {
+  it('★ 채널만 주면 최근 최상위 메시지 50개를 읽고 그 id 를 input 에 박는다', async () => {
+    // desc 로 읽은 것을 뒤집어 시간순으로 둔다
+    const prisma = prismaWith([row('m-2'), row('m-1')]);
+    const queue = { enqueue: jest.fn().mockResolvedValue('run-1') };
+
+    await service({ prisma, queue }).ask('s-1', 'u-1', {
+      instruction: '뭐 정했어?',
+      context: { channelId: 'c-1' },
+    });
+
+    expect(prisma.message.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { spaceId: 's-1', channelId: 'c-1', parentId: null },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+    );
+    expect(queue.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'ask',
+        input: { instruction: '뭐 정했어?', channelId: 'c-1', messageIds: ['m-1', 'm-2'] },
+      }),
+    );
+  });
+
+  it('빈 채널은 400 이다 — 빈 대화를 요약하게 하지 않는다', async () => {
+    await expect(
+      service({ prisma: prismaWith([]) }).ask('s-1', 'u-1', {
+        preset: 'summary',
+        context: { channelId: 'c-1' },
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('저장소는 지시문으로 검색하고 고른 청크 id 를 input 에 박는다', async () => {
+    const indexing = { search: jest.fn().mockResolvedValue({ chunks: [chunk('k-1'), chunk('k-2')] }) };
+    const queue = { enqueue: jest.fn().mockResolvedValue('run-1') };
+
+    await service({ prisma: prismaWith([]), queue, indexing }).ask('s-1', 'u-1', {
+      instruction: '소켓 재연결은 어디서?',
+      context: { repoId: 'r-1' },
+    });
+
+    expect(indexing.search).toHaveBeenCalledWith('s-1', 'r-1', '소켓 재연결은 어디서?', 8);
+    expect(queue.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: { instruction: '소켓 재연결은 어디서?', repoId: 'r-1', chunkIds: ['k-1', 'k-2'] },
+      }),
+    );
+  });
+
+  it('프리셋 + 저장소면 대화 원문으로 검색한다', async () => {
+    const indexing = { search: jest.fn().mockResolvedValue({ chunks: [] }) };
+
+    await service({ prisma: prismaWith([row('m-1', '로그인 버튼 버그')]), indexing }).ask(
+      's-1',
+      'u-1',
+      { preset: 'issue', context: { channelId: 'c-1', repoId: 'r-1' } },
+    );
+
+    expect(indexing.search.mock.calls[0][2]).toContain('로그인 버튼 버그');
+  });
+
+  it('검색이 503 이면 그대로 올라간다 — 틀린 순위로 답하지 않는다', async () => {
+    const indexing = {
+      search: jest.fn().mockRejectedValue(new ServiceUnavailableException('모델')),
+    };
+    await expect(
+      service({ prisma: prismaWith([]), indexing }).ask('s-1', 'u-1', {
+        instruction: 'q',
+        context: { repoId: 'r-1' },
+      }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+});
+
+describe('AiService.loadPrompt', () => {
+  it('★ 고른 청크가 사라졌으면 던진다 — 인용이 빈 채로 답하지 않는다', async () => {
+    const indexing = { chunksByIds: jest.fn().mockResolvedValue([chunk('k-1')]) };
+    await expect(
+      service({ prisma: prismaWith([]), indexing }).loadPrompt('s-1', {
+        instruction: 'q',
+        repoId: 'r-1',
+        chunkIds: ['k-1', 'k-2'],
+      }),
+    ).rejects.toThrow(/다시 인덱싱/);
+  });
+
+  it('인용은 input 의 청크 순서다', async () => {
+    const indexing = { chunksByIds: jest.fn().mockResolvedValue([chunk('k-1'), chunk('k-2')]) };
+    const out = await service({ prisma: prismaWith([]), indexing }).loadPrompt('s-1', {
+      instruction: 'q',
+      repoId: 'r-1',
+      chunkIds: ['k-1', 'k-2'],
+    });
+    expect(out.kind).toBe('ask');
+    expect(out.citations.map((c) => c.n)).toEqual([1, 2]);
+    expect(out.messages[1].content).toContain('[2] lib/a.dart:1-3');
+  });
+
+  it('13-1 에서 적재된 행(channelId · messageIds 뿐)은 요약으로 읽는다', async () => {
+    const out = await service({ prisma: prismaWith([row('m-1')]) }).loadPrompt('s-1', {
+      channelId: 'c-1',
+      messageIds: ['m-1'],
+    });
+    expect(out.kind).toBe('summarize');
+    expect(out.citations).toEqual([]);
+  });
 });
 
 describe('AiService.getRun', () => {

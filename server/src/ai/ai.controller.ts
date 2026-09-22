@@ -11,7 +11,7 @@ import { SpaceGuard } from '../spaces/guards/space.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AiService } from './ai.service';
 import { AiWorker } from './ai.worker';
-import { SummarizeDto } from './dto/summarize.dto';
+import { AskDto } from './dto/ask.dto';
 
 /**
  * AI 실행.
@@ -30,13 +30,17 @@ export class AiController {
     private readonly worker: AiWorker,
   ) {}
 
-  @Post('summarize')
-  async summarize(
+  /**
+   * 묻는다 (13-2). 요약 · 이슈 초안 · 자유 지시문이 전부 여기다 — 컨텍스트
+   * 조합마다 경로를 늘리지 않는다(설계 D1).
+   */
+  @Post('ask')
+  async ask(
     @Param('spaceId', new ParseUUIDPipe()) spaceId: string,
     @CurrentUser('id') userId: string,
-    @Body() dto: SummarizeDto,
+    @Body() dto: AskDto,
   ) {
-    const result = await this.ai.summarize(spaceId, userId, dto);
+    const result = await this.ai.ask(spaceId, userId, dto);
     // 깨우는 것은 컨트롤러의 일이다 — 서비스가 워커를 부르면 둘이 서로를
     // 참조해 순환 의존이 된다(12단계와 같은 이유). 캐시 적중(done)이면
     // 큐에 아무것도 넣지 않았으므로 깨우지 않는다.
