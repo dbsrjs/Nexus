@@ -1,4 +1,20 @@
-import { shouldGiveUp, AI_MAX_ATTEMPTS } from './ai-queue.service';
+import { shouldGiveUp, AI_MAX_ATTEMPTS, retryDelayMs } from './ai-queue.service';
+
+describe('retryDelayMs', () => {
+  it('★ 5xx 는 몇 초 뒤 다시 건다 - 사람이 패널 앞에서 기다린다', () => {
+    expect(retryDelayMs(1, { countsAsAttempt: true })).toBe(5_000);
+    expect(retryDelayMs(2, { countsAsAttempt: true })).toBe(10_000);
+  });
+
+  it('네트워크 실패는 1분 뒤다 — 오프라인에서 두드리지 않는다', () => {
+    expect(retryDelayMs(0, { countsAsAttempt: false })).toBe(60_000);
+  });
+
+  it('★ Retry-After 가 있으면 그것을 쓴다 — 0 도 살아남는다', () => {
+    expect(retryDelayMs(0, { countsAsAttempt: false, retryAfterSec: 7 })).toBe(7_000);
+    expect(retryDelayMs(0, { countsAsAttempt: false, retryAfterSec: 0 })).toBe(0);
+  });
+});
 
 describe('shouldGiveUp', () => {
   it('fatal 이면 시도 수와 무관하게 포기한다', () => {

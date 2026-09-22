@@ -19,6 +19,16 @@ const LEASE_MS = 3 * 60 * 1000;
 /** 네트워크 실패·429 로 미룰 때의 기본 대기. `Retry-After` 가 있으면 그것을 쓴다. */
 const BACKOFF_MS = 60 * 1000;
 
+/**
+ * 5xx 를 다시 걸 때의 대기 단위. 시도마다 늘린다(5초 · 10초).
+ *
+ * **인덱싱처럼 1분을 기다리지 않는다** — AI 는 사람이 패널 앞에서 답을
+ * 기다린다. 13-2 실제 태우기에서 `gemini-3.1-flash-lite` 가 새벽에 503 을
+ * 자주 주었고, 1분 간격이면 한 번의 503 이 답을 60~110초로 늘렸다. 503 은
+ * 대개 몇 초 안에 풀리는 과부하다.
+ */
+const SERVER_ERROR_BACKOFF_MS = 5 * 1000;
+
 /** 서버 오류를 몇 번까지 다시 해 보나. 네트워크 실패는 여기 세지 않는다. */
 export const AI_MAX_ATTEMPTS = 3;
 
@@ -44,6 +54,17 @@ export interface AiFailOptions {
 export function shouldGiveUp(attempts: number, options: AiFailOptions): boolean {
   if (options.fatal === true) return true;
   return options.countsAsAttempt && attempts >= AI_MAX_ATTEMPTS;
+}
+
+/**
+ * 다시 걸기까지 얼마나 기다리나. `Retry-After` 가 있으면 그것(0 도 살린다 —
+ * `!= null` 로 본다, 12단계), 5xx 는 몇 초, 그 밖(네트워크 · 헤더 없는 429)은
+ * 1분이다 — 오프라인에서 서버를 두드리지 않는다.
+ */
+export function retryDelayMs(attempts: number, options: AiFailOptions): number {
+  if (options.retryAfterSec != null) return options.retryAfterSec * 1000;
+  if (options.countsAsAttempt) return SERVER_ERROR_BACKOFF_MS * Math.max(1, attempts);
+  return BACKOFF_MS;
 }
 
 /**
@@ -169,10 +190,7 @@ export class AiQueueService {
 
     const attempts = options.countsAsAttempt ? run.attempts + 1 : run.attempts;
     const giveUp = shouldGiveUp(attempts, options);
-    // `retryAfterSec: 0` 이 무시되지 않게 `!= null` 로 본다 — `x ? … : …` 는
-    // 0 을 거짓으로 본다(12단계에서 겪었다).
-    const wait =
-      options.retryAfterSec != null ? options.retryAfterSec * 1000 : BACKOFF_MS;
+    const wait = retryDelayMs(attempts, options);
 
     await this.prisma.aiRun.update({
       where: { id: runId },
