@@ -46,6 +46,14 @@ export class AiWorker implements OnModuleInit {
    */
   private wanted = false;
 
+  /**
+   * 재시도로 미룬 실행을 그 대기가 지나면 다시 깨운다. **`unref`** 라 이
+   * 타이머 때문에 프로세스가 살아 있지 않는다 — 놓쳐도 크론이 받는다.
+   */
+  private wakeAfter(ms: number): void {
+    setTimeout(() => this.kick(), ms).unref?.();
+  }
+
   private async drain(): Promise<void> {
     if (this.running) {
       this.wanted = true;
@@ -58,7 +66,8 @@ export class AiWorker implements OnModuleInit {
         for (;;) {
           const run = await this.queue.lease();
           if (!run) break;
-          await this.runner.runOne(run);
+          const retryIn = await this.runner.runOne(run);
+          if (retryIn != null) this.wakeAfter(retryIn);
         }
       } while (this.wanted);
     } catch (err) {

@@ -45,7 +45,11 @@ export class AiRunnerService {
     private readonly realtime: RealtimeEmitter,
   ) {}
 
-  async runOne(run: LeasedRun): Promise<void> {
+  /**
+   * 하나를 돈다. **재시도로 미뤘으면 그 대기(ms)를, 아니면 `null` 을 돌려준다**
+   * — 워커가 그 시점에 다시 깨운다(`AiWorker`).
+   */
+  async runOne(run: LeasedRun): Promise<number | null> {
     if (!this.llm) {
       // 설정이 도중에 사라질 수는 없지만, 큐에 남은 것을 영원히 돌리지 않는다.
       await this.queue.fail(run.id, 'AI 가 설정되지 않았습니다', {
@@ -53,7 +57,7 @@ export class AiRunnerService {
         fatal: true,
       });
       this.notify(run, 'failed');
-      return;
+      return null;
     }
 
     try {
@@ -86,10 +90,11 @@ export class AiRunnerService {
         completionTokens: out.completionTokens,
       });
       this.notify(run, 'done');
+      return null;
     } catch (err) {
       const options = classifyFailure(err);
       const message = err instanceof Error ? err.message : String(err);
-      await this.queue.fail(run.id, message, options);
+      const retryIn = await this.queue.fail(run.id, message, options);
 
       // **포기했을 때만 알린다.** 재시도로 넘어간 것은 아직 실패가 아니고,
       // 알리면 화면이 실패를 보였다가 되살아난다.
@@ -97,6 +102,7 @@ export class AiRunnerService {
         const stillQueued = !(await this.isFailed(run.id));
         if (!stillQueued) this.notify(run, 'failed');
       }
+      return retryIn;
     }
   }
 

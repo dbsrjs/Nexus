@@ -183,17 +183,21 @@ export class AiQueueService {
    *
    * **네트워크 실패는 시도 횟수로 치지 않는다**(12단계 · 6-2 전송 큐와 같은
    * 규칙). 오프라인은 오류가 아니고, 429 도 "잠시 뒤 다시"라는 뜻이다.
+   *
+   * **다시 걸기까지의 대기(ms)를 돌려준다** — 포기했거나 행이 없으면 `null`.
+   * 워커가 이 값으로 깨우기를 예약한다. 없으면 대기가 몇 초여도 다음 30초
+   * 크론까지 아무도 이 행을 다시 잡지 않는다.
    */
   async fail(
     runId: string,
     message: string,
     options: AiFailOptions,
-  ): Promise<void> {
+  ): Promise<number | null> {
     const run = await this.prisma.aiRun.findUnique({
       where: { id: runId },
       select: { attempts: true },
     });
-    if (!run) return;
+    if (!run) return null;
 
     const attempts = options.countsAsAttempt ? run.attempts + 1 : run.attempts;
     const giveUp = shouldGiveUp(attempts, options);
@@ -213,5 +217,6 @@ export class AiQueueService {
     });
 
     this.logger.warn(`AI 실행 실패: run=${runId} (${attempts}회) ${message}`);
+    return giveUp ? null : wait;
   }
 }
