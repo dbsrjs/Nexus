@@ -38,15 +38,29 @@ export class AiWorker implements OnModuleInit {
     void this.drain();
   }
 
+  /**
+   * 도는 중에 깨우기가 왔는가. **없으면 깨우기를 잃는다** — `lease()` 가
+   * 「비었다」를 본 직후 적재된 요청의 `kick()` 은 `running` 에 막혀
+   * 돌아가고, 루프는 그대로 끝나 그 요청이 30초 크론까지 밀린다. 13-2
+   * 계약 검증에서 요청 셋 중 하나꼴로 15초 제한을 넘기며 드러났다.
+   */
+  private wanted = false;
+
   private async drain(): Promise<void> {
-    if (this.running) return;
+    if (this.running) {
+      this.wanted = true;
+      return;
+    }
     this.running = true;
     try {
-      for (;;) {
-        const run = await this.queue.lease();
-        if (!run) return;
-        await this.runner.runOne(run);
-      }
+      do {
+        this.wanted = false;
+        for (;;) {
+          const run = await this.queue.lease();
+          if (!run) break;
+          await this.runner.runOne(run);
+        }
+      } while (this.wanted);
     } catch (err) {
       // AI 가 실패해도 서버는 계속 떠 있어야 한다.
       this.logger.error('AI 워커 실패', err as Error);
