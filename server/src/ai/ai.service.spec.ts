@@ -176,6 +176,42 @@ describe('AiService.summarize', () => {
 
     expect(result).toEqual({ runId: 'run-1', state: 'queued' });
   });
+
+  it(
+    '★ 캐시 조회는 spaceId 뿐 아니라 userId 도 본다 - 아니면 bob 이 alice 와 ' +
+      '같은 구간을 요약할 때 alice 의 runId 를 받고 영구 404 가 난다(최종 리뷰 ①)',
+    async () => {
+      const prisma = {
+        channel: { findFirst: jest.fn().mockResolvedValue({ id: 'c-1' }) },
+        message: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'm-1',
+              body: '안녕',
+              deletedAt: null,
+              createdAt: new Date(),
+              author: { name: '가영' },
+              attachments: [],
+            },
+          ]),
+        },
+        aiRun: { findFirst: jest.fn().mockResolvedValue(null) },
+        spaceMember: { findMany: jest.fn().mockResolvedValue([]) },
+      };
+      const queue = { enqueue: jest.fn().mockResolvedValue('run-1') };
+
+      await service({ prisma, queue }).summarize('s-1', 'bob', {
+        channelId: 'c-1',
+        messageIds: ['m-1'],
+      });
+
+      expect(prisma.aiRun.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ spaceId: 's-1', userId: 'bob' }),
+        }),
+      );
+    },
+  );
 });
 
 describe('AiService.getRun', () => {

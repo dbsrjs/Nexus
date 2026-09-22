@@ -114,9 +114,17 @@ export class AiService {
   ): Promise<StartResult> {
     const hash = promptHash(kind, llm.modelId, prompt);
 
-    // **`spaceId` 를 WHERE 에 넣는다** — 격리는 해시가 아니라 쿼리로 지킨다.
+    // **`spaceId` 뿐 아니라 `userId` 도 WHERE 에 넣는다.** 스펙 §4(캐시
+    // 조회는 spaceId 로만)와 §9(getRun() 은 본인 것만)가 서로 모순이었다 —
+    // §4 대로면 bob 이 alice 와 같은 구간을 고를 때 프롬프트가 바이트
+    // 단위로 같아 같은 promptHash 가 나오고, 캐시가 **alice 의 runId** 를
+    // 돌려준다. 그런데 §9 의 getRun() 은 userId 가 다르면 404 이므로 bob 의
+    // GET 이 영구히 404 가 된다(다시 눌러도 같은 캐시를 가리킨다). §9 의
+    // 근거(「같은 스페이스라도 남의 질문과 답을 읽을 이유가 없다」)가 §4 의
+    // 쿼터 절약보다 무겁다고 보고 §9 를 택한다 — 최종 whole-branch 리뷰
+    // Important ①.
     const cached = await this.prisma.aiRun.findFirst({
-      where: { spaceId, promptHash: hash, state: AiRunState.done },
+      where: { spaceId, userId, promptHash: hash, state: AiRunState.done },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     });

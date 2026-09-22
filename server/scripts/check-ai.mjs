@@ -198,6 +198,49 @@ check(
   JSON.stringify(narrower.json),
 );
 
+// bob 이 alice 와 **같은** 채널·메시지를 고르면 프롬프트가 바이트 단위로
+// 같아 같은 promptHash 가 나온다. 캐시 조회가 spaceId 로만 걸리면 alice 의
+// runId 를 그대로 돌려주고, bob 이 그 runId 로 GET 하면 getRun() 은
+// userId 도 보므로(§9) 404 다 — 최종 whole-branch 리뷰 Important ①. 값이
+// 있는지부터 본다(undefined === undefined 로 통과하는 사고를 피하려는 것).
+const byBobSameInput = await summarize(bob.token, {
+  channelId: channel.id,
+  messageIds: ids,
+});
+check(
+  '★ bob 이 같은 구간을 요약해도 적재된다',
+  byBobSameInput.status === 201 &&
+    typeof byBobSameInput.json?.runId === 'string' &&
+    byBobSameInput.json.runId.length > 0,
+  JSON.stringify(byBobSameInput.json),
+);
+check(
+  '★ 캐시가 남의 runId 를 주지 않는다 - alice 와 다른 runId 다',
+  typeof byBobSameInput.json?.runId === 'string' &&
+    byBobSameInput.json.runId.length > 0 &&
+    byBobSameInput.json.runId !== runId,
+  `bob=${byBobSameInput.json?.runId} vs alice=${runId}`,
+);
+
+const bobRunId = byBobSameInput.json?.runId;
+if (byBobSameInput.json?.state === 'queued') {
+  const finished = await waitForRunDone(bob.token, spaceId, bobRunId);
+  check(
+    'bob 의 요약이 끝난다',
+    finished?.json?.state === 'done',
+    JSON.stringify(finished?.json),
+  );
+}
+
+const bobFetch = await api('GET', `/spaces/${spaceId}/ai/runs/${bobRunId}`, {
+  token: bob.token,
+});
+check(
+  '★ bob 이 자기 runId 로 조회하면 200 이다 - 영구 404 가 아니다',
+  bobFetch.status === 200,
+  `status=${bobFetch.status}`,
+);
+
 // ── 권한 ───────────────────────────────────────
 console.log('\n[권한]');
 
