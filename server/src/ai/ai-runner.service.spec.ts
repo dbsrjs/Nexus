@@ -102,4 +102,28 @@ describe('AiRunnerService.runOne', () => {
       );
     },
   );
+
+  it(
+    '★ 빈 응답은 성공으로 굳지 않는다 - fatal 실패라 같은 프롬프트가 다시 ' +
+      '와도 캐시에 빈 결과가 박히지 않는다(최종 리뷰 ③)',
+    async () => {
+      const complete = jest.fn().mockResolvedValue({
+        text: '   ',
+        promptTokens: 1,
+        completionTokens: 0,
+        model: 'm',
+      });
+      const llm: LlmProvider = { modelId: 'fake:fake', maxTokens: 1024, complete };
+      const { runner, queue } = service(llm);
+
+      await runner.runOne(leasedRun());
+
+      expect(queue.succeed).not.toHaveBeenCalled();
+      expect(queue.fail).toHaveBeenCalledWith(
+        'run-1',
+        expect.any(String),
+        expect.objectContaining({ fatal: true }),
+      );
+    },
+  );
 });

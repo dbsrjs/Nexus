@@ -65,6 +65,18 @@ export class AiRunnerService {
         temperature: TEMPERATURE,
       });
 
+      // **빈 응답을 성공으로 굳히지 않는다.** Gemini 가 `finishReason:
+      // SAFETY` 로 막으면 candidates[0].content.parts 가 아예 없어
+      // text 가 빈 문자열로 온다(gemini-llm.provider.ts). 그대로
+      // succeed() 하면 그 행이 곧 캐시라(설계 §4) 같은 구간을 다시
+      // 요약해도 영원히 빈 결과가 나온다 — 판단 #4(조용히 버리지 않는다)
+      // 위반이다. 같은 프롬프트에 같은 차단이 다시 올 것이므로 재시도로
+      // 낫지 않는다 — `classifyFailure` 의 기본 분기(그 밖의 오류는
+      // fatal)에 맡긴다(최종 whole-branch 리뷰 Important ③).
+      if (out.text.trim().length === 0) {
+        throw new Error('LLM 이 빈 응답을 주었습니다.');
+      }
+
       await this.queue.succeed(run.id, resultOf(run.kind, out.text), {
         model: out.model,
         promptTokens: out.promptTokens,
