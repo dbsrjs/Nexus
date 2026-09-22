@@ -85,8 +85,8 @@ class AiSummaryController extends Notifier<AiSummaryState> {
 
   @override
   AiSummaryState build() {
-    // 소켓이 완료를 알리면 결과를 가져온다. 놓쳐도 화면의 「다시 확인」이
-    // 같은 GET 을 부른다 — 두 경로가 하나다.
+    // 소켓이 완료를 알리면 결과를 가져온다. 놓쳐도 화면의 「다시 확인」
+    // (아래 retry())이 같은 GET 을 부른다 — 두 경로가 하나다.
     ref.listen<AsyncValue<SocketEvent>>(socketEventsProvider, (_, next) {
       final event = next.value;
       if (event is! AiRunDone) return;
@@ -134,6 +134,20 @@ class AiSummaryController extends Notifier<AiSummaryState> {
   void abandon() {
     _generation++;
     state = const AiIdle();
+  }
+
+  /// 소켓 이벤트를 놓쳤을 때 화면의 「다시 확인」이 부른다. `run()` 이 캐시
+  /// 적중을 확인할 때 쓰는 것과 **같은 GET** 이다 — `build()` 의 주석이
+  /// 약속한 두 경로가 실제로 하나가 되는 지점이다(최종 whole-branch 리뷰
+  /// Important ④: 이 메서드가 없어 소켓을 놓치면 스피너가 영원히 돌았다).
+  ///
+  /// `AiRunning` 일 때만 의미가 있다 — 그 밖의 상태에서 눌릴 버튼은 화면에
+  /// 없다(판단 #7). `runId` 가 아직 빈 문자열이면(`run()` 이 `summarize()`
+  /// 응답을 기다리는 중) 할 것이 없다.
+  Future<void> retry() async {
+    final current = state;
+    if (current is! AiRunning || current.runId.isEmpty) return;
+    await _fetch(_activeSpaceId, current.runId, _generation);
   }
 
   Future<void> _fetch(String spaceId, String runId, int generation) async {

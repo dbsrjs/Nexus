@@ -125,6 +125,75 @@ void main() {
       expect(api.getRunCalls, hasLength(1));
       expect(state(), isA<AiReady>());
     });
+
+    test(
+      '★ 다시 확인이 소켓을 놓친 뒤에도 같은 GET 으로 결과를 가져온다 (최종 리뷰 ④)',
+      () async {
+        // 소켓 이벤트가 올 것처럼 큐가 아직 done 이 아니다 — run() 이 끝나도
+        // AiRunning 에 머문다(소켓을 놓친 상황을 흉내 낸다).
+        api.getRunResult = const AiRun(
+          runId: 'run-1',
+          kind: 'summarize',
+          state: AiRunState.queued,
+          markdown: null,
+        );
+        api.summarizeCompleter.complete('run-1');
+
+        await notifier().run(
+          spaceId: 's1',
+          channelId: 'c1',
+          messageIds: const ['m1'],
+        );
+        expect(state(), isA<AiRunning>());
+        expect(api.getRunCalls, hasLength(1));
+
+        // 그사이 결과가 실제로는 서버에 도착했다 — 소켓만 놓친 것이다.
+        api.getRunResult = const AiRun(
+          runId: 'run-1',
+          kind: 'summarize',
+          state: AiRunState.done,
+          markdown: '다시 확인으로 가져온 요약',
+        );
+
+        // 화면의 「다시 확인」이 이 메서드를 부른다.
+        await notifier().retry();
+
+        expect(api.getRunCalls, hasLength(2));
+        expect(api.getRunCalls.last, (spaceId: 's1', runId: 'run-1'));
+        final result = state();
+        expect(result, isA<AiReady>());
+        expect((result as AiReady).run.markdown, '다시 확인으로 가져온 요약');
+      },
+    );
+
+    test(
+      '★ abandon() 이후의 retry() 는 상태를 되살리지 않는다 - 세대 가드를 지난다',
+      () async {
+        api.getRunResult = const AiRun(
+          runId: 'run-1',
+          kind: 'summarize',
+          state: AiRunState.queued,
+          markdown: null,
+        );
+        api.summarizeCompleter.complete('run-1');
+
+        await notifier().run(
+          spaceId: 's1',
+          channelId: 'c1',
+          messageIds: const ['m1'],
+        );
+        expect(state(), isA<AiRunning>());
+
+        notifier().abandon();
+        expect(state(), isA<AiIdle>());
+
+        // 이미 버려진 세대 — retry() 는 state 가 AiRunning 이 아니므로 아무
+        // 일도 하지 않는다.
+        await notifier().retry();
+
+        expect(state(), isA<AiIdle>());
+      },
+    );
   });
 }
 

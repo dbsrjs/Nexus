@@ -25,6 +25,8 @@ Future<void> showAiResultSheet(
               ref.read(aiSummaryControllerProvider.notifier).abandon();
               Navigator.of(sheetContext).pop();
             },
+            onRetry: () =>
+                ref.read(aiSummaryControllerProvider.notifier).retry(),
           ),
           AiFailed(:final failure) => _Failed(message: aiMessageFor(failure)),
           AiReady(:final run) => _Ready(
@@ -41,8 +43,14 @@ Future<void> showAiResultSheet(
 }
 
 class _Running extends StatelessWidget {
-  const _Running({required this.onAbandon});
+  const _Running({required this.onAbandon, required this.onRetry});
   final VoidCallback onAbandon;
+
+  /// 소켓 알림을 놓쳤을 때(액세스 토큰 만료로 재연결하는 사이 등) 결과가
+  /// 이미 서버에 있는데 화면만 모르는 경우를 위한 것 — 같은 GET 을 다시
+  /// 부른다. 결과가 아직 없으면 `queued`/`running` 그대로 남아 스피너가
+  /// 계속 돈다(정상이다).
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -54,8 +62,15 @@ class _Running extends StatelessWidget {
         const SizedBox(height: 16),
         const Text('요약하고 있습니다'),
         const SizedBox(height: 16),
-        // 「중단」이 아니라 「기다리지 않기」다 — 서버의 호출은 계속 돈다.
-        TextButton(onPressed: onAbandon, child: const Text('기다리지 않기')),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextButton(onPressed: onRetry, child: const Text('다시 확인')),
+            const SizedBox(width: 8),
+            // 「중단」이 아니라 「기다리지 않기」다 — 서버의 호출은 계속 돈다.
+            TextButton(onPressed: onAbandon, child: const Text('기다리지 않기')),
+          ],
+        ),
       ],
     ),
   );
