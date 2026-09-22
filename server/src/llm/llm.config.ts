@@ -62,22 +62,36 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
  * - `local` — **Q4 기준 5GB 이하.** `embeddinggemma`(0.6GB)와 함께 12GB 에
  *   상주해야 질의마다 모델을 바꿔 끼우지 않는다
  *
- * **`gemini` 는 `embeddinggemma` 와 달리 특정 버전이 아니라 별칭을 쓴다.**
- * 임베딩은 차원이 스키마(`vector(768)`)에 박혀 있어 모델을 못 바꾸지만,
- * 생성 모델은 그 제약이 없다. Google 문서(ai.google.dev/gemini-api/docs/models)가
- * `gemini-flash-latest` 를 "2주 예고 뒤 최신 릴리스로 핫스왑" 되는 별칭으로
- * 못박아 두었다 — 세대 교체가 유독 잦은 이 자리에서는 특정 버전을 박아 두는
- * 것보다 이 별칭이 조용히 낡는 값을 만들지 않는다. Flash 계열은 무료 티어에
- * 남아 있고(Pro 계열만 유료 전용으로 옮겨졌다) 구조화 출력(`responseSchema`)과
- * 다국어(한국어 포함)를 지원한다.
+ * **`gemini` 는 처음에 `gemini-flash-latest` 별칭을 골랐지만 13-1 실제
+ * 태우기(2026-09-22)에서 뒤집혔다.** Google 문서(ai.google.dev/gemini-api/docs/models)는
+ * `-latest` 를 "새 출시마다 핫스왑" 되는 별칭이라 부르면서도 **"대부분의
+ * 프로덕션 앱은 특정 안정화 모델을 써야 한다"** 고 적어 두었다 — 가장 새
+ * 모델은 곧 가장 붐비는 모델이라, 별칭을 쓰면 그 부하를 그대로 맞는다.
+ * 실측이 이를 뒷받침한다(같은 요약 프롬프트, 548 프롬프트 토큰):
+ *
+ * | 모델 | 결과 |
+ * |---|---|
+ * | `gemini-flash-latest`(별칭, 옛 기본값) | **503 매번** |
+ * | `gemini-3.5-flash` | 503 |
+ * | `gemini-2.5-flash` | 404 (2.5 계열은 기존 사용자로만 접근 허용) |
+ * | `gemini-3.5-flash-lite` | 성공하지만 7.1~85.2초로 널뛰고 503 도 2회 |
+ * | **`gemini-3.1-flash-lite`** | **1.2~5.9초, 6회 중 1회만 503** |
+ *
+ * **`gemini-3.1-flash-lite` 로 고정한다.** Flash 계열은 무료 티어에 남아
+ * 있고(Pro 계열만 유료 전용으로 옮겨졌다) JSON 구조화 출력(`responseSchema`,
+ * 13-2 가 쓸 것)도 3/3 파싱에 성공했다. **503 은 특정 모델만의 문제가
+ * 아니라 산발적으로 온다** — 큐의 5xx 재시도(최대 3회)가 이미 처리하는
+ * 종류이니 이 값이 503 을 완전히 없애 주지는 않는다.
  *
  * `local` 은 `qwen2.5-coder:7b`(Q4_K_M 기본 태그, 4.7GB) — Qwen2.5 계열의
  * 다국어(한국어 포함) 능력에 코드 특화 파인튜닝을 얹었다. 13-3 코드 질의가
  * 같은 provider 를 쓰므로 코드를 다루는 계열을 우선했다. Qwen3 계열에는 이
  * 체급의 dense 7B 가 없어(문서화된 것은 4B 아니면 MoE 30B) 후보에서 뺐다.
+ * **이 값은 13-1 에서 실측하지 못했다** — 이 PC 에 Ollama 가 설치돼 있지
+ * 않다. `local` 경로를 쓰기 전에 먼저 실제로 태워 볼 것.
  */
 function defaultModel(provider: LlmProviderName): string {
-  if (provider === 'gemini') return 'gemini-flash-latest';
+  if (provider === 'gemini') return 'gemini-3.1-flash-lite';
   if (provider === 'local') return 'qwen2.5-coder:7b';
   return 'fake';
 }
