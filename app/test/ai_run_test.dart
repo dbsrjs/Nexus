@@ -44,5 +44,40 @@ void main() {
       });
       expect(run.state, AiRunState.queued);
     });
+
+    test('★ 인용을 읽는다 - 서버가 검색 결과에서 채운 것이다', () {
+      final run = AiRun.fromJson(const {
+        'runId': 'r-1',
+        'kind': 'ask',
+        'state': 'done',
+        'result': {
+          'markdown': '[1] 에 있다',
+          'citations': [
+            {'n': 1, 'path': 'lib/a.dart', 'startLine': 3, 'endLine': 9, 'commitSha': 'abc'},
+          ],
+        },
+      });
+      expect(run.citations, hasLength(1));
+      expect(run.citations.single.location, 'lib/a.dart:3-9');
+      expect(run.citations.single.commitSha, 'abc');
+    });
+
+    test('이슈 초안은 제목 · 본문을 읽는다', () {
+      final run = AiRun.fromJson(const {
+        'runId': 'r-1',
+        'kind': 'draft_issue',
+        'state': 'done',
+        'result': {'title': '버튼 고침', 'description': '본문', 'citations': []},
+      });
+      expect(run.isIssueDraft, isTrue);
+      expect(run.title, '버튼 고침');
+      expect(run.description, '본문');
+      expect(run.markdown, isNull);
+    });
+
+    test('인용이 없으면 빈 목록이다', () {
+      final run = AiRun.fromJson(const {'runId': 'r-1', 'state': 'queued'});
+      expect(run.citations, isEmpty);
+    });
   });
 }

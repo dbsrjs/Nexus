@@ -12,25 +12,52 @@ import 'board_controller.dart';
 /// 않으면 만든 사람은 실패했다고 믿는다.
 /// `fromMessage` 를 주면 **대화 → 이슈**다. 제목을 원문에서 미리 채우고
 /// 원문 링크를 함께 보낸다 — 이슈에서 그 대화로 돌아올 수 있어야 한다.
-Future<void> showNewIssueSheet(BuildContext context, {Message? fromMessage}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _NewIssueSheet(fromMessage: fromMessage),
-    );
+///
+/// AI 이슈 초안(13-2)은 `initialTitle` · `initialDescription` 으로 채우고
+/// 원문은 id(`originMessageId`)로만 넘긴다 — 메시지 객체를 들고 있지 않다.
+Future<void> showNewIssueSheet(
+  BuildContext context, {
+  Message? fromMessage,
+  String? originMessageId,
+  String? initialTitle,
+  String? initialDescription,
+}) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  builder: (_) => _NewIssueSheet(
+    fromMessage: fromMessage,
+    originMessageId: originMessageId,
+    initialTitle: initialTitle,
+    initialDescription: initialDescription,
+  ),
+);
 
 class _NewIssueSheet extends ConsumerStatefulWidget {
-  const _NewIssueSheet({this.fromMessage});
+  const _NewIssueSheet({
+    this.fromMessage,
+    this.originMessageId,
+    this.initialTitle,
+    this.initialDescription,
+  });
 
   final Message? fromMessage;
+  final String? originMessageId;
+  final String? initialTitle;
+  final String? initialDescription;
+
+  String? get _originId => fromMessage?.id ?? originMessageId;
 
   @override
   ConsumerState<_NewIssueSheet> createState() => _NewIssueSheetState();
 }
 
 class _NewIssueSheetState extends ConsumerState<_NewIssueSheet> {
-  late final _title = TextEditingController(text: _titleFromMessage());
-  final _description = TextEditingController();
+  late final _title = TextEditingController(
+    text: widget.initialTitle ?? _titleFromMessage(),
+  );
+  late final _description = TextEditingController(
+    text: widget.initialDescription ?? '',
+  );
 
   /// 원문의 첫 줄을 제목으로 쓴다. 긴 글을 통째로 제목에 넣으면 카드가
   /// 읽히지 않으므로 자른다 — 전문은 원문 링크를 눌러 보면 된다.
@@ -67,7 +94,7 @@ class _NewIssueSheetState extends ConsumerState<_NewIssueSheet> {
           description: _description.text.trim(),
           status: _status,
           priority: _priority,
-          originMessageId: widget.fromMessage?.id,
+          originMessageId: widget._originId,
         );
 
     if (!mounted) return;
@@ -97,7 +124,7 @@ class _NewIssueSheetState extends ConsumerState<_NewIssueSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.fromMessage == null ? '새 이슈' : '대화에서 이슈 만들기',
+            widget._originId == null ? '새 이슈' : '대화에서 이슈 만들기',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: NexusSpacing.sp5),

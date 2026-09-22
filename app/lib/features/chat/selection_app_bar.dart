@@ -7,9 +7,11 @@ import 'selection_controller.dart';
 ///
 /// 흔한 메신저의 모양이다 — 「n개 선택」 과 할 수 있는 일들, 그리고 닫기.
 class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
-  const SelectionAppBar({super.key, required this.onSummarize});
+  const SelectionAppBar({super.key, required this.onAsk});
 
-  final VoidCallback onSummarize;
+  /// 고른 메시지를 붙인 채로 AI 패널을 연다(13-2). 13-1 의 「요약」 버튼을
+  /// 바꿨다 — 요약은 패널의 프리셋이다.
+  final VoidCallback onAsk;
 
   /// 평소 채널 헤더(`chat_screen.dart` 의 `_ChannelHeader`)와 높이를 맞춘다.
   /// 기본 `kToolbarHeight`(56) 를 그냥 쓰면 `_ChannelHeader` 의 52 와 어긋나
@@ -35,9 +37,9 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
       title: Text('${selection.count}개 선택'),
       actions: [
         TextButton.icon(
-          onPressed: selection.count > 0 ? onSummarize : null,
+          onPressed: selection.count > 0 ? onAsk : null,
           icon: const Icon(Icons.auto_awesome_outlined),
-          label: const Text('요약'),
+          label: const Text('AI'),
         ),
         const SizedBox(width: NexusSpacing.sp2),
       ],

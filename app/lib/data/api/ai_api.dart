@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../domain/models/ai_run.dart';
+import '../../features/ai/ai_request.dart';
 import 'api_client.dart';
 import 'api_failure.dart';
 
@@ -11,18 +12,14 @@ class AiApi {
 
   final ApiClient _client;
 
-  /// POST /api/spaces/:spaceId/ai/summarize — 요약을 적재하고 `runId` 를
+  /// POST /api/spaces/:spaceId/ai/ask — 요청을 적재하고 `runId` 를
   /// 돌려준다. **캐시 적중이면 곧바로 done 이지만 그 구분은 호출자가
   /// `getRun` 으로 본다** — 두 경로를 하나로 둔다.
-  Future<String> summarize({
-    required String spaceId,
-    required String channelId,
-    required List<String> messageIds,
-  }) async {
+  Future<String> ask(String spaceId, AiRequest request) async {
     try {
       final res = await _client.dio.post<Map<String, dynamic>>(
-        '/spaces/$spaceId/ai/summarize',
-        data: {'channelId': channelId, 'messageIds': messageIds},
+        '/spaces/$spaceId/ai/ask',
+        data: request.toJson(),
       );
       return res.data!['runId'] as String;
     } on DioException catch (e) {

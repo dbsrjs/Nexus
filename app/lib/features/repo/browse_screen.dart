@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../domain/models/repo_browse.dart';
 import 'browse_controller.dart';
 import 'code_highlight.dart';
+import 'repo_controller.dart';
+import '../ai/ai_panel.dart';
+import '../ai/ai_request.dart';
 
 /// 저장소 안을 들여다본다. **캐시하지 않는다**(설계 §4).
 ///
@@ -143,12 +146,33 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
     _openDir(_path);
   }
 
+  /// 이 저장소를 붙여 AI 패널을 연다(13-2). 이름은 이미 받아 둔 저장소
+  /// 목록에서 찾고, 없으면 일반 이름을 쓴다 — 이름 하나 때문에 기다리지 않는다.
+  void _openAi() {
+    final repos = ref.read(spaceReposProvider(widget.spaceId)).value;
+    final name = repos
+            ?.where((r) => r.id == widget.repoId)
+            .map((r) => r.name)
+            .firstOrNull ??
+        '저장소';
+    showAiPanel(
+      context,
+      spaceId: widget.spaceId,
+      contexts: [RepoContext(repoId: widget.repoId, repoName: name)],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('코드'),
         actions: [
+          IconButton(
+            tooltip: 'AI 에게 묻기',
+            icon: const Icon(Icons.auto_awesome_outlined, size: 20),
+            onPressed: _openAi,
+          ),
           IconButton(
             tooltip: 'Pull Request',
             icon: const Icon(Icons.merge_type, size: 20),

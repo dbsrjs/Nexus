@@ -8,6 +8,7 @@ import '../../data/socket/socket_event.dart';
 import '../../domain/models/ai_run.dart';
 import '../auth/auth_controller.dart';
 import '../realtime/socket_controller.dart';
+import 'ai_request.dart';
 
 /// apiClientProvider 는 features/auth/auth_controller.dart 에 있다(다른
 /// `*_api` provider 들과 같은 관례).
@@ -15,7 +16,7 @@ final aiApiProvider = Provider<AiApi>(
   (ref) => AiApi(ref.watch(apiClientProvider)),
 );
 
-/// 요약 실패를 화면 문구로. **서버 문구를 그대로 쓰지 않는다** — 종류만 받아
+/// AI 실패를 화면 문구로. **서버 문구를 그대로 쓰지 않는다** — 종류만 받아
 /// 앱이 자기 문구를 쓴다.
 ///
 /// **새 enum 을 만들지 않고 `ApiFailure` 를 쓴다.** 그것이 이미 상태 코드를
@@ -25,45 +26,55 @@ final aiApiProvider = Provider<AiApi>(
 /// `server` 에 「AI 를 쓸 수 없습니다」를 쓰는 이유: 503(미설정)과 500(진짜
 /// 오류)이 `ApiFailure` 에서 같은 칸으로 접히는데, **사용자가 할 일이 어느
 /// 쪽이든 같다** — 지금은 못 쓰고 나중에 다시 해 보는 것이다.
-String aiMessageFor(ApiFailure failure) => switch (failure) {
-  // 오프라인은 오류가 아니라 정상 경로다.
-  ApiFailure.network => '연결이 없어 요약하지 못했습니다.',
-  ApiFailure.badRequest => '한 번에 200개까지 요약할 수 있습니다.',
-  ApiFailure.notFound => '요약할 대화를 찾지 못했습니다.',
-  ApiFailure.unauthorized => '다시 로그인해 주세요.',
-  ApiFailure.tooLarge => '요약하기에 너무 큽니다.',
-  ApiFailure.server => 'AI 를 쓸 수 없습니다. 잠시 뒤 다시 시도해 주세요.',
-};
+///
+/// **저장소가 붙어 있으면 `server` 문구를 바꾼다**(13-2 설계 §6). 그때의
+/// 503 은 대개 인덱싱이 안 끝났거나 임베딩 모델이 바뀐 것이라, 「잠시 뒤」
+/// 가 아니라 인덱싱을 확인하는 것이 사용자가 할 일이다. 새 enum 을 만들지
+/// 않고 호출자가 아는 사실(저장소 칩)로 가른다.
+String aiMessageFor(ApiFailure failure, {bool hasRepo = false}) =>
+    switch (failure) {
+      // 오프라인은 오류가 아니라 정상 경로다.
+      ApiFailure.network => '연결이 없어 AI 에 묻지 못했습니다.',
+      ApiFailure.badRequest => '요청을 처리할 수 없습니다. 고른 범위를 확인해 주세요.',
+      ApiFailure.notFound => '물어볼 대화나 저장소를 찾지 못했습니다.',
+      ApiFailure.unauthorized => '다시 로그인해 주세요.',
+      ApiFailure.tooLarge => '한 번에 묻기에 너무 큽니다.',
+      ApiFailure.server =>
+        hasRepo
+            ? '저장소 검색을 지금 쓸 수 없습니다. 인덱싱이 끝났는지 확인해 주세요.'
+            : 'AI 를 쓸 수 없습니다. 잠시 뒤 다시 시도해 주세요.',
+    };
 
-sealed class AiSummaryState {
-  const AiSummaryState();
+sealed class AiState {
+  const AiState();
 }
 
-class AiIdle extends AiSummaryState {
+class AiIdle extends AiState {
   const AiIdle();
 }
 
-class AiRunning extends AiSummaryState {
+class AiRunning extends AiState {
   const AiRunning(this.runId);
   final String runId;
 }
 
-class AiReady extends AiSummaryState {
+class AiReady extends AiState {
   const AiReady(this.run);
   final AiRun run;
 }
 
-class AiFailed extends AiSummaryState {
+class AiFailed extends AiState {
   const AiFailed(this.failure);
   final ApiFailure failure;
 }
 
-/// 요약 실행 상태.
+/// AI 실행 상태. 13-1 의 요약 전용 컨트롤러를 13-2 에서 일반화했다 —
+/// 세대 토큰 · 소켓 완료 · 「다시 확인」은 그대로이고 `run()` 이 요청을 받는다.
 ///
 /// **drift 에 넣지 않는다.** 「화면은 drift 만 구독한다」의 예외이고, 근거는
 /// 8-2 의 `attachment_draft.dart` 선례다 — AI 결과는 오프라인에서 만들 수
 /// 없고 일회성이라 캐시할 것이 없다 (설계 §11).
-class AiSummaryController extends Notifier<AiSummaryState> {
+class AiController extends Notifier<AiState> {
   /// **세대 토큰.** `run()` · `abandon()` 이 호출될 때마다 하나 늘어난다.
   ///
   /// `await` 뒤에서 `state =` 로 대입하기 전에 항상 "내가 부를 때의 세대가
@@ -84,7 +95,7 @@ class AiSummaryController extends Notifier<AiSummaryState> {
   String _activeSpaceId = '';
 
   @override
-  AiSummaryState build() {
+  AiState build() {
     // 소켓이 완료를 알리면 결과를 가져온다. 놓쳐도 화면의 「다시 확인」
     // (아래 retry())이 같은 GET 을 부른다 — 두 경로가 하나다.
     ref.listen<AsyncValue<SocketEvent>>(socketEventsProvider, (_, next) {
@@ -99,20 +110,13 @@ class AiSummaryController extends Notifier<AiSummaryState> {
 
   Future<void> run({
     required String spaceId,
-    required String channelId,
-    required List<String> messageIds,
+    required AiRequest request,
   }) async {
     final generation = ++_generation;
     _activeSpaceId = spaceId;
     state = const AiRunning('');
     try {
-      final runId = await ref
-          .read(aiApiProvider)
-          .summarize(
-            spaceId: spaceId,
-            channelId: channelId,
-            messageIds: messageIds,
-          );
+      final runId = await ref.read(aiApiProvider).ask(spaceId, request);
       // 기다리는 동안 abandon() 됐거나 다음 run() 이 시작됐으면 버린다 —
       // 이미 지나간 세대의 결과로 지금 세대(또는 AiIdle)를 덮지 않는다.
       if (generation != _generation) return;
@@ -142,7 +146,7 @@ class AiSummaryController extends Notifier<AiSummaryState> {
   /// Important ④: 이 메서드가 없어 소켓을 놓치면 스피너가 영원히 돌았다).
   ///
   /// `AiRunning` 일 때만 의미가 있다 — 그 밖의 상태에서 눌릴 버튼은 화면에
-  /// 없다(판단 #7). `runId` 가 아직 빈 문자열이면(`run()` 이 `summarize()`
+  /// 없다(판단 #7). `runId` 가 아직 빈 문자열이면(`run()` 이 `ask()`
   /// 응답을 기다리는 중) 할 것이 없다.
   Future<void> retry() async {
     final current = state;
@@ -168,7 +172,6 @@ class AiSummaryController extends Notifier<AiSummaryState> {
   }
 }
 
-final aiSummaryControllerProvider =
-    NotifierProvider<AiSummaryController, AiSummaryState>(
-      AiSummaryController.new,
-    );
+final aiControllerProvider = NotifierProvider<AiController, AiState>(
+  AiController.new,
+);

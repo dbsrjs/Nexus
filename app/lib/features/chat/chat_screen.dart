@@ -25,8 +25,8 @@ import 'mention_composer_controller.dart';
 import 'mention_text.dart';
 import 'message_controller.dart';
 import '../issue/new_issue_sheet.dart';
-import '../ai/ai_controller.dart';
-import '../ai/ai_result_sheet.dart';
+import '../ai/ai_panel.dart';
+import '../ai/ai_request.dart';
 import 'selection_app_bar.dart';
 import 'selection_controller.dart';
 
@@ -52,10 +52,26 @@ class ChatScreen extends ConsumerWidget {
       children: [
         if (selection.active)
           SelectionAppBar(
-            onSummarize: () => _onSummarize(context, ref, selection.ids),
+            onAsk: () => _openAi(
+              context,
+              ref,
+              (channelId) => MessagesContext(
+                channelId: channelId,
+                messageIds: selection.ids.toList(),
+              ),
+            ),
           )
         else if (channel != null)
-          _ChannelHeader(name: channel.name, topic: channel.topic),
+          _ChannelHeader(
+            name: channel.name,
+            topic: channel.topic,
+            onAsk: () => _openAi(
+              context,
+              ref,
+              (channelId) =>
+                  ChannelContext(channelId: channelId, channelName: channel.name),
+            ),
+          ),
         Expanded(
           child: messages.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -74,33 +90,35 @@ class ChatScreen extends ConsumerWidget {
   }
 }
 
-/// 「요약」 버튼의 콜백.
-///
-/// **`run()` 을 기다리지 않고 시트부터 연다.** `run()` 은 호출되는 순간
-/// 첫 `await` 전까지 동기로 돌아 상태를 `AiRunning('')` 으로 바꿔 두므로,
-/// 시트가 뜰 때는 이미 진행 표시를 그릴 준비가 돼 있다. 시트가 닫히면
-/// (붙였든 「기다리지 않기」를 눌렀든) 선택을 비운다.
-void _onSummarize(
+/// AI 패널을 연다 — 선택 모드의 「AI」와 채널 헤더의 AI 아이콘이 부른다.
+/// 붙는 칩만 다르다(13-2 설계 §6). 시트가 닫히면 선택을 비운다.
+void _openAi(
   BuildContext context,
   WidgetRef ref,
-  Set<String> messageIds,
+  AiContext Function(String channelId) contextFor,
 ) {
   final spaceId = ref.read(currentSpaceIdProvider);
   final channelId = ref.read(currentChannelIdProvider);
   if (spaceId == null || channelId == null) return;
 
-  unawaited(
-    ref.read(aiSummaryControllerProvider.notifier).run(
-          spaceId: spaceId,
-          channelId: channelId,
-          messageIds: messageIds.toList(),
-        ),
-  );
-
-  showAiResultSheet(
+  showAiPanel(
     context,
+    spaceId: spaceId,
+    contexts: [contextFor(channelId)],
+    canAddRepo: true,
     // 「채널에 붙이기」는 평범한 메시지 전송이다 — 서버에 새 경로가 없다.
     onPost: (markdown) => ref.read(messageActionsProvider).send(markdown),
+    // 이슈 초안은 기존 생성 화면을 채운 채로 연다 — 사람이 확인한 뒤
+    // 만든다(판단 #7). 첫 메시지를 원문으로 넘겨 9-2b 의 링크를 살린다.
+    onCreateIssue: ({required title, required description, originMessageId}) {
+      if (!context.mounted) return;
+      showNewIssueSheet(
+        context,
+        originMessageId: originMessageId,
+        initialTitle: title,
+        initialDescription: description,
+      );
+    },
   ).then((_) {
     if (context.mounted) {
       ref.read(selectionControllerProvider.notifier).clear();
@@ -109,10 +127,13 @@ void _onSummarize(
 }
 
 class _ChannelHeader extends StatelessWidget {
-  const _ChannelHeader({required this.name, this.topic});
+  const _ChannelHeader({required this.name, this.topic, required this.onAsk});
 
   final String name;
   final String? topic;
+
+  /// 이 채널의 최근 대화를 붙여 AI 패널을 연다.
+  final VoidCallback onAsk;
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +162,11 @@ class _ChannelHeader extends StatelessWidget {
             ),
           ] else
             const Spacer(),
+          IconButton(
+            tooltip: 'AI 에게 묻기',
+            icon: const Icon(Icons.auto_awesome_outlined, size: 20),
+            onPressed: onAsk,
+          ),
           const _PinnedButton(),
           const _FilesButton(),
           const _ConnectionDot(),
