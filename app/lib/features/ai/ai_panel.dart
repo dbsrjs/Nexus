@@ -95,10 +95,6 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     super.dispose();
   }
 
-  bool get _hasConversation =>
-      _contexts.any((c) => c is MessagesContext || c is ChannelContext);
-
-  bool get _hasRepo => _contexts.any((c) => c is RepoContext);
 
   void _send({AiPreset? preset}) {
     final text = _instruction.text.trim();
@@ -139,13 +135,13 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         onRetry: () => ref.read(aiControllerProvider.notifier).retry(),
       ),
       AiFailed(:final failure) => _Failed(
-        message: aiMessageFor(failure, hasRepo: _sent?.hasRepo ?? _hasRepo),
+        message: aiMessageFor(failure, hasRepo: _sent?.hasRepo ?? _contexts.hasRepo),
         onAskAgain: _askAgain,
       ),
       AiReady(:final run) => _Result(
         run: run,
         spaceId: widget.spaceId,
-        repoId: _repoIdOf(_sent),
+        repoId: _sent?.repoId,
         onPost: widget.onPost,
         onCreateIssue: widget.onCreateIssue == null
             ? null
@@ -170,19 +166,13 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     );
   }
 
-  String? _repoIdOf(AiRequest? request) {
-    for (final c in request?.contexts ?? const <AiContext>[]) {
-      if (c is RepoContext) return c.repoId;
-    }
-    return null;
-  }
 
   Widget _input(BuildContext context) {
     final theme = Theme.of(context);
     // 근거 없는 질문은 받지 않는다(설계 D5) — 칩이 없으면 보내기가 꺼진다.
     final canSend = _contexts.isNotEmpty && _instruction.text.trim().isNotEmpty;
     // 프리셋은 대화를 재료로 한다(설계 §1). 서버의 400 을 화면이 먼저 막는다.
-    final canPreset = _hasConversation;
+    final canPreset = _contexts.hasConversation;
 
     return Padding(
       padding: const EdgeInsets.all(NexusSpacing.sp6),
@@ -203,7 +193,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                   onDeleted: () => setState(() => _contexts.remove(c)),
                   deleteButtonTooltipMessage: '빼기',
                 ),
-              if (widget.canAddRepo && !_hasRepo)
+              if (widget.canAddRepo && !_contexts.hasRepo)
                 ActionChip(
                   avatar: const Icon(Icons.add, size: 16),
                   label: const Text('저장소'),

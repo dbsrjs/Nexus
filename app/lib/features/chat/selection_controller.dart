@@ -56,3 +56,18 @@ final selectionControllerProvider =
     NotifierProvider<SelectionController, SelectionState>(
   SelectionController.new,
 );
+
+/// 고른 id 를 **시간순**(오래된 것 먼저)으로 돌려준다. `newestFirst` 는 화면
+/// 목록 그대로(서버가 준 최신순)의 id 다.
+///
+/// `Set` 은 고른(클릭한) 순서를 지킨다 — 그대로 넘기면 아래부터 위로 고른
+/// 사람의 이슈 초안이 대화의 끝 메시지를 원문으로 단다(13-2 최종 검토).
+/// 목록에 없는 id 는 버리지 않고 뒤에 둔다 — 조용히 빼면 서버가 404 를 줄
+/// 기회를 잃는다(판단 #4).
+List<String> chronologicalSelection(Set<String> selected, List<String> newestFirst) {
+  final ordered = [
+    for (final id in newestFirst.reversed)
+      if (selected.contains(id)) id,
+  ];
+  return [...ordered, ...selected.where((id) => !ordered.contains(id))];
+}

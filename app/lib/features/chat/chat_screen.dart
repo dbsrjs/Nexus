@@ -57,7 +57,10 @@ class ChatScreen extends ConsumerWidget {
               ref,
               (channelId) => MessagesContext(
                 channelId: channelId,
-                messageIds: selection.ids.toList(),
+                messageIds: chronologicalSelection(
+                  selection.ids,
+                  [for (final m in messages.value ?? const <Message>[]) m.id],
+                ),
               ),
             ),
           )
