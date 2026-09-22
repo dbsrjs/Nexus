@@ -29,6 +29,13 @@ export interface LlmProvider {
    * 답을 주면 오류 없이 결과만 틀린다 (설계 §4).
    */
   readonly modelId: string;
+  /**
+   * `LLM_MAX_TOKENS`(`llm.config.ts` 의 `resolveLlm()`)에서 온 상한.
+   * **러너가 이 값을 `complete()` 의 `options.maxTokens` 로 그대로 넘긴다** —
+   * 러너가 자기 하드코딩 상수를 쓰면 이 설정이 아무 일도 하지 않게 된다
+   * (최종 whole-branch 리뷰 Important ②).
+   */
+  readonly maxTokens: number;
   complete(messages: LlmMessage[], options: LlmOptions): Promise<LlmResult>;
 }
 

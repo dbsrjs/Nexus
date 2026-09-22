@@ -11,6 +11,12 @@ import { createHash } from 'node:crypto';
 export class FakeLlmProvider implements LlmProvider {
   readonly modelId = 'fake:fake';
 
+  /**
+   * 기본값 1024 는 `LLM_MAX_TOKENS` 미설정 시의 기본값(`llm.config.ts`)과
+   * 맞춘 것뿐이다 — `LlmModule` 은 실제 설정값을 그대로 넘긴다.
+   */
+  constructor(readonly maxTokens: number = 1024) {}
+
   complete(messages: LlmMessage[], options: LlmOptions): Promise<LlmResult> {
     const joined = messages.map((m) => `${m.role}:${m.content}`).join('\n');
     const digest = createHash('sha256').update(joined).digest('hex').slice(0, 16);

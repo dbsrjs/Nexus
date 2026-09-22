@@ -41,6 +41,10 @@ export class GeminiLlmProvider implements LlmProvider {
     return `gemini:${this.config.model}`;
   }
 
+  get maxTokens(): number {
+    return this.config.maxTokens;
+  }
+
   async complete(
     messages: LlmMessage[],
     options: LlmOptions,

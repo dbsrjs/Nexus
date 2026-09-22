@@ -31,6 +31,10 @@ export class LocalLlmProvider implements LlmProvider {
     return `local:${this.config.model}`;
   }
 
+  get maxTokens(): number {
+    return this.config.maxTokens;
+  }
+
   async complete(
     messages: LlmMessage[],
     options: LlmOptions,

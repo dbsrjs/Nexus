@@ -7,7 +7,6 @@ import { AiService } from './ai.service';
 
 /** 요약은 사실을 뽑는 일이라 흔들 이유가 없다. */
 const TEMPERATURE = 0.2;
-const MAX_TOKENS = 1024;
 
 /**
  * 실패를 재시도 판정으로 바꾼다 (설계 §5).
@@ -57,8 +56,12 @@ export class AiRunnerService {
 
     try {
       const prompt = await this.ai.loadPrompt(run.spaceId, run.kind, run.input);
+      // **하드코딩 상수를 쓰지 않는다** — `this.llm.maxTokens` 는
+      // `LLM_MAX_TOKENS`(`llm.config.ts`)에서 온 값이다. 러너가 자기
+      // 상수를 넘기면 그 설정이 아무 일도 하지 않는다(최종 whole-branch
+      // 리뷰 Important ②).
       const out = await this.llm.complete(prompt, {
-        maxTokens: MAX_TOKENS,
+        maxTokens: this.llm.maxTokens,
         temperature: TEMPERATURE,
       });
 

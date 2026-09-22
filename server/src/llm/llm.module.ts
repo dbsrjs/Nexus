@@ -34,7 +34,9 @@ import { LocalLlmProvider } from './local-llm.provider';
         }
 
         logger.log(`LLM provider: ${resolved.provider} (${resolved.model})`);
-        if (resolved.provider === 'fake') return new FakeLlmProvider();
+        if (resolved.provider === 'fake') {
+          return new FakeLlmProvider(resolved.maxTokens);
+        }
         if (resolved.provider === 'local') return new LocalLlmProvider(resolved);
         return new GeminiLlmProvider(resolved);
       },
