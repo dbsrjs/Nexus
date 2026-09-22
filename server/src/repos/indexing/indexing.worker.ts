@@ -38,16 +38,29 @@ export class IndexingWorker implements OnModuleInit {
     void this.drain();
   }
 
+  /**
+   * 도는 중에 깨우기가 왔는가. `lease()` 가 「비었다」를 본 직후 적재된
+   * 작업의 `kick()` 이 `running` 에 막혀 버려지면 30초 크론까지 밀린다 —
+   * 13-2 에서 `AiWorker` 의 같은 모양이 계약 검증을 간헐적으로 깨뜨려 찾았다.
+   */
+  private wanted = false;
+
   private async drain(): Promise<void> {
-    if (this.running) return;
+    if (this.running) {
+      this.wanted = true;
+      return;
+    }
     this.running = true;
     try {
       // 한 번 깨면 있는 만큼 비운다. 저장소가 여럿이어도 한 회차에 끝난다.
-      for (;;) {
-        const job = await this.queue.lease();
-        if (!job) return;
-        await this.indexing.runOne(job);
-      }
+      do {
+        this.wanted = false;
+        for (;;) {
+          const job = await this.queue.lease();
+          if (!job) break;
+          await this.indexing.runOne(job);
+        }
+      } while (this.wanted);
     } catch (err) {
       // 인덱싱이 실패해도 서버는 계속 떠 있어야 한다. 다음 회차에 다시 시도한다.
       this.logger.error('인덱싱 워커 실패', err as Error);
