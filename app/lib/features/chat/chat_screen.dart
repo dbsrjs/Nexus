@@ -581,6 +581,9 @@ Future<void> _pickReaction(
 
   final picked = await showModalBottomSheet<String>(
     context: context,
+    // 기본 최대 높이(화면의 9/16)를 「선택」 항목까지 더한 목록이 넘긴다 —
+    // isScrollControlled 없이는 BOTTOM OVERFLOWED 로 조용히 잘린다.
+    isScrollControlled: true,
     builder: (sheetContext) => SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(NexusSpacing.sp4),
