@@ -19,10 +19,14 @@ const SYSTEM = [
  * 요약 프롬프트를 조립한다. **순수 함수다** — 이 결과가 그대로 `promptHash`
  * 의 입력이라, 실행 때마다 달라지는 값(시각 · 난수)을 넣으면 캐시가 영영
  * 맞지 않는다.
+ *
+ * `code` 는 저장소를 함께 고른 경우의 `## 코드` 절 본문이다(13-2). **비면
+ * 13-1 과 바이트 단위로 같은 프롬프트다.**
  */
-export function summarizePrompt(transcript: string): LlmMessage[] {
+export function summarizePrompt(transcript: string, code = ''): LlmMessage[] {
+  const user = `다음 대화를 요약해 줘.\n\n${transcript}`;
   return [
     { role: 'system', content: SYSTEM },
-    { role: 'user', content: `다음 대화를 요약해 줘.\n\n${transcript}` },
+    { role: 'user', content: code ? `${user}\n\n## 코드\n${code}` : user },
   ];
 }
