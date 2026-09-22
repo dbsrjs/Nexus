@@ -73,29 +73,30 @@ export class AiService {
     const llm = this.requireLlm();
     const req = validateAskRequest(dto);
 
-    let transcript: string | null = null;
-    let messageIds: string[] | undefined;
-    if (req.channelId !== null) {
-      await this.requireChannel(spaceId, userId, req.channelId);
-      const messages =
-        req.messageIds !== null
-          ? await this.loadPicked(spaceId, req.channelId, req.messageIds)
-          : await this.loadRecent(spaceId, req.channelId);
-      // 빈 대화를 요약하게 하지 않는다.
-      if (messages.length === 0) {
-        throw new BadRequestException('대화에 메시지가 없습니다');
-      }
-      messageIds = messages.map((m) => m.id);
-      transcript = await this.transcriptOf(spaceId, messages);
-    }
+    // 저장소 소속(404) · 임베딩 미설정 · 모델 불일치(503)는 search() 가 본다.
+    const searchCode = (query: string) =>
+      this.indexing
+        .search(spaceId, req.repoId!, query, CODE_TOP_K)
+        .then((r) => r.chunks);
 
-    let chunks: ChunkHit[] = [];
-    if (req.repoId !== null) {
-      // 검색어는 지시문이다. 프리셋이면 대화가 무엇을 말하는지로 찾는다 —
-      // 프리셋은 대화를 요구하므로(validateAskRequest) transcript 가 있다.
-      const query = req.instruction ?? (transcript ?? '').slice(-SEARCH_QUERY_MAX);
-      // 저장소 소속(404) · 임베딩 미설정 · 모델 불일치(503)는 search() 가 본다.
-      ({ chunks } = await this.indexing.search(spaceId, req.repoId, query, CODE_TOP_K));
+    // 검색어는 지시문이다. 지시문이 있으면 **대화 조립과 검색을 함께 돌린다** —
+    // 검색은 임베딩 왕복이라 DB 조회 뒤에 줄 세울 이유가 없다. 프리셋이면
+    // 대화가 무엇을 말하는지로 찾으므로 대화를 먼저 만든다(프리셋은 대화를
+    // 요구한다 — validateAskRequest).
+    const [conversation, early] = await Promise.all([
+      req.channelId !== null
+        ? this.loadConversation(spaceId, userId, req.channelId, req.messageIds)
+        : Promise.resolve(null),
+      req.repoId !== null && req.instruction !== null
+        ? searchCode(req.instruction)
+        : Promise.resolve(null),
+    ]);
+    const transcript = conversation?.transcript ?? null;
+    const messageIds = conversation?.messageIds;
+
+    let chunks: ChunkHit[] = early ?? [];
+    if (req.repoId !== null && early === null) {
+      chunks = await searchCode((transcript ?? '').slice(-SEARCH_QUERY_MAX));
     }
 
     const built = buildAskPrompt(req, { transcript, chunks });
@@ -222,6 +223,28 @@ export class AiService {
       throw new ServiceUnavailableException('AI 가 설정되지 않았습니다.');
     }
     return this.llm;
+  }
+
+  /** 대화 컨텍스트 — 가시성 확인 · 메시지 읽기 · 전사. */
+  private async loadConversation(
+    spaceId: string,
+    userId: string,
+    channelId: string,
+    picked: string[] | null,
+  ): Promise<{ messageIds: string[]; transcript: string }> {
+    await this.requireChannel(spaceId, userId, channelId);
+    const messages =
+      picked !== null
+        ? await this.loadPicked(spaceId, channelId, picked)
+        : await this.loadRecent(spaceId, channelId);
+    // 빈 대화를 요약하게 하지 않는다.
+    if (messages.length === 0) {
+      throw new BadRequestException('대화에 메시지가 없습니다');
+    }
+    return {
+      messageIds: messages.map((m) => m.id),
+      transcript: await this.transcriptOf(spaceId, messages),
+    };
   }
 
   /**
