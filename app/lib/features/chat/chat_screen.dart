@@ -686,7 +686,7 @@ Future<void> _pickReaction(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.checklist_outlined),
               title: const Text('선택'),
-              subtitle: const Text('여러 메시지를 함께 골라 요약한다'),
+              subtitle: const Text('여러 메시지를 골라 AI 에게 묻는다'),
               onTap: () => Navigator.of(sheetContext).pop(_selectAction),
             ),
           ],
