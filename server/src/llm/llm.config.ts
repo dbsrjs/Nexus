@@ -74,14 +74,19 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
  * | `gemini-flash-latest`(별칭, 옛 기본값) | **503 매번** |
  * | `gemini-3.5-flash` | 503 |
  * | `gemini-2.5-flash` | 404 (2.5 계열은 기존 사용자로만 접근 허용) |
+ * | `gemini-3.6-flash` | 타임아웃 |
+ * | `gemini-flash-lite-latest`(별칭) | 200, 14.3초 — 성공했지만 별칭이라 탈락 |
  * | `gemini-3.5-flash-lite` | 성공하지만 7.1~85.2초로 널뛰고 503 도 2회 |
  * | **`gemini-3.1-flash-lite`** | **1.2~5.9초, 6회 중 1회만 503** |
  *
- * **`gemini-3.1-flash-lite` 로 고정한다.** Flash 계열은 무료 티어에 남아
- * 있고(Pro 계열만 유료 전용으로 옮겨졌다) JSON 구조화 출력(`responseSchema`,
- * 13-2 가 쓸 것)도 3/3 파싱에 성공했다. **503 은 특정 모델만의 문제가
- * 아니라 산발적으로 온다** — 큐의 5xx 재시도(최대 3회)가 이미 처리하는
- * 종류이니 이 값이 503 을 완전히 없애 주지는 않는다.
+ * **`gemini-3.1-flash-lite` 로 고정한다.** `gemini-flash-lite-latest` 는
+ * 유일하게 성공한 다른 후보였지만 **① `-latest` 별칭이라 위와 같은 핫스왑
+ * 부하 문제를 그대로 안고, ② 14.3초로 `gemini-3.1-flash-lite`(1.2~5.9초)보다
+ * 느렸다** — 별칭이 아닌 후보 중 가장 빠르고 안정적이었다. Flash 계열은
+ * 무료 티어에 남아 있고(Pro 계열만 유료 전용으로 옮겨졌다) JSON 구조화
+ * 출력(`responseSchema`, 13-2 가 쓸 것)도 3/3 파싱에 성공했다. **503 은
+ * 특정 모델만의 문제가 아니라 산발적으로 온다** — 큐의 5xx 재시도(최대
+ * 3회)가 이미 처리하는 종류이니 이 값이 503 을 완전히 없애 주지는 않는다.
  *
  * `local` 은 `qwen2.5-coder:7b`(Q4_K_M 기본 태그, 4.7GB) — Qwen2.5 계열의
  * 다국어(한국어 포함) 능력에 코드 특화 파인튜닝을 얹었다. 13-3 코드 질의가
