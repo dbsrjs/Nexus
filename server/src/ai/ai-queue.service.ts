@@ -29,8 +29,15 @@ const BACKOFF_MS = 60 * 1000;
  */
 const SERVER_ERROR_BACKOFF_MS = 5 * 1000;
 
-/** 서버 오류를 몇 번까지 다시 해 보나. 네트워크 실패는 여기 세지 않는다. */
-export const AI_MAX_ATTEMPTS = 3;
+/**
+ * 서버 오류를 몇 번까지 다시 해 보나. 네트워크 실패는 여기 세지 않는다.
+ *
+ * **3 이 아니라 5 다.** 대기를 몇 초로 줄이면서(`SERVER_ERROR_BACKOFF_MS`)
+ * 세 번이 30초 안에 다 타 버렸다 — 13-2 실제 태우기에서 503 이 몰린 순간
+ * 요청 여덟 중 셋이 그렇게 실패했다. 다섯 번이면 최악이 100초 안팎이고,
+ * 대개는 한두 번 만에 풀린다.
+ */
+export const AI_MAX_ATTEMPTS = 5;
 
 export interface LeasedRun {
   id: string;

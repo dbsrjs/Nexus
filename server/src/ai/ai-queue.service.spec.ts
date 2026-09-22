@@ -34,7 +34,7 @@ describe('shouldGiveUp', () => {
     expect(shouldGiveUp(AI_MAX_ATTEMPTS - 1, { countsAsAttempt: true })).toBe(false);
   });
 
-  it('MAX_ATTEMPTS 는 3 이다', () => {
-    expect(AI_MAX_ATTEMPTS).toBe(3);
+  it('MAX_ATTEMPTS 는 5 다 — 재시도 간격이 몇 초라 셋이면 503 몰림을 못 넘긴다', () => {
+    expect(AI_MAX_ATTEMPTS).toBe(5);
   });
 });
