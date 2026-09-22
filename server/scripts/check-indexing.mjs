@@ -4,6 +4,10 @@
 // server/.env 에 EMBEDDING_PROVIDER=fake 를 넣고 서버를 재시작해야 한다.
 // 진짜 provider 를 부르면 CI 가 외부 API 키에 묶인다 (설계 §8).
 //
+// 13-2 AI 패널의 저장소 컨텍스트(코드 질문 · 인용 · 모델 불일치 503)도 여기서
+// 본다 — 인덱싱된 저장소가 이미 있는 곳이다. 서버가 LLM_PROVIDER=fake 여야
+// 하고, 아니면 그 케이스들은 명시적으로 건너뛴다고 알린다.
+//
 // 사용: npm run check:indexing
 import { createServer } from 'node:http';
 import { createHmac } from 'node:crypto';
@@ -363,6 +367,51 @@ async function main() {
   check('줄 번호가 1부터다', top?.startLine === 1);
   check('그 시점 커밋을 함께 준다', top?.commitSha === HEAD_SHA);
 
+  // ── 13-2 AI 에 코드로 묻기 ──────────────────────
+  const aiAsk = (body) =>
+    api('POST', `/spaces/${spaceId}/ai/ask`, { token: owner.token, body });
+  const asked = await aiAsk({
+    instruction: 'reconnect socket with fresh token',
+    context: { repoId },
+  });
+  const aiEnabled = asked.status !== 503;
+  if (!aiEnabled) {
+    console.log('\n  (AI 케이스 건너뜀 — 서버가 LLM 미설정이다. LLM_PROVIDER=fake 로 재시작하면 확인된다)\n');
+  } else {
+    check('저장소로 묻기가 적재된다', asked.status === 201, `status=${asked.status}`);
+    let run = null;
+    for (let i = 0; i < 60 && asked.json?.runId; i++) {
+      const r = await api('GET', `/spaces/${spaceId}/ai/runs/${asked.json.runId}`, {
+        token: owner.token,
+      });
+      if (r.json?.state === 'done' || r.json?.state === 'failed') {
+        run = r.json;
+        break;
+      }
+      await new Promise((res) => setTimeout(res, 250));
+    }
+    check('★ 코드 질문이 끝난다', run?.state === 'done' && run.kind === 'ask', JSON.stringify(run));
+    const cites = run?.result?.citations;
+    check(
+      '★ 인용이 비지 않는다',
+      Array.isArray(cites) && cites.length > 0,
+      JSON.stringify(cites),
+    );
+    // 값이 있는지부터 봤다 — 빈 배열이면 every() 가 자동으로 참이다.
+    const indexedPaths = new Set(chunks.map((c) => c.path));
+    check(
+      '★ 인용은 전부 이 저장소에 인덱싱된 경로다 - LLM 이 지어낸 경로가 아니다',
+      Array.isArray(cites) &&
+        cites.length > 0 &&
+        cites.every((c) => indexedPaths.has(c.path) && c.commitSha === HEAD_SHA),
+      JSON.stringify(cites),
+    );
+    check(
+      '인용 번호는 1부터 차례다',
+      Array.isArray(cites) && cites.length > 0 && cites.every((c, i) => c.n === i + 1),
+    );
+  }
+
   // ── 테넌트 격리 ────────────────────────────────
   const outsider = await signup('index', 'out');
   const outsiderSpace = await api('POST', '/spaces', {
@@ -554,6 +603,26 @@ async function main() {
   const tampered = await setIndexedModel(repoId, 'local:nomic-embed-text');
   abortUnless(tampered === 1, '기록된 모델을 바꾸지 못했습니다', { updated: tampered });
 
+  // 다른 모델로 만든 인덱스는 검색하지 않는다 — 오류 없이 순위만 틀리는
+  // 구간을 없앤다(13-2 설계 D7). 12단계 검색 경로와 AI 가 같은 기준이다.
+  const staleSearch = await api('POST', `/spaces/${spaceId}/repos/${repoId}/index/search`, {
+    token: owner.token,
+    body: { query: 'socket' },
+  });
+  check(
+    '★ 기록된 모델이 다르면 검색은 503 이다',
+    staleSearch.status === 503,
+    `status=${staleSearch.status}`,
+  );
+  if (aiEnabled) {
+    const staleAsk = await aiAsk({ instruction: 'socket 은 어디?', context: { repoId } });
+    check(
+      '★ 기록된 모델이 다르면 AI 코드 질문도 503 이다',
+      staleAsk.status === 503,
+      `status=${staleAsk.status}`,
+    );
+  }
+
   const compareBefore = compareHits;
   const body5 = JSON.stringify({
     ref: 'refs/heads/main',
@@ -587,6 +656,15 @@ async function main() {
     '전체 재인덱싱 뒤 지금 모델로 다시 기록한다',
     after5?.indexedEmbeddingModel === FAKE_MODEL,
     String(after5?.indexedEmbeddingModel),
+  );
+  const freshSearch = await api('POST', `/spaces/${spaceId}/repos/${repoId}/index/search`, {
+    token: owner.token,
+    body: { query: 'socket' },
+  });
+  check(
+    '다시 인덱싱하면 검색이 돌아온다',
+    freshSearch.status === 201 || freshSearch.status === 200,
+    `status=${freshSearch.status}`,
   );
   // 숫자인지부터 본다 — 둘 다 undefined 면 비교가 거짓 통과한다(10-2b).
   check(

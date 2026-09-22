@@ -1,4 +1,7 @@
-// AI(13-1 대화 요약) 검증. 실제 서버 · 실제 DB · 실제 소켓으로 확인한다.
+// AI(13-1 대화 요약 · 13-2 AI 패널) 검증. 실제 서버 · 실제 DB · 실제 소켓으로 확인한다.
+//
+// 저장소 컨텍스트(코드 질문 · 인용 · 모델 불일치 503)는 인덱싱된 저장소가
+// 있는 check:indexing 이 본다 — 가짜 GitHub 을 여기 또 띄우지 않는다.
 //
 // 사전 조건: npm run db:up && npm run server:dev
 //            server/.env 에 LLM_PROVIDER=fake
@@ -68,17 +71,20 @@ const space = await api('POST', '/spaces', {
 const spaceId = space.json.id;
 
 // ── 0. 지금 서버가 LLM 으로 설정돼 있는지 스스로 감지한다 ─────
-// `AiService.summarize()` 는 `requireLlm()` 을 채널·메시지 조회보다 먼저
-// 부르므로(ai.service.ts), 채널·메시지가 실존하지 않아도 미설정이면 503 이
-// 온다 — 자리 채우기 id 로 충분하다.
-const probe = await api('POST', `/spaces/${spaceId}/ai/summarize`, {
+// `AiService.ask()` 는 `requireLlm()` 을 검증 · 채널 조회보다 먼저 부르므로
+// (ai.service.ts), 채널·메시지가 실존하지 않아도 미설정이면 503 이 온다 —
+// 자리 채우기 id 로 충분하다.
+const probe = await api('POST', `/spaces/${spaceId}/ai/ask`, {
   token: alice.token,
-  body: { channelId: UNKNOWN_UUID, messageIds: [UNKNOWN_UUID] },
+  body: {
+    preset: 'summary',
+    context: { channelId: UNKNOWN_UUID, messageIds: [UNKNOWN_UUID] },
+  },
 });
 
 if (probe.status === 503) {
   console.log('서버가 LLM 미설정 상태다 (LLM_PROVIDER 가 비어 있음).\n');
-  check('설정이 없으면 summarize 는 503', probe.status === 503, String(probe.status));
+  check('설정이 없으면 ask 는 503', probe.status === 503, String(probe.status));
 
   console.log('\n이 상태에서는 503 분기만 확인할 수 있다. 나머지 케이스를 보려면:');
   console.log('  1) server/.env 에 LLM_PROVIDER=fake 를 채운다');
@@ -114,8 +120,14 @@ const m2 = await send(bob.token, { body: `<@${alice.userId}> 알겠습니다` })
 check('요약할 메시지 준비', m1.status === 201 && m2.status === 201);
 
 const ids = [m1.json.id, m2.json.id];
-const summarize = (token, body) =>
-  api('POST', `/spaces/${spaceId}/ai/summarize`, { token, body });
+/** 13-1 의 요약 = 13-2 의 `preset: 'summary'`. 기존 케이스는 이것으로 옮겼다. */
+const summarize = (token, context, extra = {}) =>
+  api('POST', `/spaces/${spaceId}/ai/ask`, {
+    token,
+    body: { preset: 'summary', context, ...extra },
+  });
+const ask = (token, body) =>
+  api('POST', `/spaces/${spaceId}/ai/ask`, { token, body });
 
 // ── 기본 흐름 ──────────────────────────────────
 console.log('\n[요약 적재와 완료]');
@@ -315,11 +327,11 @@ check(
   `status=${unknown.status}`,
 );
 
-const extraField = await summarize(alice.token, {
-  channelId: channel.id,
-  messageIds: ids,
-  nope: 1,
-});
+const extraField = await summarize(
+  alice.token,
+  { channelId: channel.id, messageIds: ids },
+  { nope: 1 },
+);
 check(
   'DTO 밖 필드는 400 이다',
   extraField.status === 400,
@@ -425,6 +437,184 @@ check(
     literalRun.json?.runId === mentionRun.json.runId &&
     literalRun.json?.state === 'done',
   JSON.stringify({ mention: mentionRun.json, literal: literalRun.json }),
+);
+
+// ── 13-2 자유 지시문 ────────────────────────────
+console.log('\n[자유 지시문]');
+
+const free = await ask(alice.token, {
+  instruction: '세 줄로 요약해 줘',
+  context: { channelId: channel.id, messageIds: ids },
+});
+check('자유 지시문 적재', free.status === 201, `status=${free.status}`);
+const freeDone =
+  free.json?.state === 'queued'
+    ? await waitForRunDone(alice.token, spaceId, free.json.runId)
+    : await api('GET', `/spaces/${spaceId}/ai/runs/${free.json?.runId}`, { token: alice.token });
+check(
+  '★ 자유 지시문은 kind ask 로 끝난다',
+  freeDone?.json?.state === 'done' && freeDone.json.kind === 'ask',
+  JSON.stringify(freeDone?.json),
+);
+check(
+  '★ 저장소가 없으면 인용은 null 이 아니라 빈 배열이다',
+  Array.isArray(freeDone?.json?.result?.citations) &&
+    freeDone.json.result.citations.length === 0 &&
+    typeof freeDone.json.result.markdown === 'string',
+  JSON.stringify(freeDone?.json?.result),
+);
+
+const freeOther = await ask(alice.token, {
+  instruction: '영어로 요약해 줘',
+  context: { channelId: channel.id, messageIds: ids },
+});
+check(
+  '★ 같은 메시지라도 지시문이 다르면 다른 runId 다',
+  typeof freeOther.json?.runId === 'string' &&
+    freeOther.json.runId.length > 0 &&
+    freeOther.json.runId !== free.json?.runId,
+  JSON.stringify(freeOther.json),
+);
+const freeSame = await ask(alice.token, {
+  instruction: '  세 줄로 요약해 줘 ',
+  context: { channelId: channel.id, messageIds: ids },
+});
+check(
+  '같은 지시문(앞뒤 공백만 다름)이면 같은 runId 다',
+  typeof freeSame.json?.runId === 'string' &&
+    freeSame.json.runId === free.json?.runId &&
+    freeSame.json.state === 'done',
+  JSON.stringify(freeSame.json),
+);
+
+// ── 13-2 채널 최근 대화 ─────────────────────────
+console.log('\n[채널 최근 대화]');
+
+const recentCh = await api('POST', `/spaces/${spaceId}/channels`, {
+  token: alice.token,
+  body: { name: `recent-${stamp}` },
+});
+check('최근 대화용 채널 준비', recentCh.status === 201, `status=${recentCh.status}`);
+const recentId = recentCh.json?.id;
+
+const emptyRecent = await ask(alice.token, {
+  preset: 'summary',
+  context: { channelId: recentId },
+});
+check(
+  '★ 메시지가 없는 채널은 400 이다 - 빈 대화를 요약하지 않는다',
+  emptyRecent.status === 400,
+  `status=${emptyRecent.status}`,
+);
+
+const r1 = await api('POST', `/spaces/${spaceId}/channels/${recentId}/messages`, {
+  token: alice.token,
+  body: { body: '로그인 버튼이 눌리지 않아요' },
+});
+check('최근 대화 메시지 준비', r1.status === 201);
+
+const byChannel = await ask(alice.token, {
+  instruction: '무슨 문제야?',
+  context: { channelId: recentId },
+});
+const byChannelDone =
+  byChannel.json?.state === 'queued'
+    ? await waitForRunDone(alice.token, spaceId, byChannel.json.runId)
+    : null;
+check(
+  '★ 채널만 주면 최근 대화로 끝난다',
+  byChannel.status === 201 && byChannelDone?.json?.state === 'done',
+  JSON.stringify(byChannelDone?.json ?? byChannel.json),
+);
+
+// 스레드 답글은 최근 대화에 들어가지 않는다 — 채널 목록과 같은 기준.
+// 캐시 키로 확인한다: 답글만 늘면 프롬프트가 같아 같은 runId, 최상위가
+// 늘면 달라진다.
+const reply = await api('POST', `/spaces/${spaceId}/channels/${recentId}/messages`, {
+  token: alice.token,
+  body: { body: '저도 재현돼요', parentId: r1.json?.id },
+});
+check('스레드 답글 준비', reply.status === 201, `status=${reply.status}`);
+const afterReply = await ask(alice.token, {
+  instruction: '무슨 문제야?',
+  context: { channelId: recentId },
+});
+check(
+  '★ 스레드 답글은 최근 대화에 없다 - 같은 프롬프트라 같은 runId',
+  typeof afterReply.json?.runId === 'string' &&
+    afterReply.json.runId === byChannel.json?.runId,
+  JSON.stringify({ before: byChannel.json, after: afterReply.json }),
+);
+
+await api('POST', `/spaces/${spaceId}/channels/${recentId}/messages`, {
+  token: bob.token,
+  body: { body: '캐시를 지우면 됩니다' },
+});
+const afterTop = await ask(alice.token, {
+  instruction: '무슨 문제야?',
+  context: { channelId: recentId },
+});
+check(
+  '★ 최상위 메시지가 늘면 다른 runId 다 - 적재 시점의 최근 대화로 고정된다',
+  typeof afterTop.json?.runId === 'string' &&
+    afterTop.json.runId.length > 0 &&
+    afterTop.json.runId !== byChannel.json?.runId,
+  JSON.stringify(afterTop.json),
+);
+
+// ── 13-2 이슈 초안 프리셋 ───────────────────────
+console.log('\n[이슈 초안]');
+
+const draft = await ask(alice.token, {
+  preset: 'issue',
+  context: { channelId: recentId, messageIds: [r1.json?.id] },
+});
+const draftDone =
+  draft.json?.state === 'queued'
+    ? await waitForRunDone(alice.token, spaceId, draft.json.runId)
+    : null;
+check(
+  '★ 이슈 프리셋은 kind draft_issue 다',
+  draftDone?.json?.state === 'done' && draftDone.json.kind === 'draft_issue',
+  JSON.stringify(draftDone?.json),
+);
+check(
+  '★ 결과에 제목 · 본문이 문자열로 있다',
+  typeof draftDone?.json?.result?.title === 'string' &&
+    draftDone.json.result.title.length > 0 &&
+    typeof draftDone.json.result.description === 'string',
+  JSON.stringify(draftDone?.json?.result),
+);
+
+// ── 13-2 입력 검증 ──────────────────────────────
+console.log('\n[13-2 입력 검증]');
+
+const bads = [
+  ['지시문과 프리셋 둘 다', { instruction: 'q', preset: 'summary', context: { channelId: channel.id } }],
+  ['지시문도 프리셋도 없음', { context: { channelId: channel.id } }],
+  ['컨텍스트가 비었음', { instruction: 'q', context: {} }],
+  ['messageIds 만 있음', { instruction: 'q', context: { messageIds: ids } }],
+  ['프리셋인데 저장소만 있음', { preset: 'issue', context: { repoId: UNKNOWN_UUID } }],
+  ['지시문 2001자', { instruction: 'a'.repeat(2001), context: { channelId: channel.id } }],
+  ['공백뿐인 지시문', { instruction: '   ', context: { channelId: channel.id } }],
+  ['모르는 프리셋', { preset: 'poem', context: { channelId: channel.id } }],
+];
+for (const [label, body] of bads) {
+  const r = await ask(alice.token, body);
+  check(`${label}은 400 이다`, r.status === 400, `status=${r.status}`);
+}
+
+// ── 13-2 저장소 권한 ────────────────────────────
+console.log('\n[저장소 권한]');
+
+const noRepo = await ask(alice.token, {
+  instruction: 'q',
+  context: { repoId: UNKNOWN_UUID },
+});
+check(
+  '★ 이 스페이스 것이 아닌 저장소는 404 다',
+  noRepo.status === 404,
+  `status=${noRepo.status}`,
 );
 
 socket.close();
