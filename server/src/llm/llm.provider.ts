@@ -1,6 +1,9 @@
-/** 대화 한 줄. 툴 호출·멀티턴은 범위 밖이라 역할이 둘뿐이다 (설계 §13). */
+/**
+ * 대화 한 줄. **멀티턴(13-3)부터 `assistant` 가 있다** — 앞 답을 역할로
+ * 보내야 모델이 「앞 답」과 「자료」를 섞지 않는다. 툴 호출은 여전히 범위 밖이다.
+ */
 export interface LlmMessage {
-  role: 'system' | 'user';
+  role: 'system' | 'user' | 'assistant';
   content: string;
 }
 

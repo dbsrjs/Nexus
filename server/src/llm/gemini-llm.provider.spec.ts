@@ -80,6 +80,26 @@ describe('GeminiLlmProvider', () => {
     });
   });
 
+  it('★ assistant 는 model 로, 메시지마다 content 하나로 옮긴다 - 멀티턴 순서를 지킨다', async () => {
+    const spy = ok({ candidates: [{ content: { parts: [{ text: 'x' }] }, finishReason: 'STOP' }] });
+
+    await new GeminiLlmProvider(config).complete(
+      [
+        { role: 'system', content: '규칙' },
+        { role: 'user', content: '첫 질문' },
+        { role: 'assistant', content: '첫 답' },
+        { role: 'user', content: '이어서' },
+      ],
+      { maxTokens: 8192, temperature: 0 },
+    );
+
+    expect(sentBody(spy).contents).toEqual([
+      { role: 'user', parts: [{ text: '첫 질문' }] },
+      { role: 'model', parts: [{ text: '첫 답' }] },
+      { role: 'user', parts: [{ text: '이어서' }] },
+    ]);
+  });
+
   it('system 은 systemInstruction 으로, json 은 responseMimeType 으로 옮긴다', async () => {
     const spy = ok({ candidates: [{ content: { parts: [{ text: '{}' }] }, finishReason: 'STOP' }] });
 

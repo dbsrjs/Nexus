@@ -70,7 +70,8 @@ export class GeminiLlmProvider implements LlmProvider {
   ): Promise<LlmResult> {
     const base = this.config.base ?? DEFAULT_BASE;
     const system = messages.filter((m) => m.role === 'system');
-    const user = messages.filter((m) => m.role === 'user');
+    // 메시지마다 content 하나 — 합치면 멀티턴의 차례가 사라진다(13-3).
+    const turns = messages.filter((m) => m.role !== 'system');
 
     const res = await fetch(
       `${base}/models/${this.config.model}:generateContent`,
@@ -85,7 +86,10 @@ export class GeminiLlmProvider implements LlmProvider {
           ...(system.length > 0
             ? { systemInstruction: { parts: system.map((m) => ({ text: m.content })) } }
             : {}),
-          contents: [{ role: 'user', parts: user.map((m) => ({ text: m.content })) }],
+          contents: turns.map((m) => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }],
+          })),
           generationConfig: {
             temperature: options.temperature,
             maxOutputTokens: options.maxTokens,
