@@ -3,7 +3,6 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
-  IsDefined,
   IsIn,
   IsOptional,
   IsString,
@@ -48,8 +47,14 @@ export class AskDto {
   @IsIn(ASK_PRESETS)
   preset?: AskPreset;
 
-  @IsDefined()
+  /** 이어 물은 앞 문답(13-3). 있으면 `context` 를 보내지 않는다. */
+  @IsOptional()
+  @IsUUID()
+  parentRunId?: string;
+
+  /** 첫 질문에만. 이어 묻기는 첫 문답의 것을 물려받는다(13-3 D2). */
+  @IsOptional()
   @ValidateNested()
   @Type(() => AskContextDto)
-  context!: AskContextDto;
+  context?: AskContextDto;
 }

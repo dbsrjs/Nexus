@@ -58,9 +58,44 @@ describe('validateAskRequest', () => {
       channelId: null,
       messageIds: null,
       repoId: R,
+      parentRunId: null,
     });
     const both = validateAskRequest({ preset: 'issue', context: { channelId: C, repoId: R } });
     expect(both.channelId).toBe(C);
     expect(both.repoId).toBe(R);
+  });
+});
+
+describe('validateAskRequest — 이어 묻기(13-3)', () => {
+  it('지시문 + parentRunId 는 통과하고 컨텍스트는 비어 있다', () => {
+    const r = validateAskRequest({ instruction: ' 더 짧게 ', parentRunId: 'p-1' });
+    expect(r).toEqual({
+      instruction: '더 짧게',
+      preset: null,
+      channelId: null,
+      messageIds: null,
+      repoId: null,
+      parentRunId: 'p-1',
+    });
+  });
+
+  it('★ parentRunId 와 프리셋이 함께 오면 400', () => {
+    expect(() => validateAskRequest({ preset: 'summary', parentRunId: 'p-1' })).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('★ parentRunId 와 context 가 함께 오면 400 - 근거는 첫 문답에서 물려받는다', () => {
+    expect(() =>
+      validateAskRequest({ instruction: 'q', parentRunId: 'p-1', context: { channelId: 'c-1' } }),
+    ).toThrow(BadRequestException);
+  });
+
+  it('parentRunId 만 있고 지시문이 없으면 400', () => {
+    expect(() => validateAskRequest({ parentRunId: 'p-1' })).toThrow(BadRequestException);
+  });
+
+  it('첫 질문은 여전히 context 가 필요하다', () => {
+    expect(() => validateAskRequest({ instruction: 'q' })).toThrow(BadRequestException);
   });
 });

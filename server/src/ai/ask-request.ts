@@ -15,13 +15,17 @@ export interface AskRequest {
   channelId: string | null;
   messageIds: string[] | null;
   repoId: string | null;
+  /** 이어 물은 앞 문답(13-3). 있으면 컨텍스트는 비어 있다 — 첫 문답에서 물려받는다. */
+  parentRunId: string | null;
 }
 
 /** DTO 와 같은 모양. 순수 함수로 두려고 DTO 클래스를 import 하지 않는다. */
 export interface AskInputShape {
   instruction?: string;
   preset?: AskPreset;
-  context: { channelId?: string; messageIds?: string[]; repoId?: string };
+  parentRunId?: string;
+  /** 첫 질문에만. 이어 묻기는 첫 문답의 것을 물려받는다(13-3 D2). */
+  context?: { channelId?: string; messageIds?: string[]; repoId?: string };
 }
 
 /**
@@ -46,6 +50,26 @@ export function validateAskRequest(dto: AskInputShape): AskRequest {
   }
   if (instruction !== null && instruction.length > MAX_INSTRUCTION) {
     throw new BadRequestException(`지시문은 ${MAX_INSTRUCTION}자까지입니다`);
+  }
+
+  const parentRunId = dto.parentRunId ?? null;
+  if (parentRunId !== null) {
+    // 이어 묻기는 지시문 하나다. 근거는 사슬의 첫 문답에서 물려받는다(13-3 D2) —
+    // 두 곳에서 받으면 어느 쪽이 진짜인지 규칙이 생긴다.
+    if (preset !== null) {
+      throw new BadRequestException('이어 묻기에는 프리셋을 쓰지 않습니다');
+    }
+    if (dto.context !== undefined) {
+      throw new BadRequestException('이어 묻기는 앞 문답의 근거를 그대로 씁니다');
+    }
+    return {
+      instruction,
+      preset: null,
+      channelId: null,
+      messageIds: null,
+      repoId: null,
+      parentRunId,
+    };
   }
 
   const { channelId = null, messageIds = null, repoId = null } = dto.context ?? {};
@@ -75,5 +99,6 @@ export function validateAskRequest(dto: AskInputShape): AskRequest {
     // 중복은 접는다. 상한은 위에서 원본 길이로 봤으므로 우회 통로가 아니다.
     messageIds: messageIds === null ? null : [...new Set(messageIds)],
     repoId,
+    parentRunId: null,
   };
 }
