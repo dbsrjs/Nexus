@@ -1,6 +1,6 @@
 import { LlmMessage } from '../../llm/llm.provider';
 
-const SYSTEM = [
+export const ASK_SYSTEM = [
   '너는 개발 팀의 조수다. 아래 요청에 답한다.',
   '',
   '규칙:',
@@ -25,7 +25,7 @@ export function askPrompt(input: {
   if (input.code) sections.push(`## 코드\n${input.code}`);
   sections.push(`## 요청\n${input.instruction}`);
   return [
-    { role: 'system', content: SYSTEM },
+    { role: 'system', content: ASK_SYSTEM },
     { role: 'user', content: sections.join('\n\n') },
   ];
 }
