@@ -36,6 +36,24 @@ void main() {
       expect(run.error, isNotNull);
     });
 
+    test('★ fallback 을 읽는다 - 전환 모델이 답했는지. 없으면 false', () {
+      final fb = AiRun.fromJson(const {
+        'runId': 'r-1',
+        'kind': 'summarize',
+        'state': 'done',
+        'fallback': true,
+        'result': {'markdown': '요약'},
+      });
+      final plain = AiRun.fromJson(const {
+        'runId': 'r-1',
+        'kind': 'summarize',
+        'state': 'done',
+        'result': {'markdown': '요약'},
+      });
+      expect(fb.fallback, isTrue);
+      expect(plain.fallback, isFalse);
+    });
+
     test('모르는 state 는 queued 로 떨어진다 — 앱이 죽지 않는다', () {
       final run = AiRun.fromJson(const {
         'runId': 'r-1',

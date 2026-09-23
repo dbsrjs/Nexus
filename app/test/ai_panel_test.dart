@@ -145,6 +145,34 @@ void main() {
     expect(find.text('채널에 붙이기'), findsNothing);
   });
 
+  testWidgets('★ 전환 모델이 답했으면 결과에 한 줄로 알린다 - 품질이 조용히 떨어지지 않게', (tester) async {
+    final api = await _pump(tester, contexts: const [_messages]);
+    api.result = const AiRun(
+      runId: 'run-1',
+      kind: 'ask',
+      state: AiRunState.done,
+      markdown: '답',
+      fallback: true,
+    );
+    await tester.enterText(find.byType(TextField), '정리해 줘');
+    await tester.pump();
+    await tester.tap(find.text('보내기'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('가벼운 모델'), findsOneWidget);
+  });
+
+  testWidgets('주 모델이 답했으면 그 줄이 없다', (tester) async {
+    await _pump(tester, contexts: const [_messages]);
+    await tester.enterText(find.byType(TextField), '정리해 줘');
+    await tester.pump();
+    await tester.tap(find.text('보내기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('답'), findsOneWidget);
+    expect(find.textContaining('가벼운 모델'), findsNothing);
+  });
+
   testWidgets('★ 이슈 초안 결과에서 「이슈 만들기」가 제목 · 본문 · 첫 메시지를 넘긴다', (tester) async {
     Map<String, String?>? handed;
     final api = await _pump(

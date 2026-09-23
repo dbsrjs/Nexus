@@ -36,6 +36,7 @@ export class FakeLlmProvider implements LlmProvider {
       completionTokens: null,
       model: 'fake',
       truncated: false,
+      fallback: false,
     });
   }
 }

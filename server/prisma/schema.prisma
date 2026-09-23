@@ -795,6 +795,10 @@ model AiRun {
   promptTokens     Int?      @map("prompt_tokens")
   completionTokens Int?      @map("completion_tokens")
   model            String?
+  /// 주 모델 대신 전환 모델(`LLM_FALLBACK_MODEL`)이 답했는지. **캐시로 쓰지
+  /// 않는다** — 주 모델이 풀린 뒤에도 같은 질문에 가벼운 모델의 답이 굳지
+  /// 않게 한다(LLM 교체, 2026-09-23).
+  fallback         Boolean   @default(false)
   result           Json?
   error            String?
   createdAt        DateTime  @default(now()) @map("created_at")

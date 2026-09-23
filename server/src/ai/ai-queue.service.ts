@@ -161,6 +161,8 @@ export class AiQueueService {
       model: string;
       promptTokens: number | null;
       completionTokens: number | null;
+      /** 전환 모델이 답했는지 — 캐시가 이 행을 쓰지 않는다. */
+      fallback: boolean;
     },
   ): Promise<void> {
     await this.prisma.aiRun.update({
@@ -171,6 +173,7 @@ export class AiQueueService {
         model: meta.model,
         promptTokens: meta.promptTokens,
         completionTokens: meta.completionTokens,
+        fallback: meta.fallback,
         leaseUntil: null,
         error: null,
         finishedAt: new Date(),

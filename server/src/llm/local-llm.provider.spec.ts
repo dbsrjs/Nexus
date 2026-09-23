@@ -7,6 +7,7 @@ const config = {
   apiKey: null,
   base: 'http://127.0.0.1:9',
   maxTokens: 256,
+  fallbackModel: null,
 };
 
 describe('LocalLlmProvider', () => {

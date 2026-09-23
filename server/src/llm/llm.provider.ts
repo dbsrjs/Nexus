@@ -19,6 +19,12 @@ export interface LlmResult {
    * 결론이 빠져 있다. 러너가 이것을 실패로 돌려 캐시에 굳지 않게 한다 (판단 #4).
    */
   truncated: boolean;
+  /**
+   * 주 모델 대신 **전환 모델**(`LLM_FALLBACK_MODEL`)이 답했는지. 어댑터는 늘
+   * `false` 이고 `FallbackLlmProvider` 만 `true` 로 바꾼다. 러너가 기록하고,
+   * 캐시가 그 행을 쓰지 않는다 — 주 모델이 풀린 뒤에도 가벼운 답이 굳지 않게.
+   */
+  fallback: boolean;
 }
 
 export interface LlmOptions {

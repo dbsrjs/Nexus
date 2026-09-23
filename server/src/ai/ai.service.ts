@@ -171,6 +171,7 @@ export class AiService {
         result: true,
         error: true,
         model: true,
+        fallback: true,
         promptTokens: true,
         completionTokens: true,
         createdAt: true,
@@ -202,7 +203,9 @@ export class AiService {
     // 쿼터 절약보다 무겁다고 보고 §9 를 택한다 — 최종 whole-branch 리뷰
     // Important ①.
     const cached = await this.prisma.aiRun.findFirst({
-      where: { spaceId, userId, promptHash: hash, state: AiRunState.done },
+      // **전환 모델이 쓴 답은 캐시로 쓰지 않는다** — 주 모델이 풀린 뒤 같은
+      // 질문에는 다시 주 모델이 답해야 한다(LLM 교체, 2026-09-23).
+      where: { spaceId, userId, promptHash: hash, state: AiRunState.done, fallback: false },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     });

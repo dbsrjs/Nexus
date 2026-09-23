@@ -154,6 +154,27 @@ describe('AiRunnerService.runOne', () => {
     },
   );
 
+  it('★ 전환 모델이 답했으면 fallback 을 기록한다 — 캐시가 그 행을 쓰지 않게', async () => {
+    const complete = jest.fn().mockResolvedValue({
+      text: '요약',
+      promptTokens: 1,
+      completionTokens: 1,
+      model: 'gemini-3.1-flash-lite',
+      truncated: false,
+      fallback: true,
+    });
+    const llm: LlmProvider = { modelId: 'gemini:gemini-3.5-flash', maxTokens: 8192, complete };
+    const { runner, queue } = service(llm);
+
+    await runner.runOne(leasedRun());
+
+    expect(queue.succeed).toHaveBeenCalledWith(
+      'run-1',
+      expect.anything(),
+      expect.objectContaining({ model: 'gemini-3.1-flash-lite', fallback: true }),
+    );
+  });
+
   it(
     '★ 출력 한도에서 잘린 답은 성공으로 굳지 않는다 - fatal 실패라 잘린 답이 ' +
       '캐시에 박혀 같은 질문마다 되풀이되지 않는다',

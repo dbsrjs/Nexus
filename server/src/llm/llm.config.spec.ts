@@ -50,6 +50,29 @@ describe('resolveLlm', () => {
     expect(r?.model).toBe('gemini-3.5-flash');
   });
 
+  it('★ gemini 의 전환 모델 기본값은 gemini-3.1-flash-lite 다(하루 500회)', () => {
+    const r = resolveLlm(cfg({ LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'k' }));
+    expect(r?.fallbackModel).toBe('gemini-3.1-flash-lite');
+  });
+
+  it('LLM_FALLBACK_MODEL 을 주면 그대로 쓰고, none 이면 끈다', () => {
+    const base = { LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'k' };
+    expect(resolveLlm(cfg({ ...base, LLM_FALLBACK_MODEL: 'x' }))?.fallbackModel).toBe('x');
+    expect(resolveLlm(cfg({ ...base, LLM_FALLBACK_MODEL: 'none' }))?.fallbackModel).toBeNull();
+  });
+
+  it('전환 모델이 주 모델과 같으면 전환하지 않는다', () => {
+    const r = resolveLlm(
+      cfg({ LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'k', LLM_MODEL: 'gemini-3.1-flash-lite' }),
+    );
+    expect(r?.fallbackModel).toBeNull();
+  });
+
+  it('local · fake 에는 전환 모델이 없다', () => {
+    expect(resolveLlm(cfg({ LLM_PROVIDER: 'local' }))?.fallbackModel).toBeNull();
+    expect(resolveLlm(cfg({ LLM_PROVIDER: 'fake' }))?.fallbackModel).toBeNull();
+  });
+
   it('LLM_MODEL 을 주면 그대로 쓴다', () => {
     const r = resolveLlm(cfg({ LLM_PROVIDER: 'local', LLM_MODEL: 'my-model' }));
     expect(r?.model).toBe('my-model');

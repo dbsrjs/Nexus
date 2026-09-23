@@ -9,6 +9,12 @@ export interface LlmConfig {
   /** provider 의 주소. 비우면 각 어댑터의 기본값을 쓴다. */
   base: string | null;
   maxTokens: number;
+  /**
+   * 주 모델이 429 · 5xx 일 때 대신 부를 모델. **gemini 에만 있다** — 무료
+   * 티어 한도가 모델마다 따로라(3.5-flash 하루 20회 · 3.1-flash-lite 500회)
+   * 가벼운 모델이 받쳐 줄 수 있다. `null` 이면 전환하지 않는다.
+   */
+  fallbackModel: string | null;
 }
 
 const NAMES: LlmProviderName[] = ['gemini', 'local', 'fake'];
@@ -44,9 +50,12 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
   const rawMax = trimmed(config, 'LLM_MAX_TOKENS');
   const parsed = rawMax && /^\d+$/.test(rawMax) ? Number(rawMax) : 0;
 
+  const model = trimmed(config, 'LLM_MODEL') ?? defaultModel(provider);
+
   return {
     provider,
-    model: trimmed(config, 'LLM_MODEL') ?? defaultModel(provider),
+    model,
+    fallbackModel: fallbackOf(provider, model, trimmed(config, 'LLM_FALLBACK_MODEL')),
     apiKey,
     base: trimmed(config, 'LLM_BASE'),
     // 8192 — **생각 토큰을 포함한 상한이다.** Gemini 3.x 는 생각도 이 한도에서
@@ -119,6 +128,29 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
  * **이 값은 13-1 에서 실측하지 못했다** — 이 PC 에 Ollama 가 설치돼 있지
  * 않다. `local` 경로를 쓰기 전에 먼저 실제로 태워 볼 것.
  */
+/**
+ * **전환 모델** — 2026-09-23 AI Studio 에서 확인한 무료 등급 한도가 이유다.
+ *
+ * | 모델 | 분당 | 하루 |
+ * |---|---|---|
+ * | `gemini-3.5-flash`(주 모델) | 5 | **20** |
+ * | `gemini-3.1-flash-lite` | 15 | **500** |
+ *
+ * 하루 20회는 **키 하나(서버 전체)** 의 한도다. 넘으면 AI 가 멈추는 대신 가벼운
+ * 모델로 답한다. 비우면 이 기본값, `none` 이면 끈다. 주 모델과 같으면 전환할
+ * 곳이 없으니 `null` 이다.
+ */
+function fallbackOf(
+  provider: LlmProviderName,
+  model: string,
+  raw: string | null,
+): string | null {
+  if (provider !== 'gemini') return null;
+  if (raw === 'none') return null;
+  const fallback = raw ?? 'gemini-3.1-flash-lite';
+  return fallback === model ? null : fallback;
+}
+
 function defaultModel(provider: LlmProviderName): string {
   if (provider === 'gemini') return 'gemini-3.5-flash';
   if (provider === 'local') return 'qwen2.5-coder:7b';

@@ -80,6 +80,7 @@ export class LocalLlmProvider implements LlmProvider {
       completionTokens: body.eval_count ?? null,
       model: body.model ?? this.config.model,
       truncated: body.done_reason === 'length',
+      fallback: false,
     };
   }
 }

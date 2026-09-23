@@ -406,6 +406,27 @@ class _ResultState extends State<_Result> {
               ),
             ),
           ),
+          if (run.fallback) ...[
+            const SizedBox(height: 12),
+            // 품질이 조용히 떨어지지 않게 한다 — 이 답은 캐시에도 남지 않아
+            // 나중에 같은 질문을 하면 주 모델이 다시 답한다.
+            Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: theme.textTheme.bodySmall?.color,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '사용량이 많아 가벼운 모델이 답했습니다',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           Wrap(
             alignment: WrapAlignment.end,

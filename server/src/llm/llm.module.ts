@@ -5,6 +5,7 @@ import { resolveLlm } from './llm.config';
 import { FakeLlmProvider } from './fake-llm.provider';
 import { GeminiLlmProvider } from './gemini-llm.provider';
 import { LocalLlmProvider } from './local-llm.provider';
+import { FallbackLlmProvider } from './fallback-llm.provider';
 
 /**
  * 설정을 보고 provider 를 하나 고른다.
@@ -33,12 +34,20 @@ import { LocalLlmProvider } from './local-llm.provider';
           return null;
         }
 
-        logger.log(`LLM provider: ${resolved.provider} (${resolved.model})`);
+        logger.log(
+          `LLM provider: ${resolved.provider} (${resolved.model}` +
+            (resolved.fallbackModel ? `, 전환 ${resolved.fallbackModel})` : ')'),
+        );
         if (resolved.provider === 'fake') {
           return new FakeLlmProvider(resolved.maxTokens);
         }
         if (resolved.provider === 'local') return new LocalLlmProvider(resolved);
-        return new GeminiLlmProvider(resolved);
+        const primary = new GeminiLlmProvider(resolved);
+        if (!resolved.fallbackModel) return primary;
+        return new FallbackLlmProvider(
+          primary,
+          new GeminiLlmProvider({ ...resolved, model: resolved.fallbackModel }),
+        );
       },
     },
   ],

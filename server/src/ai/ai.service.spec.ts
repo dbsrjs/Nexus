@@ -146,6 +146,12 @@ describe('AiService.ask — 요약 프리셋(13-1 에서 옮김)', () => {
     expect(queue.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ promptHash: expectedHash }),
     );
+    // ★ 전환 모델이 쓴 답은 캐시로 쓰지 않는다(LLM 교체).
+    expect(prisma.aiRun.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ promptHash: expectedHash, fallback: false }),
+      }),
+    );
     expect(prisma.user.findMany).not.toHaveBeenCalled();
     expect(prisma.spaceMember.findMany).toHaveBeenCalledWith(
       expect.objectContaining({

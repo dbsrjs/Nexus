@@ -7,6 +7,7 @@ const config = {
   apiKey: 'k',
   base: 'http://127.0.0.1:9',
   maxTokens: 8192,
+  fallbackModel: null,
 };
 
 function ok(body: unknown) {
@@ -47,6 +48,7 @@ describe('GeminiLlmProvider', () => {
       completionTokens: 7,
       model: 'gemini-test-001',
       truncated: false,
+      fallback: false,
     });
   });
 

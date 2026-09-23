@@ -286,7 +286,9 @@ mixin _$AiRun {
  String get runId; String get kind; AiRunState get state;/// 요약 · 자유 질문 본문. **완료 전에는 null 이다** — 빈 문자열로 지어내지
 /// 않는다(판단 #2: 모르는 값은 0 이 아니라 null).
  String? get markdown;/// 이슈 초안의 제목 · 본문. 그 밖의 종류에서는 null 이다.
- String? get title; String? get description; List<AiCitation> get citations; String? get error;
+ String? get title; String? get description; List<AiCitation> get citations; String? get error;/// 주 모델 대신 **전환 모델**이 답했는지. 무료 한도(하루 20회)를 넘거나
+/// 주 모델이 붐비면 서버가 가벼운 모델로 답한다 — 화면이 한 줄로 알린다.
+ bool get fallback;
 /// Create a copy of AiRun
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -297,16 +299,16 @@ $AiRunCopyWith<AiRun> get copyWith => _$AiRunCopyWithImpl<AiRun>(this as AiRun, 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AiRun&&(identical(other.runId, runId) || other.runId == runId)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.state, state) || other.state == state)&&(identical(other.markdown, markdown) || other.markdown == markdown)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.citations, citations)&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AiRun&&(identical(other.runId, runId) || other.runId == runId)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.state, state) || other.state == state)&&(identical(other.markdown, markdown) || other.markdown == markdown)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.citations, citations)&&(identical(other.error, error) || other.error == error)&&(identical(other.fallback, fallback) || other.fallback == fallback));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,runId,kind,state,markdown,title,description,const DeepCollectionEquality().hash(citations),error);
+int get hashCode => Object.hash(runtimeType,runId,kind,state,markdown,title,description,const DeepCollectionEquality().hash(citations),error,fallback);
 
 @override
 String toString() {
-  return 'AiRun(runId: $runId, kind: $kind, state: $state, markdown: $markdown, title: $title, description: $description, citations: $citations, error: $error)';
+  return 'AiRun(runId: $runId, kind: $kind, state: $state, markdown: $markdown, title: $title, description: $description, citations: $citations, error: $error, fallback: $fallback)';
 }
 
 
@@ -317,7 +319,7 @@ abstract mixin class $AiRunCopyWith<$Res>  {
   factory $AiRunCopyWith(AiRun value, $Res Function(AiRun) _then) = _$AiRunCopyWithImpl;
 @useResult
 $Res call({
- String runId, String kind, AiRunState state, String? markdown, String? title, String? description, List<AiCitation> citations, String? error
+ String runId, String kind, AiRunState state, String? markdown, String? title, String? description, List<AiCitation> citations, String? error, bool fallback
 });
 
 
@@ -334,7 +336,7 @@ class _$AiRunCopyWithImpl<$Res>
 
 /// Create a copy of AiRun
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? runId = null,Object? kind = null,Object? state = null,Object? markdown = freezed,Object? title = freezed,Object? description = freezed,Object? citations = null,Object? error = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? runId = null,Object? kind = null,Object? state = null,Object? markdown = freezed,Object? title = freezed,Object? description = freezed,Object? citations = null,Object? error = freezed,Object? fallback = null,}) {
   return _then(_self.copyWith(
 runId: null == runId ? _self.runId : runId // ignore: cast_nullable_to_non_nullable
 as String,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
@@ -344,7 +346,8 @@ as String?,title: freezed == title ? _self.title : title // ignore: cast_nullabl
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,citations: null == citations ? _self.citations : citations // ignore: cast_nullable_to_non_nullable
 as List<AiCitation>,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,fallback: null == fallback ? _self.fallback : fallback // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -429,10 +432,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String runId,  String kind,  AiRunState state,  String? markdown,  String? title,  String? description,  List<AiCitation> citations,  String? error)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String runId,  String kind,  AiRunState state,  String? markdown,  String? title,  String? description,  List<AiCitation> citations,  String? error,  bool fallback)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AiRun() when $default != null:
-return $default(_that.runId,_that.kind,_that.state,_that.markdown,_that.title,_that.description,_that.citations,_that.error);case _:
+return $default(_that.runId,_that.kind,_that.state,_that.markdown,_that.title,_that.description,_that.citations,_that.error,_that.fallback);case _:
   return orElse();
 
 }
@@ -450,10 +453,10 @@ return $default(_that.runId,_that.kind,_that.state,_that.markdown,_that.title,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String runId,  String kind,  AiRunState state,  String? markdown,  String? title,  String? description,  List<AiCitation> citations,  String? error)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String runId,  String kind,  AiRunState state,  String? markdown,  String? title,  String? description,  List<AiCitation> citations,  String? error,  bool fallback)  $default,) {final _that = this;
 switch (_that) {
 case _AiRun():
-return $default(_that.runId,_that.kind,_that.state,_that.markdown,_that.title,_that.description,_that.citations,_that.error);case _:
+return $default(_that.runId,_that.kind,_that.state,_that.markdown,_that.title,_that.description,_that.citations,_that.error,_that.fallback);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -470,10 +473,10 @@ return $default(_that.runId,_that.kind,_that.state,_that.markdown,_that.title,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String runId,  String kind,  AiRunState state,  String? markdown,  String? title,  String? description,  List<AiCitation> citations,  String? error)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String runId,  String kind,  AiRunState state,  String? markdown,  String? title,  String? description,  List<AiCitation> citations,  String? error,  bool fallback)?  $default,) {final _that = this;
 switch (_that) {
 case _AiRun() when $default != null:
-return $default(_that.runId,_that.kind,_that.state,_that.markdown,_that.title,_that.description,_that.citations,_that.error);case _:
+return $default(_that.runId,_that.kind,_that.state,_that.markdown,_that.title,_that.description,_that.citations,_that.error,_that.fallback);case _:
   return null;
 
 }
@@ -485,7 +488,7 @@ return $default(_that.runId,_that.kind,_that.state,_that.markdown,_that.title,_t
 
 
 class _AiRun extends AiRun {
-  const _AiRun({required this.runId, required this.kind, required this.state, this.markdown, this.title, this.description, final  List<AiCitation> citations = const <AiCitation>[], this.error}): _citations = citations,super._();
+  const _AiRun({required this.runId, required this.kind, required this.state, this.markdown, this.title, this.description, final  List<AiCitation> citations = const <AiCitation>[], this.error, this.fallback = false}): _citations = citations,super._();
   
 
 @override final  String runId;
@@ -505,6 +508,9 @@ class _AiRun extends AiRun {
 }
 
 @override final  String? error;
+/// 주 모델 대신 **전환 모델**이 답했는지. 무료 한도(하루 20회)를 넘거나
+/// 주 모델이 붐비면 서버가 가벼운 모델로 답한다 — 화면이 한 줄로 알린다.
+@override@JsonKey() final  bool fallback;
 
 /// Create a copy of AiRun
 /// with the given fields replaced by the non-null parameter values.
@@ -516,16 +522,16 @@ _$AiRunCopyWith<_AiRun> get copyWith => __$AiRunCopyWithImpl<_AiRun>(this, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AiRun&&(identical(other.runId, runId) || other.runId == runId)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.state, state) || other.state == state)&&(identical(other.markdown, markdown) || other.markdown == markdown)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other._citations, _citations)&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AiRun&&(identical(other.runId, runId) || other.runId == runId)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.state, state) || other.state == state)&&(identical(other.markdown, markdown) || other.markdown == markdown)&&(identical(other.title, title) || other.title == title)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other._citations, _citations)&&(identical(other.error, error) || other.error == error)&&(identical(other.fallback, fallback) || other.fallback == fallback));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,runId,kind,state,markdown,title,description,const DeepCollectionEquality().hash(_citations),error);
+int get hashCode => Object.hash(runtimeType,runId,kind,state,markdown,title,description,const DeepCollectionEquality().hash(_citations),error,fallback);
 
 @override
 String toString() {
-  return 'AiRun(runId: $runId, kind: $kind, state: $state, markdown: $markdown, title: $title, description: $description, citations: $citations, error: $error)';
+  return 'AiRun(runId: $runId, kind: $kind, state: $state, markdown: $markdown, title: $title, description: $description, citations: $citations, error: $error, fallback: $fallback)';
 }
 
 
@@ -536,7 +542,7 @@ abstract mixin class _$AiRunCopyWith<$Res> implements $AiRunCopyWith<$Res> {
   factory _$AiRunCopyWith(_AiRun value, $Res Function(_AiRun) _then) = __$AiRunCopyWithImpl;
 @override @useResult
 $Res call({
- String runId, String kind, AiRunState state, String? markdown, String? title, String? description, List<AiCitation> citations, String? error
+ String runId, String kind, AiRunState state, String? markdown, String? title, String? description, List<AiCitation> citations, String? error, bool fallback
 });
 
 
@@ -553,7 +559,7 @@ class __$AiRunCopyWithImpl<$Res>
 
 /// Create a copy of AiRun
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? runId = null,Object? kind = null,Object? state = null,Object? markdown = freezed,Object? title = freezed,Object? description = freezed,Object? citations = null,Object? error = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? runId = null,Object? kind = null,Object? state = null,Object? markdown = freezed,Object? title = freezed,Object? description = freezed,Object? citations = null,Object? error = freezed,Object? fallback = null,}) {
   return _then(_AiRun(
 runId: null == runId ? _self.runId : runId // ignore: cast_nullable_to_non_nullable
 as String,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
@@ -563,7 +569,8 @@ as String?,title: freezed == title ? _self.title : title // ignore: cast_nullabl
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,citations: null == citations ? _self._citations : citations // ignore: cast_nullable_to_non_nullable
 as List<AiCitation>,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,fallback: null == fallback ? _self.fallback : fallback // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

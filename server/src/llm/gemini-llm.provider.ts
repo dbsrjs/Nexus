@@ -123,6 +123,7 @@ export class GeminiLlmProvider implements LlmProvider {
       completionTokens: body.usageMetadata?.candidatesTokenCount ?? null,
       model: body.modelVersion ?? this.config.model,
       truncated: body.candidates?.[0]?.finishReason === 'MAX_TOKENS',
+      fallback: false,
     };
   }
 }

@@ -47,6 +47,10 @@ abstract class AiRun with _$AiRun {
     String? description,
     @Default(<AiCitation>[]) List<AiCitation> citations,
     String? error,
+
+    /// 주 모델 대신 **전환 모델**이 답했는지. 무료 한도(하루 20회)를 넘거나
+    /// 주 모델이 붐비면 서버가 가벼운 모델로 답한다 — 화면이 한 줄로 알린다.
+    @Default(false) bool fallback,
   }) = _AiRun;
 
   const AiRun._();
@@ -78,6 +82,7 @@ abstract class AiRun with _$AiRun {
             ]
           : const [],
       error: json['error'] as String?,
+      fallback: json['fallback'] == true,
     );
   }
 }

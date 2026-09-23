@@ -97,6 +97,8 @@ export class AiRunnerService {
         model: out.model,
         promptTokens: out.promptTokens,
         completionTokens: out.completionTokens,
+        // 옛 어댑터 · 테스트 대역이 이 칸을 안 줄 수 있다 — 모르면 주 모델로 본다.
+        fallback: out.fallback === true,
       });
       this.notify(run, 'done');
       return null;
