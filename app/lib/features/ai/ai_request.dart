@@ -49,6 +49,10 @@ class RepoContext extends AiContext {
   String get label => repoName;
 }
 
+/// 한 대화에서 이어 물을 수 있는 문답 수 — 서버 `MAX_THREAD_TURNS` 와 같다
+/// (13-3 설계 D5). 첫 문답을 포함한다.
+const maxThreadTurns = 10;
+
 /// 서버의 프롬프트 템플릿 이름. **대화가 있어야 한다**(설계 §1).
 enum AiPreset {
   summary('summary'),
@@ -87,11 +91,24 @@ extension AiContexts on List<AiContext> {
 
 class AiRequest {
   const AiRequest({this.instruction, this.preset, required this.contexts})
-    : assert((instruction == null) != (preset == null), '지시문과 프리셋 중 하나만');
+    : parentRunId = null,
+      assert((instruction == null) != (preset == null), '지시문과 프리셋 중 하나만');
+
+  /// 이어 묻기 (13-3). 근거는 서버가 사슬의 첫 문답에서 물려받는다 —
+  /// `contexts` 는 화면(칩 · 실패 문구 · 인용 링크 · 이슈 원문)을 위해서만
+  /// 들고 다니고 보내지 않는다(설계 D2).
+  const AiRequest.followUp({
+    required String this.instruction,
+    required String this.parentRunId,
+    required this.contexts,
+  }) : preset = null;
 
   final String? instruction;
   final AiPreset? preset;
   final List<AiContext> contexts;
+
+  /// 이어 물은 앞 문답. 첫 질문이면 null.
+  final String? parentRunId;
 
   bool get hasConversation => contexts.hasConversation;
   bool get hasRepo => contexts.hasRepo;
@@ -101,6 +118,9 @@ class AiRequest {
   /// `POST /ai/ask` 본문. 대화 컨텍스트는 하나만 붙는다 — 패널이 둘을
   /// 동시에 만들지 않는다(고른 메시지 · 채널 최근 대화 중 하나로 열린다).
   Map<String, dynamic> toJson() {
+    if (parentRunId != null) {
+      return {'instruction': instruction, 'parentRunId': parentRunId};
+    }
     final context = <String, dynamic>{};
     for (final c in contexts) {
       switch (c) {

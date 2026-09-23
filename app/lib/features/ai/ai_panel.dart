@@ -82,6 +82,13 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   /// 마지막으로 보낸 요청. 실패 문구(저장소 여부)와 이슈 원문 링크에 쓴다.
   AiRequest? _sent;
 
+  /// 끝난 문답들 — 오래된 것부터 (13-3). **패널이 들고 있다** — 닫으면
+  /// 사라진다(설계 D10). 서버에는 행이 남지만 다시 여는 길은 범위 밖이다.
+  final List<_Turn> _turns = [];
+
+  /// 지금 기다리는 질문의 화면 문구. 답이 오면 그 문답의 질문이 된다.
+  String? _asking;
+
   @override
   void initState() {
     super.initState();
@@ -95,20 +102,41 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     super.dispose();
   }
 
-
   void _send({AiPreset? preset}) {
     final text = _instruction.text.trim();
-    final request = preset != null
-        ? AiRequest(preset: preset, contexts: List.of(_contexts))
-        : AiRequest(instruction: text, contexts: List.of(_contexts));
-    setState(() => _sent = request);
+    final AiRequest request;
+    if (_turns.isNotEmpty) {
+      // 이어 묻기 — 부모는 마지막 답이다. 근거는 서버가 첫 문답에서 물려받는다.
+      request = AiRequest.followUp(
+        instruction: text,
+        parentRunId: _turns.last.run.runId,
+        contexts: List.of(_contexts),
+      );
+    } else if (preset != null) {
+      request = AiRequest(preset: preset, contexts: List.of(_contexts));
+    } else {
+      request = AiRequest(instruction: text, contexts: List.of(_contexts));
+    }
+    setState(() {
+      _sent = request;
+      _asking = switch (preset) {
+        AiPreset.summary => '요약',
+        AiPreset.issue => '이슈 초안',
+        null => text,
+      };
+    });
     ref
         .read(aiControllerProvider.notifier)
         .run(spaceId: widget.spaceId, request: request);
   }
 
-  /// 같은 칩으로 입력 화면에 돌아간다. 지시문은 비운다 (설계 D9).
+  /// 같은 칩으로 첫 입력 화면에 돌아간다 — **새 대화**다. 지시문과 문답을
+  /// 비운다 (13-2 D9 · 13-3 §5).
   void _askAgain() {
+    setState(() {
+      _turns.clear();
+      _asking = null;
+    });
     _instruction.clear();
     ref.read(aiControllerProvider.notifier).abandon();
   }
@@ -123,39 +151,39 @@ class _AiPanelState extends ConsumerState<AiPanel> {
 
   @override
   Widget build(BuildContext context) {
+    // 답이 오면 문답 목록에 덧붙인다. 같은 runId(캐시 적중)는 두 번 넣지 않는다.
+    ref.listen<AiState>(aiControllerProvider, (_, next) {
+      if (next is! AiReady) return;
+      if (_turns.any((t) => t.run.runId == next.run.runId)) return;
+      setState(() => _turns.add(_Turn(_asking ?? '', next.run)));
+      _instruction.clear();
+    });
     final state = ref.watch(aiControllerProvider);
 
-    final body = switch (state) {
-      AiIdle() => _input(context),
-      AiRunning() => _Running(
-        onAbandon: () {
-          ref.read(aiControllerProvider.notifier).abandon();
-          Navigator.of(context).pop();
-        },
-        onRetry: () => ref.read(aiControllerProvider.notifier).retry(),
-      ),
-      AiFailed(:final failure) => _Failed(
-        message: aiMessageFor(failure, hasRepo: _sent?.hasRepo ?? _contexts.hasRepo),
-        onAskAgain: _askAgain,
-      ),
-      AiReady(:final run) => _Result(
-        run: run,
-        spaceId: widget.spaceId,
-        repoId: _sent?.repoId,
-        onPost: widget.onPost,
-        onCreateIssue: widget.onCreateIssue == null
-            ? null
-            : () {
-                Navigator.of(context).pop();
-                widget.onCreateIssue!(
-                  title: run.title ?? '',
-                  description: run.description ?? '',
-                  originMessageId: _sent?.firstMessageId,
-                );
-              },
-        onAskAgain: _askAgain,
-      ),
-    };
+    final Widget body;
+    if (_turns.isNotEmpty) {
+      body = _thread(context, state);
+    } else {
+      body = switch (state) {
+        AiIdle() => _input(context),
+        AiRunning() => _Running(
+          onAbandon: () {
+            ref.read(aiControllerProvider.notifier).abandon();
+            Navigator.of(context).pop();
+          },
+          onRetry: () => ref.read(aiControllerProvider.notifier).retry(),
+        ),
+        AiFailed(:final failure) => _Failed(
+          message: aiMessageFor(
+            failure,
+            hasRepo: _sent?.hasRepo ?? _contexts.hasRepo,
+          ),
+          onAskAgain: _askAgain,
+        ),
+        // 목록에 들어가기 직전 한 프레임 — 리스너가 곧 _turns 에 넣는다.
+        AiReady() => const SizedBox.shrink(),
+      };
+    }
 
     return Padding(
       padding: EdgeInsets.only(
@@ -166,6 +194,130 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     );
   }
 
+  /// 문답 목록 (13-3 설계 §5). 지난 문답은 상태와 상관없이 그대로 보이고,
+  /// 아래 꼬리만 기다림 · 실패 · 이어서 묻기로 바뀐다.
+  Widget _thread(BuildContext context, AiState state) {
+    final theme = Theme.of(context);
+    final last = _turns.last.run;
+    // 이슈 초안(JSON)에는 이어 묻지 않는다(설계 D6).
+    final canFollow = !_turns.first.run.isIssueDraft;
+    final atLimit = _turns.length >= maxThreadTurns;
+    final canSend = _instruction.text.trim().isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.all(NexusSpacing.sp6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('AI', style: theme.textTheme.titleMedium),
+          const SizedBox(height: NexusSpacing.sp4),
+          Wrap(
+            spacing: NexusSpacing.sp4,
+            runSpacing: NexusSpacing.sp4,
+            children: [
+              for (final c in _contexts)
+                Chip(avatar: Icon(_iconOf(c), size: 16), label: Text(c.label)),
+            ],
+          ),
+          const SizedBox(height: NexusSpacing.sp5),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final (i, turn) in _turns.indexed) ...[
+                    if (i > 0) const Divider(height: 32),
+                    _TurnView(
+                      turn: turn,
+                      spaceId: widget.spaceId,
+                      repoId: _sent?.repoId,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: NexusSpacing.sp5),
+          if (state is AiRunning)
+            Row(
+              children: [
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: NexusSpacing.sp4),
+                const Expanded(child: Text('답을 만들고 있습니다')),
+                TextButton(
+                  onPressed: () =>
+                      ref.read(aiControllerProvider.notifier).retry(),
+                  child: const Text('다시 확인'),
+                ),
+                // 「중단」이 아니라 「기다리지 않기」다 — 서버의 호출은 계속 돈다.
+                TextButton(
+                  onPressed: () =>
+                      ref.read(aiControllerProvider.notifier).abandon(),
+                  child: const Text('기다리지 않기'),
+                ),
+              ],
+            )
+          else ...[
+            if (state case AiFailed(:final failure)) ...[
+              // 그 질문만 실패다 — 지난 문답은 위에 그대로 남는다.
+              Text(
+                aiMessageFor(
+                  failure,
+                  hasRepo: _sent?.hasRepo ?? _contexts.hasRepo,
+                ),
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: NexusSpacing.sp4),
+            ],
+            if (canFollow && atLimit)
+              Text(
+                '이 대화는 여기까지입니다. 「다시 묻기」로 새로 시작해 주세요.',
+                style: theme.textTheme.bodySmall,
+              )
+            else if (canFollow) ...[
+              TextField(
+                controller: _instruction,
+                minLines: 1,
+                maxLines: 4,
+                // 서버의 상한과 같다(ask-request.ts 의 MAX_INSTRUCTION).
+                maxLength: 2000,
+                decoration: const InputDecoration(hintText: '이어서 묻기'),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.icon(
+                  onPressed: canSend ? _send : null,
+                  icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+                  label: const Text('보내기'),
+                ),
+              ),
+            ],
+          ],
+          const SizedBox(height: NexusSpacing.sp4),
+          _Actions(
+            run: last,
+            onPost: widget.onPost,
+            onCreateIssue: widget.onCreateIssue == null
+                ? null
+                : () {
+                    Navigator.of(context).pop();
+                    widget.onCreateIssue!(
+                      title: last.title ?? '',
+                      description: last.description ?? '',
+                      originMessageId: _sent?.firstMessageId,
+                    );
+                  },
+            onAskAgain: _askAgain,
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _input(BuildContext context) {
     final theme = Theme.of(context);
@@ -314,31 +466,98 @@ class _Failed extends StatelessWidget {
   );
 }
 
-/// 결과. **StatefulWidget 이다** — 「채널에 붙이기」가 진행 중인지를 여기서
-/// 직접 들고 있어야 한다. 버튼을 막지 않으면 두 번 빠르게 눌러 **같은 답이
-/// 채널에 두 번** 올라간다(13-1). 메시지는 소프트 삭제라 되돌릴 수 없다.
-class _Result extends StatefulWidget {
-  const _Result({
-    required this.run,
+/// 끝난 문답 하나 — 화면 문구로 쓴 질문과 그 답.
+class _Turn {
+  const _Turn(this.question, this.run);
+  final String question;
+  final AiRun run;
+}
+
+/// 문답 하나를 그린다 — 질문 · 답 · 인용 · 전환 모델 안내.
+class _TurnView extends StatelessWidget {
+  const _TurnView({
+    required this.turn,
     required this.spaceId,
     required this.repoId,
+  });
+
+  final _Turn turn;
+  final String spaceId;
+  final String? repoId;
+
+  @override
+  Widget build(BuildContext context) {
+    final run = turn.run;
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (turn.question.isNotEmpty) ...[
+          Text(turn.question, style: theme.textTheme.labelMedium),
+          const SizedBox(height: 8),
+        ],
+        if (run.isIssueDraft) ...[
+          Text(run.title ?? '', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 12),
+          MarkdownBody(body: run.description ?? ''),
+        ] else
+          // `body:` 다 — `source:` 가 아니다 (markdown_body.dart:16).
+          MarkdownBody(body: run.markdown ?? ''),
+        if (run.citations.isNotEmpty && repoId != null) ...[
+          const SizedBox(height: 16),
+          Text('참고한 코드', style: theme.textTheme.labelMedium),
+          const SizedBox(height: 4),
+          for (final c in run.citations)
+            _CitationTile(citation: c, spaceId: spaceId, repoId: repoId!),
+        ],
+        if (run.fallback) ...[
+          const SizedBox(height: 12),
+          // 품질이 조용히 떨어지지 않게 한다 — 이 답은 캐시에도 남지 않아
+          // 나중에 같은 질문을 하면 주 모델이 다시 답한다.
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                size: 14,
+                color: theme.textTheme.bodySmall?.color,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '사용량이 많아 가벼운 모델이 답했습니다',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// 마지막 답에 대한 버튼들 (설계 D11). **StatefulWidget 이다** — 「채널에
+/// 붙이기」가 진행 중인지를 여기서 직접 들고 있어야 한다. 버튼을 막지 않으면
+/// 두 번 빠르게 눌러 **같은 답이 채널에 두 번** 올라간다(13-1). 메시지는
+/// 소프트 삭제라 되돌릴 수 없다.
+class _Actions extends StatefulWidget {
+  const _Actions({
+    required this.run,
     required this.onPost,
     required this.onCreateIssue,
     required this.onAskAgain,
   });
 
   final AiRun run;
-  final String spaceId;
-  final String? repoId;
   final Future<void> Function(String markdown)? onPost;
   final VoidCallback? onCreateIssue;
   final VoidCallback onAskAgain;
 
   @override
-  State<_Result> createState() => _ResultState();
+  State<_Actions> createState() => _ActionsState();
 }
 
-class _ResultState extends State<_Result> {
+class _ActionsState extends State<_Actions> {
   bool _posting = false;
 
   Future<void> _handlePost() async {
@@ -369,101 +588,36 @@ class _ResultState extends State<_Result> {
   @override
   Widget build(BuildContext context) {
     final run = widget.run;
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Flexible(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (run.isIssueDraft) ...[
-                    Text('이슈 초안', style: theme.textTheme.labelMedium),
-                    const SizedBox(height: 4),
-                    Text(run.title ?? '', style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 12),
-                    MarkdownBody(body: run.description ?? ''),
-                  ] else
-                    // `body:` 다 — `source:` 가 아니다 (markdown_body.dart:16).
-                    MarkdownBody(body: run.markdown ?? ''),
-                  if (run.citations.isNotEmpty && widget.repoId != null) ...[
-                    const SizedBox(height: 16),
-                    Text('참고한 코드', style: theme.textTheme.labelMedium),
-                    const SizedBox(height: 4),
-                    for (final c in run.citations)
-                      _CitationTile(
-                        citation: c,
-                        spaceId: widget.spaceId,
-                        repoId: widget.repoId!,
-                      ),
-                  ],
-                ],
-              ),
-            ),
+    return Wrap(
+      alignment: WrapAlignment.end,
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        TextButton(onPressed: widget.onAskAgain, child: const Text('다시 묻기')),
+        OutlinedButton.icon(
+          onPressed: _copy,
+          icon: const Icon(Icons.copy, size: 18),
+          label: const Text('복사'),
+        ),
+        if (run.isIssueDraft && widget.onCreateIssue != null)
+          FilledButton.icon(
+            onPressed: widget.onCreateIssue,
+            icon: const Icon(Icons.task_alt, size: 18),
+            label: const Text('이슈 만들기'),
           ),
-          if (run.fallback) ...[
-            const SizedBox(height: 12),
-            // 품질이 조용히 떨어지지 않게 한다 — 이 답은 캐시에도 남지 않아
-            // 나중에 같은 질문을 하면 주 모델이 다시 답한다.
-            Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 14,
-                  color: theme.textTheme.bodySmall?.color,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '사용량이 많아 가벼운 모델이 답했습니다',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 16),
-          Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              TextButton(
-                onPressed: widget.onAskAgain,
-                child: const Text('다시 묻기'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _copy,
-                icon: const Icon(Icons.copy, size: 18),
-                label: const Text('복사'),
-              ),
-              if (run.isIssueDraft && widget.onCreateIssue != null)
-                FilledButton.icon(
-                  onPressed: widget.onCreateIssue,
-                  icon: const Icon(Icons.task_alt, size: 18),
-                  label: const Text('이슈 만들기'),
-                ),
-              if (!run.isIssueDraft && widget.onPost != null)
-                FilledButton.icon(
-                  onPressed: _posting ? null : _handlePost,
-                  icon: _posting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send_outlined, size: 18),
-                  label: const Text('채널에 붙이기'),
-                ),
-            ],
+        if (!run.isIssueDraft && widget.onPost != null)
+          FilledButton.icon(
+            onPressed: _posting ? null : _handlePost,
+            icon: _posting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.send_outlined, size: 18),
+            label: const Text('채널에 붙이기'),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

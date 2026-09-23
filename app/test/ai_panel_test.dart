@@ -23,6 +23,9 @@ class _FakeAiApi implements AiApi {
   ApiFailure? failWith;
   final List<AiRequest> asked = [];
 
+  /// 요청마다 다른 답을 주려면 여기에 차례로 넣는다. 비면 `result`.
+  final List<AiRun> queued = [];
+
   @override
   Future<String> ask(String spaceId, AiRequest request) async {
     asked.add(request);
@@ -31,7 +34,8 @@ class _FakeAiApi implements AiApi {
   }
 
   @override
-  Future<AiRun> getRun(String spaceId, String runId) async => result;
+  Future<AiRun> getRun(String spaceId, String runId) async =>
+      queued.isNotEmpty ? queued.removeAt(0) : result;
 }
 
 Future<_FakeAiApi> _pump(
@@ -223,5 +227,107 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('nexus'), findsOneWidget);
     expect(find.text('보내기'), findsOneWidget);
+  });
+
+  // ── 13-3 이어 묻기 ─────────────────────────────
+
+  Future<void> ask(WidgetTester tester, String text) async {
+    // 문답이 쌓이면 입력창 · 버튼이 화면 밖으로 밀려난다.
+    await tester.ensureVisible(find.byType(TextField));
+    await tester.enterText(find.byType(TextField), text);
+    await tester.pump();
+    await tester.ensureVisible(find.text('보내기'));
+    await tester.tap(find.text('보내기'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('★ 답 아래에서 이어 물으면 문답이 둘이 되고 부모가 실린다', (tester) async {
+    final api = await _pump(tester, contexts: const [_messages]);
+    api.queued.addAll(const [
+      AiRun(
+        runId: 'run-1',
+        kind: 'ask',
+        state: AiRunState.done,
+        markdown: '첫 답',
+      ),
+      AiRun(
+        runId: 'run-2',
+        kind: 'ask',
+        state: AiRunState.done,
+        markdown: '둘째 답',
+      ),
+    ]);
+    await ask(tester, '정리해 줘');
+    await ask(tester, '더 짧게');
+
+    expect(find.text('첫 답'), findsOneWidget);
+    expect(find.text('둘째 답'), findsOneWidget);
+    expect(find.text('정리해 줘'), findsOneWidget);
+    expect(find.text('더 짧게'), findsOneWidget);
+    expect(api.asked.last.toJson(), {
+      'instruction': '더 짧게',
+      'parentRunId': 'run-1',
+    });
+  });
+
+  testWidgets('★ 이어 묻기가 실패해도 지난 답은 남는다', (tester) async {
+    final api = await _pump(tester, contexts: const [_messages]);
+    api.queued.add(
+      const AiRun(
+        runId: 'run-1',
+        kind: 'ask',
+        state: AiRunState.done,
+        markdown: '첫 답',
+      ),
+    );
+    await ask(tester, '정리해 줘');
+
+    api.failWith = ApiFailure.server;
+    await ask(tester, '더 짧게');
+
+    expect(find.text('첫 답'), findsOneWidget);
+    expect(find.textContaining('AI 를 쓸 수 없습니다'), findsOneWidget);
+  });
+
+  testWidgets('이슈 초안 답에는 이어서 묻기 입력이 없다', (tester) async {
+    final api = await _pump(
+      tester,
+      contexts: const [_messages],
+      onCreateIssue:
+          ({required title, required description, originMessageId}) {},
+    );
+    api.result = const AiRun(
+      runId: 'run-1',
+      kind: 'draft_issue',
+      state: AiRunState.done,
+      title: '제목',
+      description: '본문',
+    );
+    await tester.tap(find.text('이슈로 만들기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('제목'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+  });
+
+  testWidgets('★ 문답이 10개면 더 묻지 못하고 새로 시작하라고 안내한다', (tester) async {
+    final api = await _pump(tester, contexts: const [_messages]);
+    for (var i = 1; i <= maxThreadTurns; i++) {
+      api.queued.add(
+        AiRun(
+          runId: 'run-$i',
+          kind: 'ask',
+          state: AiRunState.done,
+          markdown: '답 $i',
+        ),
+      );
+    }
+    for (var i = 1; i <= maxThreadTurns; i++) {
+      await ask(tester, '질문 $i');
+    }
+
+    expect(find.text('답 $maxThreadTurns'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.textContaining('새로 시작'), findsOneWidget);
   });
 }

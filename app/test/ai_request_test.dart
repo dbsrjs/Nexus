@@ -24,6 +24,19 @@ void main() {
       expect(req.firstMessageId, 'm1');
     });
 
+    test('★ 이어 묻기는 지시문과 부모만 보낸다 - 근거는 서버가 물려받는다', () {
+      const req = AiRequest.followUp(
+        instruction: '더 짧게',
+        parentRunId: 'run-1',
+        contexts: [
+          MessagesContext(channelId: 'c1', messageIds: ['m1']),
+        ],
+      );
+      expect(req.toJson(), {'instruction': '더 짧게', 'parentRunId': 'run-1'});
+      expect(req.hasConversation, isTrue);
+      expect(req.firstMessageId, 'm1');
+    });
+
     test('채널 최근 대화 + 프리셋 — messageIds 를 보내지 않는다', () {
       const req = AiRequest(
         preset: AiPreset.issue,
@@ -45,8 +58,14 @@ void main() {
     });
 
     test('칩 이름', () {
-      expect(const MessagesContext(channelId: 'c', messageIds: ['a', 'b']).label, '메시지 2개');
-      expect(const ChannelContext(channelId: 'c', channelName: 'dev').label, '#dev 최근 대화');
+      expect(
+        const MessagesContext(channelId: 'c', messageIds: ['a', 'b']).label,
+        '메시지 2개',
+      );
+      expect(
+        const ChannelContext(channelId: 'c', channelName: 'dev').label,
+        '#dev 최근 대화',
+      );
     });
   });
 }
