@@ -55,8 +55,12 @@ Nexus 작업은 집 PC 와 회사 PC 두 곳을 오간다. **DB 는 PC 마다 �
   **인수인계 문서에 적을 것은 그러고도 남는 셋뿐이다** — `GITHUB_CLIENT_ID` ·
   `GITHUB_CLIENT_SECRET`(OAuth App 을 PC 마다 따로 등록해도 된다. 콜백이 양쪽 다
   localhost 다) · `PUBLIC_BASE_URL`(터널 주소라 어차피 띄울 때마다 바뀐다).
-  검증용 `GITHUB_OAUTH_BASE` · `GITHUB_API_BASE` 는 [[nexus-verify]] 가 다룬다
-- DB 의 계정·스페이스·메시지·저장소 웹훅 등록 (시드로 새로 만든다)
+  검증용 `GITHUB_OAUTH_BASE` · `GITHUB_API_BASE` · `fake` provider 는 [[nexus-verify]] 가 다룬다.
+  **AI · 인덱싱을 실제로 쓰려면** `GEMINI_API_KEY`(PC 마다 같은 키를 써도 된다)와
+  `LLM_PROVIDER` · `EMBEDDING_PROVIDER` 도 채운다. `local` 이면 그 PC 에 Ollama 와
+  모델(`embeddinggemma` 등)이 따로 있어야 한다 — 이것도 git 으로 안 옮겨진다
+- DB 의 계정·스페이스·메시지·저장소 웹훅 등록·**인덱스(임베딩)** (시드로 새로 만든다.
+  인덱스는 저장소를 다시 붙이면 새로 쌓인다 — CPU 로 이 저장소 전체가 약 1시간)
 - `.superpowers/sdd/` 의 작업 브리프·보고서·리뷰 diff (git 에 안 올라간다 —
   필요하면 계획 문서에서 다시 뽑는다)
 - `app/.dart_tool/` 빌드 캐시, `app/pubspec.lock`(SDK 버전 차이로 뒤집힌다 —

@@ -11,8 +11,9 @@
 
 | | |
 |---|---|
-| **기준 브랜치** | **`main`.** 2026-08-17 에 `feat/pivot-nexus` 를 fast-forward 로 합쳤다 — 이제 main 이 곧 이 프로젝트다. 새 작업은 `feat/*` 를 따 쓰고 끝나면 main 으로 합친다(CI 가 `main` 과 `feat/**` 를 돈다) |
-| **상태** | **1~12단계와 13-1 · 13-2 가 끝나 `main` 에 있다**(13단계는 2026-09-23 에 `feat/13-ai` 를 빨리감기로 합쳤다) — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널(자유 지시문 · 요약 · 이슈 초안 · 코드 질의). 12단계와 13단계는 각각 진짜 GitHub · 진짜 임베딩, 진짜 Gemini 로 완주했다. **다음은 AI 멀티턴(13-3) 또는 «마지막» 단계**. 단계 표는 §5, 단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md). **새 PC 셋업은 [docs/11-인수인계.md](docs/11-인수인계.md) §2** — `.env` 에서 손으로 채울 값 셋과 검증 기대값(나머지는 `npm run env:setup` 이 만든다) |
+| **기준 브랜치** | **`main`.** 새 작업은 `feat/*` 를 따 쓰고 끝나면 main 으로 합친다(CI 가 `main` 과 `feat/**` 를 돈다) |
+| **상태** | **1~12단계와 13-1 · 13-2 가 `main` 에 있다** — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널. 12 · 13단계는 진짜 GitHub · 진짜 임베딩 · 진짜 Gemini 로 완주했다. **다음은 AI 멀티턴(13-3) 또는 «마지막» 단계**(§5). 단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md) |
+| **새 PC 셋업** | §1 순서대로. `.env` 는 `npm run env:setup` 이 만들고, 손으로 채울 값(GitHub OAuth App · 터널 주소 · AI provider)은 [server/README.md «선택 기능을 켜는 값»](server/README.md). PC 를 오갈 때 옮겨지지 않는 것은 `nexus-pc-handoff` 스킬 |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
 | **커밋 메시지** | 제목은 **명사로 끝낸다** — `수정` · `추가` · `삭제`. **`고친다` · `걷는다` · `반영한다` 같은 「~한다」 동사형을 쓰지 않는다.** 예: `fix: 코드 생성 훅이 다른 PC 경로를 가리키던 증상 수정`. **이 저장소의 옛 커밋은 전부 반대 스타일이므로 이력을 따라가면 틀린다** — 2026-09-08 이후로 바뀐 규칙이고 새 규칙이 이력을 이긴다. 타입 접두사(`fix:` · `feat:` · `chore:` · `docs:`)와 한국어 본문은 그대로 |
@@ -140,7 +141,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run check:quotes` | 답장(인용) 계약 검증(17개) |
 | `npm run check:mentions` | 멘션 계약 검증(18개) |
 | `npm run check:pins` | 핀 계약 검증(20개) |
-| `npm run check:attachments` | 첨부 계약 검증(43개). **드라이버와 무관하게 돈다** — 배포 전 `STORAGE_DRIVER=s3` 로 한 번 더 돌린다 |
+| `npm run check:attachments` | 첨부 계약 검증(43개). **드라이버와 무관하게 돈다** — 지금 드라이버는 `local` 하나다. 배포 때 `S3Driver` 를 붙이면 `STORAGE_DRIVER=s3` 로 한 번 더 돌린다 |
 | `npm run check:repos` | 저장소 웹훅 계약 검증(30개). **GitHub 없이 돈다** — 서명을 직접 만들어 보낸다 |
 | `npm run check:oauth` | GitHub **연동 전체** 계약 검증(설정된 서버에서 76개) — 계정 연결(10-2a)과 저장소 목록 · 자동 등록 · 승격 · 훅 재등록/삭제(10-2b). **가짜 GitHub(4599)을 스스로 띄운다** — `.env` 에 `GITHUB_*_BASE` · `OAUTH_TOKEN_KEY` · `PUBLIC_BASE_URL` 을 넣고 서버를 재시작해야 한다. 미설정 503 분기는 그 값들을 비운 채로 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
 | `npm run check:browse` | 저장소 열람 계약 검증(56개) — 브랜치 · 트리 · 파일(10-3a)과 커밋(10-3b). **가짜 GitHub(4599)을 스스로 띄운다** — `check:oauth` 와 같은 `.env` 를 쓴다. 연결 · 등록이 주제인 그쪽과 섞지 않았다 |
@@ -216,6 +217,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | 깨운 작업이 30초 크론까지 밀림(간헐) | 워커의 `running` 플래그가 **비우는 도중 온 `kick()` 을 버렸다** — `lease()` 가 「비었다」를 본 직후 적재된 것이 다음 크론까지 기다린다. 도는 중에 깨우면 `wanted` 를 세워 한 바퀴 더 돈다. AI · 인덱싱 워커 둘 다 그랬다 (13-2) |
 | Gemini 모델이 산발적으로 503 을 냄 | `-latest` 별칭은 "새 출시마다 핫스왑" 되는 가장 붐비는 모델을 가리킨다. 특정 안정화 버전(예: `gemini-3.1-flash-lite`)을 박아 둘 것 (13-1) |
 | 길게 누르기 시트가 `BOTTOM OVERFLOWED` 로 잘림 | `showModalBottomSheet` 는 기본 최대 높이가 화면의 9/16 이다. `isScrollControlled: true` 가 없으면 항목이 늘 때 조용히 넘친다 (13-1) |
+| 화면을 닫으면 디버그 빌드에서 `deactivated widget's ancestor` 로 멈춤 | `dispose()` 안에서 `ProviderScope.containerOf(context)` 같은 조상 조회를 했다. **`didChangeDependencies` 에서 참조를 잡아 두고** `dispose` 는 그것만 쓴다 — 예외로 정리도 못 돌아 구독이 남았다 (13-2 후 `74ccc01`) |
 
 ---
 
@@ -323,44 +325,48 @@ users/        /api/me 만. 전역 사용자 목록은 두지 않는다(테넌트
 spaces/       스페이스 CRUD · 멤버 · 초대 · SpaceGuard · SpaceRoleGuard
 categories/   채널 그룹
 channels/     채널 · 가시성 규칙 · 읽음 마커
-messages/     메시지 목록 · 전송 · 수정 이력 · 소프트 삭제
-storage/      StorageDriver — 바이트를 어디에 둘지. URL 을 만들지 않는다
-attachments/  업로드 · 스트리밍 다운로드 · 파일 목록 · 고아 정리
+messages/     메시지 목록 · 전송 · 수정 이력 · 소프트 삭제 · 리액션 · 멘션 · 스레드 · 답장 · 핀
+storage/      StorageDriver — 바이트를 어디에 둘지. URL 을 만들지 않는다. **구현은 local 하나**(S3 는 배포 때)
+attachments/  업로드 · 스트리밍 다운로드 · 썸네일 · 파일 목록 · 고아 정리
+issues/       이슈 · 라벨 · 댓글 · 칸반 정렬 · 채번(Space.issueSeq)
+sprints/      스프린트 · 번다운
+oauth/        GitHub 계정 연결 · state · 토큰 암호화(OAUTH_TOKEN_KEY)
+repos/        웹훅 수신 · 저장소 연결 · 열람 · 커밋 · PR 프록시
+  indexing/   트리 순회 · 거르기 · 청킹 · 벡터 검색 · DB 큐 워커
+embedding/    임베딩 어댑터(gemini · local · fake) — EMBEDDING_PROVIDER 뒤에 숨는다
 llm/          LLM 어댑터(gemini · local · fake) — LLM_PROVIDER 뒤에 숨는다(AI 만 쓴다, 전역 아님)
 ai/           AI 패널(13-1 · 13-2) — POST /ai/ask 하나 · 프리셋 · 컨텍스트(메시지 · 채널 · 저장소 RAG) ·
               ai_runs 큐 · promptHash 캐시 · 러너 · 소켓 알림
+realtime/     소켓 게이트웨이 · 룸 계산 · 이벤트 발신
 prisma/       PrismaModule(@Global) + PrismaService
 common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug · bigint 직렬화
 ```
 
-### 앱 구조 (`app/lib/`) — 6단계 완료 시점
+### 앱 구조 (`app/lib/`)
 
 [앱-설계.md §3](docs/앱-설계.md) 의 구조를 따르되 **쓰는 것만 만든다.** 빈 디렉터리를
-미리 파 두지 않는다.
+미리 파 두지 않는다. 파일 단위 안내는 [코드-둘러보기 §5](docs/코드-둘러보기.md).
 
 ```
 core/env.dart            API 주소를 읽는 유일한 지점. 하드코딩 금지
 core/theme.dart          design-system/tokens.css 를 이름까지 그대로 이식
-core/router.dart         go_router + 인증 가드(redirect)
+core/router.dart         go_router + 인증 가드(redirect). 셸 안(머무는 곳) / 셸 밖(덮어서)
 core/breakpoints.dart    Layout(mobile/tablet/desktop) + 고정 폭 상수
-data/api/api_client.dart dio + 401 → 리프레시 1회 재시도
-data/api/auth_api.dart   login · me · logout, 실패를 AuthFailure 로 분류
-data/api/api_failure.dart 그 밖의 요청 실패 분류(ApiFailure) + 문구
-data/api/spaces_api.dart  GET /spaces
-data/api/channels_api.dart 채널 · 카테고리 목록, 읽음 저장
-data/api/messages_api.dart 메시지 목록(커서) · 전송
+data/api/                영역마다 한 파일 + api_client(dio · 401 → 리프레시 1회 재시도)
+                         실패는 AuthFailure · ApiFailure 로 분류(api_failure.dart)
 data/socket/             Socket.IO 연결 + 이벤트(sealed SocketEvent)
-data/local/app_database.dart  drift — 캐시(스페이스 · 채널 · 카테고리 · 메시지) + 전송 큐
+data/local/app_database.dart  drift — 캐시 + 전송 큐(outbox_messages)
 data/repositories/       API + 캐시를 잇는 곳. **화면은 여기만 통해 데이터를 본다**
 data/auth_storage.dart   flutter_secure_storage 래퍼(토큰 + 마지막 계정)
 data/settings_storage.dart 같은 저장소의 화면 설정(테마). 수명이 달라 클래스를 나눴다
-domain/models/           freezed (User · AuthTokens · Space · Channel · Category · Message)
-features/auth/           로그인 화면 + Riverpod 컨트롤러
-features/space/          스페이스 선택 화면 + 목록/현재 스페이스 provider
-features/channel/        채널 목록 + 카테고리 묶기(channelGroupsProvider)
-features/chat/           메시지 리스트 · 입력창 · 낙관적 전송 · 실시간 반영
-                         + attachment_draft.dart (고른 즉시 업로드 · 진행률)
+domain/models/           freezed 모델
+features/auth/ space/ channel/  로그인 · 스페이스 선택 · 채널 목록(카테고리 묶기)
+features/chat/           메시지 리스트 · 입력창 · 낙관적 전송 · 실시간 반영 · 스레드 · 멘션 ·
+                         첨부(attachment_draft — 고른 즉시 업로드) · 선택 모드
 features/files/          스페이스 파일 목록 (썸네일 · 캐시하지 않는다)
+features/issue/          이슈 보드 · 상세 · 스프린트 · 번다운(CustomPainter)
+features/repo/           저장소 연결 · 열람 · 커밋 · PR
+features/ai/             AI 패널
 features/realtime/       소켓 수명 관리 + 채널 목록 동기화
 features/settings/       테마 모드 컨트롤러(기본 system · 계정 메뉴에서 바꾼다)
 features/shell/          반응형 셸 — app_shell(분기) · space_rail · channel_pane
@@ -393,13 +399,10 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 
 ### 아직 이관하지 않은 모듈 — 빌드에서 빠져 있다
 
-`src/permissions` `src/notifications` `src/issues`
-`src/gitlab` 은 **옛 스키마를 참조해 컴파일되지 않는다.** 소스는 참고용으로 남겨 두고
-`tsconfig.json` · `tsconfig.build.json` 의 `exclude` 로 빌드에서만 뺐다.
-(`src/ai` 는 13-1 에서 `spaceId` 기준으로 다시 써 이관을 마쳤다 — 더는 이
-목록에 없다.)
-`src/realtime` 은 4단계에서 이관을 마쳤다 — `redis-io.adapter.ts` 하나만 다중
-인스턴스가 될 때까지 개별 제외돼 있다.
+`src/permissions` `src/notifications` `src/gitlab` 셋은 **옛 스키마를 참조해 컴파일되지
+않는다.** 소스는 참고용으로 남겨 두고 `tsconfig.json` · `tsconfig.build.json` 의 `exclude` 로
+빌드에서만 뺐다. `src/realtime/redis-io.adapter.ts` 도 다중 인스턴스가 될 때까지 개별 제외돼
+있다. (`issues`(9-1) · `ai`(13-1)는 `spaceId` 기준으로 다시 써 이관을 마쳤다.)
 
 **`src/files` 는 8-1 에서 `attachments` 로 다시 쓰고 옛 소스를 지웠다.** 참고용으로도
 남기지 않은 이유는 그 코드가 **서명 URL 을 발급**하기 때문이다 — 되살리는 사람이
@@ -412,85 +415,50 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 
 ## 4. 어디까지 됐나
 
-**1~12단계와 13-1 · 13-2 가 끝났다** — 단계 표는 §5. 단계마다 무엇을 왜 그렇게 정했는지, 무엇을
-확인했고 **무엇을 확인하지 못했는지**는 [docs/진행-기록.md](docs/진행-기록.md) 에
-있다. **이미 끝난 단계의 코드를 다시 건드릴 때는 그 절부터 읽는다** — 뒤집으면 안 되는
-판단과 그 이유가 거기 있다.
+단계 표는 §5. 단계마다 무엇을 왜 그렇게 정했고 **무엇을 확인하지 못했는지**는
+[docs/진행-기록.md](docs/진행-기록.md) 에 있다. **이미 끝난 단계의 코드를 다시 건드릴 때는
+그 절부터 읽는다** — 뒤집으면 안 되는 판단과 그 이유가 거기 있다.
 
-지금도 유효한 판단은 §3 «반복해서 쓰는 판단» 으로, 코드에서 겪은 함정은 §2 로
-올려 두었다.
-
-**아직 없는 것**: DM · 프레즌스 · 타이핑 표시 · 알림(인앱 · 멘션 알림 · 푸시) ·
-채널별 권한 · AI 멀티턴(후속 질문). `notifications` · `permissions`
-모듈은 미이관이다(§3 끝). 실시간 서버에서 아직 쓰지 않는 이벤트는 `typing` ·
-`presence:changed` 다.
+**아직 없는 것**: DM · 프레즌스 · 타이핑 표시 · 알림(인앱 · 멘션 알림 · 푸시) · 채널별 권한 ·
+비공개 채널 멤버 추가 · 앱의 초대/멤버 관리 화면 · AI 멀티턴 · **S3 스토리지 드라이버**(지금은
+`local` 하나) · 배포. `notifications` · `permissions` 모듈은 미이관이다(§3 끝). 실시간 서버에서
+아직 쓰지 않는 이벤트는 `typing` · `presence:changed` 다.
 
 ---
 
 ## 5. 남은 작업
 
-순서는 2026-08-14 에 개정됐다. **원안(계층을 다 쌓고 앱)은 5단계까지 화면이 없어서**,
-부가 기능을 뒤로 미루고 앱을 앞으로 당겼다.
+잘라내는 기준: **미루는 것은 기능이지 구조가 아니다.** 실시간을 앱보다 먼저 한 이유다
+(원안은 계층을 다 쌓고 앱이라 5단계까지 화면이 없었다 — 2026-08-14 개정).
+**한 기능이 서버에서 화면까지 끝나야 완료로 친다** — "화면 없는 구간"을 다시 만들지 않는다.
 
-잘라내는 기준: **미루는 것은 기능이지 구조가 아니다.**
-스레드 · 리액션은 나중에 붙여도 기존 코드를 안 건드리지만, 실시간을 미루면 앱 상태 계층을
-REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보다 먼저** 했다.
-
-5단계도 같은 기준으로 넷으로 잘랐다 — **한 조각이 끝나면 화면에 뭔가 새로 보여야 한다.**
+끝난 단계는 한 줄로 접었다. 조각별 경과는 [진행 기록](docs/진행-기록.md) 의 같은 이름 절에 있다.
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
-| 5-1 | 스캐폴드 · 스택 배선 · 테마 · 라우터 · **인증** | ✅ `ce70d56` |
-| 5-2 | **스페이스 선택 + 반응형 셸** (3단 ↔ 모바일 탭) | ✅ |
-| 5-3 | 채널 목록 + 메시지 리스트/전송 (REST, 낙관적 갱신) | ✅ |
-| 5-4 | 소켓 연결 · 실시간 갱신 · catch-up | ✅ **5단계 완료** |
-| 6-1 | drift 캐시 — **읽기 경로**. 오프라인으로 켜도 대화가 보인다 | ✅ |
-| 6-2 | **전송 큐** — 오프라인에서 쓴 메시지를 재연결 시 흘려보낸다 | ✅ **6단계 완료 · Phase 0** |
-| 7-1 | **리액션** — 서버(멱등 API · 소켓) + 앱(낙관적 토글 · 칩 UI) | ✅ |
-| 7-2 | **스레드** — 답글 API · 목록 · 새 라우트(`/t/:messageId`) · `thread:reply` | ✅ |
-| 7-3 | **답장(인용)** — `quotedMessageId` · 인용 요약 · 미리보기 UI | ✅ |
-| 7-4 | **멘션** — `<@id>` 파싱 · 자동완성 · 멘션 뱃지 | ✅ |
-| 7-5 | **핀** — 고정/해제 API · 채널 상단 목록 | ✅ **7단계 대화 기능 완료** |
-| 8-1 | **첨부(서버)** — 스토리지 추상화 · 업로드 · 스트리밍 다운로드 · 고아 정리 | ✅ |
-| 8-2 | **첨부(앱)** — 파일 선택 · 업로드 진행률 · 메시지에 첨부 표시 | ✅ |
-| 8-3 | **이미지 미리보기** · 썸네일 · 스페이스 파일 목록 | ✅ **8단계 완료** |
-| 9-1 | **이슈 보드** — CRUD · 칸반 · 상태 이동 · 실시간(`issue:*`) | ✅ |
-| 9-2a | **이슈 상세** — 댓글 · 삭제 | ✅ |
-| 9-2b | **라벨 · 대화 → 이슈** | ✅ **9-2 완료** |
-| 9-3 | **스프린트 · 번다운** | ✅ **9단계 완료** |
-| 10-1 | **저장소 웹훅 수신** — 서명 검증 · 이벤트 적재 · 채널 게시 | ✅ |
-| 10-2a | **GitHub 계정 연결** — OAuth 시작 · 콜백 · 토큰 암호화 · `oauth:connected` · 앱 연결 화면 | ✅ |
-| 10-2b | **저장소 목록 · 웹훅 자동 등록** — `/me/github/repos` · `repos/connect` · 훅 재등록 · 수동 행 승격 | ✅ **10-2 완료** |
-| 10-3a | **열람 프록시** — 브랜치 · 트리 · 파일 · 앱 탐색 화면 | ✅ |
-| 10-3b | **커밋 열람** — `commits` · 커밋 상세 · 채널 메시지에서 진입 | ✅ **10-3 완료** |
-| — | **코드 하이라이팅** — 10-3a 의 "넣지 않는다"를 뒤집었다. 패키지 없이 넷만 칠한다 | ✅ |
-| — | **마크다운** — 채팅 · 이슈 본문 · 이슈 댓글. 멘션을 흡수한 파서 하나 | ✅ |
-| — | **UI 리디자인 (토큰 층 · 셸 통합)** — 없던 컴포넌트 테마 넷 · 갈라진 폰트 · 껍데기 둘 | ✅ |
-| — | **테마 토글** — 기본을 시스템으로, 계정 메뉴에서 바꾼다. 라이트가 죽은 코드였다 | ✅ |
-| — | **세션 도구 정비** — 권한 화이트리스트 · 코드젠 후크 · 프로젝트 스킬 4개(09-11 에 `nexus-deck` 로 5개) | ✅ |
-| 11 | **PR 열람** — 목록 · 상세 · 바뀐 파일 · 채널 진입 | ✅ |
-| 12 | **저장소 인덱싱** — 재귀 트리 순회 · 청킹 · 임베딩(gemini · local · fake) · 벡터 검색(HNSW) · 증분(compare) | ✅ **12단계 완료** |
-| — | **12 실제 태우기** — 진짜 GitHub · 진짜 임베딩으로 완주. 결함 넷(리스 · task 신호 · 429 흡수 · retryAfter 0)과 모델 교체 둘 | ✅ |
-| — | **빚 정리** — 인덱스에 임베딩 모델 기록(다르면 전체 재인덱싱) · 역할 변경 `rooms:invalidate` 자동 검증 | ✅ |
-| 13-1 | **대화 요약** — LLM 어댑터(gemini · local · fake) · `promptHash` 캐시 · DB 큐(`ai_runs`) · 다중 선택 · 결과 패널. 실제 Gemini 로 완주(8.1초, `gemini-3.1-flash-lite`) | ✅ **13-1 완료** |
-| 13-2 | **AI 패널** — 옛 13-2(이슈 초안) · 13-3(코드 질의)을 합쳤다. 자유 지시문 + 프리셋(요약 · 이슈 초안) · 컨텍스트 칩(메시지 · 채널 최근 대화 · 저장소 RAG) · 인용 · `search()` 모델 불일치 503. 실제 Gemini 로 여덟 가지 완주 | ✅ **13-2 완료** |
-| 13-3 | AI 멀티턴(후속 질문) — `parentRunId` | |
-| 마지막 | 푸시 · 트레이 · 딥링크 · CI · 테넌트 격리 통합 테스트 | |
-
-5-2 를 시작하기 전에 [슬라이스 1 스펙](docs/superpowers/specs/2026-08-14-앱-슬라이스1-인증-design.md)
-§1 의 분해와 §2-1 의 플랫폼 사정을 읽을 것.
-
-7단계부터는 **한 기능이 서버에서 화면까지 끝나야 완료로 친다.** 그래야 "화면 없는 구간"이
-다시 생기지 않는다.
+| 1~4 | 자산 정리 · 스키마 재작성 · auth · spaces · 채팅 API · 실시간 최소 | ✅ |
+| 5 · 6 | Flutter — 인증 · 반응형 셸 · 채널/메시지 · 소켓 → drift 캐시 · 전송 큐 | ✅ **Phase 0** |
+| 7 | 대화 — 리액션 · 스레드 · 답장(인용) · 멘션 · 핀 | ✅ |
+| 8 | 첨부 — 스토리지 추상화 · 업로드 · 스트리밍 · 썸네일 · 파일 목록 | ✅ |
+| 9 | 이슈 보드 · 상세 · 라벨 · 대화 → 이슈 · 스프린트 · 번다운 | ✅ |
+| 10 | 웹훅 수신 · GitHub 계정 연결 · 저장소 자동 등록 · 열람 · 커밋 | ✅ |
+| — | 코드 하이라이팅 · 마크다운 · UI 리디자인 · 테마 토글 · 세션 도구(스킬 5개) | ✅ |
+| 11 | PR 열람 — 목록 · 상세 · 바뀐 파일 · 채널 진입 | ✅ |
+| 12 | 저장소 인덱싱 — 트리 순회 · 청킹 · 임베딩 · HNSW 검색 · 증분(compare). 실제 태우기 · 빚 정리(모델 기록) 포함 | ✅ |
+| 13-1 | 대화 요약 — LLM 어댑터 · `promptHash` 캐시 · DB 큐(`ai_runs`) · 다중 선택 | ✅ |
+| 13-2 | AI 패널 — 자유 지시문 + 프리셋 · 컨텍스트 칩(메시지 · 채널 · 저장소 RAG) · 인용 · 모델 불일치 503 | ✅ |
+| **13-3** | **AI 멀티턴(후속 질문)** — `parentRunId` | |
+| **마지막** | 푸시 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 · 배포(S3 드라이버 · prod compose) | |
+| **고도화** | 위가 다 끝난 뒤 여는 새 단계. 첫 항목은 **사용자 설정**(표시 이름 · 프로필 사진 · 비밀번호 변경 · 알림 설정 · 화면) — 설계 출발점은 [제품-기획 §5.1-a](docs/제품-기획.md) | |
 
 ### 알려진 빚
 
-- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 373개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 2026-08-21 부터 CI 에서 push 마다 돈다 — 15종 589 케이스**(여기에 DB 없이 도는 정적 검사 둘 — `check:migrations` · `check:sql-time` — 이 따로 붙는다)(13-2 에서 `check:ai` 27개 · `check:indexing` 8개가 더해져 554 에서 늘었다. 13-1 에서 `check:ai` 32개가 더해져 15종 554 로 늘었다. 2026-09-17 빚 정리에서 `check:indexing` 6개 · `check:realtime` 8개가 더해져 508 에서 늘었다. 12단계에서 `check:indexing` 34개가 더해져 13종 474 에서 늘었다. 그 전엔 11단계에서 `check:pulls` 35개가 더해져 12종 439 에서 늘었다)(`서버 통합` 잡, 계약 검증 단계 19초). 그 전까지는 사람이 기억해 타이핑할 때만 돌았다. 헬퍼 중복도 2026-08-21 에 걷었다 — `api()` 11벌 · `signup()` 10벌 등이 `server/scripts/lib/` 넷으로 모였다(스크립트에서 473줄이 지워졌다). **남은 빚은 러너가 아니라 단언 규율이다** — 10-2b 의 `undefined === undefined` 는 프레임워크로 바꿔도 통과한다(`assert.strictEqual(undefined, undefined)`). 그 케이스는 손으로 고쳐 뒀고, 같은 종류가 다시 나오면 그때 장치를 만든다.
+- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 373개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 15종 589 케이스**(13-2 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 같은 종류가 다시 나오면 그때 장치를 만든다. (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
 - **AI 큐의 실패 갈래와 「모델이 바뀌면 캐시가 적중하지 않음」이 계약 검증에 없다(13-1).** 리스 만료 복구 · 5xx 5회 소진 · fatal 즉시 포기를 `check:ai` 로 재현하려면 실패를 주입할 수 있는 fake LLM 어댑터가 필요한데, 지금 `fake` 는 항상 즉시 성공만 한다 — 인덱싱 큐의 같은 자리(§4 «12 실제 태우기» 이후에도 남은 빚)와 같은 모양이다. 단위 테스트(`classifyFailure` · `shouldGiveUp`)가 대신 덮는다.
 - **`local`(Ollama) LLM 경로를 실측하지 못했다(13-1).** `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. Ollama 가 없는 PC 에서 13단계를 이어받으면 먼저 설치하고 실제로 태워 볼 것.
 - `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다.
 - **비공개 채널에 다른 사람을 넣는 방법이 없다.** 생성자는 채널 생성 시 자동으로 멤버가 되지만(`ChannelsService.create()`), 채널 멤버 추가·제거 API 가 아직 없어 비공개 채널은 사실상 "나만 보는 채널"이다. 여럿이 쓰는 비공개 채널이 필요해지는 단계에서 함께 설계한다.
-- **앱 테스트에 통합 테스트가 없다.** 위젯 테스트는 9-3 에서 처음 붙었고 그 뒤로 늘었다(저장소 · 커밋 · 마크다운 화면). `app/test/` 에 **287개** — `Env` 2 · 반응형 경계 4 · 채널 묶기 6 · 전송 큐 14 · 리액션 10 · 스레드 7 · 답장 7 · **멘션 34** · 핀 7 · **첨부 15** · 이슈 16 · 저장소 · 커밋 · **마크다운 49**(인라인 18 · 블록 16 · 평문화 9 · 위젯 6) · **코드 하이라이팅 13** · **테마 5** · **PR 22** · **라우트 구조 3** · **로고 2** · **선택 모드 · AI(13-1 · 13-2) 29**. 인메모리 drift 로 실제 DB 동작까지 덮지만, **화면 계층은 여전히 실기기 확인에만 의존한다** — 2026-08-22 의 UI 리디자인도 Windows 데스크톱으로 눈으로 본 것이 유일한 검증이었고, **그 리디자인이 심은 라우터 결함이 열흘 뒤 11단계 화면 확인에서야 드러났다**(진행 기록 «11 완료»). 그때 `test/router_shell_test.dart` 를 만들어 라우트 트리 구조를 검사하게 했지만, **화면 자체를 도는 통합 테스트는 여전히 없다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)도 실기기 확인에만 기댄다.
+- **앱 테스트에 통합 테스트가 없다.** `app/test/` 에 **288개**(인메모리 drift 로 실제 DB 동작까지 덮는 단위 테스트 + 9-3 부터 붙은 위젯 테스트). **화면 자체를 도는 통합 테스트는 없다** — UI 리디자인(2026-08-22)이 심은 라우터 결함이 열흘 뒤 11단계 화면 확인에서야 드러났고, 그 뒤 `test/router_shell_test.dart` 로 라우트 트리 구조만 검사한다. 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)도 실기기 확인에만 기댄다.
 - **`prisma migrate dev` 는 이 환경(비대화형)에서 거부된다.** 위 HNSW 드리프트를 감지해 확인을 물으려 하기 때문이다. `npx prisma migrate diff --from-schema-datasource ... --to-schema-datamodel ... --script` 로 SQL 을 만들어 손질한 뒤 `prisma:deploy` 로 적용한다.
 - **`adb shell input text` 는 한글을 넣지 못한다**(NullPointerException). 실기기 검증 문구는 영문으로 쓸 것.
 - **소켓 토큰 갱신 경로가 자동 검증되지 않는다.** 액세스 토큰 만료(15분)를 기다려야 재현되므로 테스트에 넣지 않았다. 실기기로 한 번 확인했다.
@@ -527,7 +495,8 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 | [docs/전환-계획.md](docs/전환-계획.md) | **작업 목록과 진행 상황. 작업 후 여기를 갱신할 것** |
 | [docs/진행-기록.md](docs/진행-기록.md) | **단계마다의 경과** — 갈린 결정과 이유 · 확인한 것 · 확인하지 못한 것 · 잡은 결함. 끝난 단계를 다시 건드릴 때 읽는다 |
 | [docs/기술-스택-가이드.md](docs/기술-스택-가이드.md) | 스택별 학습 순서 · 코드 읽기 시작점 (사용자용) |
-| [server/README.md](server/README.md) | 서버 셋업 · 규약 · 디렉터리 |
+| [server/README.md](server/README.md) | 서버 셋업 · 선택 기능 `.env` · 규약 · 디렉터리 · Ollama · 실제 GitHub 웹훅 |
+| [app/README.md](app/README.md) | 앱 실행 · 플랫폼별 주의 |
 
 ### 단계별 설계 스펙 (`docs/superpowers/specs/`)
 
@@ -535,6 +504,9 @@ REST 전제로 짰다가 다시 쓰게 된다. 그래서 **실시간은 앱보�
 |---|---|
 | [실시간 최소](docs/superpowers/specs/2026-08-14-실시간-최소-design.md) | 4단계 소켓 계약 — 룸 · 이벤트 · 인증 · 오류 처리 · 범위에서 뺀 것과 그 이유. **`thread:*` 룸을 쓰지 않기로 한 후속 결정이 각주로 붙어 있다** |
 | [앱 슬라이스 1](docs/superpowers/specs/2026-08-14-앱-슬라이스1-인증-design.md) | 5단계 분해(4조각) · 검증 플랫폼 사정 · 인증 흐름 |
+
+그 뒤로는 단계마다 스펙이 하나씩 있다(이슈 보드 · 저장소 연동 · GitHub OAuth · 열람 · 커밋 · 마크다운 ·
+UI 리디자인 · PR · 인덱싱 · AI · AI 패널). **범위에서 뺀 것과 그 이유**가 거기 있다.
 
 계획 문서 `docs/superpowers/plans/` 도 있지만 **실행이 끝난 기록**이다. 현재 상태는
 계획이 아니라 이 문서와 스펙을 봐야 한다.

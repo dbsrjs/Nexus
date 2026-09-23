@@ -28,14 +28,14 @@
 ## 아키텍처
 
 ```
-app/     Flutter — 한 코드베이스로 Windows · Android · Web (iOS · macOS · Linux 는 빌드 대상만 남겨 둠)
+app/     Flutter — 한 코드베이스로 Windows · Android · Web (iOS 는 macOS 가 없어 동결)
    │     Riverpod · go_router · dio · drift(오프라인 캐시 + 전송 큐)
    │
    │  REST + Socket.IO
    ▼
 server/  NestJS + Prisma
    ├─ PostgreSQL + pgvector   모든 데이터 · 코드 임베딩 · 작업 큐(AI · 인덱싱)
-   ├─ 스토리지                첨부 파일 (local 디스크 / S3 호환)
+   ├─ 스토리지                첨부 파일 (지금은 로컬 디스크, 배포 때 S3 호환 드라이버)
    ├─ LLM                     gemini · local(Ollama) · fake
    └─ 임베딩                  gemini · local(Ollama) · fake
 ```
@@ -52,7 +52,7 @@ server/  NestJS + Prisma
 | 폴더 | 설명 |
 |---|---|
 | [`server/`](server/) | NestJS 백엔드 — REST API · Socket.IO 게이트웨이 · 계약 검증 스크립트(`scripts/`) |
-| [`app/`](app/) | Flutter 앱 |
+| [`app/`](app/) | Flutter 앱 — 실행법은 [app/README.md](app/README.md) |
 | [`design-system/`](design-system/) | 디자인 토큰(`tokens.css`) · 컴포넌트 · 화면 프리뷰 |
 | [`docs/`](docs/) | 기획 · 설계 문서 · 진행 기록 |
 
@@ -60,7 +60,7 @@ server/  NestJS + Prisma
 
 ## 시작하기
 
-필요한 것: **Node.js** · **Flutter 3.44.9 이상** · **WSL2(Ubuntu)** 또는 **Docker**
+필요한 것: **Node.js 22** · **Flutter 3.44.9 이상** · **WSL2(Ubuntu)** 또는 **Docker**
 
 ### 서버
 
@@ -122,6 +122,7 @@ CI(`.github/workflows/ci.yml`)가 `main` 과 `feat/**` 의 push 마다 위 전�
 |---|---|
 | 13-3 | AI 멀티턴(후속 질문) |
 | 마지막 | 푸시 알림 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 |
+| 고도화 | 사용자 설정 — 표시 이름 · 프로필 사진 · 비밀번호 변경 · 알림 설정 (디스코드식 설정 창) |
 
 아직 없는 것: DM · 프레즌스 · 타이핑 표시 · 알림 · 채널별 권한.
 단계마다의 결정과 확인 내역은 [진행 기록](docs/진행-기록.md) 에 있다.
