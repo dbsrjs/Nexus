@@ -15,7 +15,8 @@ import { TranscriptMessage, buildTranscript } from './transcript';
 import { promptHash } from './prompt-hash';
 import { AskInputShape, AskPreset, validateAskRequest } from './ask-request';
 import { Citation, citationsOf } from './code-context';
-import { buildAskPrompt } from './prompts/build';
+import { AskMaterial, buildAskPrompt } from './prompts/build';
+import { FollowUpThread, MAX_THREAD_TURNS, buildFollowUpPrompt } from './prompts/follow-up';
 
 /** 채널만 줬을 때 읽는 최근 최상위 메시지 수 (13-2 설계 §2). */
 export const RECENT_MESSAGES = 50;
@@ -37,6 +38,8 @@ export interface StoredAskInput {
   messageIds?: string[];
   repoId?: string;
   chunkIds?: string[];
+  /** 이어 묻기(13-3). 있으면 자료는 사슬의 첫 문답에서 읽는다 — 복사하지 않는다. */
+  parentRunId?: string;
 }
 
 /** 워커가 받는 것. 프롬프트와 함께, 결과에 실을 인용까지. */
@@ -72,6 +75,9 @@ export class AiService {
   async ask(spaceId: string, userId: string, dto: AskInputShape): Promise<StartResult> {
     const llm = this.requireLlm();
     const req = validateAskRequest(dto);
+    if (req.parentRunId !== null) {
+      return this.askFollowUp(spaceId, userId, req.parentRunId, req.instruction!, llm);
+    }
 
     // 저장소 소속(404) · 임베딩 미설정 · 모델 불일치(503)는 search() 가 본다.
     const searchCode = (query: string) =>
@@ -122,6 +128,98 @@ export class AiService {
   async loadPrompt(spaceId: string, raw: Prisma.JsonValue): Promise<PreparedPrompt> {
     const input = raw as StoredAskInput;
 
+    if (input.parentRunId) {
+      // 이어 묻기 — 사슬을 거슬러 첫 문답의 자료로 같은 프롬프트를 다시 만든다.
+      const chain = await this.chainOf(spaceId, null, input.parentRunId);
+      const material = await this.materialOf(
+        spaceId,
+        chain[0].input as StoredAskInput,
+        missingChunks,
+      );
+      const built = buildFollowUpPrompt(threadOf(chain), material, input.instruction ?? '');
+      return { ...built, citations: citationsOf(material.chunks) };
+    }
+
+    const material = await this.materialOf(spaceId, input, missingChunks);
+    const built = buildAskPrompt(rootRequestOf(input), material);
+    return { ...built, citations: citationsOf(material.chunks) };
+  }
+
+  /** 이어 묻기 (13-3 설계 §1 · §3). */
+  private async askFollowUp(
+    spaceId: string,
+    userId: string,
+    parentRunId: string,
+    instruction: string,
+    llm: LlmProvider,
+  ): Promise<StartResult> {
+    const chain = await this.chainOf(spaceId, userId, parentRunId);
+    const parent = chain[chain.length - 1];
+    if (parent.state !== AiRunState.done) {
+      throw new BadRequestException('앞 답이 아직 끝나지 않았습니다');
+    }
+    // 이슈 초안(JSON)에 이어 물으면 「이슈 만들기」로 이어지지 않는다(D6).
+    if (parent.kind === AiRunKind.draft_issue) {
+      throw new BadRequestException('이슈 초안에는 이어 묻지 않습니다');
+    }
+    // 조용히 앞을 잘라 내지 않는다(판단 #4, D5).
+    if (chain.length >= MAX_THREAD_TURNS) {
+      throw new BadRequestException(
+        `한 대화는 ${MAX_THREAD_TURNS}번까지 이어 물을 수 있습니다`,
+      );
+    }
+    const rootInput = chain[0].input as StoredAskInput;
+    // 첫 문답 뒤에 비공개 채널에서 빠졌을 수 있다 — 가시성을 다시 본다.
+    if (rootInput.channelId) await this.requireChannel(spaceId, userId, rootInput.channelId);
+
+    const material = await this.materialOf(
+      spaceId,
+      rootInput,
+      () =>
+        new BadRequestException(
+          '참고한 코드가 다시 인덱싱되었습니다. 다시 묻기로 새로 시작해 주세요.',
+        ),
+    );
+    const built = buildFollowUpPrompt(threadOf(chain), material, instruction);
+    const input: StoredAskInput = { instruction, parentRunId };
+    return this.start(spaceId, userId, built.kind, input, built.messages, llm, parentRunId);
+  }
+
+  /**
+   * 부모에서 첫 문답까지 거슬러 올라간다 — **첫 문답부터** 돌려준다.
+   * `userId` 를 주면 그 사용자 것만 찾는다(없으면 404 — 남의 문답에 이어 묻는
+   * 길은 남의 문답을 읽는 길이다, D7). 워커는 이미 권한을 통과한 요청이라
+   * `null` 로 부른다. 상한 + 1 까지만 올라간다 — 넘치면 호출자가 400 을 낸다.
+   */
+  private async chainOf(
+    spaceId: string,
+    userId: string | null,
+    parentRunId: string,
+  ): Promise<ChainRow[]> {
+    const chain: ChainRow[] = [];
+    let id: string | null = parentRunId;
+    while (id !== null && chain.length <= MAX_THREAD_TURNS) {
+      const row: ChainRow | null = await this.prisma.aiRun.findFirst({
+        where: { id, spaceId, ...(userId !== null ? { userId } : {}) },
+        select: CHAIN_SELECT,
+      });
+      if (!row) throw new NotFoundException('이어 물을 문답을 찾을 수 없습니다');
+      chain.unshift(row);
+      id = row.parentRunId;
+    }
+    return chain;
+  }
+
+  /**
+   * 첫 문답의 `input` 에서 자료(대화 · 코드)를 다시 읽는다. 워커 실행과 이어
+   * 묻기가 같은 것을 쓴다. 그사이 재인덱싱이 청크를 갈아 끼웠으면
+   * `onMissing()` 을 던진다 — 빼고 답하면 인용이 빈다(13-2 설계 §2).
+   */
+  private async materialOf(
+    spaceId: string,
+    input: StoredAskInput,
+    onMissing: () => Error,
+  ): Promise<AskMaterial> {
     let transcript: string | null = null;
     if (input.messageIds) {
       const messages = await this.prisma.message.findMany({
@@ -135,20 +233,9 @@ export class AiService {
     let chunks: ChunkHit[] = [];
     if (input.repoId && input.chunkIds) {
       chunks = await this.indexing.chunksByIds(spaceId, input.repoId, input.chunkIds);
-      // 그사이 재인덱싱이 청크를 갈아 끼웠다. 빼고 답하면 인용이 빈다 —
-      // 던져서 fatal 로 끝낸다. 다시 물으면 새 검색으로 풀린다 (설계 §2).
-      if (chunks.length !== input.chunkIds.length) {
-        throw new Error('참고한 코드가 다시 인덱싱되어 사라졌습니다.');
-      }
+      if (chunks.length !== input.chunkIds.length) throw onMissing();
     }
-
-    // 13-1 에서 적재된 행은 `{channelId, messageIds}` 뿐이다 — 요약으로 읽는다.
-    const preset = input.preset ?? (input.instruction === undefined ? 'summary' : null);
-    const built = buildAskPrompt(
-      { instruction: input.instruction ?? null, preset },
-      { transcript, chunks },
-    );
-    return { ...built, citations: citationsOf(chunks) };
+    return { transcript, chunks };
   }
 
   /** 러너가 「포기했는가」를 판정하는 데만 쓴다. */
@@ -172,6 +259,7 @@ export class AiService {
         error: true,
         model: true,
         fallback: true,
+        parentRunId: true,
         promptTokens: true,
         completionTokens: true,
         createdAt: true,
@@ -190,6 +278,8 @@ export class AiService {
     input: object,
     prompt: LlmMessage[],
     llm: LlmProvider,
+    /** 이어 묻기(13-3). 해시가 앞 문답 전체를 보므로 캐시 규칙은 그대로다(D9). */
+    parentRunId?: string,
   ): Promise<StartResult> {
     const hash = promptHash(kind, llm.modelId, prompt);
 
@@ -217,6 +307,7 @@ export class AiService {
       kind,
       input,
       promptHash: hash,
+      parentRunId,
     });
     return { runId, state: 'queued' };
   }
@@ -355,4 +446,56 @@ function toTranscript(messages: LoadedMessage[]): TranscriptMessage[] {
     authorName: m.author.name,
     attachmentNames: m.attachments.map((a) => a.name),
   }));
+}
+
+/** 사슬을 거슬러 올라갈 때 읽는 칸. */
+const CHAIN_SELECT = {
+  id: true,
+  userId: true,
+  kind: true,
+  state: true,
+  parentRunId: true,
+  input: true,
+  result: true,
+} satisfies Prisma.AiRunSelect;
+
+type ChainRow = {
+  id: string;
+  userId: string;
+  kind: AiRunKind;
+  state: AiRunState;
+  parentRunId: string | null;
+  input: Prisma.JsonValue;
+  result: Prisma.JsonValue;
+};
+
+const missingChunks = () => new Error('참고한 코드가 다시 인덱싱되어 사라졌습니다.');
+
+/** 13-1 에서 적재된 행은 `{channelId, messageIds}` 뿐이다 — 요약으로 읽는다. */
+function rootRequestOf(input: StoredAskInput): {
+  instruction: string | null;
+  preset: AskPreset | null;
+} {
+  return {
+    instruction: input.instruction ?? null,
+    preset: input.preset ?? (input.instruction === undefined ? 'summary' : null),
+  };
+}
+
+function answerOf(row: ChainRow): string {
+  const markdown = (row.result as { markdown?: unknown } | null)?.markdown;
+  return typeof markdown === 'string' ? markdown : '';
+}
+
+/** 사슬(첫 문답부터) → 프롬프트 재료. 뒤 문답은 지시문과 답만 쓴다. */
+function threadOf(chain: ChainRow[]): FollowUpThread {
+  const [root, ...later] = chain;
+  return {
+    root: rootRequestOf(root.input as StoredAskInput),
+    rootAnswer: answerOf(root),
+    later: later.map((row) => ({
+      question: (row.input as StoredAskInput).instruction ?? '',
+      answer: answerOf(row),
+    })),
+  };
 }

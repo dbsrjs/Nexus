@@ -381,3 +381,118 @@ describe('AiService.getRun', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+describe('AiService.ask — 이어 묻기(13-3)', () => {
+  const doneRoot = {
+    id: 'root',
+    userId: 'u-1',
+    kind: 'ask',
+    state: 'done',
+    parentRunId: null,
+    input: { instruction: '정리해 줘', channelId: 'c-1', messageIds: ['m-1'] },
+    result: { markdown: '첫 답', citations: [] },
+  };
+  const message = {
+    id: 'm-1',
+    body: '배포는 금요일',
+    deletedAt: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    author: { name: '가영' },
+    attachments: [],
+  };
+
+  function prismaWith(rows: Record<string, object>) {
+    return {
+      channel: { findFirst: jest.fn().mockResolvedValue({ id: 'c-1' }) },
+      message: { findMany: jest.fn().mockResolvedValue([message]) },
+      spaceMember: { findMany: jest.fn().mockResolvedValue([]) },
+      aiRun: {
+        findFirst: jest.fn(
+          ({ where }: { where: { id?: string; userId?: string; promptHash?: string } }) => {
+            if (where.promptHash) return Promise.resolve(null); // 캐시 조회
+            const row = where.id ? (rows[where.id] as { userId: string } | undefined) : undefined;
+            if (!row) return Promise.resolve(null);
+            if (where.userId && row.userId !== where.userId) return Promise.resolve(null);
+            return Promise.resolve(row);
+          },
+        ),
+      },
+    };
+  }
+
+  it('★ 부모를 달아 적재하고 input 에는 지시문과 부모만 둔다', async () => {
+    const prisma = prismaWith({ root: doneRoot });
+    const queue = { enqueue: jest.fn().mockResolvedValue('run-2') };
+
+    await service({ prisma, queue }).ask('s-1', 'u-1', {
+      instruction: '더 짧게',
+      parentRunId: 'root',
+    });
+
+    expect(queue.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'ask',
+        parentRunId: 'root',
+        input: { instruction: '더 짧게', parentRunId: 'root' },
+      }),
+    );
+  });
+
+  it('★ 다른 사용자의 부모는 404 다', async () => {
+    const prisma = prismaWith({ root: { ...doneRoot, userId: 'u-other' } });
+    await expect(
+      service({ prisma }).ask('s-1', 'u-1', { instruction: 'q', parentRunId: 'root' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('끝나지 않은 부모는 400 이다', async () => {
+    const prisma = prismaWith({ root: { ...doneRoot, state: 'running' } });
+    await expect(
+      service({ prisma }).ask('s-1', 'u-1', { instruction: 'q', parentRunId: 'root' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('★ 이슈 초안에는 이어 묻지 않는다 - 400', async () => {
+    const prisma = prismaWith({
+      root: {
+        ...doneRoot,
+        kind: 'draft_issue',
+        input: { preset: 'issue', channelId: 'c-1', messageIds: ['m-1'] },
+      },
+    });
+    await expect(
+      service({ prisma }).ask('s-1', 'u-1', { instruction: 'q', parentRunId: 'root' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('★ 사슬이 10 문답이면 400 이다 - 조용히 앞을 자르지 않는다', async () => {
+    const rows: Record<string, object> = { r0: { ...doneRoot, id: 'r0' } };
+    for (let i = 1; i < 10; i++) {
+      rows[`r${i}`] = {
+        ...doneRoot,
+        id: `r${i}`,
+        parentRunId: `r${i - 1}`,
+        input: { instruction: `q${i}`, parentRunId: `r${i - 1}` },
+        result: { markdown: `a${i}`, citations: [] },
+      };
+    }
+    await expect(
+      service({ prisma: prismaWith(rows) }).ask('s-1', 'u-1', {
+        instruction: 'q',
+        parentRunId: 'r9',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('워커가 같은 프롬프트를 다시 만든다 - 앞 답이 assistant 로 들어간다', async () => {
+    const prisma = prismaWith({ root: doneRoot });
+    const prepared = await service({ prisma }).loadPrompt('s-1', {
+      instruction: '더 짧게',
+      parentRunId: 'root',
+    });
+    expect(prepared.kind).toBe('ask');
+    expect(prepared.messages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
+    expect(prepared.messages[2].content).toBe('첫 답');
+    expect(prepared.messages[3].content).toBe('더 짧게');
+  });
+});
