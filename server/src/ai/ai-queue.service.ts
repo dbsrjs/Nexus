@@ -95,6 +95,8 @@ export class AiQueueService {
     kind: AiRunKind;
     input: object;
     promptHash: string;
+    /** 이어 물은 앞 문답(13-3). */
+    parentRunId?: string;
   }): Promise<string> {
     const run = await this.prisma.aiRun.create({
       data: {
@@ -104,6 +106,7 @@ export class AiQueueService {
         state: AiRunState.queued,
         promptHash: input.promptHash,
         input: input.input as Prisma.InputJsonValue,
+        parentRunId: input.parentRunId ?? null,
       },
       select: { id: true },
     });
