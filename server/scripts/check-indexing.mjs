@@ -410,6 +410,30 @@ async function main() {
       '인용 번호는 1부터 차례다',
       Array.isArray(cites) && cites.length > 0 && cites.every((c, i) => c.n === i + 1),
     );
+
+    // ── 13-3 이어 묻기 — 저장소를 다시 검색하지 않는다 ──
+    const followed = await aiAsk({
+      instruction: 'where is it called',
+      parentRunId: asked.json.runId,
+    });
+    let followRun = null;
+    for (let i = 0; i < 60 && followed.json?.runId; i++) {
+      const r = await api('GET', `/spaces/${spaceId}/ai/runs/${followed.json.runId}`, {
+        token: owner.token,
+      });
+      if (r.json?.state === 'done' || r.json?.state === 'failed') {
+        followRun = r.json;
+        break;
+      }
+      await new Promise((res) => setTimeout(res, 250));
+    }
+    check(
+      '★ 이어 묻기의 인용은 첫 답과 같다 - 저장소를 다시 검색하지 않는다',
+      Array.isArray(followRun?.result?.citations) &&
+        followRun.result.citations.length > 0 &&
+        JSON.stringify(followRun.result.citations) === JSON.stringify(cites),
+      JSON.stringify(followRun?.result?.citations),
+    );
   }
 
   // ── 테넌트 격리 ────────────────────────────────

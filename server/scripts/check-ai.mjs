@@ -617,5 +617,91 @@ check(
   `status=${noRepo.status}`,
 );
 
+// ── 13-3 이어 묻기 ───────────────────────────────
+console.log('\n[13-3 이어 묻기]');
+
+/** 적재 응답을 받아 끝날 때까지 기다린다. 캐시 적중이면 바로 조회한다. */
+async function settle(token, started) {
+  const id = started.json?.runId;
+  if (!id) return null;
+  if (started.json.state === 'queued') return waitForRunDone(token, spaceId, id);
+  return api('GET', `/spaces/${spaceId}/ai/runs/${id}`, { token });
+}
+
+const rootAsk = await ask(alice.token, {
+  instruction: '핵심만 말해 줘',
+  context: { channelId: channel.id, messageIds: ids },
+});
+const rootDone = await settle(alice.token, rootAsk);
+check('첫 문답 준비', rootDone?.json?.state === 'done', JSON.stringify(rootDone?.json));
+const rootRunId = rootAsk.json?.runId;
+
+const follow = await ask(alice.token, { instruction: '더 짧게', parentRunId: rootRunId });
+check('이어 묻기가 적재된다', follow.status === 201, `status=${follow.status}`);
+const followDone = await settle(alice.token, follow);
+check(
+  '★ 이어 묻기가 끝나고 kind 는 ask, 부모가 기록된다',
+  followDone?.json?.state === 'done' &&
+    followDone.json.kind === 'ask' &&
+    typeof rootRunId === 'string' &&
+    followDone.json.parentRunId === rootRunId,
+  JSON.stringify(followDone?.json),
+);
+
+const followAgain = await ask(alice.token, { instruction: '더 짧게', parentRunId: rootRunId });
+check(
+  '★ 같은 부모 + 같은 질문이면 캐시 적중(같은 runId)',
+  !!follow.json?.runId && followAgain.json?.runId === follow.json.runId,
+  JSON.stringify(followAgain.json),
+);
+
+const second = await ask(alice.token, { instruction: '더 짧게', parentRunId: follow.json?.runId });
+check(
+  '★ 부모가 다르면 캐시가 갈린다',
+  !!second.json?.runId && second.json.runId !== follow.json?.runId,
+  JSON.stringify(second.json),
+);
+await settle(alice.token, second);
+
+const onSummary = await ask(alice.token, { instruction: '담당자별로', parentRunId: runId });
+const onSummaryDone = await settle(alice.token, onSummary);
+check(
+  '요약 프리셋에도 이어 물을 수 있다',
+  onSummaryDone?.json?.state === 'done' && onSummaryDone.json.kind === 'ask',
+  JSON.stringify(onSummaryDone?.json),
+);
+
+const followBads = [
+  ['이어 묻기 + 프리셋', { preset: 'summary', parentRunId: rootRunId }],
+  ['이어 묻기 + 컨텍스트', { instruction: 'q', parentRunId: rootRunId, context: { channelId: channel.id } }],
+  ['이슈 초안에 이어 묻기', { instruction: 'q', parentRunId: draft.json?.runId }],
+];
+for (const [label, body] of followBads) {
+  const r = await ask(alice.token, body);
+  check(`${label}은 400 이다`, r.status === 400, `status=${r.status}`);
+}
+
+const bobFollow = await ask(bob.token, { instruction: 'q', parentRunId: rootRunId });
+check('★ 다른 사용자의 문답에 이어 물으면 404', bobFollow.status === 404, `status=${bobFollow.status}`);
+const ghostFollow = await ask(alice.token, { instruction: 'q', parentRunId: UNKNOWN_UUID });
+check('없는 문답에 이어 물으면 404', ghostFollow.status === 404, `status=${ghostFollow.status}`);
+
+// 사슬 상한 — 첫 문답 + 후속 9 까지, 11번째는 400.
+let tip = rootRunId;
+let chainOk = true;
+for (let i = 2; i <= 10; i++) {
+  const r = await ask(alice.token, { instruction: `이어서 ${i}`, parentRunId: tip });
+  const d = await settle(alice.token, r);
+  if (r.status !== 201 || d?.json?.state !== 'done') chainOk = false;
+  tip = r.json?.runId;
+}
+check('사슬 10 문답까지 이어진다', chainOk && typeof tip === 'string');
+const eleventh = await ask(alice.token, { instruction: '열한 번째', parentRunId: tip });
+check(
+  '★ 11번째 문답은 400 이다 - 조용히 앞을 자르지 않는다',
+  eleventh.status === 400,
+  `status=${eleventh.status}`,
+);
+
 socket.close();
 process.exit(summary() === 0 ? 0 : 1);
