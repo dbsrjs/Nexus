@@ -30,6 +30,16 @@ class ThreadScreen extends ConsumerStatefulWidget {
 }
 
 class _ThreadScreenState extends ConsumerState<ThreadScreen> {
+  // dispose() 에서는 context 로 조상을 찾을 수 없다(디버그 빌드에서 던진다).
+  // 조상 조회가 허용되는 didChangeDependencies 에서 미리 잡아 둔다.
+  late ProviderContainer _container;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _container = ProviderScope.containerOf(context, listen: false);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -46,7 +56,7 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
   @override
   void dispose() {
     // 스레드를 닫으면 구독을 놓아 준다. 채널 id 는 그대로 둔다 — 돌아갈 곳이다.
-    final container = ProviderScope.containerOf(context, listen: false);
+    final container = _container;
     Future.microtask(
       () => container.read(currentThreadIdProvider.notifier).set(null),
     );
