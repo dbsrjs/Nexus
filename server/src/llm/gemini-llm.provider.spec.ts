@@ -8,6 +8,7 @@ const config = {
   base: 'http://127.0.0.1:9',
   maxTokens: 8192,
   fallbackModel: null,
+  timeoutMs: 60000,
 };
 
 function ok(body: unknown) {
@@ -115,6 +116,42 @@ describe('GeminiLlmProvider', () => {
     expect(body.systemInstruction).toEqual({ parts: [{ text: '규칙' }] });
     expect(body.contents).toEqual([{ role: 'user', parts: [{ text: '질문' }] }]);
     expect(body.generationConfig.responseMimeType).toBe('application/json');
+  });
+
+  it('★ 시간 제한을 넘으면 504 로 던진다 - 전환 모델이 받고, 없으면 큐가 5xx 로 다시 건다', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockRejectedValue(new DOMException('The operation was aborted due to timeout', 'TimeoutError'));
+
+    await expect(
+      new GeminiLlmProvider(config).complete([{ role: 'user', content: 'a' }], {
+        maxTokens: 8192,
+        temperature: 0,
+      }),
+    ).rejects.toMatchObject({ name: 'LlmHttpError', status: 504 });
+  });
+
+  it('시간 제한을 fetch 의 signal 로 건다', async () => {
+    const spy = ok({ candidates: [{ content: { parts: [{ text: 'x' }] }, finishReason: 'STOP' }] });
+
+    await new GeminiLlmProvider(config).complete([{ role: 'user', content: 'a' }], {
+      maxTokens: 8192,
+      temperature: 0,
+    });
+
+    const init = spy.mock.calls[0][1] as RequestInit;
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('네트워크 실패는 그대로 던진다 - 시간 초과와 구분한다', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValue(new TypeError('fetch failed'));
+
+    await expect(
+      new GeminiLlmProvider(config).complete([{ role: 'user', content: 'a' }], {
+        maxTokens: 8192,
+        temperature: 0,
+      }),
+    ).rejects.toBeInstanceOf(TypeError);
   });
 
   it('실패 상태는 Retry-After 와 함께 LlmHttpError 로 던진다', async () => {

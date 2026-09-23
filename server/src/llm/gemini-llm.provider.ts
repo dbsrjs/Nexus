@@ -64,6 +64,31 @@ export class GeminiLlmProvider implements LlmProvider {
     return this.config.maxTokens;
   }
 
+
+  /**
+   * 시간 제한을 건 `fetch`. **넘으면 504 로 던진다** — 전환 모델이 5xx 로 받고,
+   * 전환이 없으면 큐가 5xx 처럼 다시 건다(`classifyFailure`). 네트워크 실패
+   * (`TypeError`)는 그대로 둔다 — 그쪽은 「오프라인은 오류가 아니다」 갈래다.
+   */
+  private async post(url: string, init: RequestInit): Promise<Response> {
+    const timeoutMs = this.config.timeoutMs;
+    try {
+      return await fetch(url, {
+        ...init,
+        ...(timeoutMs !== null ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
+      });
+    } catch (err) {
+      const name = (err as { name?: unknown } | null)?.name;
+      if (name === 'TimeoutError' || name === 'AbortError') {
+        this.logger.warn(`Gemini LLM 시간 초과: ${this.config.model}`);
+        throw new LlmHttpError(
+          `Gemini 가 ${Math.round((timeoutMs ?? 0) / 1000)}초 안에 답하지 않았습니다.`,
+          504,
+        );
+      }
+      throw err;
+    }
+  }
   async complete(
     messages: LlmMessage[],
     options: LlmOptions,
@@ -73,7 +98,7 @@ export class GeminiLlmProvider implements LlmProvider {
     // 메시지마다 content 하나 — 합치면 멀티턴의 차례가 사라진다(13-3).
     const turns = messages.filter((m) => m.role !== 'system');
 
-    const res = await fetch(
+    const res = await this.post(
       `${base}/models/${this.config.model}:generateContent`,
       {
         method: 'POST',

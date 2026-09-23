@@ -15,6 +15,11 @@ export interface LlmConfig {
    * 가벼운 모델이 받쳐 줄 수 있다. `null` 이면 전환하지 않는다.
    */
   fallbackModel: string | null;
+  /**
+   * 호출 한 번의 시간 제한(밀리초). 넘으면 어댑터가 504 로 던져 전환 모델이
+   * 받는다. `null` 이면 제한 없음 — `local` 의 기본값이다(CPU 추론은 원래 느리다).
+   */
+  timeoutMs: number | null;
 }
 
 const NAMES: LlmProviderName[] = ['gemini', 'local', 'fake'];
@@ -52,6 +57,9 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
 
   const model = trimmed(config, 'LLM_MODEL') ?? defaultModel(provider);
 
+  const rawTimeout = trimmed(config, 'LLM_TIMEOUT_SEC');
+  const timeoutSec = rawTimeout && /^\d+$/.test(rawTimeout) ? Number(rawTimeout) : 0;
+
   return {
     provider,
     model,
@@ -63,6 +71,7 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
     // (low) 최대 ~1,900 이라 2048 에서 끊겼다. 1024 → 2048(13-2 설계 D10) → 8192.
     // 그래도 넘치면 러너가 잘린 답을 실패로 돌린다(`truncated`).
     maxTokens: parsed > 0 ? parsed : 8192,
+    timeoutMs: timeoutSec > 0 ? timeoutSec * 1000 : defaultTimeoutMs(provider),
   };
 }
 
@@ -149,6 +158,22 @@ function fallbackOf(
   if (raw === 'none') return null;
   const fallback = raw ?? 'gemini-3.1-flash-lite';
   return fallback === model ? null : fallback;
+}
+
+/**
+ * **gemini 는 60초** (2026-09-23 실측). 새 키로 `gemini-3.5-flash` 에 「안녕」 한
+ * 마디를 보냈더니 **255초** 뒤에 답했다 — 같은 때 3.1-flash-lite 는 4.6초였다.
+ * 전환은 429 · 5xx 에서만 일어나 느린 응답에는 소용이 없었고, 사용자는 4분을
+ * 기다렸다. AI 큐 리스(3분)보다도 길어 인스턴스가 여럿이면 같은 작업을 둘이 부른다.
+ *
+ * 평소 코드 질문이 6~20초, 가장 느렸던 것이 73초 한 번이었다. 60초면 정상
+ * 요청은 거의 걸리지 않고, 걸려도 전환 모델이 받는다 — 주 모델 60초 + 전환
+ * 60초가 리스 3분 안에 든다.
+ *
+ * `local`(Ollama)은 제한을 두지 않는다 — CPU 추론은 원래 분 단위다.
+ */
+function defaultTimeoutMs(provider: LlmProviderName): number | null {
+  return provider === 'gemini' ? 60_000 : null;
 }
 
 function defaultModel(provider: LlmProviderName): string {

@@ -73,6 +73,25 @@ describe('resolveLlm', () => {
     expect(resolveLlm(cfg({ LLM_PROVIDER: 'fake' }))?.fallbackModel).toBeNull();
   });
 
+  it('★ gemini 호출 시간 제한 기본값은 60초다 - 255초짜리 응답을 기다리지 않는다', () => {
+    const r = resolveLlm(cfg({ LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'k' }));
+    expect(r?.timeoutMs).toBe(60000);
+  });
+
+  it('LLM_TIMEOUT_SEC 를 주면 그 값을 쓰고, 숫자가 아니거나 0 이하면 기본값', () => {
+    const base = { LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'k' };
+    expect(resolveLlm(cfg({ ...base, LLM_TIMEOUT_SEC: '30' }))?.timeoutMs).toBe(30000);
+    expect(resolveLlm(cfg({ ...base, LLM_TIMEOUT_SEC: 'soon' }))?.timeoutMs).toBe(60000);
+    expect(resolveLlm(cfg({ ...base, LLM_TIMEOUT_SEC: '0' }))?.timeoutMs).toBe(60000);
+  });
+
+  it('local 은 기본으로 시간 제한이 없다 - CPU 추론은 원래 느리다', () => {
+    expect(resolveLlm(cfg({ LLM_PROVIDER: 'local' }))?.timeoutMs).toBeNull();
+    expect(resolveLlm(cfg({ LLM_PROVIDER: 'local', LLM_TIMEOUT_SEC: '300' }))?.timeoutMs).toBe(
+      300000,
+    );
+  });
+
   it('LLM_MODEL 을 주면 그대로 쓴다', () => {
     const r = resolveLlm(cfg({ LLM_PROVIDER: 'local', LLM_MODEL: 'my-model' }));
     expect(r?.model).toBe('my-model');

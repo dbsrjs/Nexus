@@ -216,6 +216,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | 「GitHub 을 부르지 않았다」 단언이 CI 에서만 깨짐 | 저장소를 붙이거나 main push 웹훅을 받으면 인덱싱 워커가 백그라운드로 GitHub 을 부른다. 호출 수를 재기 전에 `scripts/lib/indexing.mjs` 의 `settleIndexing()` 으로 조용하게 만든다 (12) |
 | 깨운 작업이 30초 크론까지 밀림(간헐) | 워커의 `running` 플래그가 **비우는 도중 온 `kick()` 을 버렸다** — `lease()` 가 「비었다」를 본 직후 적재된 것이 다음 크론까지 기다린다. 도는 중에 깨우면 `wanted` 를 세워 한 바퀴 더 돈다. AI · 인덱싱 워커 둘 다 그랬다 (13-2) |
 | Gemini 모델이 산발적으로 503 을 냄 | `-latest` 별칭은 "새 출시마다 핫스왑" 되는 가장 붐비는 모델을 가리킨다. 특정 안정화 버전(예: `gemini-3.5-flash`)을 박아 둘 것. **혼잡은 날마다 바뀐다** — 9-22 에 503 이던 3.5-flash 가 9-23 엔 매번 200 이었다 (13-1 · LLM 교체) |
+| AI 답이 4분 넘게 오지 않음 | Gemini 가 붐비면 200 을 **255초** 뒤에 준다(3.5-flash 실측). 전환은 429 · 5xx 에서만 일어나 느린 응답에는 소용이 없었다. 어댑터가 `AbortSignal.timeout` 으로 **60초**(`LLM_TIMEOUT_SEC`)에 끊고 504 로 던져 전환 모델이 받는다. Node 의 `fetch` 는 `TimeoutError` 로 던진다 (LLM 교체 후) |
 | 생각하는 모델로 바꿨더니 답이 몇 줄에서 끊김 | Gemini 3.x 는 **생각 토큰도 `maxOutputTokens` 에서 쓴다.** 3.5-flash 는 기본(medium)으로 생각에만 ~2,600 토큰을 써 상한 2048 에서 잘렸다. 상한 8192 · `thinkingLevel: low` 로 두고, 잘린 답(`finishReason: MAX_TOKENS`)은 러너가 실패로 돌린다 (LLM 교체) |
 | 길게 누르기 시트가 `BOTTOM OVERFLOWED` 로 잘림 | `showModalBottomSheet` 는 기본 최대 높이가 화면의 9/16 이다. `isScrollControlled: true` 가 없으면 항목이 늘 때 조용히 넘친다 (13-1) |
 | 화면을 닫으면 디버그 빌드에서 `deactivated widget's ancestor` 로 멈춤 | `dispose()` 안에서 `ProviderScope.containerOf(context)` 같은 조상 조회를 했다. **`didChangeDependencies` 에서 참조를 잡아 두고** `dispose` 는 그것만 쓴다 — 예외로 정리도 못 돌아 구독이 남았다 (13-2 후 `74ccc01`) |
@@ -456,7 +457,7 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 
 ### 알려진 빚
 
-- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 413개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 15종 603 케이스**(13-3 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 같은 종류가 다시 나오면 그때 장치를 만든다. (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
+- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 420개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 15종 603 케이스**(13-3 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 같은 종류가 다시 나오면 그때 장치를 만든다. (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
 - **AI 큐의 실패 갈래와 「모델이 바뀌면 캐시가 적중하지 않음」이 계약 검증에 없다(13-1).** 리스 만료 복구 · 5xx 5회 소진 · fatal 즉시 포기를 `check:ai` 로 재현하려면 실패를 주입할 수 있는 fake LLM 어댑터가 필요한데, 지금 `fake` 는 항상 즉시 성공만 한다 — 인덱싱 큐의 같은 자리(§4 «12 실제 태우기» 이후에도 남은 빚)와 같은 모양이다. 단위 테스트(`classifyFailure` · `shouldGiveUp`)가 대신 덮는다.
 - **`local`(Ollama) LLM 경로를 실측하지 못했다(13-1).** `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. Ollama 가 없는 PC 에서 13단계를 이어받으면 먼저 설치하고 실제로 태워 볼 것.
 - `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다.

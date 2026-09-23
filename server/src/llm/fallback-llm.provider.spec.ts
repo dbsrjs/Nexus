@@ -34,7 +34,7 @@ describe('FallbackLlmProvider', () => {
     expect(fallback).not.toHaveBeenCalled();
   });
 
-  it.each([429, 500, 503])(
+  it.each([429, 500, 503, 504])(
     '★ 주 모델이 %i 이면 전환 모델로 답하고 fallback 을 표시한다',
     async (status) => {
       const primary = jest.fn().mockRejectedValue(new LlmHttpError('x', status));
