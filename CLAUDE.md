@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **기준 브랜치** | **`main`.** 새 작업은 `feat/*` 를 따 쓰고 끝나면 main 으로 합친다(CI 가 `main` 과 `feat/**` 를 돈다) |
-| **상태** | **1~12단계와 13-1 · 13-2 가 `main` 에 있다** — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널. 12 · 13단계는 진짜 GitHub · 진짜 임베딩 · 진짜 Gemini 로 완주했다. **다음은 AI 멀티턴(13-3) 또는 «마지막» 단계**(§5). 단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md) |
+| **상태** | **1~13단계가 `main` 에 있다** — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널(이어 묻기 포함). 12 · 13-2 는 진짜 GitHub · 진짜 임베딩 · 진짜 Gemini 로 완주했다(13-3 은 Gemini 키가 402 라 가짜 LLM 으로만). **다음은 14 사용자 설정**(§5). 단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md) |
 | **새 PC 셋업** | §1 순서대로. `.env` 는 `npm run env:setup` 이 만들고, 손으로 채울 값(GitHub OAuth App · 터널 주소 · AI provider)은 [server/README.md «선택 기능을 켜는 값»](server/README.md). PC 를 오갈 때 옮겨지지 않는 것은 `nexus-pc-handoff` 스킬 |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
@@ -146,11 +146,11 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run check:oauth` | GitHub **연동 전체** 계약 검증(설정된 서버에서 76개) — 계정 연결(10-2a)과 저장소 목록 · 자동 등록 · 승격 · 훅 재등록/삭제(10-2b). **가짜 GitHub(4599)을 스스로 띄운다** — `.env` 에 `GITHUB_*_BASE` · `OAUTH_TOKEN_KEY` · `PUBLIC_BASE_URL` 을 넣고 서버를 재시작해야 한다. 미설정 503 분기는 그 값들을 비운 채로 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
 | `npm run check:browse` | 저장소 열람 계약 검증(56개) — 브랜치 · 트리 · 파일(10-3a)과 커밋(10-3b). **가짜 GitHub(4599)을 스스로 띄운다** — `check:oauth` 와 같은 `.env` 를 쓴다. 연결 · 등록이 주제인 그쪽과 섞지 않았다 |
 | `npm run check:pulls` | PR 열람 계약 검증(35개) — 목록 · 상세 · 바뀐 파일(11단계). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 를 쓴다 |
-| `npm run check:indexing` | 저장소 인덱싱 계약 검증(48개) — 연결 시 적재 · 거르기(바이너리 · 대용량 · 생성 파일) · 벡터 검색 순위 · 증분 재인덱싱(push 웹훅 → compare, 이름 변경(renamed) 갈래 포함) · force-push(compare 404 로 실제로 응답한 횟수까지 확인) · **임베딩 모델 변경 시 compare 없이 전체**(기록된 모델을 DB 에서 직접 바꿔 흉내 낸다 — 계약 검증에서 DB 를 만지는 유일한 곳) · 기능 브랜치 무시(12단계) · **AI 코드 질문 · 인용 경로 · 모델 불일치 시 검색과 AI 503**(13-2). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 에 **`EMBEDDING_PROVIDER=fake` 가 더 필요하고**, AI 케이스는 `LLM_PROVIDER=fake` 일 때만 돈다(아니면 건너뛴다고 찍는다) |
+| `npm run check:indexing` | 저장소 인덱싱 계약 검증(49개) — 연결 시 적재 · 거르기(바이너리 · 대용량 · 생성 파일) · 벡터 검색 순위 · 증분 재인덱싱(push 웹훅 → compare, 이름 변경(renamed) 갈래 포함) · force-push(compare 404 로 실제로 응답한 횟수까지 확인) · **임베딩 모델 변경 시 compare 없이 전체**(기록된 모델을 DB 에서 직접 바꿔 흉내 낸다 — 계약 검증에서 DB 를 만지는 유일한 곳) · 기능 브랜치 무시(12단계) · **AI 코드 질문 · 인용 경로 · 모델 불일치 시 검색과 AI 503**(13-2) · 이어 묻기의 인용이 첫 답과 같음(13-3). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 에 **`EMBEDDING_PROVIDER=fake` 가 더 필요하고**, AI 케이스는 `LLM_PROVIDER=fake` 일 때만 돈다(아니면 건너뛴다고 찍는다) |
 | `npm run check:migrations` | 마이그레이션에 **수동 관리 객체를 지우는 구문**이 섞였는지 검사. DB 도 서버도 필요 없다 — CI 서버 잡이 매번 돈다 |
 | `npm run check:sql-time` | raw SQL 이 **DB 의 시계**(`now()` · `CURRENT_TIMESTAMP`)를 쓰는지 검사. 이 스키마의 시각 컬럼은 `timestamp without time zone` 이고 **Prisma 는 거기에 UTC 를 쓰는데 `now()` 는 DB 로컬을 준다** — 개발 PC 가 `Asia/Seoul` 이라 아홉 시간이 어긋나 인덱싱 리스가 한 번도 동작하지 않았다(진행 기록 «12 실제 태우기»). **CI 가 UTC 면 로컬에서만 틀리고 CI 는 초록이라** 값이 아니라 코드를 본다. DB 도 서버도 필요 없다 |
 | `npm run check:issues` | 이슈 · 스프린트 계약 검증(89개). 자체 계정을 쓴다. **컬럼 상한(200)과 재채번까지 태우므로 다른 스크립트보다 오래 걸린다** |
-| `npm run check:ai` | AI 계약 검증(설정된 서버에서 59개) — LLM 캐시 · 큐 · 소켓 알림 · 멘션 치환 실증(13-1) · `/ai/ask` 의 자유 지시문 · 채널 최근 대화 · 이슈 초안 · 입력 조합 검증(13-2). 저장소 컨텍스트는 `check:indexing` 이 본다. **`LLM_PROVIDER=gemini` 로 뜬 서버에서는 무료 티어 쿼터를 쓴다** — `fake` 로 돌리는 쪽이 기본이다. 미설정 503 분기는 `check:oauth` 와 같은 패턴으로 `LLM_PROVIDER` 를 비운 채 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
+| `npm run check:ai` | AI 계약 검증(설정된 서버에서 72개) — LLM 캐시 · 큐 · 소켓 알림 · 멘션 치환 실증(13-1) · `/ai/ask` 의 자유 지시문 · 채널 최근 대화 · 이슈 초안 · 입력 조합 검증(13-2) · 이어 묻기 · 사슬 상한 · 캐시 분리(13-3). 저장소 컨텍스트는 `check:indexing` 이 본다. **`LLM_PROVIDER=gemini` 로 뜬 서버에서는 무료 티어 쿼터를 쓴다** — `fake` 로 돌리는 쪽이 기본이다. 미설정 503 분기는 `check:oauth` 와 같은 패턴으로 `LLM_PROVIDER` 를 비운 채 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
 | `cd app && dart run build_runner build` | freezed · json_serializable 재생성 |
 
@@ -336,8 +336,8 @@ repos/        웹훅 수신 · 저장소 연결 · 열람 · 커밋 · PR 프록
   indexing/   트리 순회 · 거르기 · 청킹 · 벡터 검색 · DB 큐 워커
 embedding/    임베딩 어댑터(gemini · local · fake) — EMBEDDING_PROVIDER 뒤에 숨는다
 llm/          LLM 어댑터(gemini · local · fake) — LLM_PROVIDER 뒤에 숨는다(AI 만 쓴다, 전역 아님)
-ai/           AI 패널(13-1 · 13-2) — POST /ai/ask 하나 · 프리셋 · 컨텍스트(메시지 · 채널 · 저장소 RAG) ·
-              ai_runs 큐 · promptHash 캐시 · 러너 · 소켓 알림
+ai/           AI 패널(13-1~13-3) — POST /ai/ask 하나 · 프리셋 · 컨텍스트(메시지 · 채널 · 저장소 RAG) ·
+              이어 묻기(parentRunId 사슬, 최대 10) · ai_runs 큐 · promptHash 캐시 · 러너 · 소켓 알림
 realtime/     소켓 게이트웨이 · 룸 계산 · 이벤트 발신
 prisma/       PrismaModule(@Global) + PrismaService
 common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug · bigint 직렬화
@@ -421,7 +421,7 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 그 절부터 읽는다** — 뒤집으면 안 되는 판단과 그 이유가 거기 있다.
 
 **아직 없는 것**: DM · 프레즌스 · 타이핑 표시 · 알림(인앱 · 멘션 알림 · 푸시) · 채널별 권한 ·
-비공개 채널 멤버 추가 · 앱의 초대/멤버 관리 화면 · AI 멀티턴 · **S3 스토리지 드라이버**(지금은
+비공개 채널 멤버 추가 · 앱의 초대/멤버 관리 화면 · 지난 AI 대화 다시 열기 · **S3 스토리지 드라이버**(지금은
 `local` 하나) · 배포. `notifications` · `permissions` 모듈은 미이관이다(§3 끝). 실시간 서버에서
 아직 쓰지 않는 이벤트는 `typing` · `presence:changed` 다.
 
@@ -449,19 +449,19 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 | 13-1 | 대화 요약 — LLM 어댑터 · `promptHash` 캐시 · DB 큐(`ai_runs`) · 다중 선택 | ✅ |
 | 13-2 | AI 패널 — 자유 지시문 + 프리셋 · 컨텍스트 칩(메시지 · 채널 · 저장소 RAG) · 인용 · 모델 불일치 503 | ✅ |
 | — | LLM 교체 — `gemini-3.1-flash-lite` → **`gemini-3.5-flash`**(무료 티어 재측정) · 생각 수준 `low` · 상한 8192 · 잘린 답 실패 처리 · **429 · 5xx 면 3.1-flash-lite 로 자동 전환**(무료 한도 3.5-flash 하루 20회 · lite 500회, 전환 답은 캐시 제외) | ✅ |
-| **13-3** | **AI 멀티턴(후속 질문)** — `parentRunId` | |
+| 13-3 | AI 멀티턴 — `parentRunId` 사슬 · user/assistant 역할 · 첫 문답 근거 물려받기 · 상한 10 · 앱 문답 목록 | ✅ |
 | **14** | **사용자 설정** — 디스코드식 설정 창(표시 이름 · 프로필 사진 · 비밀번호 변경 · 알림(채널 음소거) · 화면). 설계 출발점은 [제품-기획 §5.1-a](docs/제품-기획.md) | |
 | **15** | **UI/UX 개편** — Flutter 기본(Material) 컴포넌트를 전부 자체 UI 로 교체 · 디자인 다듬기. 설계 출발점은 [제품-기획 §5.1-b](docs/제품-기획.md) | |
 | **마지막** | 푸시 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 · 배포(S3 드라이버 · prod compose). 푸시 · 데스크톱 알림 스위치는 14단계 설정 창에 더한다 | |
 
 ### 알려진 빚
 
-- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 373개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 15종 589 케이스**(13-2 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 같은 종류가 다시 나오면 그때 장치를 만든다. (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
+- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 413개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 15종 603 케이스**(13-3 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 같은 종류가 다시 나오면 그때 장치를 만든다. (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
 - **AI 큐의 실패 갈래와 「모델이 바뀌면 캐시가 적중하지 않음」이 계약 검증에 없다(13-1).** 리스 만료 복구 · 5xx 5회 소진 · fatal 즉시 포기를 `check:ai` 로 재현하려면 실패를 주입할 수 있는 fake LLM 어댑터가 필요한데, 지금 `fake` 는 항상 즉시 성공만 한다 — 인덱싱 큐의 같은 자리(§4 «12 실제 태우기» 이후에도 남은 빚)와 같은 모양이다. 단위 테스트(`classifyFailure` · `shouldGiveUp`)가 대신 덮는다.
 - **`local`(Ollama) LLM 경로를 실측하지 못했다(13-1).** `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. Ollama 가 없는 PC 에서 13단계를 이어받으면 먼저 설치하고 실제로 태워 볼 것.
 - `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다.
 - **비공개 채널에 다른 사람을 넣는 방법이 없다.** 생성자는 채널 생성 시 자동으로 멤버가 되지만(`ChannelsService.create()`), 채널 멤버 추가·제거 API 가 아직 없어 비공개 채널은 사실상 "나만 보는 채널"이다. 여럿이 쓰는 비공개 채널이 필요해지는 단계에서 함께 설계한다.
-- **앱 테스트에 통합 테스트가 없다.** `app/test/` 에 **288개**(인메모리 drift 로 실제 DB 동작까지 덮는 단위 테스트 + 9-3 부터 붙은 위젯 테스트). **화면 자체를 도는 통합 테스트는 없다** — UI 리디자인(2026-08-22)이 심은 라우터 결함이 열흘 뒤 11단계 화면 확인에서야 드러났고, 그 뒤 `test/router_shell_test.dart` 로 라우트 트리 구조만 검사한다. 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)도 실기기 확인에만 기댄다.
+- **앱 테스트에 통합 테스트가 없다.** `app/test/` 에 **296개**(인메모리 drift 로 실제 DB 동작까지 덮는 단위 테스트 + 9-3 부터 붙은 위젯 테스트). **화면 자체를 도는 통합 테스트는 없다** — UI 리디자인(2026-08-22)이 심은 라우터 결함이 열흘 뒤 11단계 화면 확인에서야 드러났고, 그 뒤 `test/router_shell_test.dart` 로 라우트 트리 구조만 검사한다. 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)도 실기기 확인에만 기댄다.
 - **`prisma migrate dev` 는 이 환경(비대화형)에서 거부된다.** 위 HNSW 드리프트를 감지해 확인을 물으려 하기 때문이다. `npx prisma migrate diff --from-schema-datasource ... --to-schema-datamodel ... --script` 로 SQL 을 만들어 손질한 뒤 `prisma:deploy` 로 적용한다.
 - **`adb shell input text` 는 한글을 넣지 못한다**(NullPointerException). 실기기 검증 문구는 영문으로 쓸 것.
 - **소켓 토큰 갱신 경로가 자동 검증되지 않는다.** 액세스 토큰 만료(15분)를 기다려야 재현되므로 테스트에 넣지 않았다. 실기기로 한 번 확인했다.
