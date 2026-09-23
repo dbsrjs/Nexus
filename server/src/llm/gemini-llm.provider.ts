@@ -10,6 +10,25 @@ import {
 
 const DEFAULT_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+/**
+ * **생각 수준은 `low` 로 고정한다** (2026-09-23 실측).
+ *
+ * Gemini 3.x Flash 는 생각을 끌 수 없고(`minimal` 이 가장 낮다) 생각 토큰도
+ * `maxOutputTokens` 안에서 쓴다. 기본값 `medium` 으로 코드 질문을 돌리자 생각에만
+ * 1,850~2,645 토큰을 써, 옛 상한 2048 에서는 답이 몇 줄에서 끊겼다.
+ *
+ * | 수준 | 생각 토큰 | 코드 질문 답 |
+ * |---|---|---|
+ * | `minimal` | 0 | 원인은 맞지만 버그가 나는 순간을 뭉뚱그림 |
+ * | **`low`** | 0~1,923 | **버그가 나는 창을 한 단계씩 정확히 짚음** |
+ * | `medium`(기본) | 1,850~2,645 | `low` 와 비슷, 더 느림 |
+ *
+ * `low` 는 `gemini-3.1-flash-lite` · `3.5-flash-lite` · `3.5-flash` ·
+ * `3-flash-preview` 가 모두 받았다 — `LLM_MODEL` 을 되돌려도 400 이 나지 않는다.
+ * 모르는 값은 400(`INVALID_ARGUMENT ... thinking_level`)이다.
+ */
+const THINKING_LEVEL = 'low';
+
 /** 헤더가 없거나 숫자가 아니면 undefined. 0 을 지어내지 않는다. */
 function retryAfterOf(res: { headers: { get(name: string): string | null } }) {
   const raw = res.headers.get('retry-after');
@@ -70,6 +89,7 @@ export class GeminiLlmProvider implements LlmProvider {
           generationConfig: {
             temperature: options.temperature,
             maxOutputTokens: options.maxTokens,
+            thinkingConfig: { thinkingLevel: THINKING_LEVEL },
             ...(options.json ? { responseMimeType: 'application/json' } : {}),
           },
         }),
@@ -86,7 +106,10 @@ export class GeminiLlmProvider implements LlmProvider {
     }
 
     const body = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+        finishReason?: string;
+      }>;
       usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
       modelVersion?: string;
     };
@@ -99,6 +122,7 @@ export class GeminiLlmProvider implements LlmProvider {
       promptTokens: body.usageMetadata?.promptTokenCount ?? null,
       completionTokens: body.usageMetadata?.candidatesTokenCount ?? null,
       model: body.modelVersion ?? this.config.model,
+      truncated: body.candidates?.[0]?.finishReason === 'MAX_TOKENS',
     };
   }
 }

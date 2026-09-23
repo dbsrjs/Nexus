@@ -155,6 +155,31 @@ describe('AiRunnerService.runOne', () => {
   );
 
   it(
+    '★ 출력 한도에서 잘린 답은 성공으로 굳지 않는다 - fatal 실패라 잘린 답이 ' +
+      '캐시에 박혀 같은 질문마다 되풀이되지 않는다',
+    async () => {
+      const complete = jest.fn().mockResolvedValue({
+        text: '원인은 두 가지입니다. 첫째',
+        promptTokens: 1,
+        completionTokens: 8000,
+        model: 'm',
+        truncated: true,
+      });
+      const llm: LlmProvider = { modelId: 'fake:fake', maxTokens: 8192, complete };
+      const { runner, queue } = service(llm);
+
+      await runner.runOne(leasedRun());
+
+      expect(queue.succeed).not.toHaveBeenCalled();
+      expect(queue.fail).toHaveBeenCalledWith(
+        'run-1',
+        expect.stringContaining('LLM_MAX_TOKENS'),
+        { countsAsAttempt: true, fatal: true },
+      );
+    },
+  );
+
+  it(
     '★ 빈 응답은 성공으로 굳지 않는다 - fatal 실패라 같은 프롬프트가 다시 ' +
       '와도 캐시에 빈 결과가 박히지 않는다(최종 리뷰 ③)',
     async () => {

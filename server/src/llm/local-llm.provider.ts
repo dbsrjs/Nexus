@@ -70,6 +70,8 @@ export class LocalLlmProvider implements LlmProvider {
       model?: string;
       prompt_eval_count?: number;
       eval_count?: number;
+      /** `stop` · `length`(num_predict 에서 멈춤) 등. 옛 Ollama 는 주지 않는다. */
+      done_reason?: string;
     };
 
     return {
@@ -77,6 +79,7 @@ export class LocalLlmProvider implements LlmProvider {
       promptTokens: body.prompt_eval_count ?? null,
       completionTokens: body.eval_count ?? null,
       model: body.model ?? this.config.model,
+      truncated: body.done_reason === 'length',
     };
   }
 }

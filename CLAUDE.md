@@ -215,7 +215,8 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | 검증 스크립트에서 두 번째 스페이스 생성이 거부됨 | slug 가 한글을 떨어뜨려 이름 둘이 같은 slug 를 요구한다. 검증용 이름은 **영문** (10-2b) |
 | 「GitHub 을 부르지 않았다」 단언이 CI 에서만 깨짐 | 저장소를 붙이거나 main push 웹훅을 받으면 인덱싱 워커가 백그라운드로 GitHub 을 부른다. 호출 수를 재기 전에 `scripts/lib/indexing.mjs` 의 `settleIndexing()` 으로 조용하게 만든다 (12) |
 | 깨운 작업이 30초 크론까지 밀림(간헐) | 워커의 `running` 플래그가 **비우는 도중 온 `kick()` 을 버렸다** — `lease()` 가 「비었다」를 본 직후 적재된 것이 다음 크론까지 기다린다. 도는 중에 깨우면 `wanted` 를 세워 한 바퀴 더 돈다. AI · 인덱싱 워커 둘 다 그랬다 (13-2) |
-| Gemini 모델이 산발적으로 503 을 냄 | `-latest` 별칭은 "새 출시마다 핫스왑" 되는 가장 붐비는 모델을 가리킨다. 특정 안정화 버전(예: `gemini-3.1-flash-lite`)을 박아 둘 것 (13-1) |
+| Gemini 모델이 산발적으로 503 을 냄 | `-latest` 별칭은 "새 출시마다 핫스왑" 되는 가장 붐비는 모델을 가리킨다. 특정 안정화 버전(예: `gemini-3.5-flash`)을 박아 둘 것. **혼잡은 날마다 바뀐다** — 9-22 에 503 이던 3.5-flash 가 9-23 엔 매번 200 이었다 (13-1 · LLM 교체) |
+| 생각하는 모델로 바꿨더니 답이 몇 줄에서 끊김 | Gemini 3.x 는 **생각 토큰도 `maxOutputTokens` 에서 쓴다.** 3.5-flash 는 기본(medium)으로 생각에만 ~2,600 토큰을 써 상한 2048 에서 잘렸다. 상한 8192 · `thinkingLevel: low` 로 두고, 잘린 답(`finishReason: MAX_TOKENS`)은 러너가 실패로 돌린다 (LLM 교체) |
 | 길게 누르기 시트가 `BOTTOM OVERFLOWED` 로 잘림 | `showModalBottomSheet` 는 기본 최대 높이가 화면의 9/16 이다. `isScrollControlled: true` 가 없으면 항목이 늘 때 조용히 넘친다 (13-1) |
 | 화면을 닫으면 디버그 빌드에서 `deactivated widget's ancestor` 로 멈춤 | `dispose()` 안에서 `ProviderScope.containerOf(context)` 같은 조상 조회를 했다. **`didChangeDependencies` 에서 참조를 잡아 두고** `dispose` 는 그것만 쓴다 — 예외로 정리도 못 돌아 구독이 남았다 (13-2 후 `74ccc01`) |
 
@@ -447,6 +448,7 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 | 12 | 저장소 인덱싱 — 트리 순회 · 청킹 · 임베딩 · HNSW 검색 · 증분(compare). 실제 태우기 · 빚 정리(모델 기록) 포함 | ✅ |
 | 13-1 | 대화 요약 — LLM 어댑터 · `promptHash` 캐시 · DB 큐(`ai_runs`) · 다중 선택 | ✅ |
 | 13-2 | AI 패널 — 자유 지시문 + 프리셋 · 컨텍스트 칩(메시지 · 채널 · 저장소 RAG) · 인용 · 모델 불일치 503 | ✅ |
+| — | LLM 교체 — `gemini-3.1-flash-lite` → **`gemini-3.5-flash`**(무료 티어 재측정) · 생각 수준 `low` · 상한 8192 · 잘린 답 실패 처리 | ✅ |
 | **13-3** | **AI 멀티턴(후속 질문)** — `parentRunId` | |
 | **14** | **사용자 설정** — 디스코드식 설정 창(표시 이름 · 프로필 사진 · 비밀번호 변경 · 알림(채널 음소거) · 화면). 설계 출발점은 [제품-기획 §5.1-a](docs/제품-기획.md) | |
 | **15** | **UI/UX 개편** — Flutter 기본(Material) 컴포넌트를 전부 자체 UI 로 교체 · 디자인 다듬기. 설계 출발점은 [제품-기획 §5.1-b](docs/제품-기획.md) | |

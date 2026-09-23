@@ -12,10 +12,10 @@ export class FakeLlmProvider implements LlmProvider {
   readonly modelId = 'fake:fake';
 
   /**
-   * 기본값 2048 은 `LLM_MAX_TOKENS` 미설정 시의 기본값(`llm.config.ts`)과
+   * 기본값 8192 는 `LLM_MAX_TOKENS` 미설정 시의 기본값(`llm.config.ts`)과
    * 맞춘 것뿐이다 — `LlmModule` 은 실제 설정값을 그대로 넘긴다.
    */
-  constructor(readonly maxTokens: number = 2048) {}
+  constructor(readonly maxTokens: number = 8192) {}
 
   complete(messages: LlmMessage[], options: LlmOptions): Promise<LlmResult> {
     const joined = messages.map((m) => `${m.role}:${m.content}`).join('\n');
@@ -35,6 +35,7 @@ export class FakeLlmProvider implements LlmProvider {
       promptTokens: null,
       completionTokens: null,
       model: 'fake',
+      truncated: false,
     });
   }
 }

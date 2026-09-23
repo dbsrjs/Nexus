@@ -83,6 +83,15 @@ export class AiRunnerService {
       if (out.text.trim().length === 0) {
         throw new Error('LLM 이 빈 응답을 주었습니다.');
       }
+      // **잘린 답도 굳히지 않는다** — 빈 응답과 같은 이유다. 결론이 빠진 답이
+      // 캐시가 되면 같은 질문마다 되풀이된다. 같은 상한으로 다시 돌려도 또
+      // 잘리므로 재시도가 아니라 fatal 이다(기본 분기). 문구에 설정 이름을
+      // 넣어 서버 로그만 보고도 무엇을 올릴지 알게 한다.
+      if (out.truncated) {
+        throw new Error(
+          `LLM 답이 출력 한도(LLM_MAX_TOKENS=${this.llm.maxTokens})에서 잘렸습니다.`,
+        );
+      }
 
       await this.queue.succeed(run.id, resultOf(prompt.kind, out.text, prompt.citations), {
         model: out.model,

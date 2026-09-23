@@ -14,9 +14,18 @@ export interface LlmResult {
   completionTokens: number | null;
   /** 실제로 응답한 모델. 설정값이 아니다 — provider 가 다른 것으로 돌릴 수 있다. */
   model: string;
+  /**
+   * **출력 한도(`maxTokens`)에서 멈췄는지.** 잘린 답은 끝까지 쓴 답처럼 보이지만
+   * 결론이 빠져 있다. 러너가 이것을 실패로 돌려 캐시에 굳지 않게 한다 (판단 #4).
+   */
+  truncated: boolean;
 }
 
 export interface LlmOptions {
+  /**
+   * 출력 상한. **생각(thinking) 토큰을 포함한다** — Gemini 3.x 는 생각 토큰도
+   * 이 한도에서 쓴다(ai.google.dev/gemini-api/docs/thinking). 답 길이만의 상한이 아니다.
+   */
   maxTokens: number;
   temperature: number;
   /** 구조화 출력. 13-2 이슈 초안에서만 쓴다. 어댑터 밖으로 새지 않는다. */

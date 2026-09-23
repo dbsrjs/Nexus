@@ -35,14 +35,19 @@ describe('resolveLlm', () => {
     expect(resolveLlm(cfg({ LLM_PROVIDER: 'local' }))?.provider).toBe('local');
   });
 
-  it('LLM_MAX_TOKENS 가 숫자가 아니면 기본값 2048 을 쓴다', () => {
+  it('LLM_MAX_TOKENS 가 숫자가 아니면 기본값 8192 를 쓴다', () => {
     const r = resolveLlm(cfg({ LLM_PROVIDER: 'fake', LLM_MAX_TOKENS: 'many' }));
-    expect(r?.maxTokens).toBe(2048);
+    expect(r?.maxTokens).toBe(8192);
   });
 
   it('LLM_MAX_TOKENS 가 0 이하면 기본값을 쓴다', () => {
     const r = resolveLlm(cfg({ LLM_PROVIDER: 'fake', LLM_MAX_TOKENS: '0' }));
-    expect(r?.maxTokens).toBe(2048);
+    expect(r?.maxTokens).toBe(8192);
+  });
+
+  it('gemini 의 기본 모델은 gemini-3.5-flash 다(2026-09-23 재측정)', () => {
+    const r = resolveLlm(cfg({ LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'k' }));
+    expect(r?.model).toBe('gemini-3.5-flash');
   });
 
   it('LLM_MODEL 을 주면 그대로 쓴다', () => {

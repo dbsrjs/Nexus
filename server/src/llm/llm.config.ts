@@ -49,9 +49,11 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
     model: trimmed(config, 'LLM_MODEL') ?? defaultModel(provider),
     apiKey,
     base: trimmed(config, 'LLM_BASE'),
-    // 2048 — 코드 질문 답은 코드 블록을 담는다. 1024 는 13-1 의 세 항목
-    // 요약에 맞춘 값이었다(13-2 설계 D10).
-    maxTokens: parsed > 0 ? parsed : 2048,
+    // 8192 — **생각 토큰을 포함한 상한이다.** Gemini 3.x 는 생각도 이 한도에서
+    // 쓴다. `gemini-3.5-flash` 코드 질문 실측(2026-09-23)이 답 ~1,450 + 생각
+    // (low) 최대 ~1,900 이라 2048 에서 끊겼다. 1024 → 2048(13-2 설계 D10) → 8192.
+    // 그래도 넘치면 러너가 잘린 답을 실패로 돌린다(`truncated`).
+    maxTokens: parsed > 0 ? parsed : 8192,
   };
 }
 
@@ -81,6 +83,9 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
  * | `gemini-3.5-flash-lite` | 성공하지만 7.1~85.2초로 널뛰고 503 도 2회 |
  * | **`gemini-3.1-flash-lite`** | **1.2~5.9초, 6회 중 1회만 503** |
  *
+ * **2026-09-23 에 `gemini-3.5-flash` 로 올렸다** — 아래 «9-23 재측정». 이 문단은
+ * 9-22 에 `gemini-3.1-flash-lite` 를 고른 경위다.
+ *
  * **`gemini-3.1-flash-lite` 로 고정한다.** `gemini-flash-lite-latest` 는
  * 유일하게 성공한 다른 후보였지만 **① `-latest` 별칭이라 위와 같은 핫스왑
  * 부하 문제를 그대로 안고, ② 14.3초로 `gemini-3.1-flash-lite`(1.2~5.9초)보다
@@ -90,6 +95,23 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
  * 특정 모델만의 문제가 아니라 산발적으로 온다** — 큐의 5xx 재시도(최대
  * 3회)가 이미 처리하는 종류이니 이 값이 503 을 완전히 없애 주지는 않는다.
  *
+ * **9-23 재측정 — `gemini-3.5-flash` 로 올린다.** 사용자가 3.1-flash-lite 의 답
+ * 품질을 지적했다. 무료 티어 키로 같은 요약 프롬프트 2회 + 실제 겪은 버그
+ * (13-2 워커 깨우기 유실)를 되살린 코드 질문 1~3회:
+ *
+ * | 모델 | 응답 | 코드 질문 답 |
+ * |---|---|---|
+ * | `gemini-3.1-flash-lite`(옛 기본값) | 200 · 3~9초 | 원인은 맞으나 흐릿, 틀린 주장 하나. 요약에서 담당자를 잘못 붙임 |
+ * | `gemini-3.5-flash-lite` | 200 · 1~5초 | 원인 시나리오가 틀림 |
+ * | **`gemini-3.5-flash`** | 200 · 6~15초(한 번 73초) | **정확 + 두 번째 가능성(커밋 전 호출)까지** |
+ * | `gemini-3-flash-preview` | 200 · 4~14초 | 3.5-flash 와 비슷. preview 라 탈락 |
+ * | `gemini-3.6` · `3.7` · `3.8-flash` | **503 매번** (high demand) | — |
+ *
+ * 9-22 에 503 이던 3.5-flash 가 9-23 에는 매번 200 이었다 — **혼잡은 날마다
+ * 바뀐다.** 3.6~3.8 이 풀리면 다시 재 볼 가치가 있다. 3.5-flash 는 생각하는
+ * 모델이라 생각 토큰이 출력 한도를 나눠 쓴다 — 기본 상한을 8192 로 올리고
+ * 생각 수준을 `low` 로 고정했다(`gemini-llm.provider.ts`).
+ *
  * `local` 은 `qwen2.5-coder:7b`(Q4_K_M 기본 태그, 4.7GB) — Qwen2.5 계열의
  * 다국어(한국어 포함) 능력에 코드 특화 파인튜닝을 얹었다. 13-3 코드 질의가
  * 같은 provider 를 쓰므로 코드를 다루는 계열을 우선했다. Qwen3 계열에는 이
@@ -98,7 +120,7 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
  * 않다. `local` 경로를 쓰기 전에 먼저 실제로 태워 볼 것.
  */
 function defaultModel(provider: LlmProviderName): string {
-  if (provider === 'gemini') return 'gemini-3.1-flash-lite';
+  if (provider === 'gemini') return 'gemini-3.5-flash';
   if (provider === 'local') return 'qwen2.5-coder:7b';
   return 'fake';
 }
