@@ -1,132 +1,150 @@
 # Nexus
 
 **개발자를 위한 커뮤니케이션 허브.**
-Discord의 가벼움, Slack의 업무 구조, 그리고 개발 워크플로(이슈 · 저장소 · AI)를 한 화면에 합친다.
+대화 · 파일 · 이슈 · 저장소 · AI 를 한 화면에 모은다.
 
-개인용으로 시작해 서비스화를 목표로 하는 개인 프로젝트.
+일반 메신저는 개발 맥락을 모르고, 개발 도구는 대화를 담지 못한다. Nexus 는 그 사이를 메운다.
 
-## 무엇이 다른가
+- 커밋 · PR · 푸시 이벤트가 **채널 안으로 흘러 들어온다**
+- 대화 중에 **그 자리에서 이슈를 만든다** — 원문 링크가 남는다
+- AI 가 **대화와 코드를 같은 맥락으로 읽는다** — 인덱싱된 저장소를 근거로 답하고 출처를 인용한다
+- **오프라인에서도 동작한다** — 캐시로 대화를 보여 주고, 쓴 메시지는 재연결 때 내보낸다
 
-일반 메신저는 개발 맥락을 모르고, 개발 도구는 대화를 담지 못한다. Nexus는 그 사이를 메운다.
+---
 
-- 커밋 · PR/MR · 이슈 이벤트가 **채널 안으로 흘러 들어온다**
-- 대화 중에 **그 자리에서 이슈를 만든다** (원문 링크가 남는다)
-- AI가 **대화와 코드를 같은 맥락으로 읽는다**
+## 기능
+
+| 영역 | 내용 |
+|---|---|
+| **대화** | 스페이스 · 카테고리 · 채널(공개/비공개) · 실시간 전송 · 스레드 · 답장(인용) · 멘션 · 리액션 · 핀 · 마크다운 |
+| **파일** | 첨부 업로드(진행률) · 이미지 미리보기 · 스페이스 파일 목록 |
+| **이슈** | 칸반 보드 · 상세 · 댓글 · 라벨 · 대화 → 이슈 · 스프린트 · 번다운 |
+| **GitHub** | 계정 연결(OAuth) · 웹훅 자동 등록 · 브랜치 · 파일 트리 · 커밋 · PR 열람 |
+| **인덱싱** | 저장소를 청크로 나눠 임베딩 · 벡터 검색(pgvector HNSW) · push 마다 증분 갱신 |
+| **AI 패널** | 자유 지시문 + 프리셋(요약 · 이슈 초안) · 컨텍스트(메시지 · 채널 최근 대화 · 저장소 RAG) |
+
+---
 
 ## 아키텍처
 
 ```
-app/     Flutter — 단일 코드베이스로 모바일 · 데스크톱 · 웹
+app/     Flutter — 한 코드베이스로 Windows · Android · Web (iOS · macOS · Linux 는 빌드 대상만 남겨 둠)
+   │     Riverpod · go_router · dio · drift(오프라인 캐시 + 전송 큐)
    │
    │  REST + Socket.IO
    ▼
 server/  NestJS + Prisma
-   ├─ PostgreSQL   사용자 · 스페이스 · 채널 · 메시지 · 이슈
-   ├─ Redis        프레즌스 · Socket.IO 어댑터 · AI 작업 큐
-   └─ S3 호환      첨부 파일 (개발: MinIO / 운영: S3 · R2)
+   ├─ PostgreSQL + pgvector   모든 데이터 · 코드 임베딩 · 작업 큐(AI · 인덱싱)
+   ├─ 스토리지                첨부 파일 (local 디스크 / S3 호환)
+   ├─ LLM                     gemini · local(Ollama) · fake
+   └─ 임베딩                  gemini · local(Ollama) · fake
 ```
 
-멀티테넌트 구조다. **Space**(Discord의 서버 / Slack의 워크스페이스)가 모든 데이터의 루트이며, 채널 · 메시지 · 이슈 · 저장소는 전부 스페이스에 속한다.
+**Space** 가 모든 데이터의 루트인 멀티테넌트 구조다. 채널 · 메시지 · 이슈 · 저장소는 전부 스페이스에 속하고,
+스페이스에 속한 테이블은 `spaceId` 를 직접 가진다. 볼 수 없는 리소스는 403 이 아니라 404 로 답한다.
+
+외부 원본(GitHub)은 사본을 두지 않고 프록시한다. Redis 는 쓰지 않는다 — 큐도 Postgres 에 둔다.
+
+---
 
 ## 폴더 구조
 
 | 폴더 | 설명 |
 |---|---|
-| `app/` | **Flutter 앱.** iOS · Android · Windows · macOS · Linux · Web을 한 코드베이스로 |
-| `server/` | **NestJS 백엔드.** REST API + Socket.IO 게이트웨이 |
-| `design-system/` | 토큰 · 컴포넌트 · 화면 프리뷰 (자기완결 HTML) |
-| `docs/` | 기획 · 설계 문서 |
+| [`server/`](server/) | NestJS 백엔드 — REST API · Socket.IO 게이트웨이 · 계약 검증 스크립트(`scripts/`) |
+| [`app/`](app/) | Flutter 앱 |
+| [`design-system/`](design-system/) | 디자인 토큰(`tokens.css`) · 컴포넌트 · 화면 프리뷰 |
+| [`docs/`](docs/) | 기획 · 설계 문서 · 진행 기록 |
 
-## 개발 시작하기
+---
 
-`main` 이 기준 브랜치다. 새 작업은 `feat/*` 를 따서 하고 끝나면 main 으로 합친다.
+## 시작하기
+
+필요한 것: **Node.js** · **Flutter 3.44.9 이상** · **WSL2(Ubuntu)** 또는 **Docker**
+
+### 서버
 
 ```bash
 git clone https://github.com/dbsrjs/Nexus.git && cd Nexus
 
 npm --prefix server install
-cp server/.env.example server/.env      # JWT_SECRET 을 채워야 부팅된다
+npm run env:setup                          # server/.env 생성 · 시크릿 자동 채움
 
-npm run db:setup                        # (1회) WSL 안에 Postgres + pgvector
-                                        #  Docker 를 쓴다면 건너뛴다
-npm run db:up                           # Docker: npm run db:up:docker
-npm --prefix server exec prisma migrate deploy
+npm run db:setup                           # (1회) WSL 안에 Postgres + pgvector
+npm run db:up                              # Docker 라면 위 둘 대신 npm run db:up:docker
+
+npm --prefix server run prisma:generate
+npm --prefix server run prisma:deploy
 npm run db:seed
 
-npm run server:dev                      # http://localhost:3000/api
+npm run server:dev                         # http://localhost:3000/api
 ```
 
-`JWT_SECRET` 생성:
-```bash
-node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
-```
+`env:setup` 은 여러 번 돌려도 안전하다. 만들어 낼 수 없는 값(`GITHUB_CLIENT_ID` · `GITHUB_CLIENT_SECRET` ·
+`PUBLIC_BASE_URL`)은 끝에 목록으로 알려 준다 — GitHub 연동을 쓸 때만 필요하다.
+AI · 인덱싱은 `.env` 의 `LLM_PROVIDER` · `EMBEDDING_PROVIDER` 를 채워야 켜진다.
 
-> **DB 는 PC 마다 따로다.** 계정 · 메시지는 git 으로 옮겨지지 않는다. 새 PC 에서는
-> 시드로 새로 만들어진다. 자세한 주의사항은 [server/README.md](server/README.md).
-
-## 문서
-
-| 문서 | 내용 |
-|---|---|
-| [제품 기획서](docs/제품-기획.md) | 방향 · 타겟 · 기능 범위 · 로드맵 |
-| [백엔드 설계](docs/백엔드-설계.md) | 멀티테넌시 · 데이터 모델 · API · 실시간 |
-| [앱 설계](docs/앱-설계.md) | Flutter 스택 · 화면 · 상태 관리 · 오프라인 전략 |
-| [인프라 설계](docs/인프라-설계.md) | 무료 운영 전제의 배포 구성 · 공개 저장소 보안 체크리스트 |
-| [디자인 시스템](docs/디자인-시스템.md) | 색 · 타이포 · 간격 · 컴포넌트 (산출물은 `design-system/`) |
-| [전환 계획](docs/전환-계획.md) | 현재 코드에서 새 구조로 가는 작업 목록 |
-| [기술 스택 가이드](docs/기술-스택-가이드.md) | 이어서 만들려면 무엇을 알아야 하는지 · 코드 읽기 시작점 |
-
-## 실행
-
-### 백엔드
-
-```bash
-cd server
-docker compose up -d          # postgres + redis + minio
-cp .env.example .env          # JWT_SECRET 등 필수 값 설정
-npm install
-npx prisma migrate dev
-npm run seed
-npm run start:dev             # http://localhost:3000/api
-```
+> Windows 에서는 `DATABASE_URL` 에 `localhost` 대신 **`127.0.0.1`** 을 쓴다(WSL 포워딩이 IPv4 만 동작한다).
 
 ### 앱
 
 ```bash
 cd app
 flutter pub get
-flutter run --dart-define=API_BASE=http://localhost:3000/api
+
+flutter run -d windows --dart-define=API_BASE=http://127.0.0.1:3000
+flutter run -d chrome  --web-port=5173     # 서버 CORS 가 5173 만 허용한다
 ```
 
-API 주소는 빌드 타임에 주입한다. Android 에뮬레이터에서 호스트를 가리키려면 `http://10.0.2.2:3000/api`를 쓴다.
+Android 에뮬레이터는 `--dart-define=API_BASE=http://10.0.2.2:3000` 을 넘긴다(에뮬레이터에게 `127.0.0.1` 은 자기 자신이다).
+Windows 데스크톱 빌드에는 **개발자 모드**가 켜져 있어야 한다.
 
-플랫폼별 빌드:
+---
 
-```bash
-flutter build apk    --dart-define=API_BASE=https://api.example.com
-flutter build web    --dart-define=API_BASE=https://api.example.com
-flutter build windows --dart-define=API_BASE=https://api.example.com
-```
+## 검증
 
-## 현재 상태
-
-사내 메신저 통합 솔루션에서 개인 프로젝트로의 **전환을 마쳤다.** 대화 · 파일까지 동작하며, 다음은 이슈 · 저장소 연동 · AI 다.
-
-- ✅ 재기획 완료 — 제품 · 백엔드 · 앱 · 인프라 · 전환 계획 문서
-- ✅ 디자인 시스템 — 토큰 · 컴포넌트 8종 · 검증 화면 2종 (`design-system/`)
-- ✅ 기존 자산 정리 — `www/`(React) · `desktop/`(Electron) · `mobile/`(Capacitor) · 루트 `index.html` 삭제, 구 디자인 소스는 `docs/archive/`로 이관
-- ✅ 멀티테넌시 골격 — 스키마 전면 재작성(26개 모델), 인증 개편(가입 · 리프레시 회전 · 재사용 탐지), `spaces` · `SpaceGuard`
-- ✅ 채팅 API 뼈대 — 카테고리 · 채널 · 메시지(전송 · 수정 이력 · 소프트 삭제 · 읽음 마커)
-- 🔄 실시간(Socket.IO) 개편 — 룸 동기화 · 읽음 저장 · 프레즌스
-- ⬜ Flutter 앱 신규 구축 (`app/`)
-- ⬜ 저장소 웹훅 연동 · AI 기능
-
-진행 순서는 [전환 계획 §6](docs/전환-계획.md)을 따른다.
-
-## 로드맵
-
-| 단계 | 목표 |
+| 명령 | 내용 |
 |---|---|
-| **Phase 0** | 나 혼자 쓰는 개발 허브. 내 프로젝트를 채널로 나누고 할 일 · 저장소를 붙인다 |
-| **Phase 1** | 2~10인 소규모 팀. 초대 · 온보딩 · 푸시 알림 |
-| **Phase 2** | 공개 서비스. 테넌트 격리 · 스토리지 쿼터 · 과금 |
+| `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint |
+| `npm run check:*` | **실서버 · 실DB · 실소켓 계약 검증** 15종 — 실시간 · 리액션 · 스레드 · 첨부 · 이슈 · GitHub 연동 · 인덱싱 · AI 등. GitHub 은 스스로 띄우는 가짜 서버로 대신한다 |
+| `npm run check:migrations` · `check:sql-time` | 마이그레이션 · raw SQL 정적 검사 (DB 불필요) |
+| `cd app && flutter analyze && flutter test` | 앱 정적 분석 · 테스트 |
+
+CI(`.github/workflows/ci.yml`)가 `main` 과 `feat/**` 의 push 마다 위 전부를 돈다.
+
+---
+
+## 진행 상황
+
+**1~12단계와 13-1 · 13-2 완료.** 대화 · 파일 · 이슈 · GitHub 연동 · 저장소 인덱싱 · AI 패널이 `main` 에 있다.
+
+| 다음 | 내용 |
+|---|---|
+| 13-3 | AI 멀티턴(후속 질문) |
+| 마지막 | 푸시 알림 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 |
+
+아직 없는 것: DM · 프레즌스 · 타이핑 표시 · 알림 · 채널별 권한.
+단계마다의 결정과 확인 내역은 [진행 기록](docs/진행-기록.md) 에 있다.
+
+| 로드맵 | 목표 |
+|---|---|
+| **Phase 0** | 나 혼자 쓰는 개발 허브 — 프로젝트를 채널로 나누고 할 일 · 저장소를 붙인다 |
+| **Phase 1** | 2~10인 소규모 팀 — 초대 · 온보딩 · 푸시 알림 |
+| **Phase 2** | 공개 서비스 — 테넌트 격리 · 스토리지 쿼터 · 과금 |
+
+---
+
+## 문서
+
+| 문서 | 내용 |
+|---|---|
+| [코드 둘러보기](docs/코드-둘러보기.md) | **처음 열었을 때 여기부터.** 돌려 보기 · 구조 · 한 줄기 따라가기 |
+| [제품 기획](docs/제품-기획.md) | 방향 · 타겟 · 기능 범위 · 로드맵 |
+| [백엔드 설계](docs/백엔드-설계.md) | 멀티테넌시 · 데이터 모델 · API 계약 · 실시간 · 인증 |
+| [앱 설계](docs/앱-설계.md) | Flutter 스택 · 화면 · 상태 관리 · 오프라인 전략 |
+| [인프라 설계](docs/인프라-설계.md) | 배포 구성 · 공개 저장소 보안 체크리스트 |
+| [디자인 시스템](docs/디자인-시스템.md) | 색 · 타이포 · 간격 · 컴포넌트 |
+| [전환 계획](docs/전환-계획.md) | 작업 목록과 진행 상황 |
+| [진행 기록](docs/진행-기록.md) | 단계마다 갈린 결정 · 확인한 것 · 확인하지 못한 것 |
+| [기술 스택 가이드](docs/기술-스택-가이드.md) | 스택별 학습 순서 · 코드 읽기 시작점 |
+| [서버 README](server/README.md) | 서버 셋업 · 규약 · Ollama · 실제 GitHub 웹훅 붙이는 법 |
