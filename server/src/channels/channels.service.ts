@@ -340,6 +340,33 @@ export class ChannelsService {
     return saved;
   }
 
+  /**
+   * 음소거를 켜고 끈다 (14단계 설계 D15~D17). **멱등이다.**
+   *
+   * 권한은 열람이다 — 남에게 번지지 않는 내 설정이다(CLAUDE.md §3-9). 공개 채널은
+   * 읽음 마커를 남기기 전까지 `channel_members` 행이 없어 **upsert** 한다. 새로 만든
+   * 행은 `last_read_at` 이 NULL 이라, 행이 없을 때와 안 읽은 수 · 멘션 집계가 같다
+   * (둘 다 LEFT JOIN 에 `IS NULL` 로 센다).
+   *
+   * **`update` 에 읽음 위치를 넣지 않는다** — 음소거가 읽음 위치를 되돌리면 안 된다.
+   *
+   * 내 다른 기기에만 알린다. 받는 사람마다 다른 값이라 스페이스 룸에 싣지 않는다(§3-6).
+   */
+  async setMuted(channelId: string, member: SpaceMember, muted: boolean) {
+    await this.assertCanView(channelId, member);
+    await this.prisma.channelMember.upsert({
+      where: { channelId_userId: { channelId, userId: member.userId } },
+      update: { muted },
+      create: { channelId, userId: member.userId, muted },
+    });
+    this.realtime.toUser(member.userId, 'channel:muted', {
+      spaceId: member.spaceId,
+      channelId,
+      muted,
+    });
+    return { channelId, muted };
+  }
+
   /** 채널 참여 — 공개 채널에 스스로 들어간다. */
   async join(channelId: string, member: SpaceMember) {
     await this.assertCanView(channelId, member);

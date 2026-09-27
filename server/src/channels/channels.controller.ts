@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -17,6 +18,7 @@ import { MessagesService } from '../messages/messages.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
+import { MuteChannelDto } from './dto/mute-channel.dto';
 import { CreateMessageDto } from '../messages/dto/create-message.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { SpaceGuard } from '../spaces/guards/space.guard';
@@ -110,6 +112,16 @@ export class ChannelsController {
     @CurrentSpaceMember() member: SpaceMember,
   ) {
     return this.channels.markRead(channelId, member, dto);
+  }
+
+  /** PUT — 음소거 켜고 끄기. 읽기 라우트처럼 역할을 따지지 않는다(내 설정이다). */
+  @Put(':channelId/mute')
+  mute(
+    @Param('channelId', new ParseUUIDPipe()) channelId: string,
+    @Body() dto: MuteChannelDto,
+    @CurrentSpaceMember() member: SpaceMember,
+  ) {
+    return this.channels.setMuted(channelId, member, dto.muted);
   }
 
   /** POST — 공개 채널 참여 */
