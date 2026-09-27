@@ -15,6 +15,8 @@ import { ClientFingerprint } from './refresh-token.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { SignupDto } from './dto/signup.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 
 /** 웹 클라이언트의 리프레시 토큰을 담는 HttpOnly 쿠키. */
@@ -80,6 +82,29 @@ export class AuthController {
     const mode = dto.client ?? (dto.refreshToken ? 'native' : 'web');
     const tokens = await this.auth.refresh(presented, fingerprint(req));
     return this.deliverTokens(tokens, mode, res);
+  }
+
+  /**
+   * POST /api/auth/password → { accessToken, refreshToken? }
+   *
+   * **`@Public()` 이 아니다** — 로그인한 사람만 바꾼다. 토큰을 새로 내주므로
+   * 리프레시 쿠키(`path: /api/auth`)를 다루는 이 컨트롤러에 둔다(14단계 설계 D11).
+   */
+  @Post('password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @CurrentUser('id') userId: string,
+    @Body() dto: ChangePasswordDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.auth.changePassword(
+      userId,
+      dto.currentPassword,
+      dto.newPassword,
+      fingerprint(req),
+    );
+    return this.deliverTokens(tokens, dto.client, res);
   }
 
   /** POST /api/auth/logout — 이 세션의 리프레시 family 전체를 끊는다. */

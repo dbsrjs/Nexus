@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -140,6 +141,46 @@ export class AuthService {
     await this.refreshTokens.commitRotation(row, next, tokens.refreshToken, client);
 
     return tokens;
+  }
+
+  /**
+   * POST /api/auth/password — 비밀번호를 바꾼다 (14단계 설계 D11~D14).
+   *
+   * **틀린 현재 비밀번호는 400 이다.** 401 은 앱의 인터셉터가 액세스 토큰 만료로
+   * 보고 리프레시를 돌리며, 403 은 앱이 404 와 같은 실패로 접는다.
+   *
+   * 해시 교체와 **그 사용자의 리프레시 토큰 전부 끊기**를 한 트랜잭션으로 한다 —
+   * 사이에서 끊기면 비밀번호는 바뀌었는데 옛 세션이 살아남는다. 그 뒤 요청한
+   * 기기에만 새 family 를 준다. 다른 기기는 액세스 토큰이 만료되는 대로(최대
+   * 15분) 로그인 화면으로 간다.
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+    client: ClientFingerprint = {},
+  ): Promise<AuthTokens> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const ok =
+      !!user?.passwordHash && (await argon2.verify(user.passwordHash, currentPassword));
+    if (!user || !ok) {
+      throw new BadRequestException('현재 비밀번호가 맞지 않습니다');
+    }
+    if (currentPassword === newPassword) {
+      throw new BadRequestException('새 비밀번호가 지금과 같습니다');
+    }
+
+    const passwordHash = await argon2.hash(newPassword);
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const saved = await tx.user.update({ where: { id: userId }, data: { passwordHash } });
+      await tx.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return saved;
+    });
+
+    return this.issueNewSession(updated, client);
   }
 
   /**
