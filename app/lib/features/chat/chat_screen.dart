@@ -10,7 +10,7 @@ import '../../data/api/api_failure.dart';
 import '../../domain/models/message.dart';
 import '../../domain/models/repo_browse.dart';
 import '../../shared/markdown/markdown_body.dart';
-import '../../shared/widgets/nexus_avatar.dart';
+import '../../shared/widgets/user_avatar.dart';
 import '../channel/channel_controller.dart';
 import '../realtime/socket_controller.dart';
 import '../repo/browse_controller.dart';
@@ -378,9 +378,10 @@ class MessageTile extends ConsumerWidget {
               width: 36,
               child: grouped
                   ? null
-                  : NexusAvatar(
-                      seed: message.author.id,
-                      label: message.author.name,
+                  : UserAvatar(
+                      userId: message.author.id,
+                      name: message.author.name,
+                      avatarUrl: message.author.avatarUrl,
                       size: 32,
                     ),
             ),
@@ -1177,9 +1178,10 @@ class _MentionSuggestions extends ConsumerWidget {
           final member = matches[i];
           return ListTile(
             dense: true,
-            leading: NexusAvatar(
-              seed: member.userId,
-              label: member.displayName,
+            leading: UserAvatar(
+              userId: member.userId,
+              name: member.displayName,
+              avatarUrl: member.avatarUrl,
               size: 28,
             ),
             title: Text(member.displayName, style: theme.textTheme.bodyMedium),

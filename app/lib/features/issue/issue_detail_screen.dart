@@ -6,7 +6,7 @@ import '../../core/theme.dart';
 import '../../domain/models/issue.dart';
 import '../../domain/models/issue_comment.dart';
 import '../../shared/markdown/markdown_body.dart';
-import '../../shared/widgets/nexus_avatar.dart';
+import '../../shared/widgets/user_avatar.dart';
 import '../space/members_controller.dart';
 import 'board_controller.dart';
 import 'issue_detail_controller.dart';
@@ -309,9 +309,10 @@ class _CommentTile extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          NexusAvatar(
-            seed: comment.author.id,
-            label: comment.author.name,
+          UserAvatar(
+            userId: comment.author.id,
+            name: comment.author.name,
+            avatarUrl: comment.author.avatarUrl,
             size: 28,
           ),
           const SizedBox(width: NexusSpacing.sp4),

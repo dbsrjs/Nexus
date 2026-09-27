@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/breakpoints.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets/nexus_avatar.dart';
+import '../../shared/widgets/user_avatar.dart';
 import '../auth/auth_controller.dart';
 import '../space/space_controller.dart';
 import '../settings/theme_controller.dart';
@@ -140,7 +141,7 @@ class _AccountButton extends ConsumerWidget {
         const PopupMenuDivider(),
         const PopupMenuItem<String>(value: 'signOut', child: Text('로그아웃')),
       ],
-      child: NexusAvatar(seed: user.id, label: user.name, size: 36),
+      child: UserAvatar(userId: user.id, name: user.name, avatarUrl: user.avatarUrl, size: 36),
     );
   }
 }

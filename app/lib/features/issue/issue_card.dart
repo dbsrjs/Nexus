@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../domain/models/issue.dart';
-import '../../shared/widgets/nexus_avatar.dart';
+import '../../shared/widgets/user_avatar.dart';
 import 'package:go_router/go_router.dart';
 
 import '../space/space_controller.dart';
@@ -69,9 +69,10 @@ class IssueCard extends ConsumerWidget {
                 Row(
                   children: [
                     if (assignee != null) ...[
-                      NexusAvatar(
-                        seed: assignee.id,
-                        label: assignee.name,
+                      UserAvatar(
+                        userId: assignee.id,
+                        name: assignee.name,
+                        avatarUrl: assignee.avatarUrl,
                         size: 20,
                       ),
                       const SizedBox(width: NexusSpacing.sp3),

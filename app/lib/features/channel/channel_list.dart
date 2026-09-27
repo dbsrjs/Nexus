@@ -77,7 +77,9 @@ class _ChannelTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final selected = ref.watch(currentChannelIdProvider) == channel.id;
     final spaceId = ref.watch(currentSpaceIdProvider);
-    final unread = channel.unreadCount;
+    // **음소거면 안 읽음을 없는 것으로 친다** — 굵기 · 뱃지 둘 다. 멘션은 나를
+    // 부른 것이라 음소거해도 남긴다(디스코드와 같다, 14단계 설계 D17).
+    final unread = channel.muted ? 0 : channel.unreadCount;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -103,7 +105,11 @@ class _ChannelTile extends ConsumerWidget {
             child: Row(
               children: [
                 Icon(
-                  channel.isPrivate ? Icons.lock_outline : Icons.tag,
+                  channel.muted
+                      ? Icons.notifications_off_outlined
+                      : channel.isPrivate
+                          ? Icons.lock_outline
+                          : Icons.tag,
                   size: 16,
                   color: theme.textTheme.bodySmall?.color,
                 ),
@@ -115,6 +121,8 @@ class _ChannelTile extends ConsumerWidget {
                     style: theme.textTheme.bodyMedium?.copyWith(
                       // 안 읽은 것이 있으면 굵게 — 뱃지와 함께 두 겹으로 표시한다.
                       fontWeight: unread > 0 ? FontWeight.w600 : FontWeight.w400,
+                      // 음소거는 흐리게. 아이콘과 같은 한 단계 낮은 글자색이다.
+                      color: channel.muted ? theme.textTheme.bodySmall?.color : null,
                     ),
                   ),
                 ),
