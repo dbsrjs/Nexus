@@ -288,6 +288,9 @@ class NxActionCard {
     Widget? above,
   }) {
     final done = Completer<void>();
+    // 동작 카드는 가장 바깥 Overlay 에 뜬다 — 테마가 화면 쪽에만 깔려 있으면 거기서는
+    // 보이지 않는다. 부른 자리의 테마를 들고 가서 다시 깐다(InheritedTheme 과 같은 까닭).
+    final theme = NxTheme.of(context);
     late OverlayEntry entry;
     void close() {
       if (entry.mounted) entry.remove();
@@ -295,12 +298,15 @@ class NxActionCard {
     }
 
     entry = OverlayEntry(
-      builder: (context) => _ActionCardLayer(
-        anchor: anchor,
-        entries: entries,
-        header: header,
-        above: above,
-        onClose: close,
+      builder: (context) => NxTheme(
+        data: theme,
+        child: _ActionCardLayer(
+          anchor: anchor,
+          entries: entries,
+          header: header,
+          above: above,
+          onClose: close,
+        ),
       ),
     );
     Overlay.of(context).insert(entry);

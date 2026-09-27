@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,7 @@ import '../shared/widgets/nexus_logo.dart';
 import '../features/space/space_picker_screen.dart';
 import '../features/settings/settings_controller.dart';
 import '../features/settings/settings_screen.dart';
+import '../ui/gallery.dart';
 
 /// 라우트는 docs/앱-설계.md §5 를 따른다. 슬라이스 2 시점에서
 /// `/login` · `/spaces` · `/s/:spaceId` 까지 채웠다.
@@ -42,6 +44,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final auth = authChanged.value;
       final path = state.matchedLocation;
+
+      // 갤러리는 로그인과 무관하다(디버그 빌드에서만 있는 라우트).
+      if (kDebugMode && path == '/dev/ui') return null;
 
       // 저장된 토큰을 확인하는 동안에는 아무 데도 보내지 않는다.
       // 여기서 /login 으로 보내면 앱을 켤 때마다 로그인 화면이 깜빡인다.
@@ -67,6 +72,8 @@ List<RouteBase> appRoutes() => [
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const _SignupPlaceholder()),
       GoRoute(path: '/spaces', builder: (_, _) => const SpacePickerScreen()),
+      // 자체 UI 갤러리(15단계) — 디버그 빌드에서만. 디자인 캔버스와 대조하고 한글 입력을 본다.
+      if (kDebugMode) GoRoute(path: '/dev/ui', builder: (_, _) => const NxGallery()),
       // 설정 창(14단계). 셸 밖에 덮어서 연다 — 스페이스에 묶이지 않는다.
       // `space` 는 알림 섹션이 먼저 보일 스페이스, `from` 은 닫을 때 돌아갈 곳이다.
       GoRoute(

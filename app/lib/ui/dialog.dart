@@ -19,7 +19,9 @@ class NxDialog {
     String cancelLabel = '취소',
     bool danger = false,
   }) async {
-    final c = NxTheme.of(context).colors;
+    // 다이얼로그는 Navigator 위에 뜬다 — 부른 자리의 테마를 들고 가서 다시 깐다.
+    final theme = NxTheme.of(context);
+    final c = theme.colors;
     final result = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -30,12 +32,15 @@ class NxDialog {
         opacity: CurvedAnimation(parent: animation, curve: NxMotion.ease),
         child: child,
       ),
-      pageBuilder: (context, _, _) => _ConfirmPanel(
-        title: title,
-        body: body,
-        confirmLabel: confirmLabel,
-        cancelLabel: cancelLabel,
-        danger: danger,
+      pageBuilder: (context, _, _) => NxTheme(
+        data: theme,
+        child: _ConfirmPanel(
+          title: title,
+          body: body,
+          confirmLabel: confirmLabel,
+          cancelLabel: cancelLabel,
+          danger: danger,
+        ),
       ),
     );
     return result ?? false;

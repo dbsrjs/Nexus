@@ -113,21 +113,25 @@ class NxBadge extends StatelessWidget {
     final text = mention
         ? (count > 1 ? '@${count > 99 ? '99+' : count}' : '@')
         : (count > 99 ? '99+' : '$count');
+    // alignment 를 주면 Container 가 부모 폭만큼 늘어난다 — 폭이 정해진 곳(Wrap · Column)에서
+    // 뱃지가 가로로 길게 퍼졌다(갤러리 스크린샷). 가운데 맞춤은 Center(widthFactor: 1)로.
     return Container(
       height: 18,
       constraints: const BoxConstraints(minWidth: 18),
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: mention ? c.danger : c.accent,
         borderRadius: BorderRadius.circular(NxRadius.full),
       ),
-      child: Text(
-        text,
-        style: theme.text.xs2.copyWith(
-          color: c.onAccent,
-          fontWeight: FontWeight.w700,
-          height: 1,
+      child: Center(
+        widthFactor: 1,
+        child: Text(
+          text,
+          style: theme.text.xs2.copyWith(
+            color: c.onAccent,
+            fontWeight: FontWeight.w700,
+            height: 1,
+          ),
         ),
       ),
     );

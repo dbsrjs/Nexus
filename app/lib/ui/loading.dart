@@ -97,7 +97,11 @@ class NxSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = NxTheme.of(context).colors;
+    final theme = NxTheme.of(context);
+    // 라이트의 elevated 는 흰색이라 표면(#F7F8F8) 위에서 거의 안 보인다 — 선 색을 옅게 쓴다.
+    final bar = theme.isDark
+        ? theme.colors.bgElevated
+        : theme.colors.borderStrong.withValues(alpha: .28);
     return Semantics(
       label: semanticLabel,
       child: LayoutBuilder(
@@ -114,7 +118,7 @@ class NxSkeleton extends StatelessWidget {
                     _widths[i % _widths.length],
                 height: lineHeight,
                 decoration: BoxDecoration(
-                  color: c.bgElevated,
+                  color: bar,
                   borderRadius: BorderRadius.circular(NxRadius.sm),
                 ),
               ),

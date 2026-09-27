@@ -21,6 +21,16 @@ void main() {
     expect(find.text('@3'), findsOneWidget);
   });
 
+  testWidgets('★ 뱃지는 폭이 정해진 곳에서도 늘어나지 않는다 - 갤러리에서 가로로 퍼졌다', (tester) async {
+    await tester.pumpWidget(app(const SizedBox(
+      width: 300,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Wrap(children: [NxBadge(count: 12)]),
+      ]),
+    )));
+    expect(tester.getSize(find.byType(NxBadge)).width, lessThan(40));
+  });
+
   testWidgets('칩은 누르면 부르고 고른 상태를 보조 기술에 싣는다', (tester) async {
     final handle = tester.ensureSemantics();
     var pressed = 0;

@@ -40,11 +40,11 @@ class _Toast {
 
 /// 앱 맨 위에 한 번 깐다. 화면 아래 가운데에 하나씩 띄운다.
 class NxToastHost extends StatefulWidget {
-  const NxToastHost({super.key, required this.child, this.bottomInset = 24});
+  const NxToastHost({super.key, required this.child, this.bottomInset = 88});
 
   final Widget child;
 
-  /// 입력창을 가리지 않게 띄울 높이.
+  /// 입력창 · 모바일 탭(52)을 가리지 않게 띄울 높이(캔버스의 토스트 자리).
   final double bottomInset;
 
   @override
