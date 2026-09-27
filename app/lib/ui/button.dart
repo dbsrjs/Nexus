@@ -65,22 +65,32 @@ class NxButton extends StatelessWidget {
         final enabled = onPressed != null;
         final (Color bg, Color fg, Color? border) = switch (kind) {
           _ when !enabled => (c.bgElevated, c.borderStrong, null),
-          NxButtonKind.primary => (s.pressed || s.hovered ? c.accentPress : c.accent, c.onAccent, null),
+          NxButtonKind.primary => (
+            s.pressed || s.hovered ? c.accentPress : c.accent,
+            c.onAccent,
+            null,
+          ),
           NxButtonKind.secondary => (
-              s.pressed ? c.bgElevated : (s.hovered ? c.bgElevated.withValues(alpha: .6) : const Color(0x00000000)),
-              c.textPrimary,
-              c.borderStrong,
-            ),
+            s.pressed
+                ? c.bgElevated
+                : (s.hovered
+                      ? c.bgElevated.withValues(alpha: .6)
+                      : const Color(0x00000000)),
+            c.textPrimary,
+            c.borderStrong,
+          ),
           NxButtonKind.ghost => (
-              s.pressed || s.hovered ? c.accentSubtle : const Color(0x00000000),
-              c.accent,
-              null,
-            ),
+            s.pressed || s.hovered ? c.accentSubtle : const Color(0x00000000),
+            c.accent,
+            null,
+          ),
           NxButtonKind.danger => (
-              s.pressed || s.hovered ? c.danger.withValues(alpha: .12) : const Color(0x00000000),
-              c.danger,
-              c.danger.withValues(alpha: .45),
-            ),
+            s.pressed || s.hovered
+                ? c.danger.withValues(alpha: .12)
+                : const Color(0x00000000),
+            c.danger,
+            c.danger.withValues(alpha: .45),
+          ),
         };
 
         return AnimatedContainer(
@@ -88,7 +98,9 @@ class NxButton extends StatelessWidget {
           curve: NxMotion.ease,
           height: height,
           width: expand ? double.infinity : null,
-          padding: EdgeInsets.symmetric(horizontal: kind == NxButtonKind.ghost ? padding - 4 : padding),
+          padding: EdgeInsets.symmetric(
+            horizontal: kind == NxButtonKind.ghost ? padding - 4 : padding,
+          ),
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.circular(radius),
@@ -110,7 +122,9 @@ class NxButton extends StatelessWidget {
                 style: theme.text.base.copyWith(
                   fontSize: fontSize,
                   color: fg,
-                  fontWeight: kind == NxButtonKind.primary ? FontWeight.w600 : FontWeight.w500,
+                  fontWeight: kind == NxButtonKind.primary
+                      ? FontWeight.w600
+                      : FontWeight.w500,
                 ),
               ),
             ],
@@ -164,22 +178,30 @@ class NxIconButton extends StatelessWidget {
         final Color bg;
         final Color fg;
         if (filled) {
-          bg = !enabled ? c.bgElevated : (s.pressed || s.hovered ? c.accentPress : c.accent);
+          bg = !enabled
+              ? c.bgElevated
+              : (s.pressed || s.hovered ? c.accentPress : c.accent);
           fg = enabled ? c.onAccent : c.borderStrong;
         } else {
           bg = selected
               ? c.accentSubtle
-              : (s.pressed || s.hovered ? c.bgElevated : const Color(0x00000000));
+              : (s.pressed || s.hovered
+                    ? c.bgElevated
+                    : const Color(0x00000000));
           fg = !enabled
               ? c.borderStrong
-              : (color ?? (selected || s.hovered ? c.textPrimary : c.textSecondary));
+              : (color ??
+                    (selected || s.hovered ? c.textPrimary : c.textSecondary));
         }
         return AnimatedContainer(
           duration: NxMotion.micro,
           width: box,
           height: box,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(NxRadius.md)),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(NxRadius.md),
+          ),
           child: NxIcon(icon, size: glyph, color: fg),
         );
       },

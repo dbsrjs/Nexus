@@ -1,0 +1,140 @@
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+
+import 'button.dart';
+import 'theme.dart';
+
+/// 확인 다이얼로그(AlertDialog · showDialog 의 자리). `showGeneralDialog` 는 widgets 층이다.
+///
+/// 오버레이만 예외로 막을 쓴다(디자인 시스템 §4). 그림자는 없다 — 표면 한 단과 1px 선.
+class NxDialog {
+  NxDialog._();
+
+  /// 확인이면 true, 취소 · 바깥 누르기 · Esc 면 false.
+  static Future<bool> confirm(
+    BuildContext context, {
+    required String title,
+    String? body,
+    String confirmLabel = '확인',
+    String cancelLabel = '취소',
+    bool danger = false,
+  }) async {
+    final c = NxTheme.of(context).colors;
+    final result = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '닫기',
+      barrierColor: c.scrim,
+      transitionDuration: NxMotion.panel,
+      transitionBuilder: (context, animation, _, child) => FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: NxMotion.ease),
+        child: child,
+      ),
+      pageBuilder: (context, _, _) => _ConfirmPanel(
+        title: title,
+        body: body,
+        confirmLabel: confirmLabel,
+        cancelLabel: cancelLabel,
+        danger: danger,
+      ),
+    );
+    return result ?? false;
+  }
+}
+
+class _ConfirmPanel extends StatelessWidget {
+  const _ConfirmPanel({
+    required this.title,
+    required this.body,
+    required this.confirmLabel,
+    required this.cancelLabel,
+    required this.danger,
+  });
+
+  final String title;
+  final String? body;
+  final String confirmLabel;
+  final String cancelLabel;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = NxTheme.of(context);
+    final c = theme.colors;
+    void close(bool v) => Navigator.of(context).pop(v);
+
+    return Shortcuts(
+      shortcuts: const {
+        SingleActivator(LogicalKeyboardKey.escape): DismissIntent(),
+      },
+      child: Actions(
+        actions: {
+          DismissIntent: CallbackAction<DismissIntent>(
+            onInvoke: (_) {
+              close(false);
+              return null;
+            },
+          ),
+        },
+        child: Center(
+          child: Semantics(
+            scopesRoute: true,
+            explicitChildNodes: true,
+            namesRoute: true,
+            label: title,
+            child: Container(
+              width: 380,
+              margin: const EdgeInsets.all(NxSpacing.sp6),
+              padding: const EdgeInsets.all(NxSpacing.sp7),
+              decoration: BoxDecoration(
+                color: c.bgElevated,
+                borderRadius: BorderRadius.circular(NxRadius.md),
+                border: Border.all(color: c.divider),
+              ),
+              child: DefaultTextStyle(
+                style: theme.text.base,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(title, style: theme.text.title),
+                    if (body != null) ...[
+                      const SizedBox(height: NxSpacing.sp5),
+                      Text(
+                        body!,
+                        style: theme.text.base.copyWith(
+                          color: c.textSecondary,
+                          height: 1.6,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: NxSpacing.sp7),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        NxButton(
+                          label: cancelLabel,
+                          kind: NxButtonKind.secondary,
+                          onPressed: () => close(false),
+                        ),
+                        const SizedBox(width: NxSpacing.sp4),
+                        NxButton(
+                          label: confirmLabel,
+                          autofocus: true,
+                          kind: danger
+                              ? NxButtonKind.danger
+                              : NxButtonKind.primary,
+                          onPressed: () => close(true),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

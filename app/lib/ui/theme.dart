@@ -50,15 +50,15 @@ class NxColors {
 
   /// 8색 전부 채도 28% · 명도 66%. 배정은 `hash(id) % 8`.
   List<Color> get avatars => const [
-        Color(0xFF90A8C1),
-        Color(0xFF9C90C1),
-        Color(0xFFC190C1),
-        Color(0xFFC1909C),
-        Color(0xFFC1A890),
-        Color(0xFFB4C190),
-        Color(0xFF90C1A0),
-        Color(0xFF90C1C1),
-      ];
+    Color(0xFF90A8C1),
+    Color(0xFF9C90C1),
+    Color(0xFFC190C1),
+    Color(0xFFC1909C),
+    Color(0xFFC1A890),
+    Color(0xFFB4C190),
+    Color(0xFF90C1A0),
+    Color(0xFF90C1C1),
+  ];
 
   static const dark = NxColors._(
     bgBase: Color(0xFF121314),
@@ -134,14 +134,14 @@ class NxText {
   final NxColors _c;
 
   TextStyle _ui(double size, {FontWeight? weight, Color? color}) => TextStyle(
-        fontFamily: _font,
-        fontFamilyFallback: _fallback,
-        fontSize: size,
-        height: 1.3,
-        fontWeight: weight ?? FontWeight.w400,
-        color: color ?? _c.textPrimary,
-        decoration: TextDecoration.none,
-      );
+    fontFamily: _font,
+    fontFamilyFallback: _fallback,
+    fontSize: size,
+    height: 1.3,
+    fontWeight: weight ?? FontWeight.w400,
+    color: color ?? _c.textPrimary,
+    decoration: TextDecoration.none,
+  );
 
   // ── 크기(토큰) ──
   TextStyle get xs2 => _ui(11);
@@ -163,20 +163,24 @@ class NxText {
   TextStyle get meta => _ui(12, color: _c.textSecondary);
 
   /// 섹션 머리(「작업」 · 「일반」). 대문자가 없는 한글이라 자간만 조금 연다.
-  TextStyle get label => _ui(11, weight: FontWeight.w600, color: _c.borderStrong)
-      .copyWith(letterSpacing: 0.6);
+  TextStyle get label => _ui(
+    11,
+    weight: FontWeight.w600,
+    color: _c.borderStrong,
+  ).copyWith(letterSpacing: 0.6);
 
   /// 타임스탬프 · 브랜치 · 해시 · 번호 — 이 시스템의 시그니처(디자인 시스템 §3).
   TextStyle get mono => TextStyle(
-        fontFamily: _mono,
-        fontFamilyFallback: _monoFallback,
-        fontSize: 11,
-        height: 1.3,
-        color: _c.textSecondary,
-        decoration: TextDecoration.none,
-      );
+    fontFamily: _mono,
+    fontFamilyFallback: _monoFallback,
+    fontSize: 11,
+    height: 1.3,
+    color: _c.textSecondary,
+    decoration: TextDecoration.none,
+  );
 
-  TextStyle get code => mono.copyWith(fontSize: 13, height: 1.6, color: _c.textPrimary);
+  TextStyle get code =>
+      mono.copyWith(fontSize: 13, height: 1.6, color: _c.textPrimary);
 }
 
 @immutable
@@ -184,9 +188,9 @@ class NxThemeData {
   NxThemeData._(this.brightness, this.colors) : text = NxText._(colors);
 
   factory NxThemeData.of(Brightness brightness) => NxThemeData._(
-        brightness,
-        brightness == Brightness.dark ? NxColors.dark : NxColors.light,
-      );
+    brightness,
+    brightness == Brightness.dark ? NxColors.dark : NxColors.light,
+  );
 
   final Brightness brightness;
   final NxColors colors;
@@ -230,5 +234,6 @@ class _NxThemeScope extends InheritedWidget {
   final NxThemeData data;
 
   @override
-  bool updateShouldNotify(_NxThemeScope old) => old.data.brightness != data.brightness;
+  bool updateShouldNotify(_NxThemeScope old) =>
+      old.data.brightness != data.brightness;
 }

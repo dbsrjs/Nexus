@@ -64,9 +64,13 @@ class _Rect extends _Part {
 const _glyphs = <NxIcons, List<_Part>>{
   NxIcons.send: [_Stroke('M8 13V3M3.5 7.5 8 3l4.5 4.5')],
   NxIcons.attach: [
-    _Stroke('M13 7.5 7.8 12.7a3 3 0 0 1-4.3-4.3l5.6-5.6a2 2 0 0 1 2.9 2.9L6.4 11.3a1 1 0 0 1-1.4-1.4L10 4.9'),
+    _Stroke(
+      'M13 7.5 7.8 12.7a3 3 0 0 1-4.3-4.3l5.6-5.6a2 2 0 0 1 2.9 2.9L6.4 11.3a1 1 0 0 1-1.4-1.4L10 4.9',
+    ),
   ],
-  NxIcons.ai: [_Stroke('M8 2 9.4 6.6 14 8l-4.6 1.4L8 14l-1.4-4.6L2 8l4.6-1.4z')],
+  NxIcons.ai: [
+    _Stroke('M8 2 9.4 6.6 14 8l-4.6 1.4L8 14l-1.4-4.6L2 8l4.6-1.4z'),
+  ],
   NxIcons.pin: [_Stroke('M6 2h4l-.5 4 2.5 2H4l2.5-2zM8 8v6')],
   NxIcons.files: [_Stroke('M2 4.5h4.5l1.5 1.5H14v6.5H2z')],
   NxIcons.close: [_Stroke('M3.5 3.5l9 9M12.5 3.5l-9 9')],
@@ -89,8 +93,13 @@ const _glyphs = <NxIcons, List<_Part>>{
     _Circle(6, 6.3, .7, fill: true),
     _Circle(10, 6.3, .7, fill: true),
   ],
-  NxIcons.mutedBell: [_Stroke('M6 13h4M4 11V7a4 4 0 0 1 6.5-3.1M12 7v4M2 2l12 12')],
-  NxIcons.lock: [_Rect(3, 7, 10, 7, 1.5), _Stroke('M5.5 7V5a2.5 2.5 0 0 1 5 0v2')],
+  NxIcons.mutedBell: [
+    _Stroke('M6 13h4M4 11V7a4 4 0 0 1 6.5-3.1M12 7v4M2 2l12 12'),
+  ],
+  NxIcons.lock: [
+    _Rect(3, 7, 10, 7, 1.5),
+    _Stroke('M5.5 7V5a2.5 2.5 0 0 1 5 0v2'),
+  ],
   NxIcons.hash: [_Stroke('M6.5 2.5 5 13.5M11 2.5l-1.5 11M3 6h10.5M2.5 10H13')],
   NxIcons.trash: [_Stroke('M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9')],
   NxIcons.copy: [
@@ -103,10 +112,19 @@ const _glyphs = <NxIcons, List<_Part>>{
   NxIcons.logout: [_Stroke('M6 3H3v10h3M10 5l3 3-3 3M13 8H6')],
   NxIcons.settings: [
     _Circle(8, 8, 2.5),
-    _Stroke('M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4'),
+    _Stroke(
+      'M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4',
+    ),
   ],
-  NxIcons.warning: [_Stroke('M8 2.5 14 13H2zM8 6.5v3'), _Circle(8, 11.2, .75, fill: true)],
-  NxIcons.info: [_Circle(8, 8, 6), _Stroke('M8 7.5v4'), _Circle(8, 5.2, .75, fill: true)],
+  NxIcons.warning: [
+    _Stroke('M8 2.5 14 13H2zM8 6.5v3'),
+    _Circle(8, 11.2, .75, fill: true),
+  ],
+  NxIcons.info: [
+    _Circle(8, 8, 6),
+    _Stroke('M8 7.5v4'),
+    _Circle(8, 5.2, .75, fill: true),
+  ],
   NxIcons.image: [
     _Rect(2, 3, 12, 10, 1.5),
     _Stroke('M2 11l3.5-3.5 3 3 2-2L14 12'),
@@ -120,7 +138,13 @@ const _glyphs = <NxIcons, List<_Part>>{
 /// [semanticLabel] 이 없으면 보조 기술에 드러나지 않는다 — 대개 곁의 글자나
 /// 버튼이 이미 뜻을 말한다. 아이콘만 있는 버튼은 `NxIconButton` 이 라벨을 강제한다.
 class NxIcon extends StatelessWidget {
-  const NxIcon(this.icon, {super.key, this.size, this.color, this.semanticLabel});
+  const NxIcon(
+    this.icon, {
+    super.key,
+    this.size,
+    this.color,
+    this.semanticLabel,
+  });
 
   final NxIcons icon;
   final double? size;
@@ -138,7 +162,11 @@ class NxIcon extends StatelessWidget {
     );
     final label = semanticLabel;
     if (label == null) return ExcludeSemantics(child: paint);
-    return Semantics(label: label, image: true, child: ExcludeSemantics(child: paint));
+    return Semantics(
+      label: label,
+      image: true,
+      child: ExcludeSemantics(child: paint),
+    );
   }
 }
 
@@ -172,7 +200,10 @@ class _IconPainter extends CustomPainter {
           canvas.drawCircle(Offset(cx, cy), r, isFill ? fill : stroke);
         case _Rect(:final x, :final y, :final w, :final h, :final r):
           canvas.drawRRect(
-            RRect.fromRectAndRadius(Rect.fromLTWH(x, y, w, h), Radius.circular(r)),
+            RRect.fromRectAndRadius(
+              Rect.fromLTWH(x, y, w, h),
+              Radius.circular(r),
+            ),
             stroke,
           );
       }
@@ -181,7 +212,8 @@ class _IconPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_IconPainter old) => old.icon != icon || old.color != color;
+  bool shouldRepaint(_IconPainter old) =>
+      old.icon != icon || old.color != color;
 }
 
 final _token = RegExp(r'[A-Za-z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?');
@@ -296,8 +328,16 @@ Rect debugIconBounds(NxIcons icon) {
   for (final part in _glyphs[icon]!) {
     final r = switch (part) {
       _Stroke(:final d) => _tightBounds(parseSvgPath(d)),
-      _Circle(:final cx, :final cy, :final r) => Rect.fromCircle(center: Offset(cx, cy), radius: r),
-      _Rect(:final x, :final y, :final w, :final h) => Rect.fromLTWH(x, y, w, h),
+      _Circle(:final cx, :final cy, :final r) => Rect.fromCircle(
+        center: Offset(cx, cy),
+        radius: r,
+      ),
+      _Rect(:final x, :final y, :final w, :final h) => Rect.fromLTWH(
+        x,
+        y,
+        w,
+        h,
+      ),
     };
     bounds = bounds == null ? r : bounds.expandToInclude(r);
   }

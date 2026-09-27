@@ -8,7 +8,12 @@ import 'theme.dart';
 /// 자리를 지키는 [NxSkeleton] 을 쓴다. 회전 스피너가 화면 가운데서 도는
 /// Material 의 기본 모습을 걷는 것이 이 단계의 일이다.
 class NxSpinner extends StatefulWidget {
-  const NxSpinner({super.key, this.size = 14, this.color, this.semanticLabel = '불러오는 중'});
+  const NxSpinner({
+    super.key,
+    this.size = 14,
+    this.color,
+    this.semanticLabel = '불러오는 중',
+  });
 
   final double size;
   final Color? color;
@@ -18,9 +23,12 @@ class NxSpinner extends StatefulWidget {
   State<NxSpinner> createState() => _NxSpinnerState();
 }
 
-class _NxSpinnerState extends State<NxSpinner> with SingleTickerProviderStateMixin {
-  late final _turn = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))
-    ..repeat();
+class _NxSpinnerState extends State<NxSpinner>
+    with SingleTickerProviderStateMixin {
+  late final _turn = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 800),
+  )..repeat();
 
   @override
   void dispose() {
