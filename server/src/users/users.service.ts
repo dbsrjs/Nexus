@@ -1,10 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeEmitter } from '../realtime/realtime-emitter';
+import { broadcastUserUpdated } from './user-events';
 import { UpdateMeDto } from './dto/update-me.dto';
 
 /** passwordHash 를 절대 내보내지 않는 투영. */
-const publicUserSelect = {
+export const publicUserSelect = {
   id: true,
   email: true,
   name: true,
@@ -20,7 +22,10 @@ export type PublicUser = Prisma.UserGetPayload<{
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly realtime: RealtimeEmitter,
+  ) {}
 
   /** GET /api/me */
   async findMe(id: string): Promise<PublicUser> {
@@ -34,9 +39,12 @@ export class UsersService {
     return user;
   }
 
-  /** PATCH /api/me */
-  updateMe(id: string, dto: UpdateMeDto): Promise<PublicUser> {
-    return this.prisma.user.update({
+  /**
+   * PATCH /api/me. 이름이 바뀌면 함께 쓰는 스페이스에 `user:updated` 를 보낸다 —
+   * 받은 앱이 캐시의 작성자명을 고친다(14단계 설계 D4).
+   */
+  async updateMe(id: string, dto: UpdateMeDto): Promise<PublicUser> {
+    const user = await this.prisma.user.update({
       where: { id },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
@@ -46,6 +54,10 @@ export class UsersService {
       },
       select: publicUserSelect,
     });
+    if (dto.name !== undefined) {
+      await broadcastUserUpdated(this.prisma, this.realtime, user);
+    }
+    return user;
   }
 
   /** 인증 내부용 — 해시를 포함한 전체 레코드. */
