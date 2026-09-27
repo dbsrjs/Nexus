@@ -175,6 +175,13 @@ check(
   `${avatarUrl} → ${up2.json?.avatarUrl}`,
 );
 
+const oldPath = await fetchAvatar(bob.token, avatarUrl ?? '/users/x/avatar');
+check(
+  '옛 주소로도 받는다 — 버전은 캐시를 가르는 표식일 뿐 따로 보관하지 않는다',
+  oldPath.status === 200,
+  `status=${oldPath.status}`,
+);
+
 const notImage = await uploadAvatar(alice.token, {
   bytes: Buffer.from('not an image'),
   type: 'text/plain',
