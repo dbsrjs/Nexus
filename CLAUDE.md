@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **기준 브랜치** | **`main`.** 새 작업은 `feat/*` 를 따 쓰고 끝나면 main 으로 합친다(CI 가 `main` 과 `feat/**` 를 돈다) |
-| **상태** | **1~13단계가 `main` 에 있다** — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널(이어 묻기 포함). 12 · 13단계는 진짜 GitHub · 진짜 임베딩 · 진짜 Gemini 로 완주했다(13-3 이어 묻기 · 자동 전환 포함). **다음은 14 사용자 설정**(§5). 단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md) |
+| **상태** | **1~14단계가 `main` 에 있다** — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널(이어 묻기 포함) · 사용자 설정(이름 · 사진 · 비밀번호 · 음소거 · 테마). 12 · 13단계는 진짜 GitHub · 진짜 임베딩 · 진짜 Gemini 로 완주했다(13-3 이어 묻기 · 자동 전환 포함). **다음은 15 UI/UX 개편**(§5). 단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md) |
 | **새 PC 셋업** | §1 순서대로. `.env` 는 `npm run env:setup` 이 만들고, 손으로 채울 값(GitHub OAuth App · 터널 주소 · AI provider)은 [server/README.md «선택 기능을 켜는 값»](server/README.md). PC 를 오갈 때 옮겨지지 않는 것은 `nexus-pc-handoff` 스킬 |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
@@ -152,7 +152,8 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run check:issues` | 이슈 · 스프린트 계약 검증(89개). 자체 계정을 쓴다. **컬럼 상한(200)과 재채번까지 태우므로 다른 스크립트보다 오래 걸린다** |
 | `npm run check:ai` | AI 계약 검증(설정된 서버에서 89개) — LLM 캐시 · 큐 · 소켓 알림 · 멘션 치환 실증(13-1) · `/ai/ask` 의 자유 지시문 · 채널 최근 대화 · 이슈 초안 · 입력 조합 검증(13-2) · 이어 묻기 · 사슬 상한 · 캐시 분리(13-3) · **큐 실패 갈래**(5xx 재시도 · 소진 · 429 · 4xx · 빈 답 · 잘린 답 · 리스 — `FakeLlmProvider` 의 실패 주입 지시문으로, 2026-09-27). **소진 케이스가 재시도 대기만 50초라 스크립트가 약 1분 걸린다.** 저장소 컨텍스트는 `check:indexing` 이 본다. **`LLM_PROVIDER=gemini` 로 뜬 서버에서는 무료 티어 쿼터를 쓴다** — `fake` 로 돌리는 쪽이 기본이다. 미설정 503 분기는 `check:oauth` 와 같은 패턴으로 `LLM_PROVIDER` 를 비운 채 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
-| `npm run app:flow` | **앱 통합 테스트** — Windows 데스크톱 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 스레드 · 셸 안 화면까지 끝까지 돈다(약 30초, `db:up` · `server:dev` 필요). 보안 저장소 · drift 는 메모리로 바꿔 개발용 앱의 세션을 건드리지 않는다. **CI 에서는 돌지 않는다**(§5 빚) — 화면을 건드린 변경마다 사람이 돌린다 |
+| `npm run check:settings` | 사용자 설정 계약 검증(48개) — 이름 변경과 `user:updated` 범위 · 아바타 올리기 · 256×256 WebP · 열람 권한(본인 · 함께 쓰는 스페이스만, 그 밖 404) · 비밀번호 변경과 다른 세션 폐기 · 채널 음소거(멱등 · 읽음 위치 보존). 자체 계정을 쓴다 |
+| `npm run app:flow` | **앱 통합 테스트** — Windows 데스크톱 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 스레드 · 셸 안 화면 · 설정 창(이름 · 사진 · 테마 · 음소거)까지 끝까지 돈다(약 30초, `db:up` · `server:dev` 필요). 보안 저장소 · drift 는 메모리로 바꿔 개발용 앱의 세션을 건드리지 않는다. **CI 에서는 돌지 않는다**(§5 빚) — 화면을 건드린 변경마다 사람이 돌린다 |
 | `cd app && dart run build_runner build` | freezed · json_serializable 재생성 |
 
 ### 인덱싱 실사용 · 실제 GitHub 웹훅
@@ -222,6 +223,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | AI 답이 4분 넘게 오지 않음 | Gemini 가 붐비면 200 을 **255초** 뒤에 준다(3.5-flash 실측). 전환은 429 · 5xx 에서만 일어나 느린 응답에는 소용이 없었다. 어댑터가 `AbortSignal.timeout` 으로 **60초**(`LLM_TIMEOUT_SEC`)에 끊고 504 로 던져 전환 모델이 받는다. Node 의 `fetch` 는 `TimeoutError` 로 던진다 (LLM 교체 후) |
 | 생각하는 모델로 바꿨더니 답이 몇 줄에서 끊김 | Gemini 3.x 는 **생각 토큰도 `maxOutputTokens` 에서 쓴다.** 3.5-flash 는 기본(medium)으로 생각에만 ~2,600 토큰을 써 상한 2048 에서 잘렸다. 상한 8192 · `thinkingLevel: low` 로 두고, 잘린 답(`finishReason: MAX_TOKENS`)은 러너가 실패로 돌린다 (LLM 교체) |
 | `ListTile` 의 선택 배경 · 눌림 물결이 안 보이고 디버그 콘솔에 assertion | `ListTile` 은 가장 가까운 `Material` 에 그린다. 사이에 색을 가진 `Container`(= `ColoredBox`)가 끼면 덮인다. **배경은 `Material(color:)` 로 칠한다** — 채널 패널이 그랬고 통합 테스트가 처음 잡았다 (2026-09-27) |
+| 통합 테스트에서 누른 버튼이 아무 일도 안 함(경고도 없음) | 입력으로 켜지는 버튼은 **다음 프레임에** 켜진다. `enterText` 직후 `tap` 하면 꺼진 버튼을 누른다 — 사이에 `pump()`. 팝업 메뉴는 펼쳐지는 동안 누르면 빗나간다(이쪽은 경고가 뜬다) (14) |
 | 테스트에서 provider 안의 `ref.listen` 이 아무 이벤트도 못 받음 | **Riverpod 3 은 구독자가 없는 provider 를 멈춘다.** `container.read` 로는 안 살아난다 — `container.listen` 으로 붙들 것. 앱은 `main.dart` 가 `watch` 해서 괜찮다 (2026-09-27) |
 | 길게 누르기 시트가 `BOTTOM OVERFLOWED` 로 잘림 | `showModalBottomSheet` 는 기본 최대 높이가 화면의 9/16 이다. `isScrollControlled: true` 가 없으면 항목이 늘 때 조용히 넘친다 (13-1) |
 | 화면을 닫으면 디버그 빌드에서 `deactivated widget's ancestor` 로 멈춤 | `dispose()` 안에서 `ProviderScope.containerOf(context)` 같은 조상 조회를 했다. **`didChangeDependencies` 에서 참조를 잡아 두고** `dispose` 는 그것만 쓴다 — 예외로 정리도 못 돌아 구독이 남았다 (13-2 후 `74ccc01`) |
@@ -328,7 +330,8 @@ JwtAuthGuard         전역(APP_GUARD). @Public() 으로만 예외
 ```
 config/       jwt.config.ts — 시크릿 해석의 유일한 지점
 auth/         가입 · 로그인 · 리프레시 회전 · 재사용 탐지 · JWT 전략
-users/        /api/me 만. 전역 사용자 목록은 두지 않는다(테넌트 격리)
+users/        /api/me · 아바타(사용자 단위 — 본인 · 함께 쓰는 스페이스만 열람) · user:updated.
+              전역 사용자 목록은 두지 않는다(테넌트 격리)
 spaces/       스페이스 CRUD · 멤버 · 초대 · SpaceGuard · SpaceRoleGuard
 categories/   채널 그룹
 channels/     채널 · 가시성 규칙 · 읽음 마커
@@ -375,7 +378,7 @@ features/issue/          이슈 보드 · 상세 · 스프린트 · 번다운(Cu
 features/repo/           저장소 연결 · 열람 · 커밋 · PR
 features/ai/             AI 패널
 features/realtime/       소켓 수명 관리 + 채널 목록 동기화
-features/settings/       테마 모드 컨트롤러(기본 system · 계정 메뉴에서 바꾼다)
+features/settings/       설정 창(셸 밖 /settings/:section — 내 계정 · 비밀번호 · 알림 · 화면) · 테마 컨트롤러
 features/shell/          반응형 셸 — app_shell(분기) · space_rail · channel_pane
 shared/markdown/         마크다운 — 파서(블록 · 인라인) · MarkdownBody · 평문화
                          **멘션이 이 파서 안에 있다**(파서가 하나여야 한다)
@@ -457,7 +460,7 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 | 13-2 | AI 패널 — 자유 지시문 + 프리셋 · 컨텍스트 칩(메시지 · 채널 · 저장소 RAG) · 인용 · 모델 불일치 503 | ✅ |
 | — | LLM 교체 — `gemini-3.1-flash-lite` → **`gemini-3.5-flash`**(무료 티어 재측정) · 생각 수준 `low` · 상한 8192 · 잘린 답 실패 처리 · **429 · 5xx 면 3.1-flash-lite 로 자동 전환**(무료 한도 3.5-flash 하루 20회 · lite 500회, 전환 답은 캐시 제외) | ✅ |
 | 13-3 | AI 멀티턴 — `parentRunId` 사슬 · user/assistant 역할 · 첫 문답 근거 물려받기 · 상한 10 · 앱 문답 목록 | ✅ |
-| **14** | **사용자 설정** — 디스코드식 설정 창(표시 이름 · 프로필 사진 · 비밀번호 변경 · 알림(채널 음소거) · 화면). 설계 출발점은 [제품-기획 §5.1-a](docs/제품-기획.md) | |
+| 14 | 사용자 설정 — 설정 창(표시 이름 · 프로필 사진 · 비밀번호 변경 · 채널 음소거 · 테마) · `user:updated` · 아바타 열람 규칙 | ✅ |
 | **15** | **UI/UX 개편** — Flutter 기본(Material) 컴포넌트를 전부 자체 UI 로 교체 · 디자인 다듬기 · 이슈 보드 드래그 정렬 화면. 설계 출발점은 [제품-기획 §5.1-b](docs/제품-기획.md) | |
 | **16** | **멤버 · 권한** — 앱의 초대 · 멤버 관리 화면 · 비공개 채널 멤버 추가 · 제거 · 채널별 권한(`permissions` 재작성) | |
 | **17** | **DM · 프레즌스 · 타이핑 표시** — 스페이스 안 1:1 DM · 온라인 상태 · 입력 중 | |
@@ -474,8 +477,8 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 2026-09-27 에 한 번 정리했다 — 갚은 것 · 단계로 옮긴 것 · 환경 함정으로 옮긴 것은
 [진행 기록](docs/진행-기록.md) «빚 정리 (2026-09-27)».
 
-- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 434개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 15종 629 케이스**(2026-09-27 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
-- **앱 통합 테스트가 CI 에서 돌지 않는다.** `npm run app:flow` 는 Windows 데스크톱에서만 돈다 — CI 는 ubuntu 인데 앱에 `linux/` 플랫폼이 없다. 들이는 것은 플랫폼을 하나 늘리는 결정이라 «마지막» 단계의 테넌트 격리 통합 테스트와 함께 정한다. 그때까지는 **화면을 건드린 변경마다 사람이 돌린다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **301개**
+- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 454개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 16종 677 케이스**(14단계 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
+- **앱 통합 테스트가 CI 에서 돌지 않는다.** `npm run app:flow` 는 Windows 데스크톱에서만 돈다 — CI 는 ubuntu 인데 앱에 `linux/` 플랫폼이 없다. 들이는 것은 플랫폼을 하나 늘리는 결정이라 «마지막» 단계의 테넌트 격리 통합 테스트와 함께 정한다. 그때까지는 **화면을 건드린 변경마다 사람이 돌린다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **321개**
 - **`local`(Ollama) LLM 경로는 실측하지 않았다(13-1) — `LLM_PROVIDER=local` 로 바꾸기 전에 먼저 태운다.** 지금 쓰는 경로는 `gemini` 이고 실제로 확인했다. `local` 은 쓰는 곳이 없어 미뤄도 깨지는 것이 없다(2026-09-27 판단). 바꾸게 되는 계기는 Gemini 무료 한도(3.5-flash 하루 20회)가 모자라거나, 비공개 저장소 코드를 외부로 보내지 않으려 할 때 — 늦어도 «마지막» 단계에서 운영 provider 를 정할 때다. `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. 설치(`winget install Ollama.Ollama`)와 모델 받기(약 4.7GB)는 사람이 한다.
 - **인덱싱 큐의 5xx 소진은 단위 테스트만 덮는다.** 재시도 대기가 1분씩이라 계약 검증으로 세 번을 태우면 3분이 걸린다. 판정(`shouldGiveUpIndexing` · `indexRetryDelayMs`)은 순수 함수로 빼 두었다. 429 · 리스 유효/만료는 `check:indexing` 이 본다.
 - `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다. 개발 PC 가 둘 다 Windows 라 그대로 둔다.
