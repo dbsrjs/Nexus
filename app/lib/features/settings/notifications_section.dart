@@ -115,7 +115,6 @@ class _ChannelSwitches extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
             secondary: Icon(channel.isPrivate ? Icons.lock_outline : Icons.tag, size: 18),
             title: Text(channel.name),
-            subtitle: const Text('음소거'),
             value: channel.muted,
             onChanged: pending.contains(channel.id) ? null : (v) => onChanged(channel, v),
           ),

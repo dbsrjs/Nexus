@@ -114,7 +114,16 @@ class _AccountButton extends ConsumerWidget {
             ],
           ),
         ),
-        const PopupMenuItem<String>(value: 'signOut', child: Text('로그아웃')),
+        const PopupMenuItem<String>(
+          value: 'signOut',
+          child: Row(
+            children: [
+              Icon(Icons.logout, size: 18),
+              SizedBox(width: NexusSpacing.sp4),
+              Text('로그아웃'),
+            ],
+          ),
+        ),
       ],
       child: UserAvatar(userId: user.id, name: user.name, avatarUrl: user.avatarUrl, size: 36),
     );

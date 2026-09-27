@@ -51,7 +51,6 @@ class SettingsScreen extends ConsumerWidget {
             onSelect: (target) => _open(context, target),
             onSignOut: () => ref.read(authControllerProvider.notifier).signOut(),
           ),
-          title: current?.label ?? '설정',
           content: current == null ? null : _content(current),
           fallback: _content(SettingsSection.account),
           onClose: () => _close(context),

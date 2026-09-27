@@ -268,7 +268,6 @@ class SettingsFrame extends StatelessWidget {
   const SettingsFrame({
     super.key,
     required this.nav,
-    required this.title,
     required this.content,
     required this.fallback,
     required this.onClose,
@@ -276,7 +275,6 @@ class SettingsFrame extends StatelessWidget {
   });
 
   final Widget nav;
-  final String title;
 
   /// 고른 섹션. null 이면 모바일은 목록을, 넓은 화면은 [fallback] 을 보인다.
   final Widget? content;
@@ -290,8 +288,9 @@ class SettingsFrame extends StatelessWidget {
     if (Layout.ofContext(context) == Layout.mobile) {
       final body = content;
       return Scaffold(
+        // 제목은 늘 「설정」이다 — 섹션 이름은 본문 머리가 이미 크게 보인다.
         appBar: AppBar(
-          title: Text(body == null ? '설정' : title),
+          title: const Text('설정'),
           leading: body == null
               ? CloseButton(onPressed: onClose)
               : BackButton(onPressed: onBack),

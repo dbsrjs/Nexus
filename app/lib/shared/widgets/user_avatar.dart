@@ -37,17 +37,22 @@ class UserAvatar extends ConsumerWidget {
 
     final client = ref.watch(apiClientProvider);
     final token = client.accessToken;
+    // 투명한 사진(로고 등)도 동그라미로 읽히게 뒤에 바탕을 깐다.
     return ClipOval(
-      child: Image.network(
-        '${client.dio.options.baseUrl}$path',
-        headers: token == null ? null : {'authorization': 'Bearer $token'},
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        // 256px 원본을 작은 자리에 그대로 풀지 않는다 — 목록에 아바타가 많다.
-        cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
-        loadingBuilder: (context, child, progress) => progress == null ? child : initials,
-        errorBuilder: (context, error, stack) => initials,
+      child: ColoredBox(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: Image.network(
+          '${client.dio.options.baseUrl}$path',
+          headers: token == null ? null : {'authorization': 'Bearer $token'},
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          // 256px 원본을 작은 자리에 그대로 풀지 않는다 — 목록에 아바타가 많다.
+          cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
+          loadingBuilder: (context, child, progress) =>
+              progress == null ? child : initials,
+          errorBuilder: (context, error, stack) => initials,
+        ),
       ),
     );
   }
