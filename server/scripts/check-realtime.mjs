@@ -15,8 +15,27 @@
 import { requireServer } from './lib/preflight.mjs';
 import { BASE, api, signup, stamp } from './lib/api.mjs';
 import { check, summary } from './lib/checks.mjs';
+import { createHmac } from 'node:crypto';
 import { connect, waitFor } from './lib/socket.mjs';
 await requireServer(BASE);
+
+/**
+ * 서버와 같은 시크릿으로 HS256 액세스 토큰을 직접 서명한다(만료 토큰 케이스).
+ * 시크릿은 CI 에서는 잡의 환경변수로, 로컬에서는 `server/.env` 에서 온다.
+ */
+function signAccess(payload) {
+  if (!process.env.JWT_SECRET) {
+    try {
+      process.loadEnvFile(new URL('../.env', import.meta.url));
+    } catch {
+      // 없으면 아래에서 빈 시크릿으로 서명되고 대조군 케이스가 실패로 알린다.
+    }
+  }
+  const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const head = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64(payload)}`;
+  const sig = createHmac('sha256', process.env.JWT_SECRET ?? '').update(head).digest('base64url');
+  return `${head}.${sig}`;
+}
 
 
 /** 소켓 하나를 연결한다. 성공하면 소켓, 실패하면 Error 를 돌려준다(던지지 않는다). */
@@ -57,6 +76,52 @@ async function main() {
     return;
   }
   track(owner);
+
+  // ── 만료된 토큰 · 갱신 뒤 재연결 ──────────────
+  // 앱은 핸드셰이크 거부를 `unauthorized` 라는 **문구로** 가려 리프레시한다
+  // (socket_client.dart `_onConnectError`). 문구가 바뀌면 앱은 서버가 죽은
+  // 것으로 보고 영영 기다린다 — 그래서 문구까지 계약이다.
+  //
+  // 만료 토큰은 액세스 토큰 수명(15분)을 기다려야 생긴다. 기다리는 대신 서버와
+  // 같은 시크릿으로 직접 서명한다. **대조군이 반드시 필요하다** — 같은 방식으로
+  // 만든 유효기간만 다른 토큰이 붙어야, 거부 이유가 서명이 아니라 만료임이 선다.
+  console.log('\n── 만료된 토큰 ──');
+  check(
+    '잘못된 토큰의 거부 문구는 unauthorized 다 — 앱이 이 문구로 리프레시를 가린다',
+    badToken?.message === 'unauthorized',
+    `-> ${badToken?.message}`,
+  );
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const claims = { sub: ownerAccount.userId, type: 'access' };
+  const live = await connect(signAccess({ ...claims, iat: nowSec, exp: nowSec + 600 }));
+  check(
+    '대조군: 직접 서명한 유효 토큰은 붙는다 — 서명 방식이 서버와 같다',
+    !(live instanceof Error),
+    `-> ${live?.message ?? ''}`,
+  );
+  if (!(live instanceof Error)) track(live);
+
+  const expired = await connect(signAccess({ ...claims, iat: nowSec - 1200, exp: nowSec - 60 }));
+  check(
+    '★ 만료된 토큰이면 unauthorized 로 거부한다',
+    expired instanceof Error && expired.message === 'unauthorized',
+    `-> ${expired?.message}`,
+  );
+
+  const refreshed = await api('POST', '/auth/refresh', {
+    body: { refreshToken: ownerAccount.refreshToken, client: 'native' },
+  });
+  const renewed =
+    refreshed.status === 200 && typeof refreshed.json?.accessToken === 'string'
+      ? await connect(refreshed.json.accessToken)
+      : new Error(`refresh ${refreshed.status}`);
+  check(
+    '★ 리프레시로 받은 새 토큰으로는 다시 붙는다 — 앱의 재연결 경로',
+    !(renewed instanceof Error),
+    `-> ${renewed?.message ?? ''}`,
+  );
+  if (!(renewed instanceof Error)) track(renewed);
 
   console.log('\n── 룸 ──');
 

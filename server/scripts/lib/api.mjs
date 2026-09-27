@@ -54,5 +54,9 @@ export async function signup(prefix, tag, name = `${prefix}검증${tag}`) {
     console.error('가입 실패:', res.status, JSON.stringify(res.json));
     process.exit(1);
   }
-  return { token: res.json.accessToken, userId: res.json.user.id };
+  return {
+    token: res.json.accessToken,
+    refreshToken: res.json.refreshToken,
+    userId: res.json.user.id,
+  };
 }
