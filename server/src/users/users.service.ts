@@ -40,7 +40,6 @@ export class UsersService {
       where: { id },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
-        ...(dto.avatarUrl !== undefined ? { avatarUrl: dto.avatarUrl } : {}),
         ...(dto.globalStatus !== undefined
           ? { globalStatus: dto.globalStatus }
           : {}),

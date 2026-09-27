@@ -142,7 +142,10 @@ model User {
   /// OAuth 전용 계정은 비밀번호가 없다.
   passwordHash String?    @map("password_hash")
   name         String
+  /// 앱이 부를 아바타 주소 `/users/<id>/avatar?v=<버전>`. 저장소 키가 아니다(14단계 설계 D8).
   avatarUrl    String?    @map("avatar_url")
+  /// 저장소 키 `avatars/<id>/<uuid>.webp`. 응답에 싣지 않는다.
+  avatarKey    String?    @map("avatar_key")
   globalStatus UserStatus @default(offline) @map("global_status")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
