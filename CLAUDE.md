@@ -135,7 +135,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run server:dev` · `server:build` | 개발 서버 · 빌드 |
 | `npm --prefix server run typecheck` | 타입 검사만 |
 | `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint |
-| `npm run check:realtime` | 실서버 · 실DB · 실소켓으로 소켓 계약 검증(49개) (`db:up` · `server:dev` 실행 중이어야 함). **2026-09-17 부터 시드 비밀번호가 필요 없다** — 자체 계정 · 스페이스를 쓴다 |
+| `npm run check:realtime` | 실서버 · 실DB · 실소켓으로 소켓 계약 검증(53개) (`db:up` · `server:dev` 실행 중이어야 함). **2026-09-17 부터 시드 비밀번호가 필요 없다** — 자체 계정 · 스페이스를 쓴다. 만료 토큰 거부 · 갱신 토큰 재연결은 서버와 같은 `JWT_SECRET` 으로 스크립트가 직접 서명해 본다 |
 | `npm run check:reactions` | 리액션 계약 검증(24개). **자체 계정·스페이스를 만들어 쓰므로 비밀번호가 필요 없다** |
 | `npm run check:threads` | 스레드 계약 검증(25개). 위와 같이 자체 계정을 쓴다 |
 | `npm run check:quotes` | 답장(인용) 계약 검증(17개) |
@@ -146,12 +146,13 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run check:oauth` | GitHub **연동 전체** 계약 검증(설정된 서버에서 76개) — 계정 연결(10-2a)과 저장소 목록 · 자동 등록 · 승격 · 훅 재등록/삭제(10-2b). **가짜 GitHub(4599)을 스스로 띄운다** — `.env` 에 `GITHUB_*_BASE` · `OAUTH_TOKEN_KEY` · `PUBLIC_BASE_URL` 을 넣고 서버를 재시작해야 한다. 미설정 503 분기는 그 값들을 비운 채로 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
 | `npm run check:browse` | 저장소 열람 계약 검증(56개) — 브랜치 · 트리 · 파일(10-3a)과 커밋(10-3b). **가짜 GitHub(4599)을 스스로 띄운다** — `check:oauth` 와 같은 `.env` 를 쓴다. 연결 · 등록이 주제인 그쪽과 섞지 않았다 |
 | `npm run check:pulls` | PR 열람 계약 검증(35개) — 목록 · 상세 · 바뀐 파일(11단계). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 를 쓴다 |
-| `npm run check:indexing` | 저장소 인덱싱 계약 검증(49개) — 연결 시 적재 · 거르기(바이너리 · 대용량 · 생성 파일) · 벡터 검색 순위 · 증분 재인덱싱(push 웹훅 → compare, 이름 변경(renamed) 갈래 포함) · force-push(compare 404 로 실제로 응답한 횟수까지 확인) · **임베딩 모델 변경 시 compare 없이 전체**(기록된 모델을 DB 에서 직접 바꿔 흉내 낸다 — 계약 검증에서 DB 를 만지는 유일한 곳) · 기능 브랜치 무시(12단계) · **AI 코드 질문 · 인용 경로 · 모델 불일치 시 검색과 AI 503**(13-2) · 이어 묻기의 인용이 첫 답과 같음(13-3). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 에 **`EMBEDDING_PROVIDER=fake` 가 더 필요하고**, AI 케이스는 `LLM_PROVIDER=fake` 일 때만 돈다(아니면 건너뛴다고 찍는다) |
+| `npm run check:indexing` | 저장소 인덱싱 계약 검증(54개) — 연결 시 적재 · 거르기(바이너리 · 대용량 · 생성 파일) · 벡터 검색 순위 · 증분 재인덱싱(push 웹훅 → compare, 이름 변경(renamed) 갈래 포함) · force-push(compare 404 로 실제로 응답한 횟수까지 확인) · **임베딩 모델 변경 시 compare 없이 전체**(기록된 모델을 DB 에서 직접 바꿔 흉내 낸다 — DB 를 만지는 자리는 `scripts/lib/db.mjs` 머리에 모았다) · 기능 브랜치 무시(12단계) · **AI 코드 질문 · 인용 경로 · 모델 불일치 시 검색과 AI 503**(13-2) · 이어 묻기의 인용이 첫 답과 같음(13-3) · 큐 실패 갈래(429 `Retry-After: 0` · 리스 유효/만료, 2026-09-27). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 에 **`EMBEDDING_PROVIDER=fake` 가 더 필요하고**, AI 케이스는 `LLM_PROVIDER=fake` 일 때만 돈다(아니면 건너뛴다고 찍는다) |
 | `npm run check:migrations` | 마이그레이션에 **수동 관리 객체를 지우는 구문**이 섞였는지 검사. DB 도 서버도 필요 없다 — CI 서버 잡이 매번 돈다 |
 | `npm run check:sql-time` | raw SQL 이 **DB 의 시계**(`now()` · `CURRENT_TIMESTAMP`)를 쓰는지 검사. 이 스키마의 시각 컬럼은 `timestamp without time zone` 이고 **Prisma 는 거기에 UTC 를 쓰는데 `now()` 는 DB 로컬을 준다** — 개발 PC 가 `Asia/Seoul` 이라 아홉 시간이 어긋나 인덱싱 리스가 한 번도 동작하지 않았다(진행 기록 «12 실제 태우기»). **CI 가 UTC 면 로컬에서만 틀리고 CI 는 초록이라** 값이 아니라 코드를 본다. DB 도 서버도 필요 없다 |
 | `npm run check:issues` | 이슈 · 스프린트 계약 검증(89개). 자체 계정을 쓴다. **컬럼 상한(200)과 재채번까지 태우므로 다른 스크립트보다 오래 걸린다** |
-| `npm run check:ai` | AI 계약 검증(설정된 서버에서 72개) — LLM 캐시 · 큐 · 소켓 알림 · 멘션 치환 실증(13-1) · `/ai/ask` 의 자유 지시문 · 채널 최근 대화 · 이슈 초안 · 입력 조합 검증(13-2) · 이어 묻기 · 사슬 상한 · 캐시 분리(13-3). 저장소 컨텍스트는 `check:indexing` 이 본다. **`LLM_PROVIDER=gemini` 로 뜬 서버에서는 무료 티어 쿼터를 쓴다** — `fake` 로 돌리는 쪽이 기본이다. 미설정 503 분기는 `check:oauth` 와 같은 패턴으로 `LLM_PROVIDER` 를 비운 채 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
+| `npm run check:ai` | AI 계약 검증(설정된 서버에서 89개) — LLM 캐시 · 큐 · 소켓 알림 · 멘션 치환 실증(13-1) · `/ai/ask` 의 자유 지시문 · 채널 최근 대화 · 이슈 초안 · 입력 조합 검증(13-2) · 이어 묻기 · 사슬 상한 · 캐시 분리(13-3) · **큐 실패 갈래**(5xx 재시도 · 소진 · 429 · 4xx · 빈 답 · 잘린 답 · 리스 — `FakeLlmProvider` 의 실패 주입 지시문으로, 2026-09-27). **소진 케이스가 재시도 대기만 50초라 스크립트가 약 1분 걸린다.** 저장소 컨텍스트는 `check:indexing` 이 본다. **`LLM_PROVIDER=gemini` 로 뜬 서버에서는 무료 티어 쿼터를 쓴다** — `fake` 로 돌리는 쪽이 기본이다. 미설정 503 분기는 `check:oauth` 와 같은 패턴으로 `LLM_PROVIDER` 를 비운 채 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
+| `npm run app:flow` | **앱 통합 테스트** — Windows 데스크톱 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 스레드 · 셸 안 화면까지 끝까지 돈다(약 30초, `db:up` · `server:dev` 필요). 보안 저장소 · drift 는 메모리로 바꿔 개발용 앱의 세션을 건드리지 않는다. **CI 에서는 돌지 않는다**(§5 빚) — 화면을 건드린 변경마다 사람이 돌린다 |
 | `cd app && dart run build_runner build` | freezed · json_serializable 재생성 |
 
 ### 인덱싱 실사용 · 실제 GitHub 웹훅
@@ -189,6 +190,8 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | 자동 생성 마이그레이션에 `DROP INDEX ..._hnsw_idx` 가 섞임 | Prisma 가 표현하지 못해 수동 관리하는 pgvector 인덱스를 드리프트로 오인한다. **네 번 겪었다**(7-1 · 7-3 · 9-1 · 9-2a). 이제 `npm run check:migrations` 가 CI 에서 잡는다 — 그래도 생성된 SQL 은 읽고 커밋할 것 |
 | `flutter run` 이 시작하자마자 조용히 종료 | `flutter run` 은 stdin 으로 키 명령(r · R · q)을 받는데, 백그라운드로 띄우면 stdin 이 EOF 라 종료로 해석한다. 사람이 직접 터미널에서 돌리거나, 검증 자동화는 `flutter build web` 후 정적 서버로 띄울 것 |
 | `flutter run` 을 백그라운드로 띄우고 싶다 | stdin 이 EOF 라 죽는 것이므로 **stdin 을 열어 두면 산다**: `tail -f /dev/null \| flutter run -d web-server --web-port=5173 …`. 디버그 웹 빌드는 난독화되지 않아 **예외 원문과 Dart 스택이 그대로 보인다** — 릴리스 빌드(`flutter build web`)로는 `dartException: Sk` 같은 축약만 나와 원인을 못 찾는다 |
+| `prisma migrate dev` 가 거부됨 | 비대화형 환경에서 HNSW 드리프트를 감지해 확인을 물으려 한다. `migrate diff --from-schema-datasource … --to-schema-datamodel … --script` 로 SQL 을 만들어 손질한 뒤 `prisma:deploy` — 절차는 `nexus-migration` 스킬 |
+| `adb shell input text` 가 NullPointerException | 한글을 넣지 못한다. 실기기 검증 문구는 영문으로 쓸 것 |
 | 브라우저 자동화로 Flutter 웹 입력이 안 먹음 | Flutter 웹은 캔버스로 그려 접근성 트리가 비어 있다. `flutter-semantics-placeholder` 를 클릭해 시맨틱스를 켜면 입력 요소가 노출된다. 그래도 **BackSpace · 값 직접 대입은 컨트롤러까지 전달되지 않고 타이핑만 append 된다** — 폼을 비우려면 페이지를 새로고침할 것 |
 
 ### 코드에서 겪은 함정
@@ -200,7 +203,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | 인증 없는 경로의 500 응답에 키 길이 · DB 호스트가 실림 | 전역 예외 필터는 `HttpException` 이 아닌 `Error` 의 message 를 **응답에 그대로 싣는다.** 공개 경로(OAuth 콜백 · 웹훅)의 throw 는 감싸서 접을 것 (10-2a) |
 | 응답 본문에 실은 `retryAfter` 가 앱에 도착하지 않음 | 같은 필터가 본문을 일정한 봉투로 다시 빚으며 **커스텀 필드를 버린다.** 표준 헤더(`Retry-After`)로 보낼 것 (10-3a) |
 | `.env` 에 `X=` 로 자리만 잡았더니 엉뚱한 경로가 됨 | `??` 는 빈 문자열을 통과시킨다(`resolve('')` = 작업 디렉터리). **빈 값을 미설정으로 치려면 `\|\|`** (8-1) |
-| `retryAfterSec: 0` 이 무시됨 | `x ? … : …` 는 `0` 을 거짓으로 본다. `!= null` 로 볼 것 (12) |
+| `retryAfterSec: 0` 이 무시됨 | `x ? … : …` 는 `0` 을 거짓으로 본다. `!= null` 로 볼 것 (12). **12단계에서 고친 뒤에도 인덱싱 큐의 `fail()` 에 같은 모양이 남아 있었다**(2026-09-27) — 판정을 순수 함수로 빼 한 자리에만 두었다 |
 | getter 를 읽을 때마다 리스너가 하나씩 늘어남 | Dart 에서 `..` 는 대입보다 느슨하다 — `a ??= B()..listen()` 은 `(a ??= B())..listen()` 이다 (8-2) |
 | 화면을 옮기면 build 중 `setState` 예외 | `build()` 안에서 리스너를 거쳐 `setState` 를 부르는 일을 했다. 프레임이 끝난 뒤로 미룰 것 (8-2) |
 | 도는 스프린트가 계획 뒤로 밀림 | Prisma 도 Dart 도 enum 을 **선언 순서**로 정렬한다. 명시적 순위를 둘 것 (9-3) |
@@ -218,6 +221,8 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | Gemini 모델이 산발적으로 503 을 냄 | `-latest` 별칭은 "새 출시마다 핫스왑" 되는 가장 붐비는 모델을 가리킨다. 특정 안정화 버전(예: `gemini-3.5-flash`)을 박아 둘 것. **혼잡은 날마다 바뀐다** — 9-22 에 503 이던 3.5-flash 가 9-23 엔 매번 200 이었다 (13-1 · LLM 교체) |
 | AI 답이 4분 넘게 오지 않음 | Gemini 가 붐비면 200 을 **255초** 뒤에 준다(3.5-flash 실측). 전환은 429 · 5xx 에서만 일어나 느린 응답에는 소용이 없었다. 어댑터가 `AbortSignal.timeout` 으로 **60초**(`LLM_TIMEOUT_SEC`)에 끊고 504 로 던져 전환 모델이 받는다. Node 의 `fetch` 는 `TimeoutError` 로 던진다 (LLM 교체 후) |
 | 생각하는 모델로 바꿨더니 답이 몇 줄에서 끊김 | Gemini 3.x 는 **생각 토큰도 `maxOutputTokens` 에서 쓴다.** 3.5-flash 는 기본(medium)으로 생각에만 ~2,600 토큰을 써 상한 2048 에서 잘렸다. 상한 8192 · `thinkingLevel: low` 로 두고, 잘린 답(`finishReason: MAX_TOKENS`)은 러너가 실패로 돌린다 (LLM 교체) |
+| `ListTile` 의 선택 배경 · 눌림 물결이 안 보이고 디버그 콘솔에 assertion | `ListTile` 은 가장 가까운 `Material` 에 그린다. 사이에 색을 가진 `Container`(= `ColoredBox`)가 끼면 덮인다. **배경은 `Material(color:)` 로 칠한다** — 채널 패널이 그랬고 통합 테스트가 처음 잡았다 (2026-09-27) |
+| 테스트에서 provider 안의 `ref.listen` 이 아무 이벤트도 못 받음 | **Riverpod 3 은 구독자가 없는 provider 를 멈춘다.** `container.read` 로는 안 살아난다 — `container.listen` 으로 붙들 것. 앱은 `main.dart` 가 `watch` 해서 괜찮다 (2026-09-27) |
 | 길게 누르기 시트가 `BOTTOM OVERFLOWED` 로 잘림 | `showModalBottomSheet` 는 기본 최대 높이가 화면의 9/16 이다. `isScrollControlled: true` 가 없으면 항목이 늘 때 조용히 넘친다 (13-1) |
 | 화면을 닫으면 디버그 빌드에서 `deactivated widget's ancestor` 로 멈춤 | `dispose()` 안에서 `ProviderScope.containerOf(context)` 같은 조상 조회를 했다. **`didChangeDependencies` 에서 참조를 잡아 두고** `dispose` 는 그것만 쓴다 — 예외로 정리도 못 돌아 구독이 남았다 (13-2 후 `74ccc01`) |
 
@@ -466,15 +471,14 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 
 ### 알려진 빚
 
-- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 420개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 15종 603 케이스**(13-3 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 같은 종류가 다시 나오면 그때 장치를 만든다. (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
-- **AI 큐의 실패 갈래와 「모델이 바뀌면 캐시가 적중하지 않음」이 계약 검증에 없다(13-1).** 리스 만료 복구 · 5xx 5회 소진 · fatal 즉시 포기를 `check:ai` 로 재현하려면 실패를 주입할 수 있는 fake LLM 어댑터가 필요한데, 지금 `fake` 는 항상 즉시 성공만 한다 — 인덱싱 큐의 같은 자리(§4 «12 실제 태우기» 이후에도 남은 빚)와 같은 모양이다. 단위 테스트(`classifyFailure` · `shouldGiveUp`)가 대신 덮는다.
-- **`local`(Ollama) LLM 경로를 실측하지 못했다(13-1).** `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. Ollama 가 없는 PC 에서 13단계를 이어받으면 먼저 설치하고 실제로 태워 볼 것.
-- `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다.
-- **비공개 채널에 다른 사람을 넣는 방법이 없다.** 생성자는 채널 생성 시 자동으로 멤버가 되지만(`ChannelsService.create()`), 채널 멤버 추가·제거 API 가 아직 없어 비공개 채널은 사실상 "나만 보는 채널"이다. 여럿이 쓰는 비공개 채널이 필요해지는 단계에서 함께 설계한다.
-- **앱 테스트에 통합 테스트가 없다.** `app/test/` 에 **296개**(인메모리 drift 로 실제 DB 동작까지 덮는 단위 테스트 + 9-3 부터 붙은 위젯 테스트). **화면 자체를 도는 통합 테스트는 없다** — UI 리디자인(2026-08-22)이 심은 라우터 결함이 열흘 뒤 11단계 화면 확인에서야 드러났고, 그 뒤 `test/router_shell_test.dart` 로 라우트 트리 구조만 검사한다. 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)도 실기기 확인에만 기댄다.
-- **`prisma migrate dev` 는 이 환경(비대화형)에서 거부된다.** 위 HNSW 드리프트를 감지해 확인을 물으려 하기 때문이다. `npx prisma migrate diff --from-schema-datasource ... --to-schema-datamodel ... --script` 로 SQL 을 만들어 손질한 뒤 `prisma:deploy` 로 적용한다.
-- **`adb shell input text` 는 한글을 넣지 못한다**(NullPointerException). 실기기 검증 문구는 영문으로 쓸 것.
-- **소켓 토큰 갱신 경로가 자동 검증되지 않는다.** 액세스 토큰 만료(15분)를 기다려야 재현되므로 테스트에 넣지 않았다. 실기기로 한 번 확인했다.
+2026-09-27 에 한 번 정리했다 — 갚은 것 · 단계로 옮긴 것 · 환경 함정으로 옮긴 것은
+[진행 기록](docs/진행-기록.md) «빚 정리 (2026-09-27)».
+
+- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 434개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 15종 629 케이스**(2026-09-27 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
+- **앱 통합 테스트가 CI 에서 돌지 않는다.** `npm run app:flow` 는 Windows 데스크톱에서만 돈다 — CI 는 ubuntu 인데 앱에 `linux/` 플랫폼이 없다. 들이는 것은 플랫폼을 하나 늘리는 결정이라 «마지막» 단계의 테넌트 격리 통합 테스트와 함께 정한다. 그때까지는 **화면을 건드린 변경마다 사람이 돌린다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **301개**
+- **`local`(Ollama) LLM 경로를 실측하지 못했다(13-1).** `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. 이 PC 에 Ollama 가 없다 — 설치(`winget install Ollama.Ollama`)와 모델 받기(약 4.7GB)는 사람이 한다. 설치된 PC 에서 13단계를 만지면 먼저 태워 볼 것.
+- **인덱싱 큐의 5xx 소진은 단위 테스트만 덮는다.** 재시도 대기가 1분씩이라 계약 검증으로 세 번을 태우면 3분이 걸린다. 판정(`shouldGiveUpIndexing` · `indexRetryDelayMs`)은 순수 함수로 빼 두었다. 429 · 리스 유효/만료는 `check:indexing` 이 본다.
+- `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다. 개발 PC 가 둘 다 Windows 라 그대로 둔다.
 
 ---
 
