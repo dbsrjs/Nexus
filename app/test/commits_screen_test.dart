@@ -4,10 +4,12 @@ import 'package:nexus_app/domain/models/repo_browse.dart';
 import 'package:nexus_app/features/repo/commit_detail_screen.dart';
 import 'package:nexus_app/features/repo/commits_screen.dart';
 
+import 'support/nx_host.dart';
+
 void main() {
   testWidgets('커밋 목록이 제목과 짧은 sha 를 보여 준다', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      nxTestApp(
         home: Scaffold(
           body: CommitList(
             commits: const [
@@ -33,7 +35,7 @@ void main() {
 
   testWidgets('changedCount 를 모르면 파일 수를 말하지 않는다', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      nxTestApp(
         home: Scaffold(
           body: CommitList(
             commits: const [CommitSummary(sha: 'a1b2c3d', message: 'chore: x')],
@@ -50,7 +52,7 @@ void main() {
 
   testWidgets('변경 파일이 상태와 함께 보인다', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
+      nxTestApp(
         home: Scaffold(
           body: ChangedFileList(
             files: const [

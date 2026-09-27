@@ -4,13 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/domain/models/pull.dart';
 import 'package:nexus_app/features/repo/pull_detail_screen.dart';
 
+import 'support/nx_host.dart';
+
 /// `repos_screen_test.dart` 와 같은 방식이다 — **override 목록이 아니라 적재
 /// 함수를 받는다.** Riverpod 3 은 `Override` 를 export 하지 않아 목록에 타입을
 /// 붙일 수 없다.
 Widget harness(Future<PullView> Function() load) {
   return ProviderScope(
     overrides: [pullDetailProvider.overrideWith((ref, key) => load())],
-    child: const MaterialApp(
+    child: nxTestApp(
       home: PullDetailScreen(spaceId: 'space-1', repoId: 'repo-1', number: 12),
     ),
   );

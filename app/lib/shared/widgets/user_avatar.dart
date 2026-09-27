@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/auth_controller.dart';
+import '../../ui/theme.dart';
 import 'nexus_avatar.dart';
 
 /// 사람 아바타(14단계). 사진이 있으면 사진, 없거나 못 받으면 **지금의 이니셜**이다.
@@ -40,7 +41,7 @@ class UserAvatar extends ConsumerWidget {
     // 투명한 사진(로고 등)도 동그라미로 읽히게 뒤에 바탕을 깐다.
     return ClipOval(
       child: ColoredBox(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: NxTheme.of(context).colors.bgElevated,
         child: Image.network(
           '${client.dio.options.baseUrl}$path',
           headers: token == null ? null : {'authorization': 'Bearer $token'},

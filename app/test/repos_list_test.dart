@@ -7,6 +7,8 @@ import 'package:nexus_app/features/repo/connection_controller.dart';
 import 'package:nexus_app/features/repo/repo_controller.dart';
 import 'package:nexus_app/features/repo/repos_screen.dart';
 
+import 'support/nx_host.dart';
+
 /// Riverpod 3 은 `Override` 를 export 하지 않아 목록에 타입을 붙일 수 없다.
 /// 그래서 적재 함수를 받는다(10-2a 의 repos_screen_test 와 같은 방식).
 Widget harness({
@@ -18,7 +20,7 @@ Widget harness({
       connectionsProvider.overrideWith((ref) => connections()),
       spaceReposProvider('space-1').overrideWith((ref) => repos()),
     ],
-    child: const MaterialApp(home: ReposScreen(spaceId: 'space-1')),
+    child: nxTestApp(home: ReposScreen(spaceId: 'space-1')),
   );
 }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nexus_app/core/theme.dart';
 import 'package:nexus_app/data/api/ai_api.dart';
 import 'package:nexus_app/data/api/api_failure.dart';
 import 'package:nexus_app/domain/models/ai_run.dart';
@@ -9,6 +8,8 @@ import 'package:nexus_app/features/ai/ai_controller.dart';
 import 'package:nexus_app/features/ai/ai_panel.dart';
 import 'package:nexus_app/features/ai/ai_request.dart';
 import 'package:nexus_app/features/realtime/socket_controller.dart';
+
+import 'support/nx_host.dart';
 
 const _messages = MessagesContext(channelId: 'c1', messageIds: ['m1', 'm2']);
 const _repo = RepoContext(repoId: 'r1', repoName: 'nexus');
@@ -51,9 +52,7 @@ Future<_FakeAiApi> _pump(
         aiApiProvider.overrideWithValue(api),
         socketEventsProvider.overrideWith((ref) => const Stream.empty()),
       ],
-      child: MaterialApp(
-        theme: buildNexusTheme(brightness: Brightness.dark),
-        home: Scaffold(
+      child: nxTestApp(home: Scaffold(
           body: SingleChildScrollView(
             child: AiPanel(
               spaceId: 's1',

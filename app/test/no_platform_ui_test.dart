@@ -51,10 +51,6 @@ const _allowed = <String>{
   'lib/features/shell/space_rail.dart',
   'lib/features/space/space_picker_screen.dart',
   'lib/main.dart',
-  'lib/shared/markdown/markdown_body.dart',
-  'lib/shared/widgets/nexus_avatar.dart',
-  'lib/shared/widgets/nexus_logo.dart',
-  'lib/shared/widgets/user_avatar.dart',
 };
 
 final _platformImport = RegExp(

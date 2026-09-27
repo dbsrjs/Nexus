@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nexus_app/core/theme.dart';
 import 'package:nexus_app/domain/models/channel.dart';
 import 'package:nexus_app/features/channel/channel_controller.dart';
 import 'package:nexus_app/features/channel/channel_list.dart';
+
+import 'support/nx_host.dart';
 
 /// 음소거한 채널의 목록 표시(14단계 설계 D17). 디스코드와 같다 —
 /// **안 읽음 표시는 끄고, 나를 부른 멘션은 남긴다.**
@@ -16,9 +17,7 @@ void main() {
           channelsProvider.overrideWith((ref) => Stream.value(channels)),
           categoriesProvider.overrideWith((ref) => Stream.value(const [])),
         ],
-        child: MaterialApp(
-          theme: buildNexusTheme(brightness: Brightness.dark),
-          home: const Scaffold(body: ChannelList()),
+        child: nxTestApp(home: const Scaffold(body: ChannelList()),
         ),
       ),
     );

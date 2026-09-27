@@ -10,6 +10,8 @@ import 'package:nexus_app/features/chat/thread_controller.dart';
 import 'package:nexus_app/features/chat/thread_screen.dart';
 import 'package:nexus_app/features/space/space_controller.dart';
 
+import 'support/nx_host.dart';
+
 /// 스레드 화면의 수명.
 ///
 /// 닫힐 때 `dispose()` 가 context 로 조상을 찾으면 디버그 빌드에서
@@ -42,7 +44,7 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(
+        child: nxTestApp(
           home: ThreadScreen(spaceId: 's1', channelId: 'c1', messageId: 'm1'),
         ),
       ),
@@ -54,7 +56,7 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: SizedBox()),
+        child: nxTestApp(home: SizedBox()),
       ),
     );
     await tester.pump();

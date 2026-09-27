@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
-import '../../core/theme.dart';
+import '../../ui/theme.dart';
 
 /// 브랜드 마크. **제안서(2026-08-31)가 갈라 둔 대로 두 벌을 쓴다.**
 ///
@@ -92,30 +92,42 @@ class NexusMarkTile extends StatelessWidget {
 
 /// 스플래시. 토큰을 복원하는 동안 잠깐 보이는 화면이다.
 ///
-/// **로고를 두고 스피너를 그 아래 작게 둔다** — 이 화면은 «켜지는 중» 을
-/// 말하는 자리이지 «기다리는 중» 을 말하는 자리가 아니다. 서버가 꺼져 있으면
-/// 여기 머무르므로(라우터의 리다이렉트 규칙) 빈 스피너 하나보다 낫다.
-class NexusSplash extends StatelessWidget {
+/// **도는 스피너를 두지 않는다**(15단계 D10) — 이 화면은 «켜지는 중» 을 말하는 자리다.
+/// 서버가 꺼져 있으면 여기 머무르므로(라우터의 리다이렉트 규칙) 마크가 천천히 숨 쉬어
+/// 멈춘 화면이 아님을 보인다.
+class NexusSplash extends StatefulWidget {
   const NexusSplash({super.key});
 
   @override
+  State<NexusSplash> createState() => _NexusSplashState();
+}
+
+class _NexusSplashState extends State<NexusSplash>
+    with SingleTickerProviderStateMixin {
+  late final _breath = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _breath.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const NexusMarkTile(size: 88),
-            const SizedBox(height: NexusSpacing.sp7),
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Theme.of(context).colorScheme.outline,
-              ),
+    return ColoredBox(
+      color: NxTheme.of(context).colors.bgBase,
+      child: Center(
+        child: Semantics(
+          label: '불러오는 중',
+          child: FadeTransition(
+            opacity: Tween(begin: 1.0, end: .55).animate(
+              CurvedAnimation(parent: _breath, curve: Curves.easeInOut),
             ),
-          ],
+            child: const NexusMarkTile(size: 88),
+          ),
         ),
       ),
     );

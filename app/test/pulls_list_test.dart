@@ -9,6 +9,8 @@ import 'package:nexus_app/domain/models/pull.dart';
 import 'package:nexus_app/features/repo/browse_controller.dart';
 import 'package:nexus_app/features/repo/pulls_screen.dart';
 
+import 'support/nx_host.dart';
+
 /// **`implements` 로 만든다** — `PullsApi` 는 `ApiClient` 를 받는데 테스트에는
 /// 줄 것이 없다. 생성자를 부르지 않으므로 공개 메서드 셋만 채우면 된다.
 class FakePullsApi implements PullsApi {
@@ -76,7 +78,7 @@ Widget harness(FakePullsApi api, {Object? firstPageError}) {
             : (api.pages[1] ?? (pulls: const <PullSummary>[], nextPage: null));
       }),
     ],
-    child: const MaterialApp(
+    child: nxTestApp(
       home: PullsScreen(spaceId: 'space-1', repoId: 'repo-1'),
     ),
   );
@@ -206,7 +208,7 @@ void main() {
     // 「닫힘」 을 골랐는데 «열린 PR 이 없습니다» 라고 하면 필터가 안 먹은
     // 것으로 읽힌다.
     await tester.pumpWidget(
-      MaterialApp(
+      nxTestApp(
         home: Scaffold(
           body: PullList(pulls: const [], state: 'closed', onTap: (_) {}),
         ),

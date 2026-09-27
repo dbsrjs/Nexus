@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
-import '../../core/theme.dart';
+import '../../ui/theme.dart';
 
 /// 이름의 첫 글자를 담은 원형 아바타.
 ///
@@ -33,27 +33,26 @@ class NexusAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = NexusColors.avatars[seed.hashCode.abs() % NexusColors.avatars.length];
+    final c = NxTheme.of(context).colors;
+    final color = c.avatars[seed.hashCode.abs() % c.avatars.length];
     final initial = label.characters.isEmpty ? '?' : label.characters.first;
-    final radius = squircle ? NexusRadius.md * 2 : size;
+    final radius = squircle ? NxRadius.md * 2 : size;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
+      duration: NxMotion.micro,
       width: size,
       height: size,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(radius),
-        border: selected
-            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
-            : null,
+        border: selected ? Border.all(color: c.accent, width: 2) : null,
       ),
       alignment: Alignment.center,
       child: Text(
         initial,
         style: TextStyle(
           // 아바타 8색은 명도 66% 고정이라 어두운 글자가 항상 읽힌다.
-          color: NexusColors.bgBaseDark,
+          color: c.onAccent,
           fontSize: size * 0.4,
           fontWeight: FontWeight.w600,
           height: 1,

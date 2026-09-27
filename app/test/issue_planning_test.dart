@@ -6,6 +6,8 @@ import 'package:nexus_app/domain/models/sprint.dart';
 import 'package:nexus_app/features/issue/issue_planning_row.dart';
 import 'package:nexus_app/features/issue/sprint_controller.dart';
 
+import 'support/nx_host.dart';
+
 /// 이슈 상세의 계획 줄(스프린트 · 스토리 포인트).
 ///
 /// **이 프로젝트의 첫 위젯 테스트다.** 지금까지 화면 계층은 실기기 확인에만
@@ -37,7 +39,7 @@ void main() {
         overrides: [
           sprintListProvider.overrideWith((ref) => Stream.value(sprints)),
         ],
-        child: MaterialApp(
+        child: nxTestApp(
           home: Scaffold(body: IssuePlanningRow(issue: value)),
         ),
       ),

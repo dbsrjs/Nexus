@@ -1,12 +1,12 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/models/message.dart';
 import '../../features/repo/code_highlight.dart';
 import 'block.dart';
 import 'inline.dart';
-import '../../core/theme.dart';
+import '../../ui/theme.dart';
 
 /// 마크다운 본문. **채팅 · 이슈 본문 · 이슈 댓글이 같은 것을 쓴다** —
 /// 규칙이 갈라지면 "채팅에서는 되는데 이슈에서는 안 되는" 일이 생긴다.
@@ -31,7 +31,7 @@ class MarkdownBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = style ?? Theme.of(context).textTheme.bodyMedium;
+    final base = style ?? NxTheme.of(context).text.body;
     final names = <String, String>{
       ...fallbackNames,
       for (final m in mentions)
@@ -73,7 +73,8 @@ Widget _block(
   TextStyle? base,
   Map<String, String> names,
 ) {
-  final theme = Theme.of(context);
+  final nx = NxTheme.of(context);
+  final c = nx.colors;
 
   switch (block.kind) {
     case BlockKind.code:
@@ -81,9 +82,9 @@ Widget _block(
 
     case BlockKind.heading:
       final style = switch (block.level) {
-        1 => theme.textTheme.titleLarge,
-        2 => theme.textTheme.titleMedium,
-        _ => theme.textTheme.titleSmall,
+        1 => nx.text.heading,
+        2 => nx.text.title,
+        _ => nx.text.strong,
       };
       return _paragraph(context, block.lines, style, names);
 
@@ -91,14 +92,12 @@ Widget _block(
       return Container(
         padding: const EdgeInsets.only(left: 10),
         decoration: BoxDecoration(
-          border: Border(
-            left: BorderSide(color: theme.dividerColor, width: 3),
-          ),
+          border: Border(left: BorderSide(color: c.divider, width: 3)),
         ),
         child: _paragraph(
           context,
           block.lines,
-          base?.copyWith(color: theme.hintColor),
+          base?.copyWith(color: c.textSecondary),
           names,
         ),
       );
@@ -118,7 +117,7 @@ Widget _block(
                     width: 22,
                     child: Text(
                       block.ordered ? '${i + 1}.' : '•',
-                      style: base?.copyWith(color: theme.hintColor),
+                      style: base?.copyWith(color: c.textSecondary),
                     ),
                   ),
                   Expanded(
@@ -165,7 +164,8 @@ List<InlineSpan> inlineSpans(
   List<InlineNode> nodes,
   TextStyle? style,
 ) {
-  final theme = Theme.of(context);
+  final nx = NxTheme.of(context);
+  final c = nx.colors;
   final spans = <InlineSpan>[];
 
   for (final node in nodes) {
@@ -174,70 +174,85 @@ List<InlineSpan> inlineSpans(
         spans.add(TextSpan(text: node.text, style: style));
 
       case InlineKind.bold:
-        spans.addAll(inlineSpans(
-          context,
-          node.children,
-          style?.copyWith(fontWeight: FontWeight.w700),
-        ));
+        spans.addAll(
+          inlineSpans(
+            context,
+            node.children,
+            style?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        );
 
       case InlineKind.italic:
-        spans.addAll(inlineSpans(
-          context,
-          node.children,
-          style?.copyWith(fontStyle: FontStyle.italic),
-        ));
+        spans.addAll(
+          inlineSpans(
+            context,
+            node.children,
+            style?.copyWith(fontStyle: FontStyle.italic),
+          ),
+        );
 
       case InlineKind.strike:
-        spans.addAll(inlineSpans(
-          context,
-          node.children,
-          style?.copyWith(decoration: TextDecoration.lineThrough),
-        ));
+        spans.addAll(
+          inlineSpans(
+            context,
+            node.children,
+            style?.copyWith(decoration: TextDecoration.lineThrough),
+          ),
+        );
 
       case InlineKind.code:
-        spans.add(TextSpan(
-          text: node.text,
-          style: style?.copyWith(
-            fontFamily: 'monospace',
-            backgroundColor: theme.dividerColor,
+        spans.add(
+          TextSpan(
+            text: node.text,
+            style: style?.copyWith(
+              fontFamily: nx.text.mono.fontFamily,
+              fontFamilyFallback: nx.text.mono.fontFamilyFallback,
+              backgroundColor: c.divider,
+            ),
           ),
-        ));
+        );
 
       case InlineKind.mention:
-        spans.add(TextSpan(
-          text: node.text,
-          style: style?.copyWith(
-            color: theme.colorScheme.primary,
-            fontWeight: FontWeight.w600,
+        spans.add(
+          TextSpan(
+            text: node.text,
+            style: style?.copyWith(
+              color: c.accent,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ));
+        );
 
       case InlineKind.link:
         final url = node.url;
-        spans.add(TextSpan(
-          children: inlineSpans(
-            context,
-            node.children,
-            style?.copyWith(
-              color: theme.colorScheme.primary,
-              decoration: TextDecoration.underline,
+        spans.add(
+          TextSpan(
+            children: inlineSpans(
+              context,
+              node.children,
+              style?.copyWith(
+                color: c.accent,
+                decoration: TextDecoration.underline,
+              ),
             ),
-          ),
-          recognizer: url == null
-              ? null
-              : (TapGestureRecognizer()
-                ..onTap = () => launchUrl(
+            recognizer: url == null
+                ? null
+                : (TapGestureRecognizer()
+                    ..onTap = () => launchUrl(
                       Uri.parse(url),
                       mode: LaunchMode.externalApplication,
                     )),
-        ));
+          ),
+        );
 
       case InlineKind.spoiler:
-        spans.add(WidgetSpan(
-          alignment: PlaceholderAlignment.baseline,
-          baseline: TextBaseline.alphabetic,
-          child: _Spoiler(children: node.children, style: style),
-        ));
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: _Spoiler(children: node.children, style: style),
+          ),
+        );
     }
   }
 
@@ -273,8 +288,8 @@ class _SpoilerState extends State<_Spoiler> {
       onTap: () => setState(() => _revealed = true),
       child: Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(NexusRadius.sm),
+          color: NxTheme.of(context).colors.textPrimary.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(NxRadius.sm),
         ),
         // 글자를 지우지 않고 가린다 — 폭이 유지돼야 눌렀을 때 줄이 흔들리지 않는다.
         child: Opacity(opacity: 0, child: content),
@@ -292,8 +307,13 @@ class _CodeBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final mono = base?.copyWith(fontFamily: 'monospace', height: 1.4);
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    final mono = base?.copyWith(
+      fontFamily: nx.text.mono.fontFamily,
+      fontFamilyFallback: nx.text.mono.fontFamilyFallback,
+      height: 1.4,
+    );
     final palette = CodePalette.of(context);
     final language = block.language;
 
@@ -301,18 +321,15 @@ class _CodeBlock extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: theme.dividerColor.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(NexusRadius.md),
+        color: c.divider.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(NxRadius.md),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           if (language != null) ...[
-            Text(
-              language,
-              style: theme.textTheme.labelSmall?.copyWith(color: theme.hintColor),
-            ),
+            Text(language, style: nx.text.meta),
             const SizedBox(height: 6),
           ],
           // 긴 줄은 접지 않고 가로로 민다 — 접으면 코드를 읽을 수 없다.
@@ -345,14 +362,14 @@ class _TableBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (block.rows.isEmpty) return const SizedBox.shrink();
-    final theme = Theme.of(context);
+    final c = NxTheme.of(context).colors;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: theme.dividerColor),
-          borderRadius: BorderRadius.circular(NexusRadius.md),
+          border: Border.all(color: c.divider),
+          borderRadius: BorderRadius.circular(NxRadius.md),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -361,9 +378,7 @@ class _TableBlock extends StatelessWidget {
               Container(
                 decoration: BoxDecoration(
                   border: r == 0
-                      ? Border(
-                          bottom: BorderSide(color: theme.dividerColor),
-                        )
+                      ? Border(bottom: BorderSide(color: c.divider))
                       : null,
                 ),
                 child: Row(
@@ -398,4 +413,3 @@ class _TableBlock extends StatelessWidget {
     );
   }
 }
-

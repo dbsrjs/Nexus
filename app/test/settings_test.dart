@@ -2,7 +2,6 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nexus_app/core/theme.dart';
 import 'package:nexus_app/data/api/api_failure.dart';
 import 'package:nexus_app/data/api/settings_api.dart';
 import 'package:nexus_app/domain/models/user.dart';
@@ -12,6 +11,8 @@ import 'package:nexus_app/features/space/space_controller.dart';
 import 'package:nexus_app/features/settings/account_section.dart';
 import 'package:nexus_app/features/settings/password_section.dart';
 import 'package:nexus_app/features/settings/settings_controller.dart';
+
+import 'support/nx_host.dart';
 
 /// 14단계 설정 창.
 void main() {
@@ -51,9 +52,7 @@ void main() {
               return db;
             }),
           ],
-          child: MaterialApp(
-            theme: buildNexusTheme(brightness: Brightness.dark),
-            home: const Scaffold(body: AccountSection()),
+          child: nxTestApp(home: const Scaffold(body: AccountSection()),
           ),
         ),
       );
@@ -73,7 +72,7 @@ void main() {
             settingsApiProvider.overrideWithValue(_FakeSettingsApi()),
             authControllerProvider.overrideWith(_SignedIn.new),
           ],
-          child: MaterialApp(home: const Scaffold(body: AccountSection())),
+          child: nxTestApp(home: const Scaffold(body: AccountSection())),
         ),
       );
       FilledButton save() => tester.widget<FilledButton>(find.widgetWithText(FilledButton, '저장'));
@@ -92,9 +91,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [settingsApiProvider.overrideWithValue(api)],
-          child: MaterialApp(
-            theme: buildNexusTheme(brightness: Brightness.dark),
-            home: const Scaffold(body: PasswordSection()),
+          child: nxTestApp(home: const Scaffold(body: PasswordSection()),
           ),
         ),
       );

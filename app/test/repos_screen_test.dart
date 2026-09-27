@@ -5,6 +5,8 @@ import 'package:nexus_app/domain/models/connection.dart';
 import 'package:nexus_app/features/repo/connection_controller.dart';
 import 'package:nexus_app/features/repo/repos_screen.dart';
 
+import 'support/nx_host.dart';
+
 /// 9-3 에서 서버만 만들고 화면을 빠뜨린 채 완료로 보고한 일이 있었다.
 /// 이 테스트는 그 구멍을 막는 자리다.
 ///
@@ -13,7 +15,7 @@ import 'package:nexus_app/features/repo/repos_screen.dart';
 Widget harness(Future<List<GithubConnection>> Function() load) {
   return ProviderScope(
     overrides: [connectionsProvider.overrideWith((ref) => load())],
-    child: const MaterialApp(home: ReposScreen(spaceId: 'space-1')),
+    child: nxTestApp(home: ReposScreen(spaceId: 'space-1')),
   );
 }
 
