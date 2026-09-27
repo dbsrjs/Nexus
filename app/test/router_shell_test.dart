@@ -43,6 +43,12 @@ void main() {
     expect(inShell, isNot(contains('/s/:spaceId/repo-events/:eventId')));
   });
 
+  test('설정 창은 셸 밖이다 - 스페이스에 묶이지 않고 덮어서 연다(14단계)', () {
+    final inShell = _pathsUnderShell(appRoutes());
+    expect(inShell, isNot(contains('/settings')));
+    expect(inShell, isNot(contains('/settings/:section')));
+  });
+
   test('머무는 갈래는 그대로 셸 안이다', () {
     // 반대쪽도 못 박는다 — 겁이 나서 전부 셸 밖으로 빼면 갈래를 옮길 때마다
     // 레일과 채널 목록이 다시 만들어져 리디자인이 없던 일이 된다.

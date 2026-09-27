@@ -258,3 +258,80 @@ class ShellHome extends StatelessWidget {
     );
   }
 }
+
+/// 설정 창의 틀(14단계 설계 D2). **폭 분기는 이 파일에서만 한다**는 규칙을 지키려고
+/// 셸 밖 화면이지만 여기에 둔다.
+///
+/// - 태블릿 · 데스크톱: 왼쪽 목록 + 오른쪽 내용 + 오른쪽 위 닫기(디스코드)
+/// - 모바일: 섹션을 고르지 않았으면 목록, 골랐으면 그 섹션 + 뒤로
+class SettingsFrame extends StatelessWidget {
+  const SettingsFrame({
+    super.key,
+    required this.nav,
+    required this.title,
+    required this.content,
+    required this.fallback,
+    required this.onClose,
+    required this.onBack,
+  });
+
+  final Widget nav;
+  final String title;
+
+  /// 고른 섹션. null 이면 모바일은 목록을, 넓은 화면은 [fallback] 을 보인다.
+  final Widget? content;
+  final Widget fallback;
+  final VoidCallback onClose;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (Layout.ofContext(context) == Layout.mobile) {
+      final body = content;
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(body == null ? '설정' : title),
+          leading: body == null
+              ? CloseButton(onPressed: onClose)
+              : BackButton(onPressed: onBack),
+        ),
+        body: SafeArea(child: body ?? nav),
+      );
+    }
+
+    return Scaffold(
+      body: SafeArea(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 채널 패널과 같은 이유로 Container 가 아니라 Material 로 칠한다 —
+            // 목록의 ListTile 이 선택 배경 · 물결을 가장 가까운 Material 에 그린다.
+            SizedBox(
+              width: 220,
+              child: Material(color: theme.colorScheme.surface, child: nav),
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(child: content ?? fallback),
+                  Positioned(
+                    top: NexusSpacing.sp6,
+                    right: NexusSpacing.sp6,
+                    child: IconButton(
+                      tooltip: '닫기 (Esc)',
+                      icon: const Icon(Icons.close),
+                      onPressed: onClose,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

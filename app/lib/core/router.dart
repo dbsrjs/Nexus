@@ -19,6 +19,8 @@ import '../features/repo/repos_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../shared/widgets/nexus_logo.dart';
 import '../features/space/space_picker_screen.dart';
+import '../features/settings/settings_controller.dart';
+import '../features/settings/settings_screen.dart';
 
 /// 라우트는 docs/앱-설계.md §5 를 따른다. 슬라이스 2 시점에서
 /// `/login` · `/spaces` · `/s/:spaceId` 까지 채웠다.
@@ -65,6 +67,25 @@ List<RouteBase> appRoutes() => [
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const _SignupPlaceholder()),
       GoRoute(path: '/spaces', builder: (_, _) => const SpacePickerScreen()),
+      // 설정 창(14단계). 셸 밖에 덮어서 연다 — 스페이스에 묶이지 않는다.
+      // `space` 는 알림 섹션이 먼저 보일 스페이스, `from` 은 닫을 때 돌아갈 곳이다.
+      GoRoute(
+        path: '/settings',
+        builder: (_, state) => SettingsScreen(
+          spaceId: state.uri.queryParameters['space'],
+          from: state.uri.queryParameters['from'],
+        ),
+        routes: [
+          GoRoute(
+            path: ':section',
+            builder: (_, state) => SettingsScreen(
+              section: SettingsSection.parse(state.pathParameters['section']),
+              spaceId: state.uri.queryParameters['space'],
+              from: state.uri.queryParameters['from'],
+            ),
+          ),
+        ],
+      ),
       // ── 셸 안 — 한 번 가서 머무는 곳 ──────────────────
       //
       // ShellRoute 가 셸을 마운트한 채로 두므로, 갈래를 옮겨도 레일과 채널
