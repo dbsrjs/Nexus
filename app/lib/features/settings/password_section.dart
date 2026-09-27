@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme.dart';
 import '../../data/api/api_failure.dart';
+import '../../ui/ui.dart';
 import 'settings_controller.dart';
 import 'settings_widgets.dart';
 
@@ -22,7 +23,7 @@ class _PasswordSectionState extends ConsumerState<PasswordSection> {
   final _next = TextEditingController();
   final _confirm = TextEditingController();
   bool _busy = false;
-  SettingsNotice? _notice;
+  String? _error;
 
   @override
   void dispose() {
@@ -45,12 +46,12 @@ class _PasswordSectionState extends ConsumerState<PasswordSection> {
   Future<void> _submit() async {
     final local = _localError();
     if (local != null) {
-      setState(() => _notice = SettingsNotice.error(local));
+      setState(() => _error = local);
       return;
     }
     setState(() {
       _busy = true;
-      _notice = null;
+      _error = null;
     });
     try {
       await ref.read(settingsApiProvider).changePassword(
@@ -60,9 +61,15 @@ class _PasswordSectionState extends ConsumerState<PasswordSection> {
       _current.clear();
       _next.clear();
       _confirm.clear();
-      _notice = const SettingsNotice.ok('비밀번호를 바꿨습니다. 다른 기기에서는 다시 로그인해야 합니다.');
+      if (mounted) {
+        NxToast.show(
+          context,
+          '비밀번호를 바꿨습니다. 다른 기기에서는 다시 로그인해야 합니다.',
+          kind: NxToastKind.success,
+        );
+      }
     } on ApiException catch (e) {
-      _notice = SettingsNotice.error(settingsMessageFor(e.failure, password: true));
+      _error = settingsMessageFor(e.failure, password: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -75,17 +82,18 @@ class _PasswordSectionState extends ConsumerState<PasswordSection> {
       children: [
         _field('현재 비밀번호', _current),
         _field('새 비밀번호', _next, helper: '10자 이상'),
-        _field('새 비밀번호 확인', _confirm, onSubmitted: (_) => _busy ? null : _submit()),
-        const SizedBox(height: NexusSpacing.sp6),
+        _field(
+          '새 비밀번호 확인',
+          _confirm,
+          onSubmitted: (_) => _busy ? null : _submit(),
+        ),
+        const SizedBox(height: NxSpacing.sp4),
         Row(
           children: [
-            FilledButton(
-              onPressed: _busy ? null : _submit,
-              child: const Text('비밀번호 바꾸기'),
-            ),
+            NxButton(label: '비밀번호 바꾸기', loading: _busy, onPressed: _submit),
           ],
         ),
-        if (_notice != null) SettingsNoticeText(_notice!),
+        if (_error != null) SettingsError(_error!),
       ],
     );
   }
@@ -97,14 +105,16 @@ class _PasswordSectionState extends ConsumerState<PasswordSection> {
     ValueChanged<String>? onSubmitted,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: NexusSpacing.sp5),
-      child: TextField(
+      padding: const EdgeInsets.only(bottom: NxSpacing.sp6),
+      child: NxField(
+        label: label,
         controller: controller,
-        obscureText: true,
-        autocorrect: false,
-        enableSuggestions: false,
+        obscure: true,
+        helper: helper,
+        textInputAction: onSubmitted == null
+            ? TextInputAction.next
+            : TextInputAction.done,
         onSubmitted: onSubmitted,
-        decoration: InputDecoration(labelText: label, helperText: helper),
       ),
     );
   }

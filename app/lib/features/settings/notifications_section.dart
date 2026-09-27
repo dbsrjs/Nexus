@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/channel.dart';
+import '../../ui/ui.dart';
 import '../space/space_controller.dart';
 import 'settings_controller.dart';
 import 'settings_widgets.dart';
@@ -20,13 +20,14 @@ class NotificationsSection extends ConsumerStatefulWidget {
   final String? initialSpaceId;
 
   @override
-  ConsumerState<NotificationsSection> createState() => _NotificationsSectionState();
+  ConsumerState<NotificationsSection> createState() =>
+      _NotificationsSectionState();
 }
 
 class _NotificationsSectionState extends ConsumerState<NotificationsSection> {
   String? _spaceId;
   final _pending = <String>{};
-  SettingsNotice? _notice;
+  String? _error;
 
   @override
   void initState() {
@@ -37,17 +38,15 @@ class _NotificationsSectionState extends ConsumerState<NotificationsSection> {
   Future<void> _toggle(String spaceId, Channel channel, bool muted) async {
     setState(() {
       _pending.add(channel.id);
-      _notice = null;
+      _error = null;
     });
     try {
-      final saved = await ref.read(settingsApiProvider).setMuted(
-            spaceId: spaceId,
-            channelId: channel.id,
-            muted: muted,
-          );
+      final saved = await ref
+          .read(settingsApiProvider)
+          .setMuted(spaceId: spaceId, channelId: channel.id, muted: muted);
       await ref.read(appDatabaseProvider).setChannelMuted(channel.id, saved);
     } on ApiException catch (e) {
-      _notice = SettingsNotice.error(settingsMessageFor(e.failure));
+      _error = settingsMessageFor(e.failure);
     } finally {
       if (mounted) setState(() => _pending.remove(channel.id));
     }
@@ -55,7 +54,7 @@ class _NotificationsSectionState extends ConsumerState<NotificationsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
     final spaces = ref.watch(spacesProvider).value ?? const [];
     final spaceId = _spaceId ?? (spaces.isEmpty ? null : spaces.first.id);
 
@@ -66,28 +65,26 @@ class _NotificationsSectionState extends ConsumerState<NotificationsSection> {
         Text(
           '음소거한 채널은 목록에서 흐리게 보이고 안 읽음 표시가 꺼집니다. '
           '나를 부른 멘션은 그대로 보입니다.',
-          style: theme.textTheme.bodySmall,
+          style: nx.text.secondary,
         ),
-        const SizedBox(height: NexusSpacing.sp6),
-        if (spaces.length > 1)
-          DropdownButton<String>(
+        const SizedBox(height: NxSpacing.sp6),
+        if (spaces.length > 1) ...[
+          NxSelect<String>(
             value: spaceId,
-            isExpanded: true,
-            items: [
-              for (final space in spaces)
-                DropdownMenuItem(value: space.id, child: Text(space.name)),
-            ],
+            options: [for (final space in spaces) (space.id, space.name)],
             onChanged: (id) => setState(() => _spaceId = id),
           ),
+          const SizedBox(height: NxSpacing.sp5),
+        ],
         if (spaceId == null)
-          Text('속한 스페이스가 없습니다.', style: theme.textTheme.bodySmall)
+          Text('속한 스페이스가 없습니다.', style: nx.text.secondary)
         else
           _ChannelSwitches(
             spaceId: spaceId,
             pending: _pending,
             onChanged: (channel, muted) => _toggle(spaceId, channel, muted),
           ),
-        if (_notice != null) SettingsNoticeText(_notice!),
+        if (_error != null) SettingsError(_error!),
       ],
     );
   }
@@ -106,17 +103,40 @@ class _ChannelSwitches extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final channels = ref.watch(settingsChannelsProvider(spaceId)).value ?? const [];
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    final channels =
+        ref.watch(settingsChannelsProvider(spaceId)).value ?? const [];
     return Column(
       children: [
         for (final channel in channels)
-          SwitchListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            secondary: Icon(channel.isPrivate ? Icons.lock_outline : Icons.tag, size: 18),
-            title: Text(channel.name),
-            value: channel.muted,
-            onChanged: pending.contains(channel.id) ? null : (v) => onChanged(channel, v),
+          SizedBox(
+            height: 40,
+            child: Row(
+              children: [
+                // 채널 앞 표시는 채널 목록과 같다 — `#` 는 글자, 비공개만 자물쇠.
+                SizedBox(
+                  width: 20,
+                  child: channel.isPrivate
+                      ? NxIcon(NxIcons.lock, size: 13, color: c.textSecondary)
+                      : Text('#', style: nx.text.mono.copyWith(fontSize: 14)),
+                ),
+                Expanded(
+                  child: Text(
+                    channel.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: nx.text.base,
+                  ),
+                ),
+                NxSwitch(
+                  value: channel.muted,
+                  label: '${channel.name} 음소거',
+                  onChanged: pending.contains(channel.id)
+                      ? null
+                      : (v) => onChanged(channel, v),
+                ),
+              ],
+            ),
           ),
       ],
     );

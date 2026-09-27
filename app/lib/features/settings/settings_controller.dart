@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/api/api_failure.dart';
@@ -13,16 +12,15 @@ final settingsApiProvider =
 
 /// 설정 창의 섹션(14단계 설계 D1). `slug` 는 주소 `/settings/<slug>` 에 쓰인다.
 enum SettingsSection {
-  account('account', '내 계정', Icons.person_outline),
-  password('password', '비밀번호', Icons.lock_outline),
-  notifications('notifications', '알림', Icons.notifications_none),
-  appearance('appearance', '화면', Icons.palette_outlined);
+  account('account', '내 계정'),
+  password('password', '비밀번호'),
+  notifications('notifications', '알림'),
+  appearance('appearance', '화면');
 
-  const SettingsSection(this.slug, this.label, this.icon);
+  const SettingsSection(this.slug, this.label);
 
   final String slug;
   final String label;
-  final IconData icon;
 
   static SettingsSection? parse(String? slug) {
     for (final section in values) {

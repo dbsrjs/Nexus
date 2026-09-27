@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../ui/ui.dart';
 import '../auth/auth_controller.dart';
 import '../shell/app_shell.dart';
 import 'account_section.dart';
@@ -74,28 +75,43 @@ class _SettingsNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    // 캔버스 「설정」 — 글자만 있는 목록. 앞 장식 아이콘을 두지 않는다(15단계 D5).
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp5,
+        NxSpacing.sp9,
+        NxSpacing.sp5,
+        NxSpacing.sp7,
+      ),
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Text('사용자 설정', style: theme.textTheme.labelSmall),
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+          child: Text('사용자 설정', style: nx.text.label),
         ),
         for (final section in SettingsSection.values)
-          ListTile(
-            dense: true,
-            leading: Icon(section.icon, size: 18),
-            title: Text(section.label),
-            selected: section == selected,
-            onTap: () => onSelect(section),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: NxRow(
+              title: section.label,
+              dense: true,
+              selected: section == selected,
+              titleStyle: section == selected
+                  ? null
+                  : nx.text.base.copyWith(color: c.textSecondary),
+              onPressed: () => onSelect(section),
+            ),
           ),
-        const Divider(),
-        ListTile(
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          child: NxDivider(),
+        ),
+        NxRow(
+          title: '로그아웃',
           dense: true,
-          leading: Icon(Icons.logout, size: 18, color: theme.colorScheme.error),
-          title: Text('로그아웃', style: TextStyle(color: theme.colorScheme.error)),
-          onTap: onSignOut,
+          titleStyle: nx.text.base.copyWith(color: c.danger),
+          onPressed: onSignOut,
         ),
       ],
     );

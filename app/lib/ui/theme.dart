@@ -42,8 +42,13 @@ class NxColors {
   Color get danger => const Color(0xFFD47D7D);
   Color get merged => const Color(0xFFA18ECC);
 
-  /// 액센트 · 위험 버튼 위의 글자. 두 밝기 모두 바탕 명도가 높아 어두운 글자가 읽힌다.
-  Color get onAccent => const Color(0xFF121314);
+  /// 액센트 위의 글자 — **바탕색**이다(옛 ThemeData 의 onPrimary 와 같다). 다크의 액센트는
+  /// 밝고(#77AECF) 라이트의 액센트는 어두워(#326C8F) 고정색 하나로는 한쪽이 읽히지 않는다 —
+  /// 라이트에서 어두운 글자를 얹었다가 갤러리에서 놓치고 설정 화면 캡처에서 찾았다.
+  Color get onAccent => bgBase;
+
+  /// 밝기와 무관하게 밝은 고정색(위험 · 아바타 8색) 위의 글자.
+  Color get onBright => const Color(0xFF121314);
 
   /// 다이얼로그 · 동작 카드 뒤의 막. 오버레이만 예외로 쓴다(디자인 시스템 §4).
   Color get scrim => const Color(0xB8121314);

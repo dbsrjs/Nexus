@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/breakpoints.dart';
 import '../../core/theme.dart';
+import '../../ui/ui.dart';
 import '../channel/channel_controller.dart';
+import '../settings/settings_widgets.dart';
 import '../space/space_controller.dart';
 import 'channel_pane.dart';
 import 'space_rail.dart';
@@ -284,53 +286,89 @@ class SettingsFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = NxTheme.of(context).colors;
     if (Layout.ofContext(context) == Layout.mobile) {
       final body = content;
-      return Scaffold(
+      return NxPage(
         // 제목은 늘 「설정」이다 — 섹션 이름은 본문 머리가 이미 크게 보인다.
-        appBar: AppBar(
-          title: const Text('설정'),
+        header: NxHeader(
+          title: '설정',
           leading: body == null
-              ? CloseButton(onPressed: onClose)
-              : BackButton(onPressed: onBack),
+              ? NxIconButton(icon: NxIcons.close, label: '설정 닫기', onPressed: onClose)
+              : NxIconButton(icon: NxIcons.back, label: '뒤로', onPressed: onBack),
         ),
-        body: SafeArea(child: body ?? nav),
+        body: SettingsInsets(
+          insets: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          child: body ?? nav,
+        ),
       );
     }
 
-    return Scaffold(
-      body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 채널 패널과 같은 이유로 Container 가 아니라 Material 로 칠한다 —
-            // 목록의 ListTile 이 선택 배경 · 물결을 가장 가까운 Material 에 그린다.
-            SizedBox(
-              width: 220,
-              child: Material(color: theme.colorScheme.surface, child: nav),
+    return NxPage(
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 260,
+            child: ColoredBox(color: c.bgSurface, child: nav),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(child: content ?? fallback),
+                Positioned(
+                  top: NxSpacing.sp9,
+                  right: NxSpacing.sp9,
+                  child: _CloseEsc(onPressed: onClose),
+                ),
+              ],
             ),
-            const VerticalDivider(width: 1),
-            Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(child: content ?? fallback),
-                  Positioned(
-                    top: NexusSpacing.sp6,
-                    right: NexusSpacing.sp6,
-                    child: IconButton(
-                      tooltip: '닫기 (Esc)',
-                      icon: const Icon(Icons.close),
-                      onPressed: onClose,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
+/// 설정 닫기 — 동그란 × 아래 `ESC`(디스코드 · 캔버스 「설정」).
+class _CloseEsc extends StatelessWidget {
+  const _CloseEsc({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        NxPressable(
+          onPressed: onPressed,
+          semanticLabel: '설정 닫기',
+          focusRingRadius: NxRadius.full,
+          builder: (context, s) => AnimatedContainer(
+            duration: NxMotion.micro,
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: s.hovered ? c.bgElevated : const Color(0x00000000),
+              border: Border.all(color: s.hovered ? c.textSecondary : c.borderStrong),
+            ),
+            child: NxIcon(
+              NxIcons.close,
+              size: 14,
+              color: s.hovered ? c.textPrimary : c.textSecondary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        ExcludeSemantics(
+          child: Text('ESC', style: nx.text.mono.copyWith(color: c.borderStrong)),
+        ),
+      ],
+    );
+  }
+}

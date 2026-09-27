@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/space.dart';
 import '../../shared/widgets/nexus_avatar.dart';
+import '../../ui/ui.dart';
 import 'space_controller.dart';
 
 /// `/spaces` — 어느 스페이스로 들어갈지 고른다.
@@ -17,50 +17,46 @@ class SpacePickerScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
     final spaces = ref.watch(spacesProvider);
 
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Padding(
-              padding: const EdgeInsets.all(NexusSpacing.sp8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('스페이스', style: theme.textTheme.headlineSmall),
-                  const SizedBox(height: NexusSpacing.sp2),
-                  Text(
-                    '들어갈 곳을 고르세요',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: NexusSpacing.sp8),
-                  Flexible(
-                    child: spaces.when(
-                      loading: () => const Padding(
-                        padding: EdgeInsets.all(NexusSpacing.sp9),
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
-                      error: (error, _) => _ErrorBlock(
-                        error: error,
-                        onRetry: () => ref.invalidate(spacesProvider),
-                      ),
-                      data: (list) => list.isEmpty
-                          ? const _EmptyBlock()
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: list.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(height: NexusSpacing.sp2),
-                              itemBuilder: (_, i) => _SpaceTile(space: list[i]),
-                            ),
+    return NxPage(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(NxSpacing.sp8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text('스페이스', style: nx.text.heading),
+                ),
+                const SizedBox(height: NxSpacing.sp2),
+                Text('들어갈 곳을 고르세요', style: nx.text.secondary),
+                const SizedBox(height: NxSpacing.sp8),
+                Flexible(
+                  child: spaces.when(
+                    // 자리를 지키는 뼈대(D10) — 회전 스피너를 두지 않는다.
+                    loading: () => const NxSkeleton(lines: 3, lineHeight: 56),
+                    error: (error, _) => _ErrorBlock(
+                      error: error,
+                      onRetry: () => ref.invalidate(spacesProvider),
                     ),
+                    data: (list) => list.isEmpty
+                        ? const _EmptyBlock()
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: list.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: NxSpacing.sp2),
+                            itemBuilder: (_, i) => _SpaceTile(space: list[i]),
+                          ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -76,40 +72,35 @@ class _SpaceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
 
-    return Material(
-      color: theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(NexusRadius.md),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(NexusRadius.md),
-        onTap: () => context.go('/s/${space.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(NexusSpacing.sp5),
-          child: Row(
-            children: [
-              NexusAvatar(
-                seed: space.id,
-                label: space.name,
-                squircle: true,
+    return NxPressable(
+      onPressed: () => context.go('/s/${space.id}'),
+      semanticLabel: space.name,
+      builder: (context, s) => AnimatedContainer(
+        duration: NxMotion.micro,
+        padding: const EdgeInsets.all(NxSpacing.sp5),
+        decoration: BoxDecoration(
+          color: s.hovered || s.pressed ? c.bgElevated : c.bgSurface,
+          borderRadius: BorderRadius.circular(NxRadius.md),
+        ),
+        child: Row(
+          children: [
+            NexusAvatar(seed: space.id, label: space.name, squircle: true),
+            const SizedBox(width: NxSpacing.sp5),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(space.name, style: nx.text.strong),
+                  const SizedBox(height: NxSpacing.sp1),
+                  Text('/${space.slug} · ${space.role.wire}', style: nx.text.meta),
+                ],
               ),
-              const SizedBox(width: NexusSpacing.sp5),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(space.name, style: theme.textTheme.titleSmall),
-                    const SizedBox(height: NexusSpacing.sp1),
-                    Text(
-                      '/${space.slug} · ${space.role.wire}',
-                      style: theme.textTheme.labelSmall,
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, size: 20),
-            ],
-          ),
+            ),
+            NxIcon(NxIcons.chevronRight, size: 14, color: c.textSecondary),
+          ],
         ),
       ),
     );
@@ -120,20 +111,19 @@ class _EmptyBlock extends StatelessWidget {
   const _EmptyBlock();
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: NexusSpacing.sp9),
-        child: Column(
-          children: [
-            Text('속한 스페이스가 없습니다.',
-                style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: NexusSpacing.sp2),
-            Text(
-              '초대 링크를 받아 참여하세요.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-      );
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: NxSpacing.sp9),
+      child: Column(
+        children: [
+          Text('속한 스페이스가 없습니다.', style: nx.text.body),
+          const SizedBox(height: NxSpacing.sp2),
+          Text('초대 링크를 받아 참여하세요.', style: nx.text.secondary),
+        ],
+      ),
+    );
+  }
 }
 
 class _ErrorBlock extends StatelessWidget {
@@ -150,12 +140,16 @@ class _ErrorBlock extends StatelessWidget {
         : messageFor(ApiFailure.server);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: NexusSpacing.sp9),
+      padding: const EdgeInsets.symmetric(vertical: NxSpacing.sp9),
       child: Column(
         children: [
-          Text(text, style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: NexusSpacing.sp5),
-          OutlinedButton(onPressed: onRetry, child: const Text('다시 시도')),
+          Text(text, style: NxTheme.of(context).text.body),
+          const SizedBox(height: NxSpacing.sp5),
+          NxButton(
+            label: '다시 시도',
+            kind: NxButtonKind.secondary,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );

@@ -17,7 +17,7 @@ import 'package:nexus_app/features/settings/settings_controller.dart';
 import 'package:nexus_app/features/settings/theme_controller.dart';
 import 'package:nexus_app/features/space/space_controller.dart';
 import 'package:nexus_app/main.dart';
-import 'package:nexus_app/ui/theme.dart';
+import 'package:nexus_app/ui/ui.dart';
 
 /// **화면을 실제 서버에 붙여 끝까지 돈다.** 단위 · 위젯 테스트는 화면 하나씩만
 /// 보고, 라우트 사이를 오가는 것은 아무도 보지 않았다 — 2026-08-22 UI
@@ -63,13 +63,13 @@ void main() {
     );
 
     // ── 로그인 ────────────────────────────────
-    await tester.pumpUntil(find.widgetWithText(TextFormField, '이메일'));
-    await tester.enterText(find.widgetWithText(TextFormField, '이메일'), fx.email);
+    await tester.pumpUntil(find.widgetWithText(NxField, '이메일'));
+    await tester.enterText(find.widgetWithText(NxField, '이메일'), fx.email);
     await tester.enterText(
-      find.widgetWithText(TextFormField, '비밀번호'),
+      find.widgetWithText(NxField, '비밀번호'),
       _password,
     );
-    await tester.tap(find.widgetWithText(FilledButton, '로그인'));
+    await tester.tap(find.widgetWithText(NxButton, '로그인'));
 
     // ── 스페이스 고르기 → 셸 ──────────────────
     await tester.pumpUntil(find.text(fx.spaceName));
@@ -129,12 +129,12 @@ void main() {
     await tester.pumpUntil(find.text('표시 이름'));
     final aliceRenamed = 'Alice Renamed ${fx.stamp}';
     await tester.enterText(
-      find.widgetWithText(TextField, 'AppFlow A'),
+      find.widgetWithText(NxField, 'AppFlow A'),
       aliceRenamed,
     );
     // 저장 버튼은 바뀐 이름을 본 다음 프레임에 켜진다. 그 전에 누르면 꺼진 버튼이다.
     await tester.pump();
-    await tester.tap(find.widgetWithText(FilledButton, '저장'));
+    await tester.tap(find.widgetWithText(NxButton, '저장'));
     await tester.pumpUntil(find.text('이름을 바꿨습니다'));
 
     // 사진 올리기 — 파일 대화상자는 자동화할 수 없어 **그 뒤의 앱 코드**를 부른다.
@@ -166,13 +166,11 @@ void main() {
 
     // 알림 → 채널 음소거 → 목록 아이콘이 바뀐다.
     await tester.tap(find.text('알림'));
-    await tester.pumpUntil(find.byType(SwitchListTile));
-    await tester.tap(
-      find.ancestor(
-        of: find.text(fx.channelName),
-        matching: find.byType(SwitchListTile),
-      ),
+    final muteSwitch = find.byWidgetPredicate(
+      (w) => w is NxSwitch && w.label == '${fx.channelName} 음소거',
     );
+    await tester.pumpUntil(muteSwitch);
+    await tester.tap(muteSwitch);
     await tester.pumpUntilTrue(() => fx.aliceMuted(), '음소거가 서버에 반영되지 않았다');
 
     // Esc 로 닫으면 들어오기 전 채널로 돌아간다. 내 메시지의 작성자명이 새 이름이다.

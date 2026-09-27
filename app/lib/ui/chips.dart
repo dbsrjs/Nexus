@@ -128,7 +128,7 @@ class NxBadge extends StatelessWidget {
         child: Text(
           text,
           style: theme.text.xs2.copyWith(
-            color: c.onAccent,
+            color: mention ? c.onBright : c.onAccent,
             fontWeight: FontWeight.w700,
             height: 1,
           ),

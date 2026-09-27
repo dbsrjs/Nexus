@@ -11,6 +11,7 @@ import 'package:nexus_app/features/space/space_controller.dart';
 import 'package:nexus_app/features/settings/account_section.dart';
 import 'package:nexus_app/features/settings/password_section.dart';
 import 'package:nexus_app/features/settings/settings_controller.dart';
+import 'package:nexus_app/ui/ui.dart';
 
 import 'support/nx_host.dart';
 
@@ -56,9 +57,9 @@ void main() {
           ),
         ),
       );
-      await tester.enterText(find.byType(TextField), '새 이름');
+      await tester.enterText(find.byType(NxField), '새 이름');
       await tester.pump();
-      await tester.tap(find.widgetWithText(FilledButton, '저장'));
+      await tester.tap(find.widgetWithText(NxButton, '저장'));
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
       await tester.pump();
       expect(api.names, ['새 이름']);
@@ -75,9 +76,9 @@ void main() {
           child: nxTestApp(home: const Scaffold(body: AccountSection())),
         ),
       );
-      FilledButton save() => tester.widget<FilledButton>(find.widgetWithText(FilledButton, '저장'));
+      NxButton save() => tester.widget<NxButton>(find.widgetWithText(NxButton, '저장'));
       expect(save().onPressed, isNull);
-      await tester.enterText(find.byType(TextField), '   ');
+      await tester.enterText(find.byType(NxField), '   ');
       await tester.pump();
       expect(save().onPressed, isNull);
     });
@@ -98,7 +99,7 @@ void main() {
     }
 
     Future<void> fill(WidgetTester tester, String current, String next, String confirm) async {
-      final fields = find.byType(TextField);
+      final fields = find.byType(NxField);
       await tester.enterText(fields.at(0), current);
       await tester.enterText(fields.at(1), next);
       await tester.enterText(fields.at(2), confirm);
@@ -142,7 +143,7 @@ void main() {
       await tester.pump();
       expect(api.calls, 1);
       expect(find.textContaining('다른 기기에서는 다시 로그인'), findsOneWidget);
-      final first = tester.widget<TextField>(find.byType(TextField).first);
+      final first = tester.widget<NxField>(find.byType(NxField).first);
       expect(first.controller!.text, isEmpty);
     });
   });

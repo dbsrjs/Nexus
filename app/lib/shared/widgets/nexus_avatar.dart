@@ -52,7 +52,7 @@ class NexusAvatar extends StatelessWidget {
         initial,
         style: TextStyle(
           // 아바타 8색은 명도 66% 고정이라 어두운 글자가 항상 읽힌다.
-          color: c.onAccent,
+          color: c.onBright,
           fontSize: size * 0.4,
           fontWeight: FontWeight.w600,
           height: 1,

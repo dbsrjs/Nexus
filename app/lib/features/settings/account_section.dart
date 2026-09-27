@@ -1,11 +1,12 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/user.dart';
 import '../../shared/widgets/user_avatar.dart';
+import '../../ui/ui.dart';
 import '../auth/auth_controller.dart';
 import 'settings_controller.dart';
 import 'settings_widgets.dart';
@@ -21,8 +22,8 @@ class AccountSection extends ConsumerStatefulWidget {
 class _AccountSectionState extends ConsumerState<AccountSection> {
   final _name = TextEditingController();
   bool _busy = false;
-  SettingsNotice? _photoNotice;
-  SettingsNotice? _nameNotice;
+  String? _photoError;
+  String? _nameError;
 
   @override
   void initState() {
@@ -40,17 +41,20 @@ class _AccountSectionState extends ConsumerState<AccountSection> {
 
   Future<void> _run(
     Future<User> Function() call, {
-    required void Function(SettingsNotice) notice,
+    required void Function(String?) error,
     required String done,
     bool avatar = false,
   }) async {
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      error(null);
+    });
     try {
       final user = await call();
       await applyMe(ref, user);
-      notice(SettingsNotice.ok(done));
+      if (mounted) NxToast.show(context, done, kind: NxToastKind.success);
     } on ApiException catch (e) {
-      notice(SettingsNotice.error(settingsMessageFor(e.failure, avatar: avatar)));
+      error(settingsMessageFor(e.failure, avatar: avatar));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -62,7 +66,7 @@ class _AccountSectionState extends ConsumerState<AccountSection> {
     final bytes = await file.readAsBytes();
     await _run(
       () => ref.read(settingsApiProvider).uploadAvatar(bytes: bytes, filename: file.name),
-      notice: (n) => _photoNotice = n,
+      error: (e) => _photoError = e,
       done: '사진을 바꿨습니다',
       avatar: true,
     );
@@ -70,14 +74,14 @@ class _AccountSectionState extends ConsumerState<AccountSection> {
 
   Future<void> _removePhoto() => _run(
         () => ref.read(settingsApiProvider).removeAvatar(),
-        notice: (n) => _photoNotice = n,
+        error: (e) => _photoError = e,
         done: '사진을 지웠습니다',
         avatar: true,
       );
 
   Future<void> _saveName() => _run(
         () => ref.read(settingsApiProvider).updateName(_name.text.trim()),
-        notice: (n) => _nameNotice = n,
+        error: (e) => _nameError = e,
         done: '이름을 바꿨습니다',
       );
 
@@ -86,11 +90,12 @@ class _AccountSectionState extends ConsumerState<AccountSection> {
     final auth = ref.watch(authControllerProvider);
     if (auth is! AuthSignedIn) return const SizedBox.shrink();
     final user = auth.user;
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
 
     final trimmed = _name.text.trim();
     final nameChanged = trimmed != user.name;
     final nameValid = trimmed.isNotEmpty && trimmed.length <= 50;
+    final canSave = !_busy && nameChanged && nameValid;
 
     return SettingsPage(
       title: '내 계정',
@@ -98,63 +103,70 @@ class _AccountSectionState extends ConsumerState<AccountSection> {
         const SettingsLabel('프로필 사진'),
         Row(
           children: [
-            UserAvatar(userId: user.id, name: user.name, avatarUrl: user.avatarUrl, size: 96),
-            const SizedBox(width: NexusSpacing.sp7),
+            UserAvatar(
+              userId: user.id,
+              name: user.name,
+              avatarUrl: user.avatarUrl,
+              size: 88,
+            ),
+            const SizedBox(width: NxSpacing.sp7),
             Expanded(
-              child: Wrap(
-                spacing: NexusSpacing.sp4,
-                runSpacing: NexusSpacing.sp4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  FilledButton(
-                    onPressed: _busy ? null : _pickPhoto,
-                    child: const Text('사진 바꾸기'),
+                  Wrap(
+                    spacing: NxSpacing.sp4,
+                    runSpacing: NxSpacing.sp4,
+                    children: [
+                      NxButton(
+                        label: '사진 바꾸기',
+                        onPressed: _busy ? null : _pickPhoto,
+                      ),
+                      if (user.avatarUrl != null)
+                        NxButton(
+                          label: '지우기',
+                          kind: NxButtonKind.secondary,
+                          onPressed: _busy ? null : _removePhoto,
+                        ),
+                    ],
                   ),
-                  if (user.avatarUrl != null)
-                    OutlinedButton(
-                      onPressed: _busy ? null : _removePhoto,
-                      child: const Text('사진 지우기'),
-                    ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'PNG · JPEG · WebP · GIF, 5MB 이하 · 가운데를 정사각형으로 잘라 씁니다',
+                    style: nx.text.meta,
+                  ),
                 ],
               ),
             ),
           ],
         ),
-        Padding(
-          padding: const EdgeInsets.only(top: NexusSpacing.sp4),
-          child: Text(
-            'PNG · JPEG · WebP · GIF, 5MB 이하. 가운데를 정사각형으로 잘라 씁니다.',
-            style: theme.textTheme.bodySmall,
-          ),
-        ),
-        if (_photoNotice != null) SettingsNoticeText(_photoNotice!),
-        const SizedBox(height: NexusSpacing.sp9),
-        const SettingsLabel('표시 이름'),
+        if (_photoError != null) SettingsError(_photoError!),
+        const SettingsGap(),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: TextField(
+              child: NxField(
+                label: '표시 이름',
                 controller: _name,
                 maxLength: 50,
-                onSubmitted: (_) =>
-                    (!_busy && nameChanged && nameValid) ? _saveName() : null,
-                decoration: const InputDecoration(hintText: '다른 사람에게 보이는 이름'),
+                helper: '다른 사람에게 보이는 이름',
+                error: _nameError,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => canSave ? _saveName() : null,
               ),
             ),
-            const SizedBox(width: NexusSpacing.sp5),
+            const SizedBox(width: NxSpacing.sp4),
+            // 라벨 줄만큼 내려 입력 칸과 높이를 맞춘다.
             Padding(
-              padding: const EdgeInsets.only(top: NexusSpacing.sp2),
-              child: FilledButton(
-                onPressed: (!_busy && nameChanged && nameValid) ? _saveName : null,
-                child: const Text('저장'),
-              ),
+              padding: const EdgeInsets.only(top: 22),
+              child: NxButton(label: '저장', onPressed: canSave ? _saveName : null),
             ),
           ],
         ),
-        if (_nameNotice != null) SettingsNoticeText(_nameNotice!),
-        const SizedBox(height: NexusSpacing.sp9),
+        const SettingsGap(),
         const SettingsLabel('이메일'),
-        Text(user.email, style: theme.textTheme.bodyMedium),
+        Text(user.email, style: nx.text.base),
       ],
     );
   }

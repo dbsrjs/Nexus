@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme.dart';
 import '../../data/api/auth_api.dart';
 import '../../shared/widgets/nexus_logo.dart';
+import '../../ui/ui.dart';
 import 'auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -14,12 +15,15 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
 
   bool _busy = false;
   String? _error;
+
+  /// 칸마다의 입력 오류. 보낼 때 한 번 보고, 고치기 시작하면 지운다.
+  String? _emailError;
+  String? _passwordError;
 
   @override
   void dispose() {
@@ -36,7 +40,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       };
 
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final emailError = _email.text.contains('@') ? null : '이메일을 입력하십시오.';
+    final passwordError = _password.text.isEmpty ? '비밀번호를 입력하십시오.' : null;
+    if (emailError != null || passwordError != null) {
+      setState(() {
+        _emailError = emailError;
+        _passwordError = passwordError;
+      });
+      return;
+    }
 
     setState(() {
       _busy = true;
@@ -58,16 +70,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
 
-    return Scaffold(
+    return NxPage(
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(NexusSpacing.sp8),
+          padding: const EdgeInsets.all(NxSpacing.sp8),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 360),
-            child: Form(
-              key: _formKey,
+            child: AutofillGroup(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -75,49 +86,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   // **워드마크가 그림 안에 있어 'Nexus' 글자를 따로 두지
                   // 않는다.** 둘 다 두면 같은 이름이 두 번 나온다.
                   const Center(child: NexusLogo()),
-                  const SizedBox(height: NexusSpacing.sp5),
-                  Text('대화 · 파일 · 이슈 · 저장소를 한곳에',
-                      style: theme.textTheme.bodySmall,
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: NexusSpacing.sp9),
-                  TextFormField(
+                  const SizedBox(height: NxSpacing.sp5),
+                  Text(
+                    '대화 · 파일 · 이슈 · 저장소를 한곳에',
+                    style: nx.text.secondary,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: NxSpacing.sp9),
+                  NxField(
+                    label: '이메일',
                     controller: _email,
-                    decoration: const InputDecoration(labelText: '이메일'),
+                    error: _emailError,
                     keyboardType: TextInputType.emailAddress,
                     autofillHints: const [AutofillHints.username],
                     textInputAction: TextInputAction.next,
-                    validator: (v) =>
-                        (v == null || !v.contains('@')) ? '이메일을 입력하십시오.' : null,
+                    onChanged: (_) {
+                      if (_emailError != null) {
+                        setState(() => _emailError = null);
+                      }
+                    },
                   ),
-                  const SizedBox(height: NexusSpacing.sp5),
-                  TextFormField(
+                  const SizedBox(height: NxSpacing.sp5),
+                  NxField(
+                    label: '비밀번호',
                     controller: _password,
-                    decoration: const InputDecoration(labelText: '비밀번호'),
-                    obscureText: true,
+                    error: _passwordError,
+                    obscure: true,
                     autofillHints: const [AutofillHints.password],
-                    onFieldSubmitted: (_) => _busy ? null : _submit(),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? '비밀번호를 입력하십시오.' : null,
+                    textInputAction: TextInputAction.done,
+                    onChanged: (_) {
+                      if (_passwordError != null) {
+                        setState(() => _passwordError = null);
+                      }
+                    },
+                    onSubmitted: (_) => _busy ? null : _submit(),
                   ),
                   if (_error != null) ...[
-                    const SizedBox(height: NexusSpacing.sp5),
-                    Text(
-                      _error!,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: NexusColors.danger),
+                    const SizedBox(height: NxSpacing.sp5),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        _error!,
+                        style: nx.text.secondary.copyWith(
+                          color: nx.colors.danger,
+                        ),
+                      ),
                     ),
                   ],
-                  const SizedBox(height: NexusSpacing.sp7),
-                  FilledButton(
-                    onPressed: _busy ? null : _submit,
-                    child: _busy
-                        ? const SizedBox(
-                            height: 16,
-                            width: 16,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('로그인'),
+                  const SizedBox(height: NxSpacing.sp7),
+                  NxButton(
+                    label: '로그인',
+                    size: NxSize.lg,
+                    expand: true,
+                    loading: _busy,
+                    onPressed: _submit,
                   ),
                 ],
               ),

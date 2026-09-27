@@ -37,6 +37,7 @@ class NxField extends StatefulWidget {
     this.dense = false,
     this.borderless = false,
     this.inputFormatters,
+    this.autofillHints,
   });
 
   final TextEditingController? controller;
@@ -75,6 +76,9 @@ class NxField extends StatefulWidget {
   /// 테두리 · 바탕 없이(채팅 입력창처럼 바깥이 틀을 그릴 때).
   final bool borderless;
   final List<TextInputFormatter>? inputFormatters;
+
+  /// 비밀번호 관리자 · OS 자동 채우기에 알리는 뜻(`AutofillHints.username` 등).
+  final Iterable<String>? autofillHints;
 
   @override
   State<NxField> createState() => _NxFieldState();
@@ -155,6 +159,7 @@ class _NxFieldState extends State<NxField>
     );
 
     final editable = EditableText(
+      autofillHints: widget.autofillHints,
       key: editableTextKey,
       controller: _controller,
       focusNode: _focus,

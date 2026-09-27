@@ -62,4 +62,18 @@ void main() {
     expect(seen.brightness, Brightness.dark);
     expect(seen.colors, NxColors.dark);
   });
+
+  test('★ 액센트 위 글자는 두 밝기 모두 4.5:1 이상 - 라이트에서 어두운 글자를 얹었었다', () {
+    double ratio(Color a, Color b) {
+      final l1 = a.computeLuminance(), l2 = b.computeLuminance();
+      final hi = l1 > l2 ? l1 : l2, lo = l1 > l2 ? l2 : l1;
+      return (hi + .05) / (lo + .05);
+    }
+
+    for (final c in [NxColors.dark, NxColors.light]) {
+      expect(ratio(c.accent, c.onAccent), greaterThanOrEqualTo(4.5));
+      expect(ratio(c.danger, c.onBright), greaterThanOrEqualTo(4.5));
+    }
+  });
 }
+
