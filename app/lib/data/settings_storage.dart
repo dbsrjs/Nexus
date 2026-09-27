@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+/// 테마 설정 값. Material 의 `ThemePreference` 를 쓰지 않으려고 따로 둔다(15단계) —
+/// 앱 뼈대가 `MaterialApp` 인 동안은 `main.dart` 가 바꿔 넘긴다.
+enum ThemePreference { system, light, dark }
 
 /// 화면 설정 보관. 지금은 테마 하나뿐이다.
 ///
@@ -16,7 +19,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// 로그아웃은 토큰을 지우지만 테마 취향까지 지우지는 않는다.
 class SettingsStorage {
   SettingsStorage({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
 
@@ -26,15 +29,15 @@ class SettingsStorage {
   ///
   /// 실패를 던지지 않는 것이 중요하다 — 이 값을 못 읽는다고 앱이 안 켜지면
   /// 안 된다. 웹처럼 안전 저장소가 없는 곳에서도 그냥 기본값으로 뜬다.
-  Future<ThemeMode> readThemeMode() async {
+  Future<ThemePreference> readThemePreference() async {
     try {
       return _decode(await _storage.read(key: _themeKey));
     } catch (_) {
-      return ThemeMode.system;
+      return ThemePreference.system;
     }
   }
 
-  Future<void> writeThemeMode(ThemeMode mode) async {
+  Future<void> writeThemePreference(ThemePreference mode) async {
     try {
       await _storage.write(key: _themeKey, value: _encode(mode));
     } catch (_) {
@@ -43,17 +46,17 @@ class SettingsStorage {
     }
   }
 
-  /// `ThemeMode.name` 을 그대로 쓰지 않고 직접 적는다. enum 의 이름이 바뀌면
+  /// `ThemePreference.name` 을 그대로 쓰지 않고 직접 적는다. enum 의 이름이 바뀌면
   /// 저장된 값이 조용히 안 읽히는데, 그것을 컴파일 시점에 잡을 방법이 없다.
-  static String _encode(ThemeMode mode) => switch (mode) {
-        ThemeMode.system => 'system',
-        ThemeMode.light => 'light',
-        ThemeMode.dark => 'dark',
-      };
+  static String _encode(ThemePreference mode) => switch (mode) {
+    ThemePreference.system => 'system',
+    ThemePreference.light => 'light',
+    ThemePreference.dark => 'dark',
+  };
 
-  static ThemeMode _decode(String? raw) => switch (raw) {
-        'light' => ThemeMode.light,
-        'dark' => ThemeMode.dark,
-        _ => ThemeMode.system,
-      };
+  static ThemePreference _decode(String? raw) => switch (raw) {
+    'light' => ThemePreference.light,
+    'dark' => ThemePreference.dark,
+    _ => ThemePreference.system,
+  };
 }

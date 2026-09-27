@@ -14,7 +14,6 @@ import 'package:flutter_test/flutter_test.dart';
 const _allowed = <String>{
   'lib/core/router.dart',
   'lib/core/theme.dart',
-  'lib/data/settings_storage.dart',
   'lib/features/ai/ai_panel.dart',
   'lib/features/auth/login_screen.dart',
   'lib/features/channel/channel_list.dart',
@@ -47,7 +46,6 @@ const _allowed = <String>{
   'lib/features/settings/settings_controller.dart',
   'lib/features/settings/settings_screen.dart',
   'lib/features/settings/settings_widgets.dart',
-  'lib/features/settings/theme_controller.dart',
   'lib/features/shell/app_shell.dart',
   'lib/features/shell/channel_pane.dart',
   'lib/features/shell/space_rail.dart',
@@ -80,14 +78,21 @@ void main() {
 
   test('★ 허용 목록 밖에서 Material · Cupertino 를 import 하지 않는다', () {
     final extra = importers.difference(_allowed).toList()..sort();
-    expect(extra, isEmpty,
-        reason: '새 Material · Cupertino import 가 생겼다 — lib/ui/ 의 컴포넌트를 쓸 것: $extra');
+    expect(
+      extra,
+      isEmpty,
+      reason:
+          '새 Material · Cupertino import 가 생겼다 — lib/ui/ 의 컴포넌트를 쓸 것: $extra',
+    );
   });
 
   test('★ 이관이 끝난 파일은 허용 목록에서 뺀다 - 목록은 줄어들기만 한다', () {
     final stale = _allowed.difference(importers).toList()..sort();
-    expect(stale, isEmpty,
-        reason: '더는 Material 을 import 하지 않는 파일이 허용 목록에 남아 있다 — 빼라: $stale');
+    expect(
+      stale,
+      isEmpty,
+      reason: '더는 Material 을 import 하지 않는 파일이 허용 목록에 남아 있다 — 빼라: $stale',
+    );
   });
 
   test('lib/ui/ 는 허용 목록에 들어갈 수 없다 - 자체 컴포넌트는 처음부터 widgets 층이다', () {

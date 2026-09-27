@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/settings_storage.dart';
 import 'settings_widgets.dart';
 import 'theme_controller.dart';
 
@@ -14,7 +15,7 @@ class AppearanceSection extends ConsumerWidget {
     final current = ref.watch(themeModeProvider);
     final theme = Theme.of(context);
 
-    Widget option(String label, String hint, ThemeMode mode) {
+    Widget option(String label, String hint, ThemePreference mode) {
       final selected = current == mode;
       return ListTile(
         contentPadding: EdgeInsets.zero,
@@ -28,7 +29,9 @@ class AppearanceSection extends ConsumerWidget {
               : theme.textTheme.bodyMedium,
         ),
         subtitle: Text(hint),
-        trailing: selected ? Icon(Icons.check, color: theme.colorScheme.primary) : null,
+        trailing: selected
+            ? Icon(Icons.check, color: theme.colorScheme.primary)
+            : null,
         onTap: () => ref.read(themeModeProvider.notifier).set(mode),
       );
     }
@@ -37,9 +40,9 @@ class AppearanceSection extends ConsumerWidget {
       title: '화면',
       children: [
         const SettingsLabel('테마'),
-        option('시스템 설정', '운영체제의 밝기 설정을 따릅니다', ThemeMode.system),
-        option('라이트', '밝은 배경', ThemeMode.light),
-        option('다크', '어두운 배경', ThemeMode.dark),
+        option('시스템 설정', '운영체제의 밝기 설정을 따릅니다', ThemePreference.system),
+        option('라이트', '밝은 배경', ThemePreference.light),
+        option('다크', '어두운 배경', ThemePreference.dark),
       ],
     );
   }

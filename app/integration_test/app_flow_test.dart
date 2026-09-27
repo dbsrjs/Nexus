@@ -17,6 +17,7 @@ import 'package:nexus_app/features/settings/settings_controller.dart';
 import 'package:nexus_app/features/settings/theme_controller.dart';
 import 'package:nexus_app/features/space/space_controller.dart';
 import 'package:nexus_app/main.dart';
+import 'package:nexus_app/ui/theme.dart';
 
 /// **화면을 실제 서버에 붙여 끝까지 돈다.** 단위 · 위젯 테스트는 화면 하나씩만
 /// 보고, 라우트 사이를 오가는 것은 아무도 보지 않았다 — 2026-08-22 UI
@@ -36,15 +37,21 @@ import 'package:nexus_app/main.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('로그인 → 스페이스 → 채널 → 전송 · 실시간 → 스레드 → 이슈 · 파일 · 저장소 → 설정', (tester) async {
+  testWidgets('로그인 → 스페이스 → 채널 → 전송 · 실시간 → 스레드 → 이슈 · 파일 · 저장소 → 설정', (
+    tester,
+  ) async {
     final fx = await _Fixture.create();
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          authStorageProvider.overrideWithValue(AuthStorage(storage: _MemoryStorage())),
-          settingsStorageProvider.overrideWithValue(SettingsStorage(storage: _MemoryStorage())),
-          initialThemeModeProvider.overrideWithValue(ThemeMode.dark),
+          authStorageProvider.overrideWithValue(
+            AuthStorage(storage: _MemoryStorage()),
+          ),
+          settingsStorageProvider.overrideWithValue(
+            SettingsStorage(storage: _MemoryStorage()),
+          ),
+          initialThemeModeProvider.overrideWithValue(ThemePreference.dark),
           appDatabaseProvider.overrideWith((ref) {
             final db = AppDatabase(NativeDatabase.memory());
             ref.onDispose(db.close);
@@ -58,7 +65,10 @@ void main() {
     // ── 로그인 ────────────────────────────────
     await tester.pumpUntil(find.widgetWithText(TextFormField, '이메일'));
     await tester.enterText(find.widgetWithText(TextFormField, '이메일'), fx.email);
-    await tester.enterText(find.widgetWithText(TextFormField, '비밀번호'), _password);
+    await tester.enterText(
+      find.widgetWithText(TextFormField, '비밀번호'),
+      _password,
+    );
     await tester.tap(find.widgetWithText(FilledButton, '로그인'));
 
     // ── 스페이스 고르기 → 셸 ──────────────────
@@ -118,7 +128,10 @@ void main() {
     await tester.tap(find.text('설정'));
     await tester.pumpUntil(find.text('표시 이름'));
     final aliceRenamed = 'Alice Renamed ${fx.stamp}';
-    await tester.enterText(find.widgetWithText(TextField, 'AppFlow A'), aliceRenamed);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'AppFlow A'),
+      aliceRenamed,
+    );
     // 저장 버튼은 바뀐 이름을 본 다음 프레임에 켜진다. 그 전에 누르면 꺼진 버튼이다.
     await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, '저장'));
@@ -126,7 +139,9 @@ void main() {
 
     // 사진 올리기 — 파일 대화상자는 자동화할 수 없어 **그 뒤의 앱 코드**를 부른다.
     // 대화상자가 돌려주는 것(이름 · 바이트)을 그대로 넘기는 경로다.
-    final container = ProviderScope.containerOf(tester.element(find.byType(NexusApp)));
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(NexusApp)),
+    );
     final photo = await File('assets/logo/nexus-mark-512.png').readAsBytes();
     final withPhoto = await container
         .read(settingsApiProvider)
@@ -138,16 +153,25 @@ void main() {
     await tester.pumpUntil(find.text('라이트'));
     await tester.tap(find.text('라이트'));
     await tester.pump(const Duration(milliseconds: 300));
+    expect(container.read(themeModeProvider), ThemePreference.light);
     expect(
       tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
       ThemeMode.light,
+    );
+    // 옮긴 화면이 보는 자체 테마도 함께 바뀐다(NxRoot).
+    expect(
+      tester.widget<NxTheme>(find.byType(NxTheme).first).data.brightness,
+      Brightness.light,
     );
 
     // 알림 → 채널 음소거 → 목록 아이콘이 바뀐다.
     await tester.tap(find.text('알림'));
     await tester.pumpUntil(find.byType(SwitchListTile));
     await tester.tap(
-      find.ancestor(of: find.text(fx.channelName), matching: find.byType(SwitchListTile)),
+      find.ancestor(
+        of: find.text(fx.channelName),
+        matching: find.byType(SwitchListTile),
+      ),
     );
     await tester.pumpUntilTrue(() => fx.aliceMuted(), '음소거가 서버에 반영되지 않았다');
 
@@ -189,10 +213,9 @@ class _Fixture {
 
   static Future<_Fixture> create() async {
     final stamp = DateTime.now().millisecondsSinceEpoch.toString();
-    final dio = Dio(BaseOptions(
-      baseUrl: Env.apiRoot,
-      validateStatus: (_) => true,
-    ));
+    final dio = Dio(
+      BaseOptions(baseUrl: Env.apiRoot, validateStatus: (_) => true),
+    );
     final fx = _Fixture._(dio, stamp);
     await fx._build();
     return fx;
@@ -207,12 +230,15 @@ class _Fixture {
     final space = await _post('/spaces', _aliceToken, {'name': spaceName});
     _spaceId = space['id'] as String;
 
-    final invite = await _post('/spaces/$_spaceId/invites', _aliceToken, {'role': 'member'});
+    final invite = await _post('/spaces/$_spaceId/invites', _aliceToken, {
+      'role': 'member',
+    });
     await _post('/invites/${invite['code']}/accept', _bobToken, {});
 
     // 기본 채널 `dev`(개발)를 쓴다. `general` 은 이름이 카테고리 「일반」과 같아
     // 채널 목록에서 글자로 찾으면 카테고리 머리를 누르게 된다.
-    final channels = await _get('/spaces/$_spaceId/channels', _aliceToken) as List;
+    final channels =
+        await _get('/spaces/$_spaceId/channels', _aliceToken) as List;
     final channel = channels.cast<Map>().firstWhere((c) => c['key'] == 'dev');
     _channelId = channel['id'] as String;
     channelName = channel['name'] as String;
@@ -220,7 +246,10 @@ class _Fixture {
     seedBody = 'seed message $stamp';
     final seed = await _post(_messagesPath, _aliceToken, {'body': seedBody});
     replyBody = 'thread reply $stamp';
-    await _post(_messagesPath, _bobToken, {'body': replyBody, 'parentId': seed['id']});
+    await _post(_messagesPath, _bobToken, {
+      'body': replyBody,
+      'parentId': seed['id'],
+    });
 
     issueTitle = 'flow issue $stamp';
     await _post('/spaces/$_spaceId/issues', _aliceToken, {'title': issueTitle});
@@ -228,13 +257,18 @@ class _Fixture {
 
   String get _messagesPath => '/spaces/$_spaceId/channels/$_channelId/messages';
 
-  Future<void> bobSays(String body) => _post(_messagesPath, _bobToken, {'body': body});
+  Future<void> bobSays(String body) =>
+      _post(_messagesPath, _bobToken, {'body': body});
 
-  Future<void> bobRenames(String name) => _patch('/me', _bobToken, {'name': name});
+  Future<void> bobRenames(String name) =>
+      _patch('/me', _bobToken, {'name': name});
 
   Future<bool> aliceMuted() async {
-    final channels = await _get('/spaces/$_spaceId/channels', _aliceToken) as List;
-    return channels.cast<Map>().any((c) => c['id'] == _channelId && c['muted'] == true);
+    final channels =
+        await _get('/spaces/$_spaceId/channels', _aliceToken) as List;
+    return channels.cast<Map>().any(
+      (c) => c['id'] == _channelId && c['muted'] == true,
+    );
   }
 
   Future<bool> channelHas(String body) async {
@@ -244,27 +278,40 @@ class _Fixture {
   }
 
   Future<String> _signup(String email, String name) async {
-    final res = await _dio.post<Map<String, dynamic>>('/auth/signup', data: {
-      'email': email,
-      'password': _password,
-      'name': name,
-      'client': 'native',
-    });
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/auth/signup',
+      data: {
+        'email': email,
+        'password': _password,
+        'name': name,
+        'client': 'native',
+      },
+    );
     _expect(res, 201);
     return res.data!['accessToken'] as String;
   }
 
-  Future<Map<String, dynamic>> _post(String path, String token, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> _post(
+    String path,
+    String token,
+    Map<String, dynamic> body,
+  ) async {
     final res = await _dio.post<dynamic>(
       path,
       data: body,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     _expect(res, 201, 200);
-    return res.data is Map ? Map<String, dynamic>.from(res.data as Map) : const {};
+    return res.data is Map
+        ? Map<String, dynamic>.from(res.data as Map)
+        : const {};
   }
 
-  Future<void> _patch(String path, String token, Map<String, dynamic> body) async {
+  Future<void> _patch(
+    String path,
+    String token,
+    Map<String, dynamic> body,
+  ) async {
     final res = await _dio.patch<dynamic>(
       path,
       data: body,
@@ -296,20 +343,25 @@ class _Fixture {
 extension on WidgetTester {
   /// `pumpAndSettle` 은 쓰지 않는다 — 스피너 · 소켓 재연결 타이머가 있어
   /// 끝내 가라앉지 않는다. 찾는 것이 보일 때까지 짧게 돌린다.
-  Future<void> pumpUntil(Finder finder, {Duration timeout = const Duration(seconds: 20)}) async {
+  Future<void> pumpUntil(
+    Finder finder, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
     final end = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(end)) {
       await pump(const Duration(milliseconds: 100));
       if (finder.evaluate().isNotEmpty) return;
     }
-    throw TestFailure('시간 안에 나타나지 않았다: $finder\n화면에 보이는 글자: ${_visibleTexts()}');
+    throw TestFailure(
+      '시간 안에 나타나지 않았다: $finder\n화면에 보이는 글자: ${_visibleTexts()}',
+    );
   }
 
   /// 실패했을 때 무엇이 대신 떠 있었는지. 없는 것만 말하면 어디서 길을 잃었는지 모른다.
   List<String> _visibleTexts() => [
-        for (final e in find.byType(RichText).evaluate())
-          (e.widget as RichText).text.toPlainText(),
-      ].where((t) => t.trim().isNotEmpty).take(60).toList();
+    for (final e in find.byType(RichText).evaluate())
+      (e.widget as RichText).text.toPlainText(),
+  ].where((t) => t.trim().isNotEmpty).take(60).toList();
 
   /// 화면 밖의 조건(서버 상태)을 기다린다. 도는 동안 프레임도 계속 돌린다.
   Future<void> pumpUntilTrue(
