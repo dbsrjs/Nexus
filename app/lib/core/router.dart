@@ -39,7 +39,11 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(authChanged.dispose);
 
   return GoRouter(
-    initialLocation: '/',
+    // 디버그 빌드에서만 시작 화면을 바꿀 수 있다(`--dart-define=NX_START=/dev/ui`) —
+    // 갤러리에서 한글 입력을 확인하려고 둔다. 릴리스는 늘 '/' 다.
+    initialLocation: kDebugMode
+        ? const String.fromEnvironment('NX_START', defaultValue: '/')
+        : '/',
     refreshListenable: authChanged,
     redirect: (context, state) {
       final auth = authChanged.value;
@@ -68,175 +72,173 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// 라우트 트리. **provider 밖에 둔 이유는 테스트가 구조를 검사하기 위해서다** —
 /// 저장소 갈래가 셸 안으로 되돌아오면 `router_shell_test.dart` 가 잡는다.
 List<RouteBase> appRoutes() => [
-      GoRoute(path: '/', builder: (_, _) => const _SplashScreen()),
-      GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-      GoRoute(path: '/signup', builder: (_, _) => const _SignupPlaceholder()),
-      GoRoute(path: '/spaces', builder: (_, _) => const SpacePickerScreen()),
-      // 자체 UI 갤러리(15단계) — 디버그 빌드에서만. 디자인 캔버스와 대조하고 한글 입력을 본다.
-      if (kDebugMode) GoRoute(path: '/dev/ui', builder: (_, _) => const NxGallery()),
-      // 설정 창(14단계). 셸 밖에 덮어서 연다 — 스페이스에 묶이지 않는다.
-      // `space` 는 알림 섹션이 먼저 보일 스페이스, `from` 은 닫을 때 돌아갈 곳이다.
+  GoRoute(path: '/', builder: (_, _) => const _SplashScreen()),
+  GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+  GoRoute(path: '/signup', builder: (_, _) => const _SignupPlaceholder()),
+  GoRoute(path: '/spaces', builder: (_, _) => const SpacePickerScreen()),
+  // 자체 UI 갤러리(15단계) — 디버그 빌드에서만. 디자인 캔버스와 대조하고 한글 입력을 본다.
+  if (kDebugMode)
+    GoRoute(path: '/dev/ui', builder: (_, _) => const NxGallery()),
+  // 설정 창(14단계). 셸 밖에 덮어서 연다 — 스페이스에 묶이지 않는다.
+  // `space` 는 알림 섹션이 먼저 보일 스페이스, `from` 은 닫을 때 돌아갈 곳이다.
+  GoRoute(
+    path: '/settings',
+    builder: (_, state) => SettingsScreen(
+      spaceId: state.uri.queryParameters['space'],
+      from: state.uri.queryParameters['from'],
+    ),
+    routes: [
       GoRoute(
-        path: '/settings',
+        path: ':section',
         builder: (_, state) => SettingsScreen(
+          section: SettingsSection.parse(state.pathParameters['section']),
           spaceId: state.uri.queryParameters['space'],
           from: state.uri.queryParameters['from'],
         ),
-        routes: [
-          GoRoute(
-            path: ':section',
-            builder: (_, state) => SettingsScreen(
-              section: SettingsSection.parse(state.pathParameters['section']),
-              spaceId: state.uri.queryParameters['space'],
-              from: state.uri.queryParameters['from'],
-            ),
-          ),
-        ],
       ),
-      // ── 셸 안 — 한 번 가서 머무는 곳 ──────────────────
-      //
-      // ShellRoute 가 셸을 마운트한 채로 두므로, 갈래를 옮겨도 레일과 채널
-      // 목록이 다시 만들어지지 않는다. **무엇을 그릴지는 여전히 라우터가
-      // 정한다** — 셸이 본문을 탭으로 갈아 끼우면 "라우트가 진실의 원천"
-      // 이라는 전제가 깨진다.
-      ShellRoute(
-        builder: (context, state, child) {
-          // ShellRoute 빌더에서 자식 라우트의 pathParameters 가 실리는지는
-          // go_router 버전에 따라 다를 수 있어, 경로에서 직접 읽는다.
-          // 세그먼트는 [s, <spaceId>] 또는 [s, <spaceId>, c, <channelId>] 다.
-          final seg = state.uri.pathSegments;
-          final spaceId = seg.length >= 2 ? seg[1] : '';
-          final channelId = seg.length >= 4 && seg[2] == 'c' ? seg[3] : null;
+    ],
+  ),
+  // ── 셸 안 — 한 번 가서 머무는 곳 ──────────────────
+  //
+  // ShellRoute 가 셸을 마운트한 채로 두므로, 갈래를 옮겨도 레일과 채널
+  // 목록이 다시 만들어지지 않는다. **무엇을 그릴지는 여전히 라우터가
+  // 정한다** — 셸이 본문을 탭으로 갈아 끼우면 "라우트가 진실의 원천"
+  // 이라는 전제가 깨진다.
+  ShellRoute(
+    builder: (context, state, child) {
+      // ShellRoute 빌더에서 자식 라우트의 pathParameters 가 실리는지는
+      // go_router 버전에 따라 다를 수 있어, 경로에서 직접 읽는다.
+      // 세그먼트는 [s, <spaceId>] 또는 [s, <spaceId>, c, <channelId>] 다.
+      final seg = state.uri.pathSegments;
+      final spaceId = seg.length >= 2 ? seg[1] : '';
+      final channelId = seg.length >= 4 && seg[2] == 'c' ? seg[3] : null;
 
-          return AppShell(
-            spaceId: spaceId,
-            // 대화 라우트에서만 채널이 열려 있다. 다른 갈래에서는 null 이라
-            // 채널 목록의 선택 표시가 꺼진다.
-            channelId: channelId,
-            child: child,
-          );
-        },
+      return AppShell(
+        spaceId: spaceId,
+        // 대화 라우트에서만 채널이 열려 있다. 다른 갈래에서는 null 이라
+        // 채널 목록의 선택 표시가 꺼진다.
+        channelId: channelId,
+        child: child,
+      );
+    },
+    routes: [
+      GoRoute(
+        path: '/s/:spaceId',
+        builder: (_, _) => const ShellHome(),
         routes: [
+          // 이슈 보드와 스프린트는 대화의 곁가지가 아니라 나란한 주
+          // 기능이다. 그래서 셸 안에 둔다.
           GoRoute(
-            path: '/s/:spaceId',
-            builder: (_, _) => const ShellHome(),
+            path: 'issues',
+            builder: (_, state) =>
+                BoardScreen(spaceId: state.pathParameters['spaceId']!),
             routes: [
-              // 이슈 보드와 스프린트는 대화의 곁가지가 아니라 나란한 주
-              // 기능이다. 그래서 셸 안에 둔다.
+              // 상세는 **키**로 잡는다 — 사람이 대화에 붙여 넣는 것도
+              // uuid 가 아니라 NEXUS-12 다. API 는 id 로 유지한다.
               GoRoute(
-                path: 'issues',
-                builder: (_, state) =>
-                    BoardScreen(spaceId: state.pathParameters['spaceId']!),
-                routes: [
-                  // 상세는 **키**로 잡는다 — 사람이 대화에 붙여 넣는 것도
-                  // uuid 가 아니라 NEXUS-12 다. API 는 id 로 유지한다.
-                  GoRoute(
-                    path: ':issueKey',
-                    builder: (_, state) => IssueDetailScreen(
-                      spaceId: state.pathParameters['spaceId']!,
-                      issueKey: state.pathParameters['issueKey']!,
-                    ),
-                  ),
-                ],
-              ),
-              GoRoute(
-                path: 'sprints',
-                builder: (_, state) =>
-                    SprintScreen(spaceId: state.pathParameters['spaceId']!),
-              ),
-              GoRoute(
-                path: 'files',
-                builder: (_, state) =>
-                    FilesScreen(spaceId: state.pathParameters['spaceId']!),
-              ),
-              GoRoute(
-                path: 'repos',
-                builder: (_, state) =>
-                    ReposScreen(spaceId: state.pathParameters['spaceId']!),
-              ),
-              // 채널을 연 상태. 셸은 같고 본문만 대화로 바뀐다.
-              GoRoute(
-                path: 'c/:channelId',
-                builder: (_, _) => const ChatScreen(),
+                path: ':issueKey',
+                builder: (_, state) => IssueDetailScreen(
+                  spaceId: state.pathParameters['spaceId']!,
+                  issueKey: state.pathParameters['issueKey']!,
+                ),
               ),
             ],
           ),
+          GoRoute(
+            path: 'sprints',
+            builder: (_, state) =>
+                SprintScreen(spaceId: state.pathParameters['spaceId']!),
+          ),
+          GoRoute(
+            path: 'files',
+            builder: (_, state) =>
+                FilesScreen(spaceId: state.pathParameters['spaceId']!),
+          ),
+          GoRoute(
+            path: 'repos',
+            builder: (_, state) =>
+                ReposScreen(spaceId: state.pathParameters['spaceId']!),
+          ),
+          // 채널을 연 상태. 셸은 같고 본문만 대화로 바뀐다.
+          GoRoute(path: 'c/:channelId', builder: (_, _) => const ChatScreen()),
         ],
       ),
+    ],
+  ),
 
-      // ── 셸 밖 — 보고 돌아오는 곳 ──────────────────────
-      //
-      // 특정 메시지 · 특정 저장소에서 파고드는 것이라 돌아오는 길이 분명한
-      // 편이 낫다. 이것은 원래 판단이고 그대로 지킨다.
-      //
-      // **저장소 갈래는 넷이 다 여기 있어야 한다**(browse · commits ·
-      // commit 상세 · pulls). 하나라도 셸 안에 두면 셸 밖 화면에서 그리로
-      // `push` 할 때 `ShellRoute` 가 두 번 쌓인다 — go_router 는 셸 페이지
-      // 키를 `ValueKey(route.hashCode)` 로 매기므로 **언제나 같은 키**라
-      // `!keyReservation.contains(key)` 로 죽는다. 실제로 browse 만 셸 안에
-      // 있었고, PR · 커밋 상세에서 파일을 누르면 빨간 화면이 떴다.
-      // 근거와 재현은 `test/router_shell_test.dart` 에 있다.
-      GoRoute(
-        // 저장소 안 들여다보기. **폴더 이동은 라우트를 쌓지 않는다** —
-        // 경로는 화면의 상태이고 되돌아가는 길은 빵부스러기가 맡는다.
-        path: '/s/:spaceId/repos/:repoId/browse',
-        builder: (_, state) => BrowseScreen(
-          spaceId: state.pathParameters['spaceId']!,
-          repoId: state.pathParameters['repoId']!,
-          // 커밋 상세 · PR 상세에서 오면 그 sha·브랜치와 경로로 시작한다.
-          initialRef: state.uri.queryParameters['ref'],
-          initialPath: state.uri.queryParameters['path'],
-        ),
-      ),
-      GoRoute(
-        path: '/s/:spaceId/c/:channelId/t/:messageId',
-        builder: (_, state) => ThreadScreen(
-          spaceId: state.pathParameters['spaceId']!,
-          channelId: state.pathParameters['channelId']!,
-          messageId: state.pathParameters['messageId']!,
-        ),
-      ),
-      // 그 push 에 들어온 커밋들. 채널 메시지에서 들어온다(10-3b).
-      GoRoute(
-        path: '/s/:spaceId/repo-events/:eventId',
-        builder: (_, state) => CommitsScreen(
-          spaceId: state.pathParameters['spaceId']!,
-          eventId: state.pathParameters['eventId'],
-        ),
-      ),
-      // 브랜치 이력. 탐색 화면의 커밋 버튼에서 들어온다.
-      GoRoute(
-        path: '/s/:spaceId/repos/:repoId/commits',
-        builder: (_, state) => CommitsScreen(
-          spaceId: state.pathParameters['spaceId']!,
-          repoId: state.pathParameters['repoId']!,
-          branchRef: state.uri.queryParameters['ref'],
-        ),
-      ),
-      GoRoute(
-        path: '/s/:spaceId/repos/:repoId/commits/:sha',
-        builder: (_, state) => CommitDetailScreen(
-          spaceId: state.pathParameters['spaceId']!,
-          repoId: state.pathParameters['repoId']!,
-          sha: state.pathParameters['sha']!,
-        ),
-      ),
-      GoRoute(
-        path: '/s/:spaceId/repos/:repoId/pulls',
-        builder: (_, state) => PullsScreen(
-          spaceId: state.pathParameters['spaceId']!,
-          repoId: state.pathParameters['repoId']!,
-        ),
-      ),
-      GoRoute(
-        path: '/s/:spaceId/repos/:repoId/pulls/:number',
-        builder: (_, state) => PullDetailScreen(
-          spaceId: state.pathParameters['spaceId']!,
-          repoId: state.pathParameters['repoId']!,
-          number: int.parse(state.pathParameters['number']!),
-        ),
-      ),
-    ];
+  // ── 셸 밖 — 보고 돌아오는 곳 ──────────────────────
+  //
+  // 특정 메시지 · 특정 저장소에서 파고드는 것이라 돌아오는 길이 분명한
+  // 편이 낫다. 이것은 원래 판단이고 그대로 지킨다.
+  //
+  // **저장소 갈래는 넷이 다 여기 있어야 한다**(browse · commits ·
+  // commit 상세 · pulls). 하나라도 셸 안에 두면 셸 밖 화면에서 그리로
+  // `push` 할 때 `ShellRoute` 가 두 번 쌓인다 — go_router 는 셸 페이지
+  // 키를 `ValueKey(route.hashCode)` 로 매기므로 **언제나 같은 키**라
+  // `!keyReservation.contains(key)` 로 죽는다. 실제로 browse 만 셸 안에
+  // 있었고, PR · 커밋 상세에서 파일을 누르면 빨간 화면이 떴다.
+  // 근거와 재현은 `test/router_shell_test.dart` 에 있다.
+  GoRoute(
+    // 저장소 안 들여다보기. **폴더 이동은 라우트를 쌓지 않는다** —
+    // 경로는 화면의 상태이고 되돌아가는 길은 빵부스러기가 맡는다.
+    path: '/s/:spaceId/repos/:repoId/browse',
+    builder: (_, state) => BrowseScreen(
+      spaceId: state.pathParameters['spaceId']!,
+      repoId: state.pathParameters['repoId']!,
+      // 커밋 상세 · PR 상세에서 오면 그 sha·브랜치와 경로로 시작한다.
+      initialRef: state.uri.queryParameters['ref'],
+      initialPath: state.uri.queryParameters['path'],
+    ),
+  ),
+  GoRoute(
+    path: '/s/:spaceId/c/:channelId/t/:messageId',
+    builder: (_, state) => ThreadScreen(
+      spaceId: state.pathParameters['spaceId']!,
+      channelId: state.pathParameters['channelId']!,
+      messageId: state.pathParameters['messageId']!,
+    ),
+  ),
+  // 그 push 에 들어온 커밋들. 채널 메시지에서 들어온다(10-3b).
+  GoRoute(
+    path: '/s/:spaceId/repo-events/:eventId',
+    builder: (_, state) => CommitsScreen(
+      spaceId: state.pathParameters['spaceId']!,
+      eventId: state.pathParameters['eventId'],
+    ),
+  ),
+  // 브랜치 이력. 탐색 화면의 커밋 버튼에서 들어온다.
+  GoRoute(
+    path: '/s/:spaceId/repos/:repoId/commits',
+    builder: (_, state) => CommitsScreen(
+      spaceId: state.pathParameters['spaceId']!,
+      repoId: state.pathParameters['repoId']!,
+      branchRef: state.uri.queryParameters['ref'],
+    ),
+  ),
+  GoRoute(
+    path: '/s/:spaceId/repos/:repoId/commits/:sha',
+    builder: (_, state) => CommitDetailScreen(
+      spaceId: state.pathParameters['spaceId']!,
+      repoId: state.pathParameters['repoId']!,
+      sha: state.pathParameters['sha']!,
+    ),
+  ),
+  GoRoute(
+    path: '/s/:spaceId/repos/:repoId/pulls',
+    builder: (_, state) => PullsScreen(
+      spaceId: state.pathParameters['spaceId']!,
+      repoId: state.pathParameters['repoId']!,
+    ),
+  ),
+  GoRoute(
+    path: '/s/:spaceId/repos/:repoId/pulls/:number',
+    builder: (_, state) => PullDetailScreen(
+      spaceId: state.pathParameters['spaceId']!,
+      repoId: state.pathParameters['repoId']!,
+      number: int.parse(state.pathParameters['number']!),
+    ),
+  ),
+];
 
 /// 토큰 복원이 끝날 때까지 보여 준다. 서버가 꺼져 있으면 타임아웃까지 여기 머문다.
 /// 그 시간이 짧지 않을 수 있어 **브랜드 마크를 둔다**(`NexusSplash`) — 빈
@@ -254,17 +256,17 @@ class _SignupPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('회원가입은 아직 만들지 않았습니다.'),
-              TextButton(
-                onPressed: () => context.go('/login'),
-                child: const Text('로그인으로'),
-              ),
-            ],
+    body: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('회원가입은 아직 만들지 않았습니다.'),
+          TextButton(
+            onPressed: () => context.go('/login'),
+            child: const Text('로그인으로'),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
