@@ -77,3 +77,51 @@ class _ArcPainter extends CustomPainter {
   @override
   bool shouldRepaint(_ArcPainter old) => old.color != color;
 }
+
+/// 자리를 지키는 뼈대 줄(15단계 설계 D10). 화면이 기다릴 때 회전 스피너 대신 쓴다 —
+/// 내용이 올 자리를 먼저 그려 두면 도착했을 때 화면이 흔들리지 않는다.
+class NxSkeleton extends StatelessWidget {
+  const NxSkeleton({
+    super.key,
+    this.lines = 3,
+    this.lineHeight = 12,
+    this.semanticLabel = '불러오는 중',
+  });
+
+  final int lines;
+  final double lineHeight;
+  final String semanticLabel;
+
+  /// 줄 길이. 모두 같으면 표처럼 보여 「글」로 읽히지 않는다.
+  static const _widths = [0.62, 0.9, 0.44, 0.78, 0.55];
+
+  @override
+  Widget build(BuildContext context) {
+    final c = NxTheme.of(context).colors;
+    return Semantics(
+      label: semanticLabel,
+      child: LayoutBuilder(
+        builder: (context, box) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = 0; i < lines; i++) ...[
+              if (i > 0) const SizedBox(height: NxSpacing.sp4),
+              Container(
+                key: ValueKey('nx-skeleton-line-$i'),
+                width:
+                    (box.maxWidth.isFinite ? box.maxWidth : 240) *
+                    _widths[i % _widths.length],
+                height: lineHeight,
+                decoration: BoxDecoration(
+                  color: c.bgElevated,
+                  borderRadius: BorderRadius.circular(NxRadius.sm),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
