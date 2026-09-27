@@ -129,7 +129,7 @@ const _monoFallback = <String>['Consolas', 'monospace'];
 /// 글자 스타일. 크기 이름은 토큰 그대로(`--text-sm` → `sm`), 쓰임새 이름은 그 위의 조합이다.
 @immutable
 class NxText {
-  NxText._(this._c);
+  const NxText._(this._c);
 
   final NxColors _c;
 
