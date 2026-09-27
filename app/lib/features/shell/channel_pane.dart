@@ -25,46 +25,51 @@ class ChannelPane extends ConsumerWidget {
     final theme = Theme.of(context);
     final space = ref.watch(currentSpaceProvider);
 
-    return Container(
+    // **색을 `Container` 가 아니라 `Material` 로 칠한다.** `ListTile`(작업 갈래)은
+    // 선택 배경과 눌림 물결을 가장 가까운 `Material` 에 그리는데, 색을 가진
+    // `Container`(= `ColoredBox`)가 사이에 끼면 그 위에 덮여 보이지 않는다 —
+    // 디버그 빌드는 이것을 assertion 으로 알린다. 통합 테스트가 처음 잡았다.
+    return SizedBox(
       width: NexusPaneWidth.channels,
-      color: theme.colorScheme.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            height: 52,
-            padding: const EdgeInsets.symmetric(horizontal: NexusSpacing.sp5),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: theme.dividerColor, width: 1),
+      child: Material(
+        color: theme.colorScheme.surface,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 52,
+              padding: const EdgeInsets.symmetric(horizontal: NexusSpacing.sp5),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: theme.dividerColor, width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      space?.name ?? '…',
+                      style: theme.textTheme.titleSmall,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (onClose != null)
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: onClose,
+                    ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    space?.name ?? '…',
-                    style: theme.textTheme.titleSmall,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (onClose != null)
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: onClose,
-                  ),
-              ],
-            ),
-          ),
-          if (space != null)
-            _WorkSection(spaceId: space.id, onTap: onChannelTap),
-          Expanded(child: ChannelList(onChannelTap: onChannelTap)),
-        ],
+            if (space != null)
+              _WorkSection(spaceId: space.id, onTap: onChannelTap),
+            Expanded(child: ChannelList(onChannelTap: onChannelTap)),
+          ],
+        ),
       ),
     );
   }
 }
-
 
 /// 셸 안에서 갈 수 있는 곳 — 이슈 보드 · 스프린트 · 파일 · 저장소.
 ///
