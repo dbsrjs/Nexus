@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,7 +33,7 @@ import 'package:nexus_app/main.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('로그인 → 스페이스 → 채널 → 전송 · 실시간 → 스레드 → 이슈 · 파일 · 저장소', (tester) async {
+  testWidgets('로그인 → 스페이스 → 채널 → 전송 · 실시간 → 스레드 → 이슈 · 파일 · 저장소 → 설정', (tester) async {
     final fx = await _Fixture.create();
 
     await tester.pumpWidget(
@@ -100,6 +101,49 @@ void main() {
     // 셸 안에서 채널로 돌아온다 — 셸 페이지 키가 겹치면 여기서 죽는다.
     await tester.tap(find.text(fx.channelName));
     await tester.pumpUntil(_body(sent));
+
+    // ── 14단계: 남이 이름을 바꾸면 새로고침 없이 바뀐다(user:updated → drift) ──
+    final bobRenamed = 'Bob Renamed ${fx.stamp}';
+    await fx.bobRenames(bobRenamed);
+    await tester.pumpUntil(find.text(bobRenamed));
+
+    // ── 14단계: 설정 창 — 계정 메뉴 → 이름 바꾸기 → 닫기 ──
+    await tester.tap(find.byTooltip('AppFlow A'));
+    await tester.pumpUntil(find.text('설정'));
+    // 메뉴가 펼쳐지는 동안은 누른 자리가 항목에 닿지 않는다.
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('설정'));
+    await tester.pumpUntil(find.text('표시 이름'));
+    final aliceRenamed = 'Alice Renamed ${fx.stamp}';
+    await tester.enterText(find.widgetWithText(TextField, 'AppFlow A'), aliceRenamed);
+    // 저장 버튼은 바뀐 이름을 본 다음 프레임에 켜진다. 그 전에 누르면 꺼진 버튼이다.
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, '저장'));
+    await tester.pumpUntil(find.text('이름을 바꿨습니다'));
+
+    // 화면 → 라이트. 계정 메뉴에서 옮겨 온 테마가 실제로 바뀌는지.
+    await tester.tap(find.text('화면'));
+    await tester.pumpUntil(find.text('라이트'));
+    await tester.tap(find.text('라이트'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.light,
+    );
+
+    // 알림 → 채널 음소거 → 목록 아이콘이 바뀐다.
+    await tester.tap(find.text('알림'));
+    await tester.pumpUntil(find.byType(SwitchListTile));
+    await tester.tap(
+      find.ancestor(of: find.text(fx.channelName), matching: find.byType(SwitchListTile)),
+    );
+    await tester.pumpUntilTrue(() => fx.aliceMuted(), '음소거가 서버에 반영되지 않았다');
+
+    // Esc 로 닫으면 들어오기 전 채널로 돌아간다. 내 메시지의 작성자명이 새 이름이다.
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpUntil(_body(sent));
+    await tester.pumpUntil(find.text(aliceRenamed));
+    expect(find.byIcon(Icons.notifications_off_outlined), findsOneWidget);
 
     expect(tester.takeException(), isNull);
   });
@@ -174,6 +218,13 @@ class _Fixture {
 
   Future<void> bobSays(String body) => _post(_messagesPath, _bobToken, {'body': body});
 
+  Future<void> bobRenames(String name) => _patch('/me', _bobToken, {'name': name});
+
+  Future<bool> aliceMuted() async {
+    final channels = await _get('/spaces/$_spaceId/channels', _aliceToken) as List;
+    return channels.cast<Map>().any((c) => c['id'] == _channelId && c['muted'] == true);
+  }
+
   Future<bool> channelHas(String body) async {
     final page = await _get(_messagesPath, _aliceToken);
     final items = (page is Map ? page['items'] : page) as List;
@@ -199,6 +250,15 @@ class _Fixture {
     );
     _expect(res, 201, 200);
     return res.data is Map ? Map<String, dynamic>.from(res.data as Map) : const {};
+  }
+
+  Future<void> _patch(String path, String token, Map<String, dynamic> body) async {
+    final res = await _dio.patch<dynamic>(
+      path,
+      data: body,
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+    _expect(res, 200);
   }
 
   Future<dynamic> _get(String path, String token) async {

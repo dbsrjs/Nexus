@@ -1,9 +1,15 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/core/theme.dart';
 import 'package:nexus_app/data/api/api_failure.dart';
 import 'package:nexus_app/data/api/settings_api.dart';
+import 'package:nexus_app/domain/models/user.dart';
+import 'package:nexus_app/data/local/app_database.dart';
+import 'package:nexus_app/features/auth/auth_controller.dart';
+import 'package:nexus_app/features/space/space_controller.dart';
+import 'package:nexus_app/features/settings/account_section.dart';
 import 'package:nexus_app/features/settings/password_section.dart';
 import 'package:nexus_app/features/settings/settings_controller.dart';
 
@@ -28,6 +34,53 @@ void main() {
     test('모르는 섹션 이름은 null 이다', () {
       expect(SettingsSection.parse('nope'), isNull);
       expect(SettingsSection.parse('password'), SettingsSection.password);
+    });
+  });
+
+  group('내 계정 섹션', () {
+    testWidgets('★ 이름을 고쳐 저장하면 서버를 부르고 결과를 알린다', (tester) async {
+      final api = _FakeSettingsApi();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsApiProvider.overrideWithValue(api),
+            authControllerProvider.overrideWith(_SignedIn.new),
+            appDatabaseProvider.overrideWith((ref) {
+              final db = AppDatabase(NativeDatabase.memory());
+              ref.onDispose(db.close);
+              return db;
+            }),
+          ],
+          child: MaterialApp(
+            theme: buildNexusTheme(brightness: Brightness.dark),
+            home: const Scaffold(body: AccountSection()),
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField), '새 이름');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, '저장'));
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
+      expect(api.names, ['새 이름']);
+      expect(find.text('이름을 바꿨습니다'), findsOneWidget);
+    });
+
+    testWidgets('이름이 그대로거나 비었으면 저장 버튼이 꺼져 있다', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsApiProvider.overrideWithValue(_FakeSettingsApi()),
+            authControllerProvider.overrideWith(_SignedIn.new),
+          ],
+          child: MaterialApp(home: const Scaffold(body: AccountSection())),
+        ),
+      );
+      FilledButton save() => tester.widget<FilledButton>(find.widgetWithText(FilledButton, '저장'));
+      expect(save().onPressed, isNull);
+      await tester.enterText(find.byType(TextField), '   ');
+      await tester.pump();
+      expect(save().onPressed, isNull);
     });
   });
 
@@ -98,6 +151,14 @@ void main() {
   });
 }
 
+class _SignedIn extends AuthController {
+  @override
+  AuthState build() => const AuthSignedIn(User(id: 'u1', email: 'a@x.io', name: '가영'));
+
+  @override
+  Future<void> replaceUser(User user) async => state = AuthSignedIn(user);
+}
+
 class _FakeSettingsApi implements SettingsApi {
   int calls = 0;
   ApiFailure? failWith;
@@ -106,6 +167,14 @@ class _FakeSettingsApi implements SettingsApi {
   Future<void> changePassword({required String current, required String next}) async {
     calls++;
     if (failWith != null) throw ApiException(failWith!);
+  }
+
+  final names = <String>[];
+
+  @override
+  Future<User> updateName(String name) async {
+    names.add(name);
+    return User(id: 'u1', email: 'a@x.io', name: name);
   }
 
   @override
