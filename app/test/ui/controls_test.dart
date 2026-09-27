@@ -78,11 +78,11 @@ void main() {
       await tester.pumpWidget(app(seg((_) {})));
       expect(
         tester.getSemantics(find.text('다크')),
-        containsSemantics(isChecked: true, isInMutuallyExclusiveGroup: true),
+        isSemantics(isChecked: true, isInMutuallyExclusiveGroup: true),
       );
       expect(
         tester.getSemantics(find.text('라이트')),
-        containsSemantics(isChecked: false, isInMutuallyExclusiveGroup: true),
+        isSemantics(isChecked: false, isInMutuallyExclusiveGroup: true),
       );
       handle.dispose();
     });

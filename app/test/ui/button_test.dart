@@ -71,7 +71,7 @@ void main() {
     // ★ 이름만 있고 누를 수 없으면 소용없다 — 동작이 함께 실려야 한다.
     expect(
       tester.getSemantics(find.byType(NxIconButton)),
-      containsSemantics(label: '고정', isButton: true, hasTapAction: true, isFocusable: true),
+      isSemantics(label: '고정', isButton: true, hasTapAction: true, isFocusable: true),
     );
     handle.dispose();
   });
