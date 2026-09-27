@@ -40,6 +40,9 @@ class NxPressable extends StatefulWidget {
     this.autofocus = false,
     this.focusRingRadius = NxRadius.md,
     this.excludeChildSemantics = false,
+    this.toggled,
+    this.checked,
+    this.inMutuallyExclusiveGroup = false,
   });
 
   final Widget Function(BuildContext context, NxPressState state) builder;
@@ -57,6 +60,12 @@ class NxPressable extends StatefulWidget {
 
   /// 안의 글자를 보조 기술에서 숨기고 [semanticLabel] 만 읽힌다.
   final bool excludeChildSemantics;
+
+  /// 스위치 · 체크 · 세그먼트의 상태. **같은 노드에 실어야 한다** — 바깥에 따로 감싸면
+  /// 합쳐지지 않은 노드가 생겨 보조 기술이 상태와 동작을 따로 읽는다.
+  final bool? toggled;
+  final bool? checked;
+  final bool inMutuallyExclusiveGroup;
 
   @override
   State<NxPressable> createState() => _NxPressableState();
@@ -109,35 +118,46 @@ class _NxPressableState extends State<NxPressable> {
       );
     }
 
-    return Semantics(
-      button: true,
-      enabled: _enabled,
-      selected: widget.selected ? true : null,
-      label: widget.semanticLabel,
-      excludeSemantics: widget.excludeChildSemantics,
-      child: FocusableActionDetector(
+    // 한 덩어리로 읽히게 합친다 — 버튼 · 이름(Semantics) 과 포커스(Focus) · 누르기
+    // (GestureDetector) 가 따로 노드를 만들면 보조 기술에서 「버튼」 과 「누를 수 있는
+    // 것」 이 갈라진다.
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
         enabled: _enabled,
-        focusNode: widget.focusNode,
-        autofocus: widget.autofocus,
-        shortcuts: _shortcuts,
-        actions: _actions,
-        mouseCursor: _enabled
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.basic,
-        onShowFocusHighlight: (v) => setState(() => _focused = v),
-        // 호버는 포커스 강조 모드와 무관하게 마우스가 올라와 있는지로만 본다 —
-        // FocusableActionDetector 의 호버 강조는 터치 모드에서 꺼진다.
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() => _hovered = false),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: _enabled ? (_) => _setPressed(true) : null,
-            onTapUp: _enabled ? (_) => _setPressed(false) : null,
-            onTapCancel: _enabled ? () => _setPressed(false) : null,
-            onTap: widget.onPressed,
-            onLongPress: widget.onLongPress,
-            child: body,
+        selected: widget.selected ? true : null,
+        toggled: widget.toggled,
+        checked: widget.checked,
+        inMutuallyExclusiveGroup: widget.inMutuallyExclusiveGroup ? true : null,
+        label: widget.semanticLabel,
+        // 안의 글자만 숨긴다(아래 ExcludeSemantics). excludeSemantics 로 통째로 막으면
+        // GestureDetector · Focus 가 주는 「누르기 · 포커스」 동작까지 사라진다.
+        child: FocusableActionDetector(
+          enabled: _enabled,
+          focusNode: widget.focusNode,
+          autofocus: widget.autofocus,
+          shortcuts: _shortcuts,
+          actions: _actions,
+          mouseCursor: _enabled
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.basic,
+          onShowFocusHighlight: (v) => setState(() => _focused = v),
+          // 호버는 포커스 강조 모드와 무관하게 마우스가 올라와 있는지로만 본다 —
+          // FocusableActionDetector 의 호버 강조는 터치 모드에서 꺼진다.
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _hovered = true),
+            onExit: (_) => setState(() => _hovered = false),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: _enabled ? (_) => _setPressed(true) : null,
+              onTapUp: _enabled ? (_) => _setPressed(false) : null,
+              onTapCancel: _enabled ? () => _setPressed(false) : null,
+              onTap: widget.onPressed,
+              onLongPress: widget.onLongPress,
+              child: widget.excludeChildSemantics
+                  ? ExcludeSemantics(child: body)
+                  : body,
+            ),
           ),
         ),
       ),

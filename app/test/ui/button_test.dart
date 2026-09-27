@@ -68,6 +68,11 @@ void main() {
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(host(NxIconButton(icon: NxIcons.pin, label: '고정', onPressed: () {})));
     expect(find.bySemanticsLabel('고정'), findsOneWidget);
+    // ★ 이름만 있고 누를 수 없으면 소용없다 — 동작이 함께 실려야 한다.
+    expect(
+      tester.getSemantics(find.byType(NxIconButton)),
+      containsSemantics(label: '고정', isButton: true, hasTapAction: true, isFocusable: true),
+    );
     handle.dispose();
   });
 
