@@ -294,6 +294,9 @@ class CachedChannels extends Table {
   /// 안 읽은 **멘션** 수. 안 읽은 수와 따로 센다.
   IntColumn get mentionCount => integer().withDefault(const Constant(0))();
 
+  /// 음소거(14단계). 목록에서 흐리게 · 안 읽음 표시를 끈다 — 멘션은 그대로 보인다.
+  BoolColumn get muted => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -428,7 +431,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus', web: _webOptions));
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이
@@ -766,6 +769,44 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setUnread(String channelId, int count) =>
       (update(cachedChannels)..where((c) => c.id.equals(channelId)))
           .write(CachedChannelsCompanion(unreadCount: Value(count)));
+
+  /// 음소거 한 칸만 바꾼다. 설정 창의 응답과 내 다른 기기의 `channel:muted` 가 쓴다.
+  Future<void> setChannelMuted(String channelId, bool muted) =>
+      (update(cachedChannels)..where((c) => c.id.equals(channelId)))
+          .write(CachedChannelsCompanion(muted: Value(muted)));
+
+  /// 사람의 이름 · 사진이 바뀌었다(`user:updated`, 14단계).
+  ///
+  /// **캐시 메시지 · 전송 큐 · 담당 이슈**의 작성자 칸을 한 트랜잭션으로 고친다.
+  /// 큐는 사용자가 쓴 유일본이지만 작성자 표시는 내용이 아니라 고쳐도 된다 —
+  /// 고치지 않으면 보내지기 전까지 옛 이름으로 보인다.
+  ///
+  /// 인용(`quoted`)에 박힌 원문 작성자명은 **그때의 요약**이라 고치지 않는다.
+  Future<void> applyUserUpdated({
+    required String userId,
+    required String name,
+    required String? avatarUrl,
+  }) =>
+      transaction(() async {
+        await (update(cachedMessages)..where((m) => m.authorId.equals(userId))).write(
+          CachedMessagesCompanion(
+            authorName: Value(name),
+            authorAvatarUrl: Value(avatarUrl),
+          ),
+        );
+        await (update(outboxMessages)..where((m) => m.authorId.equals(userId))).write(
+          OutboxMessagesCompanion(
+            authorName: Value(name),
+            authorAvatarUrl: Value(avatarUrl),
+          ),
+        );
+        await (update(cachedIssues)..where((i) => i.assigneeId.equals(userId))).write(
+          CachedIssuesCompanion(
+            assigneeName: Value(name),
+            assigneeAvatarUrl: Value(avatarUrl),
+          ),
+        );
+      });
 
   // ──────────────────────────────────────────────
   // 카테고리

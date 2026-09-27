@@ -1209,6 +1209,19 @@ class $CachedChannelsTable extends CachedChannels
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _mutedMeta = const VerificationMeta('muted');
+  @override
+  late final GeneratedColumn<bool> muted = GeneratedColumn<bool>(
+    'muted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("muted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1221,6 +1234,7 @@ class $CachedChannelsTable extends CachedChannels
     position,
     unreadCount,
     mentionCount,
+    muted,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1305,6 +1319,12 @@ class $CachedChannelsTable extends CachedChannels
         ),
       );
     }
+    if (data.containsKey('muted')) {
+      context.handle(
+        _mutedMeta,
+        muted.isAcceptableOrUnknown(data['muted']!, _mutedMeta),
+      );
+    }
     return context;
   }
 
@@ -1354,6 +1374,10 @@ class $CachedChannelsTable extends CachedChannels
         DriftSqlType.int,
         data['${effectivePrefix}mention_count'],
       )!,
+      muted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}muted'],
+      )!,
     );
   }
 
@@ -1376,6 +1400,9 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
 
   /// 안 읽은 **멘션** 수. 안 읽은 수와 따로 센다.
   final int mentionCount;
+
+  /// 음소거(14단계). 목록에서 흐리게 · 안 읽음 표시를 끈다 — 멘션은 그대로 보인다.
+  final bool muted;
   const CachedChannel({
     required this.id,
     required this.spaceId,
@@ -1387,6 +1414,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     required this.position,
     required this.unreadCount,
     required this.mentionCount,
+    required this.muted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1405,6 +1433,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     map['position'] = Variable<int>(position);
     map['unread_count'] = Variable<int>(unreadCount);
     map['mention_count'] = Variable<int>(mentionCount);
+    map['muted'] = Variable<bool>(muted);
     return map;
   }
 
@@ -1424,6 +1453,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       position: Value(position),
       unreadCount: Value(unreadCount),
       mentionCount: Value(mentionCount),
+      muted: Value(muted),
     );
   }
 
@@ -1443,6 +1473,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       position: serializer.fromJson<int>(json['position']),
       unreadCount: serializer.fromJson<int>(json['unreadCount']),
       mentionCount: serializer.fromJson<int>(json['mentionCount']),
+      muted: serializer.fromJson<bool>(json['muted']),
     );
   }
   @override
@@ -1459,6 +1490,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       'position': serializer.toJson<int>(position),
       'unreadCount': serializer.toJson<int>(unreadCount),
       'mentionCount': serializer.toJson<int>(mentionCount),
+      'muted': serializer.toJson<bool>(muted),
     };
   }
 
@@ -1473,6 +1505,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     int? position,
     int? unreadCount,
     int? mentionCount,
+    bool? muted,
   }) => CachedChannel(
     id: id ?? this.id,
     spaceId: spaceId ?? this.spaceId,
@@ -1484,6 +1517,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     position: position ?? this.position,
     unreadCount: unreadCount ?? this.unreadCount,
     mentionCount: mentionCount ?? this.mentionCount,
+    muted: muted ?? this.muted,
   );
   CachedChannel copyWithCompanion(CachedChannelsCompanion data) {
     return CachedChannel(
@@ -1503,6 +1537,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       mentionCount: data.mentionCount.present
           ? data.mentionCount.value
           : this.mentionCount,
+      muted: data.muted.present ? data.muted.value : this.muted,
     );
   }
 
@@ -1518,7 +1553,8 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
           ..write('isPrivate: $isPrivate, ')
           ..write('position: $position, ')
           ..write('unreadCount: $unreadCount, ')
-          ..write('mentionCount: $mentionCount')
+          ..write('mentionCount: $mentionCount, ')
+          ..write('muted: $muted')
           ..write(')'))
         .toString();
   }
@@ -1535,6 +1571,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     position,
     unreadCount,
     mentionCount,
+    muted,
   );
   @override
   bool operator ==(Object other) =>
@@ -1549,7 +1586,8 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
           other.isPrivate == this.isPrivate &&
           other.position == this.position &&
           other.unreadCount == this.unreadCount &&
-          other.mentionCount == this.mentionCount);
+          other.mentionCount == this.mentionCount &&
+          other.muted == this.muted);
 }
 
 class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
@@ -1563,6 +1601,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
   final Value<int> position;
   final Value<int> unreadCount;
   final Value<int> mentionCount;
+  final Value<bool> muted;
   final Value<int> rowid;
   const CachedChannelsCompanion({
     this.id = const Value.absent(),
@@ -1575,6 +1614,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     this.position = const Value.absent(),
     this.unreadCount = const Value.absent(),
     this.mentionCount = const Value.absent(),
+    this.muted = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedChannelsCompanion.insert({
@@ -1588,6 +1628,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     this.position = const Value.absent(),
     this.unreadCount = const Value.absent(),
     this.mentionCount = const Value.absent(),
+    this.muted = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        spaceId = Value(spaceId),
@@ -1604,6 +1645,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     Expression<int>? position,
     Expression<int>? unreadCount,
     Expression<int>? mentionCount,
+    Expression<bool>? muted,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1617,6 +1659,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
       if (position != null) 'position': position,
       if (unreadCount != null) 'unread_count': unreadCount,
       if (mentionCount != null) 'mention_count': mentionCount,
+      if (muted != null) 'muted': muted,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1632,6 +1675,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     Value<int>? position,
     Value<int>? unreadCount,
     Value<int>? mentionCount,
+    Value<bool>? muted,
     Value<int>? rowid,
   }) {
     return CachedChannelsCompanion(
@@ -1645,6 +1689,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
       position: position ?? this.position,
       unreadCount: unreadCount ?? this.unreadCount,
       mentionCount: mentionCount ?? this.mentionCount,
+      muted: muted ?? this.muted,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1682,6 +1727,9 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     if (mentionCount.present) {
       map['mention_count'] = Variable<int>(mentionCount.value);
     }
+    if (muted.present) {
+      map['muted'] = Variable<bool>(muted.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1701,6 +1749,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
           ..write('position: $position, ')
           ..write('unreadCount: $unreadCount, ')
           ..write('mentionCount: $mentionCount, ')
+          ..write('muted: $muted, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5595,6 +5644,7 @@ typedef $$CachedChannelsTableCreateCompanionBuilder =
       Value<int> position,
       Value<int> unreadCount,
       Value<int> mentionCount,
+      Value<bool> muted,
       Value<int> rowid,
     });
 typedef $$CachedChannelsTableUpdateCompanionBuilder =
@@ -5609,6 +5659,7 @@ typedef $$CachedChannelsTableUpdateCompanionBuilder =
       Value<int> position,
       Value<int> unreadCount,
       Value<int> mentionCount,
+      Value<bool> muted,
       Value<int> rowid,
     });
 
@@ -5668,6 +5719,11 @@ class $$CachedChannelsTableFilterComposer
 
   ColumnFilters<int> get mentionCount => $composableBuilder(
     column: $table.mentionCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get muted => $composableBuilder(
+    column: $table.muted,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5730,6 +5786,11 @@ class $$CachedChannelsTableOrderingComposer
     column: $table.mentionCount,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get muted => $composableBuilder(
+    column: $table.muted,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedChannelsTableAnnotationComposer
@@ -5776,6 +5837,9 @@ class $$CachedChannelsTableAnnotationComposer
     column: $table.mentionCount,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get muted =>
+      $composableBuilder(column: $table.muted, builder: (column) => column);
 }
 
 class $$CachedChannelsTableTableManager
@@ -5821,6 +5885,7 @@ class $$CachedChannelsTableTableManager
                 Value<int> position = const Value.absent(),
                 Value<int> unreadCount = const Value.absent(),
                 Value<int> mentionCount = const Value.absent(),
+                Value<bool> muted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedChannelsCompanion(
                 id: id,
@@ -5833,6 +5898,7 @@ class $$CachedChannelsTableTableManager
                 position: position,
                 unreadCount: unreadCount,
                 mentionCount: mentionCount,
+                muted: muted,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5847,6 +5913,7 @@ class $$CachedChannelsTableTableManager
                 Value<int> position = const Value.absent(),
                 Value<int> unreadCount = const Value.absent(),
                 Value<int> mentionCount = const Value.absent(),
+                Value<bool> muted = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedChannelsCompanion.insert(
                 id: id,
@@ -5859,6 +5926,7 @@ class $$CachedChannelsTableTableManager
                 position: position,
                 unreadCount: unreadCount,
                 mentionCount: mentionCount,
+                muted: muted,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

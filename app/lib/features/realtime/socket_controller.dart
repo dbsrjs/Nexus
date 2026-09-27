@@ -6,6 +6,8 @@ import '../auth/auth_controller.dart';
 import '../channel/channel_controller.dart';
 import '../chat/message_controller.dart';
 import '../issue/board_controller.dart';
+import '../space/members_controller.dart';
+import '../space/space_controller.dart';
 
 /// 앱 전체에 하나뿐인 소켓 연결.
 ///
@@ -114,6 +116,26 @@ final realtimeChannelSyncProvider = Provider<void>((ref) {
 
       case IssueDeleted():
         ref.read(issueRepositoryProvider).applyDelete(event.issueId);
+
+      case UserUpdated():
+        // 이름 · 사진이 바뀌었다(14단계). 캐시의 작성자 칸을 고치면 화면은
+        // drift 를 구독하므로 저절로 따라온다. 멤버 목록(멘션 자동완성 ·
+        // 담당자 고르기)은 캐시가 아니라 다시 받는다.
+        ref.read(appDatabaseProvider).applyUserUpdated(
+              userId: event.userId,
+              name: event.name,
+              avatarUrl: event.avatarUrl,
+            );
+        ref.invalidate(spaceMembersProvider);
+        final auth = ref.read(authControllerProvider);
+        if (auth is AuthSignedIn && auth.user.id == event.userId) {
+          ref.read(authControllerProvider.notifier).replaceUser(
+                auth.user.copyWith(name: event.name, avatarUrl: event.avatarUrl),
+              );
+        }
+
+      case ChannelMuted():
+        ref.read(appDatabaseProvider).setChannelMuted(event.channelId, event.muted);
 
       case MessageEdited():
       case MessageDeleted():

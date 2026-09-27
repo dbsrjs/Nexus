@@ -76,6 +76,7 @@ class WorkspaceRepository {
                       position: r.position,
                       unreadCount: r.unreadCount,
                       mentionCount: r.mentionCount,
+                      muted: r.muted,
                     ))
                 .toList(growable: false),
           );
@@ -97,6 +98,7 @@ class WorkspaceRepository {
             position: Value(c.position),
             unreadCount: Value(c.unreadCount),
             mentionCount: Value(c.mentionCount),
+            muted: Value(c.muted),
           ),
       ]);
       return true;

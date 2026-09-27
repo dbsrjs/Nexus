@@ -113,6 +113,14 @@ class AuthController extends Notifier<AuthState> {
     state = const AuthSignedOut();
   }
 
+  /// 내 계정 정보가 바뀌었다(설정 창의 응답, 내 다른 기기의 `user:updated`).
+  /// 오프라인으로 켤 때 쓰는 저장본도 함께 고친다. 로그인 상태가 아니면 무시한다.
+  Future<void> replaceUser(User user) async {
+    if (state is! AuthSignedIn) return;
+    state = AuthSignedIn(user);
+    await ref.read(authStorageProvider).writeUser(user);
+  }
+
   /// 인터셉터가 리프레시까지 실패했을 때 부른다.
   void handleSessionExpired() {
     if (state is AuthSignedIn) {

@@ -194,3 +194,24 @@ class RoomsInvalidated extends SocketEvent {
   /// `channel.created` · `channel.visibility` · `channel.joined` · `member.role`
   final String? reason;
 }
+
+/// 사람의 이름이나 사진이 바뀌었다(14단계). **둘 다 실려 온다** — 무엇이 바뀌었는지
+/// 가리지 않고 덮어쓴다. 그 사람과 스페이스를 함께 쓰는 사람과 본인의 다른 기기에 온다.
+class UserUpdated extends SocketEvent {
+  const UserUpdated({required this.userId, required this.name, required this.avatarUrl});
+
+  final String userId;
+  final String name;
+
+  /// `/users/<id>/avatar?v=…` 또는 null(사진 없음).
+  final String? avatarUrl;
+}
+
+/// 내 다른 기기에서 채널 음소거를 바꿨다(14단계). 개인 룸으로만 온다.
+class ChannelMuted extends SocketEvent {
+  const ChannelMuted({required this.spaceId, required this.channelId, required this.muted});
+
+  final String spaceId;
+  final String channelId;
+  final bool muted;
+}

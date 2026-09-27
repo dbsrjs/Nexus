@@ -62,6 +62,8 @@ class SocketClient {
       ..on('read:synced', _onReadSynced)
       ..on('oauth:connected', _onOauthConnected)
       ..on('ai:run:done', _onAiRunDone)
+      ..on('user:updated', _onUserUpdated)
+      ..on('channel:muted', _onChannelMuted)
       ..on('rooms:invalidate', _onRoomsInvalidate);
 
     _socket = socket;
@@ -267,6 +269,30 @@ class SocketClient {
       runId: runId,
       kind: map['kind'] as String? ?? 'summarize',
       state: map['state'] as String? ?? 'done',
+    ));
+  }
+
+  void _onUserUpdated(dynamic data) {
+    final map = _asMap(data);
+    final userId = map?['userId'];
+    final name = map?['name'];
+    if (map == null || userId is! String || name is! String) return;
+    _emit(UserUpdated(
+      userId: userId,
+      name: name,
+      avatarUrl: map['avatarUrl'] as String?,
+    ));
+  }
+
+  void _onChannelMuted(dynamic data) {
+    final map = _asMap(data);
+    final channelId = map?['channelId'];
+    final muted = map?['muted'];
+    if (map == null || channelId is! String || muted is! bool) return;
+    _emit(ChannelMuted(
+      spaceId: map['spaceId'] as String? ?? '',
+      channelId: channelId,
+      muted: muted,
     ));
   }
 
