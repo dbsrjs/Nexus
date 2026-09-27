@@ -35,10 +35,9 @@ export class AvatarController {
     @UploadedFile() file: Express.Multer.File | undefined,
   ) {
     if (!file || file.size === 0) throw new BadRequestException('파일이 없습니다');
-    // mime 은 첫 거름일 뿐이다. 진짜 판정은 sharp 가 읽을 수 있는가다.
-    if (!file.mimetype?.startsWith('image/')) {
-      throw new BadRequestException('이미지 파일만 올릴 수 있습니다');
-    }
+    // **mime 으로 거르지 않는다.** 클라이언트는 확장자로 짐작해 싣는다 — `.jfif`
+    // 처럼 낯선 확장자의 멀쩡한 JPEG 가 octet-stream 으로 와서 거절된다. 그림인지는
+    // sharp 가 읽을 수 있는가로만 판정한다(설계 D7).
     try {
       return await this.avatars.upload(userId, file.buffer);
     } catch (err) {

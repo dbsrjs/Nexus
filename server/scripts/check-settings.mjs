@@ -188,6 +188,16 @@ const notImage = await uploadAvatar(alice.token, {
   name: 'note.txt',
 });
 check('이미지가 아니면 400 이다', notImage.status === 400, `status=${notImage.status}`);
+const octet = await uploadAvatar(alice.token, {
+  bytes: wide,
+  type: 'application/octet-stream',
+  name: 'photo.jfif',
+});
+check(
+  '★ mime 이 이미지가 아니어도 그림이면 받는다 — 판정은 sharp 가 한다',
+  octet.status === 200,
+  `status=${octet.status}`,
+);
 const fakePng = await uploadAvatar(alice.token, {
   bytes: Buffer.from('pretending to be png'),
   type: 'image/png',

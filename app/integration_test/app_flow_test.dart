@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +13,7 @@ import 'package:nexus_app/data/auth_storage.dart';
 import 'package:nexus_app/data/local/app_database.dart';
 import 'package:nexus_app/data/settings_storage.dart';
 import 'package:nexus_app/features/auth/auth_controller.dart';
+import 'package:nexus_app/features/settings/settings_controller.dart';
 import 'package:nexus_app/features/settings/theme_controller.dart';
 import 'package:nexus_app/features/space/space_controller.dart';
 import 'package:nexus_app/main.dart';
@@ -120,6 +123,15 @@ void main() {
     await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, '저장'));
     await tester.pumpUntil(find.text('이름을 바꿨습니다'));
+
+    // 사진 올리기 — 파일 대화상자는 자동화할 수 없어 **그 뒤의 앱 코드**를 부른다.
+    // 대화상자가 돌려주는 것(이름 · 바이트)을 그대로 넘기는 경로다.
+    final container = ProviderScope.containerOf(tester.element(find.byType(NexusApp)));
+    final photo = await File('assets/logo/nexus-mark-512.png').readAsBytes();
+    final withPhoto = await container
+        .read(settingsApiProvider)
+        .uploadAvatar(bytes: photo, filename: 'nexus-mark-512.png');
+    expect(withPhoto.avatarUrl, startsWith('/users/'));
 
     // 화면 → 라이트. 계정 메뉴에서 옮겨 온 테마가 실제로 바뀌는지.
     await tester.tap(find.text('화면'));
