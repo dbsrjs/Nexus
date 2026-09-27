@@ -335,6 +335,29 @@ describe('AiService.ask — 13-2', () => {
   });
 });
 
+describe('AiService.ask — 캐시 키와 모델', () => {
+  it('★ 모델이 바뀌면 같은 요청이라도 다른 키로 캐시를 찾는다 - 옛 모델의 답을 주지 않는다', async () => {
+    const hashOf = async (modelId: string) => {
+      const prisma = prismaWith([row('m-1')]);
+      const llm = { modelId, maxTokens: 8192, complete: jest.fn() };
+      await service({ prisma, llm }).ask('s-1', 'u-1', {
+        preset: 'summary',
+        context: { channelId: 'c-1', messageIds: ['m-1'] },
+      });
+      const where = prisma.aiRun.findFirst.mock.calls[0][0].where;
+      return where.promptHash as string;
+    };
+
+    const before = await hashOf('gemini:gemini-3.5-flash');
+    const after = await hashOf('gemini:gemini-3.8-flash');
+    expect(before).toMatch(/^[0-9a-f]{64}$/);
+    expect(after).toMatch(/^[0-9a-f]{64}$/);
+    expect(after).not.toBe(before);
+    // 같은 모델이면 같은 키다 — 위 단언이 우연히 늘 다른 값이 아님을 확인한다.
+    expect(await hashOf('gemini:gemini-3.5-flash')).toBe(before);
+  });
+});
+
 describe('AiService.loadPrompt', () => {
   it('★ 고른 청크가 사라졌으면 던진다 — 인용이 빈 채로 답하지 않는다', async () => {
     const indexing = { chunksByIds: jest.fn().mockResolvedValue([chunk('k-1')]) };

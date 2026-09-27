@@ -15,6 +15,7 @@ import { createHmac } from 'node:crypto';
 import { requireServer, abortUnless, PreflightAbort } from './lib/preflight.mjs';
 import { BASE, stamp, api, signup } from './lib/api.mjs';
 import { check, summary } from './lib/checks.mjs';
+import { withDb, closeDb, fromNow } from './lib/db.mjs';
 await requireServer(BASE);
 const FAKE_PORT = 4599;
 
@@ -89,31 +90,13 @@ const FAKE_MODEL = 'fake:fake';
 
 /**
  * 기록된 모델을 DB 에서 직접 바꾼다. 바뀐 행 수를 돌려준다.
- *
- * **@prisma/client 는 이 함수 안에서만 불러온다** — 다른 케이스가 DB 접속
- * 설정에 묶이지 않게 한다. `DATABASE_URL` 은 CI 에서는 잡의 환경변수로 오고,
- * 로컬에서는 `server/.env` 에서 읽는다(`npm run` 을 저장소 루트에서 돌리므로
- * Prisma 가 스스로 찾으리라 기대하지 않는다).
+ * 서버의 모델을 실행 중에 바꿀 수 없어 반대쪽(기록)을 바꿔 흉내 낸다.
  */
 async function setIndexedModel(repoId, model) {
-  if (!process.env.DATABASE_URL) {
-    try {
-      process.loadEnvFile(new URL('../.env', import.meta.url));
-    } catch {
-      // 없으면 아래 PrismaClient 가 알아듣는 오류로 던진다.
-    }
-  }
-  const { PrismaClient } = await import('@prisma/client');
-  const prisma = new PrismaClient();
-  try {
-    const res = await prisma.repo.updateMany({
-      where: { id: repoId },
-      data: { indexedEmbeddingModel: model },
-    });
-    return res.count;
-  } finally {
-    await prisma.$disconnect();
-  }
+  const res = await withDb((db) =>
+    db.repo.updateMany({ where: { id: repoId }, data: { indexedEmbeddingModel: model } }),
+  );
+  return res.count;
 }
 
 /**
@@ -155,6 +138,14 @@ let apiHits = 0;
  * 있다 — 늘지 않으면 "전체로 떨어졌다"가 아니라 "할 일이 없었다"일 뿐이다.
  */
 let compare404Hits = 0;
+
+/**
+ * 트리 요청에 한 번씩 돌려줄 실패. 비어 있으면 평소처럼 답한다. 큐의 실패
+ * 갈래(429 · `Retry-After`)를 태우는 케이스가 채운다.
+ */
+const treeFailures = [];
+/** 위 실패로 실제로 답한 횟수 — 「그 갈래를 태웠다」를 단언한다(발견 1 과 같은 이유). */
+let treeFailureHits = 0;
 
 /** compare 요청 수(응답 코드와 무관). 모델 변경 케이스가 「compare 를 건너뛰었다」를 단언한다. */
 let compareHits = 0;
@@ -221,6 +212,12 @@ const fake = createServer((req, res) => {
 
   const tree = url.pathname.match(/^\/repos\/[^/]+\/[^/]+\/git\/trees\/(.+)$/);
   if (req.method === 'GET' && tree) {
+    const failure = treeFailures.shift();
+    if (failure) {
+      treeFailureHits++;
+      json(failure.status, { message: 'injected' }, failure.headers);
+      return;
+    }
     if (serving === 'second') {
       // socket 은 새 sha 로, orphan 은 빠지고, added 가 들어오고, legacy 는
       // renamed 로 이름이 바뀐다.
@@ -618,7 +615,7 @@ async function main() {
   //
   // **서버의 모델은 실행 중에 바꿀 수 없다**(부팅 때 `.env` 로 정해진다). 그래서
   // 반대쪽 — 기록된 모델 — 을 DB 에서 직접 옛 이름으로 바꿔 「다른 모델로 만든
-  // 인덱스」를 흉내 낸다. 계약 검증에서 DB 를 직접 만지는 곳은 여기뿐이다.
+  // 인덱스」를 흉내 낸다. DB 를 직접 만지는 자리는 `lib/db.mjs` 머리에 모아 적었다.
   //
   // 바로 앞의 force-push 로 indexedCommitSha 는 THIRD_SHA 다. 이 상태에서 push 가
   // 오면 모델이 같을 때는 compare 를 부른다(가짜 GitHub 이 404 → 전체). **그래서
@@ -727,6 +724,79 @@ async function main() {
   });
   check('default 브랜치가 아니면 인덱싱하지 않는다', idle.json?.state === 'done');
   check('GitHub 을 부르지도 않았다', apiHits === before4, `${before4} → ${apiHits}`);
+
+  await queueFailures({ owner, spaceId, repoId });
+}
+
+/**
+ * 큐의 실패 갈래(2026-09-27 빚 정리). 가짜 GitHub 은 늘 빨리 성공해서 이
+ * 갈래를 한 번도 태우지 못했고, **그 사이에 `Retry-After: 0` 을 1분 대기로
+ * 바꾸는 결함이 큐에 남아 있었다**(12단계에 서비스 쪽만 고쳤다).
+ */
+async function queueFailures({ owner, spaceId, repoId }) {
+  const reindex = () =>
+    api('POST', `/spaces/${spaceId}/repos/${repoId}/index`, { token: owner.token });
+  const status = () =>
+    api('GET', `/spaces/${spaceId}/repos/${repoId}/index`, { token: owner.token });
+
+  // ── 429 + Retry-After: 0 ─────────────────────
+  console.log('\n[큐 실패 갈래 — 429 · 리스]');
+  const hitsBefore = treeFailureHits;
+  treeFailures.push({ status: 429, headers: { 'retry-after': '0' } });
+  const t0 = Date.now();
+  await reindex();
+  // 15초 — 결함이 있으면 1분을 물러선 뒤 다음 30초 크론에야 다시 잡힌다.
+  const after429 = await waitForIndex(owner.token, spaceId, repoId, 'done', 30);
+  const took = Date.now() - t0;
+  check(
+    '429 갈래를 실제로 태웠다',
+    treeFailureHits === hitsBefore + 1,
+    `주입한 실패 응답 ${hitsBefore} → ${treeFailureHits}`,
+  );
+  check(
+    '★ Retry-After: 0 이면 곧바로 다시 잡혀 끝난다 - 1분을 물러서지 않는다',
+    after429?.state === 'done' && took < 15_000,
+    `state=${after429?.state} · ${took}ms`,
+  );
+  check(
+    '429 는 시도 횟수로 세지 않는다',
+    after429?.attempts === 0,
+    `attempts=${after429?.attempts}`,
+  );
+
+  // ── 리스가 살아 있는 running 은 아무도 잡지 않는다 ──
+  // 다른 인스턴스가 돌고 있는 작업이다. 잡으면 같은 저장소를 둘이 인덱싱한다.
+  // (2026-09-10 에 리스 비교가 아홉 시간 어긋나 늘 참이던 자리 — CLAUDE.md §2)
+  const held = await withDb((db) =>
+    db.repoIndexJob.updateMany({
+      where: { repoId },
+      data: { state: 'running', leaseUntil: fromNow(10 * 60_000) },
+    }),
+  );
+  abortUnless(held.count === 1, '작업 행을 running 으로 바꾸지 못했습니다', { updated: held.count });
+  const hitsHeld = apiHits;
+  await reindex(); // 적재 + 깨우기
+  await new Promise((r) => setTimeout(r, 2000));
+  const stillHeld = await status();
+  check(
+    '★ 리스가 살아 있는 running 작업은 다시 잡지 않는다',
+    stillHeld.json?.state === 'running' && apiHits === hitsHeld,
+    `state=${stillHeld.json?.state} · GitHub 호출 ${hitsHeld} → ${apiHits}`,
+  );
+
+  // ── 리스가 만료된 running 은 다시 잡는다 = 크래시 복구 ──
+  // 워커 프로세스가 작업 도중 죽은 뒤와 같은 모양이다. 서버를 대신 죽일 수 없어
+  // 리스만 과거로 돌린다.
+  await withDb((db) =>
+    db.repoIndexJob.updateMany({ where: { repoId }, data: { leaseUntil: fromNow(-60_000) } }),
+  );
+  await reindex();
+  const recovered = await waitForIndex(owner.token, spaceId, repoId, 'done', 30);
+  check(
+    '★ 리스가 만료된 running 작업은 다시 잡혀 끝난다 - 죽은 워커의 작업이 영영 남지 않는다',
+    recovered?.state === 'done' && apiHits > hitsHeld,
+    `state=${recovered?.state} · GitHub 호출 ${hitsHeld} → ${apiHits}`,
+  );
 }
 
 await new Promise((resolve) => fake.listen(FAKE_PORT, '127.0.0.1', resolve));
@@ -738,6 +808,7 @@ try {
   crashed = err;
 }
 fake.close();
+await closeDb();
 
 if (crashed instanceof PreflightAbort) {
   console.error('');

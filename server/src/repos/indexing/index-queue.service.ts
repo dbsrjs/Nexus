@@ -28,6 +28,35 @@ const BACKOFF_MS = 60 * 1000;
 /** 서버 오류를 몇 번까지 다시 해 보나. 네트워크 실패는 여기 세지 않는다. */
 export const MAX_ATTEMPTS = 3;
 
+export interface IndexFailOptions {
+  countsAsAttempt: boolean;
+  retryAfterSec?: number;
+  fatal?: boolean;
+}
+
+/**
+ * 포기할지 판정한다. AI 큐의 `shouldGiveUp` 과 같은 모양이다 — export 하는
+ * 이유는 단위 테스트가 실 DB 없이 이것만 보기 위함이다.
+ *
+ * **다시 걸어도 같은 실패는 세 번을 기다리지 않는다** — 401(토큰 만료) ·
+ * 404(저장소 사라짐)가 그렇다. 6-2 의 전송 큐가 같은 구분을 했다.
+ */
+export function shouldGiveUpIndexing(attempts: number, options: IndexFailOptions): boolean {
+  if (options.fatal === true) return true;
+  return options.countsAsAttempt && attempts >= MAX_ATTEMPTS;
+}
+
+/**
+ * 다시 걸기까지 얼마나 기다리나. **`Retry-After` 를 `!= null` 로 본다** —
+ * `x ? … : …` 는 0 을 거짓으로 봐 "곧바로 다시"를 1분 대기로 바꾼다.
+ * 12단계에서 `indexing.service.ts` 쪽은 고쳤는데 **이 자리에 같은 모양이
+ * 남아 있었다**(2026-09-27, 실패 주입 계약 검증을 쓰며 발견).
+ */
+export function indexRetryDelayMs(options: IndexFailOptions): number {
+  if (options.retryAfterSec != null) return options.retryAfterSec * 1000;
+  return BACKOFF_MS;
+}
+
 export interface LeasedJob {
   repoId: string;
   spaceId: string;
@@ -220,7 +249,7 @@ export class IndexQueueService {
   async fail(
     repoId: string,
     message: string,
-    options: { countsAsAttempt: boolean; retryAfterSec?: number; fatal?: boolean },
+    options: IndexFailOptions,
   ): Promise<void> {
     const job = await this.prisma.repoIndexJob.findUnique({
       where: { repoId },
@@ -229,11 +258,8 @@ export class IndexQueueService {
     if (!job) return;
 
     const attempts = options.countsAsAttempt ? job.attempts + 1 : job.attempts;
-    // **다시 걸어도 같은 실패는 세 번을 기다리지 않는다** — 401(토큰 만료) ·
-    // 404(저장소 사라짐)가 그렇다. 6-2 의 전송 큐가 같은 구분을 했다.
-    const giveUp = options.fatal === true || (options.countsAsAttempt && attempts >= MAX_ATTEMPTS);
-
-    const wait = options.retryAfterSec ? options.retryAfterSec * 1000 : BACKOFF_MS;
+    const giveUp = shouldGiveUpIndexing(attempts, options);
+    const wait = indexRetryDelayMs(options);
 
     await this.prisma.repoIndexJob.update({
       where: { repoId },

@@ -21,6 +21,7 @@ import { requireServer } from './lib/preflight.mjs';
 import { BASE, stamp, api, signup } from './lib/api.mjs';
 import { check, summary } from './lib/checks.mjs';
 import { connect, waitFor } from './lib/socket.mjs';
+import { withDb, closeDb, fromNow } from './lib/db.mjs';
 await requireServer(BASE);
 
 function sleep(ms) {
@@ -96,6 +97,50 @@ if (probe.status === 503) {
 console.log('서버가 LLM_PROVIDER 로 설정돼 있다 — 이 실행에서는 503(미설정) 분기를');
 console.log('태우지 않는다. 그 분기를 보려면 LLM_PROVIDER 를 비우고 서버를 재시작한 뒤');
 console.log('이 스크립트를 다시 돌려라.\n');
+
+// ── 큐 실패 갈래 준비 ───────────────────────────
+// 5xx 다섯 번 소진은 재시도 대기(5 · 10 · 15 · 20초)만 50초다. 맨 끝에서 띄우면
+// 그만큼 스크립트가 길어지므로 여기서 적재해 두고, 나머지 케이스가 도는 동안
+// 기다린다. **요청자를 따로 둔다** — 실패 알림이 기본 흐름의 소켓 대기
+// (`waitFor(socket, 'ai:run:done')`)에 섞이지 않게.
+const carol = await signup('ai', 'f', 'AI검증f');
+const failSpace = await api('POST', '/spaces', {
+  token: carol.token,
+  body: { name: `ai fail ${stamp}` },
+});
+const failSpaceId = failSpace.json?.id;
+const failChannel = (
+  await api('GET', `/spaces/${failSpaceId}/channels`, { token: carol.token })
+).json?.[0];
+const failMsg = await api('POST', `/spaces/${failSpaceId}/channels/${failChannel?.id}/messages`, {
+  token: carol.token,
+  body: { body: '실패 주입용 대화' },
+});
+const failSocket = await connect(carol.token);
+/** carol 에게 온 `ai:run:done` 전부. 실행마다 무엇이 몇 번 왔는지 본다. */
+const failEvents = [];
+failSocket.on?.('ai:run:done', (e) => failEvents.push(e));
+check(
+  '실패 주입 준비 (별도 사용자 · 스페이스 · 소켓)',
+  !!failSpaceId && !!failChannel && failMsg.status === 201 && typeof failSocket?.on === 'function',
+);
+
+/**
+ * `FakeLlmProvider` 의 실패 주입 지시문을 자유 지시문에 실어 보낸다.
+ * `stamp` 를 섞는 이유: fake 는 프롬프트마다 호출 수를 세는데 서버 프로세스가
+ * 살아 있는 한 그 수가 남는다 — 같은 스크립트를 다시 돌려도 처음부터 세게 한다.
+ */
+const failAsk = (directive) =>
+  api('POST', `/spaces/${failSpaceId}/ai/ask`, {
+    token: carol.token,
+    body: {
+      instruction: `${stamp} ${directive}`,
+      context: { channelId: failChannel?.id, messageIds: [failMsg.json?.id] },
+    },
+  });
+
+const exhaustAt = Date.now();
+const exhaust = await failAsk('[[fake-llm:status=503]]');
 
 const invite = await api('POST', `/spaces/${spaceId}/invites`, {
   token: alice.token,
@@ -703,5 +748,162 @@ check(
   `status=${eleventh.status}`,
 );
 
+// ── 큐 실패 갈래 ─────────────────────────────────
+// 13-1 빚(2026-09-27 해소). fake 가 늘 즉시 성공해 재시도 · 소진 · 포기 · 리스
+// 복구를 계약 검증이 한 번도 태우지 못했다. 시도 횟수는 응답에 싣지 않는 값이라
+// DB 에서 읽는다(`lib/db.mjs`).
+console.log('\n[큐 실패 갈래]');
+
+const runOf = (id) => api('GET', `/spaces/${failSpaceId}/ai/runs/${id}`, { token: carol.token });
+const attemptsOf = async (id) =>
+  (await withDb((db) => db.aiRun.findUnique({ where: { id }, select: { attempts: true } })))
+    ?.attempts;
+/** 그 실행에 온 알림의 state 들. 소켓이 GET 보다 늦게 닿을 수 있어 잠깐 기다린다. */
+const eventsFor = async (id) => {
+  await sleep(500);
+  return failEvents.filter((e) => e.runId === id).map((e) => e.state);
+};
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+// 5xx 두 번 뒤 성공 — 대기 5 · 10초
+const flaky = await failAsk('[[fake-llm:status=503;times=2]]');
+const flakyId = flaky.json?.runId;
+const flakyDone = await waitForRunDone(carol.token, failSpaceId, flakyId, 40000);
+check(
+  '★ 5xx 는 다시 걸어 끝내 성공한다',
+  flakyDone?.json?.state === 'done',
+  JSON.stringify(flakyDone?.json),
+);
+check('5xx 는 시도로 센다 — 두 번 실패 뒤 성공이면 2', (await attemptsOf(flakyId)) === 2);
+const flakyEvents = await eventsFor(flakyId);
+check(
+  '★ 재시도 중에는 실패를 알리지 않는다 — done 하나만 온다',
+  same(flakyEvents, ['done']),
+  JSON.stringify(flakyEvents),
+);
+
+// 429 + Retry-After: 0 — 여섯 번. 시도로 셌다면 다섯 번째에 포기했다.
+const limited = await failAsk('[[fake-llm:status=429;retry-after=0;times=6]]');
+const limitedId = limited.json?.runId;
+const limitedDone = await waitForRunDone(carol.token, failSpaceId, limitedId, 10000);
+const limitedAttempts = await attemptsOf(limitedId);
+check(
+  '★ 429 는 시도로 세지 않는다 — 여섯 번 거절돼도 끝내 성공한다',
+  limitedDone?.json?.state === 'done' && limitedAttempts === 0,
+  `${JSON.stringify(limitedDone?.json)} · attempts=${limitedAttempts}`,
+);
+
+// 4xx — 다시 걸어도 같은 거절이다. 곧바로 포기한다.
+const rejectAt = Date.now();
+const rejected = await failAsk('[[fake-llm:status=400]]');
+const rejectedId = rejected.json?.runId;
+const rejectedDone = await waitForRunDone(carol.token, failSpaceId, rejectedId, 10000);
+const rejectTook = Date.now() - rejectAt;
+const rejectedAttempts = await attemptsOf(rejectedId);
+check(
+  '★ 4xx 는 첫 실패에 포기한다 — 재시도 대기 없이',
+  rejectedDone?.json?.state === 'failed' && rejectedAttempts === 1 && rejectTook < 4000,
+  `${JSON.stringify(rejectedDone?.json)} · attempts=${rejectedAttempts} · ${rejectTook}ms`,
+);
+check(
+  '실패 이유가 남는다',
+  typeof rejectedDone?.json?.error === 'string' && rejectedDone.json.error.includes('400'),
+  String(rejectedDone?.json?.error),
+);
+const rejectedEvents = await eventsFor(rejectedId);
+check(
+  '포기하면 failed 가 한 번 온다',
+  same(rejectedEvents, ['failed']),
+  JSON.stringify(rejectedEvents),
+);
+const rejectedAgain = await failAsk('[[fake-llm:status=400]]');
+check(
+  '★ 실패한 실행은 캐시가 아니다 — 같은 요청이 새로 적재된다',
+  rejectedAgain.json?.state === 'queued' &&
+    typeof rejectedAgain.json?.runId === 'string' &&
+    rejectedAgain.json.runId !== rejectedId,
+  JSON.stringify(rejectedAgain.json),
+);
+await waitForRunDone(carol.token, failSpaceId, rejectedAgain.json?.runId, 10000);
+
+// 빈 답 · 잘린 답 — 성공으로 굳히면 그 행이 곧 캐시다(13-1 · LLM 교체)
+const blank = await failAsk('[[fake-llm:empty]]');
+const blankDone = await waitForRunDone(carol.token, failSpaceId, blank.json?.runId, 10000);
+check(
+  '★ 빈 답은 실패로 끝난다',
+  blankDone?.json?.state === 'failed' && String(blankDone.json.error).includes('빈 응답'),
+  JSON.stringify(blankDone?.json),
+);
+const cut = await failAsk('[[fake-llm:truncated]]');
+const cutDone = await waitForRunDone(carol.token, failSpaceId, cut.json?.runId, 10000);
+check(
+  '★ 잘린 답은 실패로 끝나고 올릴 설정을 알린다',
+  cutDone?.json?.state === 'failed' && String(cutDone.json.error).includes('LLM_MAX_TOKENS'),
+  JSON.stringify(cutDone?.json),
+);
+
+// 리스 — 살아 있으면 아무도 잡지 않고, 만료되면 다시 잡는다(= 크래시 복구).
+// 워커를 대신 죽일 수 없어 끝난 실행을 「도는 중」으로 되돌려 흉내 낸다.
+const setRunning = (leaseMs) =>
+  withDb((db) =>
+    db.aiRun.updateMany({
+      where: { id: flakyId },
+      data: { state: 'running', leaseUntil: fromNow(leaseMs), finishedAt: null },
+    }),
+  );
+/** 다른 요청 하나를 적재해 워커를 깨우고, 그 요청이 끝날 때까지 기다린다. */
+const kickWorker = async (tag) => {
+  const k = await failAsk(`깨우기 ${tag}`);
+  return waitForRunDone(carol.token, failSpaceId, k.json?.runId, 10000);
+};
+
+const held = await setRunning(10 * 60_000);
+const heldKick = await kickWorker('리스 유효');
+const heldRun = await runOf(flakyId);
+check(
+  '★ 리스가 살아 있는 running 실행은 다시 잡지 않는다',
+  held.count === 1 && heldKick?.json?.state === 'done' && heldRun.json?.state === 'running',
+  `updated=${held.count} · kick=${heldKick?.json?.state} · state=${heldRun.json?.state}`,
+);
+
+const expired = await setRunning(-60_000);
+await kickWorker('리스 만료');
+const recovered = await waitForRunDone(carol.token, failSpaceId, flakyId, 10000);
+const recoveredEvents = await eventsFor(flakyId);
+check(
+  '★ 리스가 만료된 running 실행은 다시 잡혀 끝난다 - 죽은 워커의 실행이 영영 남지 않는다',
+  expired.count === 1 && recovered?.json?.state === 'done' && recovered.json.finishedAt != null,
+  JSON.stringify(recovered?.json),
+);
+check(
+  '다시 끝나면 요청자에게 다시 알린다',
+  same(recoveredEvents, ['done', 'done']),
+  JSON.stringify(recoveredEvents),
+);
+
+// 5xx 소진 — 맨 앞에서 적재해 둔 것. AI_MAX_ATTEMPTS(5)번 실패하면 포기한다.
+const exhaustId = exhaust.json?.runId;
+const exhaustDone = await waitForRunDone(carol.token, failSpaceId, exhaustId, 90000);
+const exhaustTook = Date.now() - exhaustAt;
+const exhaustAttempts = await attemptsOf(exhaustId);
+check(
+  '★ 5xx 가 계속되면 다섯 번째에 포기한다',
+  exhaustDone?.json?.state === 'failed' && exhaustAttempts === 5,
+  `${JSON.stringify(exhaustDone?.json)} · attempts=${exhaustAttempts}`,
+);
+check(
+  '★ 재시도 사이에 물러선다 — 대기 합이 50초다(곧바로 다섯 번 태우지 않는다)',
+  exhaustTook >= 45_000,
+  `${exhaustTook}ms`,
+);
+const exhaustEvents = await eventsFor(exhaustId);
+check(
+  '소진해도 failed 는 한 번만 온다',
+  same(exhaustEvents, ['failed']),
+  JSON.stringify(exhaustEvents),
+);
+
+failSocket.close?.();
+await closeDb();
 socket.close();
 process.exit(summary() === 0 ? 0 : 1);
