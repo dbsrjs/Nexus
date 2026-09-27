@@ -47,6 +47,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # 화면을 실제 서버에 붙여 끝까지 도는 통합 테스트(integration_test/).
+  # SDK 에 들어 있는 패키지라 외부 의존성이 늘지 않는다.
+  integration_test:
+    sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

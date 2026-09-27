@@ -32,6 +32,7 @@
     "check:pulls": "node server/scripts/check-pulls.mjs",
     "check:indexing": "node server/scripts/check-indexing.mjs",
     "check:ai": "node server/scripts/check-ai.mjs",
+    "app:flow": "cd app && flutter test integration_test -d windows",
     "check:migrations": "node server/scripts/check-migrations.mjs",
     "check:sql-time": "node server/scripts/check-sql-time.mjs"
   }
