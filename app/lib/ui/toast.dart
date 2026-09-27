@@ -25,7 +25,7 @@ class NxToast {
   }) {
     final host = context.findAncestorStateOfType<NxToastHostState>();
     assert(host != null, 'NxToastHost 가 위에 없다 — 앱 맨 위에 깔 것');
-    host?.enqueue(_Toast(message, kind, actionLabel, onAction));
+    host?._enqueue(_Toast(message, kind, actionLabel, onAction));
   }
 }
 
@@ -60,7 +60,7 @@ class NxToastHostState extends State<NxToastHost> {
   static const shown = Duration(seconds: 4);
   static const shownWithAction = Duration(seconds: 6);
 
-  void enqueue(_Toast toast) {
+  void _enqueue(_Toast toast) {
     _queue.add(toast);
     if (_current == null) _next();
   }
