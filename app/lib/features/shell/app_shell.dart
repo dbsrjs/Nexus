@@ -222,6 +222,17 @@ class ShellHeader extends StatelessWidget {
   }
 }
 
+/// 셸 안의 경로가 어느 탭에 속하는지(대화 0 · 이슈 1 · 저장소 2 · 파일 3).
+///
+/// **스프린트는 이슈 탭이다** — 보드 머리 줄에서 들어가는 갈래라, 빠뜨렸더니 스프린트
+/// 화면에서 「대화」 탭이 켜져 있었다(Android 에서 발견).
+int shellTabFor(String path) => switch (path) {
+  final p when p.contains('/issues') || p.contains('/sprints') => 1,
+  final p when p.contains('/repos') => 2,
+  final p when p.contains('/files') => 3,
+  _ => 0,
+};
+
 /// 태블릿 · 모바일 공용. 레일 + 채널 패널은 왼쪽에서 밀려 나온다.
 class _CompactShell extends StatefulWidget {
   const _CompactShell({
@@ -252,12 +263,7 @@ class _CompactShellState extends State<_CompactShell> {
     // **고른 탭을 셸이 들고 있지 않는다.** 라우트에서 읽어야 채널 패널에서
     // 직접 이동해도 탭이 따라온다.
     final location = GoRouterState.of(context).uri.path;
-    final selectedTab = switch (location) {
-      final p when p.contains('/issues') => 1,
-      final p when p.contains('/repos') => 2,
-      final p when p.contains('/files') => 3,
-      _ => 0,
-    };
+    final selectedTab = shellTabFor(location);
     const paneWidth = NexusPaneWidth.rail + NexusPaneWidth.channels;
 
     return CallbackShortcuts(
