@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../domain/models/space_member.dart';
 import 'mention_autocomplete.dart';
+import '../../ui/theme.dart';
 
 /// 입력창이 **id 대신 이름을 보여 주기 위한** 컨트롤러.
 ///
@@ -58,7 +59,7 @@ class MentionComposerController extends TextEditingController {
     }
 
     final highlight = style?.copyWith(
-      color: Theme.of(context).colorScheme.primary,
+      color: NxTheme.of(context).colors.accent,
       fontWeight: FontWeight.w600,
     );
 

@@ -71,11 +71,16 @@ class NxCheck extends StatelessWidget {
     required this.value,
     required this.onChanged,
     required this.label,
+    this.showLabel = true,
   });
 
   final bool value;
   final ValueChanged<bool>? onChanged;
   final String label;
+
+  /// 글자 없이 상자만 — 메시지 선택처럼 곁의 내용이 이미 이름인 자리. 보조 기술에는
+  /// [label] 이 그대로 읽힌다.
+  final bool showLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -108,13 +113,15 @@ class NxCheck extends StatelessWidget {
                 ? NxIcon(NxIcons.check, size: 12, color: c.onAccent)
                 : null,
           ),
-          const SizedBox(width: NxSpacing.sp4),
-          Text(
-            label,
-            style: theme.text.base.copyWith(
-              color: value ? c.textPrimary : c.textSecondary,
+          if (showLabel) ...[
+            const SizedBox(width: NxSpacing.sp4),
+            Text(
+              label,
+              style: theme.text.base.copyWith(
+                color: value ? c.textPrimary : c.textSecondary,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

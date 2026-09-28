@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme.dart';
 import '../../domain/models/message.dart';
+import '../../shared/widgets/back_button.dart';
+import '../../ui/ui.dart';
 import '../channel/channel_controller.dart';
 import '../space/space_controller.dart';
 import 'chat_screen.dart';
@@ -68,14 +69,22 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
     final parent = ref.watch(threadParentProvider).value;
     final replies = ref.watch(threadRepliesProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('스레드')),
+    return NxPage(
+      header: NxHeader(
+        title: '스레드',
+        leading: NxBackButton(
+          fallback: '/s/${widget.spaceId}/c/${widget.channelId}',
+        ),
+      ),
       body: Column(
         children: [
           if (parent != null) _ParentBlock(parent: parent),
           Expanded(
             child: replies.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Padding(
+                padding: EdgeInsets.all(NxSpacing.sp7),
+                child: NxSkeleton(lines: 4),
+              ),
               // 답글은 캐시에서 오므로 오류 화면 대신 빈 목록을 보여 준다.
               // 부모는 이미 위에 그려져 있어 화면이 비지 않는다.
               error: (_, _) => const _NoReplies(),
@@ -103,13 +112,14 @@ class _ParentBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = NxTheme.of(context).colors;
 
     return Container(
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: theme.dividerColor)),
+        color: c.bgSurface,
+        border: Border(bottom: BorderSide(color: c.divider)),
       ),
-      padding: const EdgeInsets.only(bottom: NexusSpacing.sp3),
+      padding: const EdgeInsets.symmetric(vertical: NxSpacing.sp4),
       child: MessageTile(message: parent, grouped: false),
     );
   }
@@ -120,9 +130,6 @@ class _NoReplies extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Text(
-          '첫 답글을 남겨 보세요.',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      );
+    child: Text('첫 답글을 남겨 보세요.', style: NxTheme.of(context).text.secondary),
+  );
 }

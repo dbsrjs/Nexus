@@ -285,7 +285,7 @@ class NxActionCard {
     required Rect anchor,
     required List<NxMenuEntry> entries,
     Widget? header,
-    Widget? above,
+    Widget Function(VoidCallback close)? above,
   }) {
     final done = Completer<void>();
     // 동작 카드는 가장 바깥 Overlay 에 뜬다 — 테마가 화면 쪽에만 깔려 있으면 거기서는
@@ -326,7 +326,9 @@ class _ActionCardLayer extends StatelessWidget {
   final Rect anchor;
   final List<NxMenuEntry> entries;
   final Widget? header;
-  final Widget? above;
+
+  /// 메뉴 위에 붙는 줄(리액션 고르기). 고르면 카드를 닫을 수 있게 닫기를 받는다.
+  final Widget Function(VoidCallback close)? above;
   final VoidCallback onClose;
 
   @override
@@ -359,7 +361,7 @@ class _ActionCardLayer extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (above != null) ...[
-                above!,
+                above!(onClose),
                 const SizedBox(height: NxSpacing.sp4),
               ],
               NxMenuPanel(

@@ -321,7 +321,10 @@ class _CodeBlock extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: c.divider.withValues(alpha: 0.35),
+        // 한 단 위 표면 + 1px 선(캔버스 「채널」의 코드 블록). 반투명 회색은 다크에서
+        // 본문보다 밝게 떠 글자가 묻혔다.
+        color: c.bgSurface,
+        border: Border.all(color: c.divider),
         borderRadius: BorderRadius.circular(NxRadius.md),
       ),
       child: Column(

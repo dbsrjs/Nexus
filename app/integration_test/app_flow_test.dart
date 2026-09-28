@@ -18,6 +18,7 @@ import 'package:nexus_app/features/settings/theme_controller.dart';
 import 'package:nexus_app/features/shell/app_shell.dart';
 import 'package:nexus_app/features/space/space_controller.dart';
 import 'package:nexus_app/main.dart';
+import 'package:nexus_app/shared/widgets/back_button.dart';
 import 'package:nexus_app/ui/ui.dart';
 
 /// **화면을 실제 서버에 붙여 끝까지 돈다.** 단위 · 위젯 테스트는 화면 하나씩만
@@ -83,8 +84,11 @@ void main() {
 
     // ── 입력창으로 전송 → 서버에 들어갔는지 ───
     final sent = 'sent from app ${fx.stamp}';
-    await tester.enterText(find.byType(TextField).last, sent);
-    await tester.tap(find.byIcon(Icons.send));
+    await tester.enterText(find.byType(NxField).last, sent);
+    await tester.pump();
+    await tester.tap(
+      find.byWidgetPredicate((w) => w is NxIconButton && w.label == '보내기'),
+    );
     await tester.pumpUntil(_body(sent));
     await tester.pumpUntilTrue(() => fx.channelHas(sent), '보낸 메시지가 서버에 없다');
 
@@ -97,7 +101,8 @@ void main() {
     await tester.tap(find.text('답글 1개'));
     await tester.pumpUntil(_body(fx.replyBody));
     expect(find.text('스레드'), findsOneWidget);
-    await tester.pageBack();
+    // 자체 머리 줄의 뒤로 가기(NxBackButton) — tester.pageBack 은 Material · Cupertino 버튼만 찾는다.
+    await tester.tap(find.byType(NxBackButton));
     await tester.pumpUntil(_body(live));
 
     // ── 셸 안의 작업 화면들 ──────────────────

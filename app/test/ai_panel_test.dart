@@ -9,6 +9,8 @@ import 'package:nexus_app/features/ai/ai_panel.dart';
 import 'package:nexus_app/features/ai/ai_request.dart';
 import 'package:nexus_app/features/realtime/socket_controller.dart';
 
+import 'package:nexus_app/ui/ui.dart';
+
 import 'support/nx_host.dart';
 
 const _messages = MessagesContext(channelId: 'c1', messageIds: ['m1', 'm2']);
@@ -68,29 +70,22 @@ Future<_FakeAiApi> _pump(
   return api;
 }
 
-FilledButton _sendButton(WidgetTester tester) => tester.widget<FilledButton>(
-  find.ancestor(
-    of: find.text('보내기'),
-    matching: find.byWidgetPredicate((w) => w is FilledButton),
-  ),
-);
+NxButton _sendButton(WidgetTester tester) =>
+    tester.widget<NxButton>(find.widgetWithText(NxButton, '보내기'));
 
-OutlinedButton _outlined(WidgetTester tester, String label) =>
-    tester.widget<OutlinedButton>(
-      find.ancestor(
-        of: find.text(label),
-        matching: find.byWidgetPredicate((w) => w is OutlinedButton),
-      ),
-    );
+NxButton _outlined(WidgetTester tester, String label) =>
+    tester.widget<NxButton>(find.widgetWithText(NxButton, label));
 
 void main() {
   testWidgets('★ 마지막 칩을 지우면 보내기가 꺼진다 - 근거 없는 질문은 받지 않는다', (tester) async {
     await _pump(tester, contexts: const [_messages]);
-    await tester.enterText(find.byType(TextField), '뭐 정했어?');
+    await tester.enterText(find.byType(NxField), '뭐 정했어?');
     await tester.pump();
     expect(_sendButton(tester).onPressed, isNotNull);
 
-    await tester.tap(find.byTooltip('빼기'));
+    await tester.tap(
+      find.byWidgetPredicate((w) => w is NxIcon && w.icon == NxIcons.close),
+    );
     await tester.pump();
 
     expect(find.text('메시지 2개'), findsNothing);
@@ -110,7 +105,7 @@ void main() {
 
   testWidgets('지시문을 보내면 칩이 그대로 요청에 실린다', (tester) async {
     final api = await _pump(tester, contexts: const [_messages, _repo]);
-    await tester.enterText(find.byType(TextField), '  버그가 어디야? ');
+    await tester.enterText(find.byType(NxField), '  버그가 어디야? ');
     await tester.pump();
     await tester.tap(find.text('보내기'));
     await tester.pumpAndSettle();
@@ -137,7 +132,7 @@ void main() {
         ),
       ],
     );
-    await tester.enterText(find.byType(TextField), '재연결은 어디서?');
+    await tester.enterText(find.byType(NxField), '재연결은 어디서?');
     await tester.pump();
     await tester.tap(find.text('보내기'));
     await tester.pumpAndSettle();
@@ -157,7 +152,7 @@ void main() {
       markdown: '답',
       fallback: true,
     );
-    await tester.enterText(find.byType(TextField), '정리해 줘');
+    await tester.enterText(find.byType(NxField), '정리해 줘');
     await tester.pump();
     await tester.tap(find.text('보내기'));
     await tester.pumpAndSettle();
@@ -167,7 +162,7 @@ void main() {
 
   testWidgets('주 모델이 답했으면 그 줄이 없다', (tester) async {
     await _pump(tester, contexts: const [_messages]);
-    await tester.enterText(find.byType(TextField), '정리해 줘');
+    await tester.enterText(find.byType(NxField), '정리해 줘');
     await tester.pump();
     await tester.tap(find.text('보내기'));
     await tester.pumpAndSettle();
@@ -214,7 +209,7 @@ void main() {
   testWidgets('★ 실패 문구는 앱의 것이고, 저장소가 있으면 인덱싱을 가리킨다', (tester) async {
     final api = await _pump(tester, contexts: const [_repo]);
     api.failWith = ApiFailure.server;
-    await tester.enterText(find.byType(TextField), 'q');
+    await tester.enterText(find.byType(NxField), 'q');
     await tester.pump();
     await tester.tap(find.text('보내기'));
     await tester.pumpAndSettle();
@@ -232,8 +227,8 @@ void main() {
 
   Future<void> ask(WidgetTester tester, String text) async {
     // 문답이 쌓이면 입력창 · 버튼이 화면 밖으로 밀려난다.
-    await tester.ensureVisible(find.byType(TextField));
-    await tester.enterText(find.byType(TextField), text);
+    await tester.ensureVisible(find.byType(NxField));
+    await tester.enterText(find.byType(NxField), text);
     await tester.pump();
     await tester.ensureVisible(find.text('보내기'));
     await tester.tap(find.text('보내기'));
@@ -306,7 +301,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('제목'), findsOneWidget);
-    expect(find.byType(TextField), findsNothing);
+    expect(find.byType(NxField), findsNothing);
   });
 
   testWidgets('★ 문답이 10개면 더 묻지 못하고 새로 시작하라고 안내한다', (tester) async {
@@ -326,7 +321,7 @@ void main() {
     }
 
     expect(find.text('답 $maxThreadTurns'), findsOneWidget);
-    expect(find.byType(TextField), findsNothing);
+    expect(find.byType(NxField), findsNothing);
     expect(find.textContaining('새로 시작'), findsOneWidget);
   });
 }

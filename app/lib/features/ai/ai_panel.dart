@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme.dart';
 import '../../domain/models/ai_run.dart';
 import '../../shared/markdown/markdown_body.dart';
+import '../../ui/ui.dart';
 import '../repo/repo_controller.dart';
 import 'ai_controller.dart';
 import 'ai_request.dart';
@@ -18,7 +18,8 @@ typedef CreateIssueFromDraft =
       String? originMessageId,
     });
 
-/// AI 패널을 연다 (13-2 설계 §6). 입력과 결과가 한 시트에 있다.
+/// AI 패널을 연다 (13-2 설계 §6). 입력과 결과가 한 패널에 있다 — 바텀시트가 아니라
+/// 가운데 패널이다(15단계 D8).
 ///
 /// - `onPost` 가 있으면 결과에 「채널에 붙이기」가 붙는다 — 채널에서 열었을 때
 /// - `onCreateIssue` 가 있으면 「이슈로 만들기」 프리셋의 결과를 이슈 생성
@@ -40,10 +41,10 @@ Future<void> showAiPanel(
     listen: false,
   ).read(aiControllerProvider.notifier).abandon();
 
-  return showModalBottomSheet<void>(
-    context: context,
-    // 기본 최대 높이(화면의 9/16)면 결과가 길 때 조용히 넘친다 (13-1 에서 겪었다).
-    isScrollControlled: true,
+  return NxDialog.panel<void>(
+    context,
+    title: 'AI',
+    width: 600,
     builder: (_) => AiPanel(
       spaceId: spaceId,
       initialContexts: contexts,
@@ -142,8 +143,10 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   }
 
   Future<void> _addRepo() async {
-    final picked = await showDialog<RepoContext>(
-      context: context,
+    final picked = await NxDialog.panel<RepoContext>(
+      context,
+      title: '저장소 고르기',
+      width: 420,
       builder: (_) => _RepoPickerDialog(spaceId: widget.spaceId),
     );
     if (picked != null && mounted) setState(() => _contexts.add(picked));
@@ -197,7 +200,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   /// 문답 목록 (13-3 설계 §5). 지난 문답은 상태와 상관없이 그대로 보이고,
   /// 아래 꼬리만 기다림 · 실패 · 이어서 묻기로 바뀐다.
   Widget _thread(BuildContext context, AiState state) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
     final last = _turns.last.run;
     // 이슈 초안(JSON)에는 이어 묻지 않는다(설계 D6).
     final canFollow = !_turns.first.run.isIssueDraft;
@@ -205,29 +208,33 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     final canSend = _instruction.text.trim().isNotEmpty;
 
     return Padding(
-      padding: const EdgeInsets.all(NexusSpacing.sp6),
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        0,
+        NxSpacing.sp7,
+        NxSpacing.sp7,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('AI', style: theme.textTheme.titleMedium),
-          const SizedBox(height: NexusSpacing.sp4),
           Wrap(
-            spacing: NexusSpacing.sp4,
-            runSpacing: NexusSpacing.sp4,
-            children: [
-              for (final c in _contexts)
-                Chip(avatar: Icon(_iconOf(c), size: 16), label: Text(c.label)),
-            ],
+            spacing: NxSpacing.sp3,
+            runSpacing: NxSpacing.sp3,
+            children: [for (final c in _contexts) NxChip(label: c.label)],
           ),
-          const SizedBox(height: NexusSpacing.sp5),
+          const SizedBox(height: NxSpacing.sp6),
           Flexible(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (final (i, turn) in _turns.indexed) ...[
-                    if (i > 0) const Divider(height: 32),
+                    if (i > 0)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: NxSpacing.sp7),
+                        child: NxDivider(),
+                      ),
                     _TurnView(
                       turn: turn,
                       spaceId: widget.spaceId,
@@ -238,29 +245,12 @@ class _AiPanelState extends ConsumerState<AiPanel> {
               ),
             ),
           ),
-          const SizedBox(height: NexusSpacing.sp5),
+          const SizedBox(height: NxSpacing.sp6),
           if (state is AiRunning)
-            Row(
-              children: [
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                const SizedBox(width: NexusSpacing.sp4),
-                const Expanded(child: Text('답을 만들고 있습니다')),
-                TextButton(
-                  onPressed: () =>
-                      ref.read(aiControllerProvider.notifier).retry(),
-                  child: const Text('다시 확인'),
-                ),
-                // 「중단」이 아니라 「기다리지 않기」다 — 서버의 호출은 계속 돈다.
-                TextButton(
-                  onPressed: () =>
-                      ref.read(aiControllerProvider.notifier).abandon(),
-                  child: const Text('기다리지 않기'),
-                ),
-              ],
+            _Waiting(
+              compact: true,
+              onRetry: () => ref.read(aiControllerProvider.notifier).retry(),
+              onAbandon: () => ref.read(aiControllerProvider.notifier).abandon(),
             )
           else ...[
             if (state case AiFailed(:final failure)) ...[
@@ -270,35 +260,36 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                   failure,
                   hasRepo: _sent?.hasRepo ?? _contexts.hasRepo,
                 ),
-                style: theme.textTheme.bodySmall,
+                style: nx.text.secondary.copyWith(color: nx.colors.danger),
               ),
-              const SizedBox(height: NexusSpacing.sp4),
+              const SizedBox(height: NxSpacing.sp4),
             ],
             if (canFollow && atLimit)
               Text(
                 '이 대화는 여기까지입니다. 「다시 묻기」로 새로 시작해 주세요.',
-                style: theme.textTheme.bodySmall,
+                style: nx.text.secondary,
               )
             else if (canFollow) ...[
-              TextField(
+              NxField(
                 controller: _instruction,
+                hint: '이어서 묻기',
                 minLines: 1,
                 maxLines: 4,
                 // 서버의 상한과 같다(ask-request.ts 의 MAX_INSTRUCTION).
                 maxLength: 2000,
-                decoration: const InputDecoration(hintText: '이어서 묻기'),
               ),
+              const SizedBox(height: NxSpacing.sp4),
               Align(
                 alignment: Alignment.centerRight,
-                child: FilledButton.icon(
+                child: NxButton(
+                  label: '보내기',
+                  icon: NxIcons.ai,
                   onPressed: canSend ? _send : null,
-                  icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-                  label: const Text('보내기'),
                 ),
               ),
             ],
           ],
-          const SizedBox(height: NexusSpacing.sp4),
+          const SizedBox(height: NxSpacing.sp5),
           _Actions(
             run: last,
             onPost: widget.onPost,
@@ -320,126 +311,164 @@ class _AiPanelState extends ConsumerState<AiPanel> {
   }
 
   Widget _input(BuildContext context) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
     // 근거 없는 질문은 받지 않는다(설계 D5) — 칩이 없으면 보내기가 꺼진다.
     final canSend = _contexts.isNotEmpty && _instruction.text.trim().isNotEmpty;
     // 프리셋은 대화를 재료로 한다(설계 §1). 서버의 400 을 화면이 먼저 막는다.
     final canPreset = _contexts.hasConversation;
 
     return Padding(
-      padding: const EdgeInsets.all(NexusSpacing.sp6),
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        0,
+        NxSpacing.sp7,
+        NxSpacing.sp7,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('AI', style: theme.textTheme.titleMedium),
-          const SizedBox(height: NexusSpacing.sp5),
+          // 무엇을 근거로 묻는지 — 캔버스의 컨텍스트 칩. 빼기(×)로 거른다.
           Wrap(
-            spacing: NexusSpacing.sp4,
-            runSpacing: NexusSpacing.sp4,
+            spacing: NxSpacing.sp3,
+            runSpacing: NxSpacing.sp3,
             children: [
               for (final c in _contexts)
-                InputChip(
-                  avatar: Icon(_iconOf(c), size: 16),
-                  label: Text(c.label),
-                  onDeleted: () => setState(() => _contexts.remove(c)),
-                  deleteButtonTooltipMessage: '빼기',
+                NxChip(
+                  label: c.label,
+                  selected: true,
+                  onRemove: () => setState(() => _contexts.remove(c)),
                 ),
               if (widget.canAddRepo && !_contexts.hasRepo)
-                ActionChip(
-                  avatar: const Icon(Icons.add, size: 16),
-                  label: const Text('저장소'),
-                  onPressed: _addRepo,
-                ),
+                NxChip(label: '저장소', icon: NxIcons.plus, onPressed: _addRepo),
             ],
           ),
           if (_contexts.isEmpty) ...[
-            const SizedBox(height: NexusSpacing.sp4),
-            Text(
-              '대화나 저장소가 하나는 있어야 물을 수 있습니다.',
-              style: theme.textTheme.bodySmall,
-            ),
+            const SizedBox(height: NxSpacing.sp4),
+            Text('대화나 저장소가 하나는 있어야 물을 수 있습니다.', style: nx.text.secondary),
           ],
-          const SizedBox(height: NexusSpacing.sp5),
+          const SizedBox(height: NxSpacing.sp6),
           Row(
             children: [
-              OutlinedButton.icon(
+              NxButton(
+                label: '요약',
+                kind: NxButtonKind.secondary,
+                size: NxSize.sm,
                 onPressed: canPreset
                     ? () => _send(preset: AiPreset.summary)
                     : null,
-                icon: const Icon(Icons.notes, size: 18),
-                label: const Text('요약'),
               ),
-              const SizedBox(width: NexusSpacing.sp4),
-              OutlinedButton.icon(
+              const SizedBox(width: NxSpacing.sp4),
+              NxButton(
+                label: '이슈로 만들기',
+                kind: NxButtonKind.secondary,
+                size: NxSize.sm,
                 onPressed: canPreset && widget.onCreateIssue != null
                     ? () => _send(preset: AiPreset.issue)
                     : null,
-                icon: const Icon(Icons.task_alt, size: 18),
-                label: const Text('이슈로 만들기'),
               ),
             ],
           ),
-          const SizedBox(height: NexusSpacing.sp5),
-          TextField(
+          const SizedBox(height: NxSpacing.sp6),
+          NxField(
             controller: _instruction,
+            hint: '무엇이든 물어보세요',
             autofocus: true,
-            minLines: 1,
+            minLines: 2,
             maxLines: 6,
             // 서버의 상한과 같다(ask-request.ts 의 MAX_INSTRUCTION).
             maxLength: 2000,
-            decoration: const InputDecoration(hintText: '무엇이든 물어보세요'),
           ),
-          const SizedBox(height: NexusSpacing.sp4),
+          const SizedBox(height: NxSpacing.sp4),
           Align(
             alignment: Alignment.centerRight,
-            child: FilledButton.icon(
+            child: NxButton(
+              label: '보내기',
+              icon: NxIcons.ai,
               onPressed: canSend ? _send : null,
-              icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-              label: const Text('보내기'),
             ),
           ),
         ],
       ),
     );
   }
-
-  IconData _iconOf(AiContext c) => switch (c) {
-    MessagesContext() => Icons.chat_bubble_outline,
-    ChannelContext() => Icons.tag,
-    RepoContext() => Icons.inventory_2_outlined,
-  };
 }
 
-class _Running extends StatelessWidget {
-  const _Running({required this.onAbandon, required this.onRetry});
-  final VoidCallback onAbandon;
+/// 답을 기다리는 동안. 자리를 지키는 뼈대와 두 갈래 — 「다시 확인」 · 「기다리지 않기」.
+class _Waiting extends StatelessWidget {
+  const _Waiting({
+    required this.onRetry,
+    required this.onAbandon,
+    this.compact = false,
+  });
 
   /// 소켓 알림을 놓쳤을 때 결과가 이미 서버에 있는데 화면만 모르는 경우를
   /// 위한 것 — 같은 GET 을 다시 부른다 (13-1).
   final VoidCallback onRetry;
 
+  /// 「중단」이 아니라 「기다리지 않기」다 — 서버의 호출은 계속 돈다.
+  final VoidCallback onAbandon;
+
+  /// 문답 목록 아래 꼬리 — 뼈대 없이 한 줄.
+  final bool compact;
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(24),
-    child: Column(
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    final actions = [
+      NxButton(
+        label: '다시 확인',
+        kind: NxButtonKind.ghost,
+        size: NxSize.sm,
+        onPressed: onRetry,
+      ),
+      NxButton(
+        label: '기다리지 않기',
+        kind: NxButtonKind.ghost,
+        size: NxSize.sm,
+        onPressed: onAbandon,
+      ),
+    ];
+    return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const CircularProgressIndicator(),
-        const SizedBox(height: 16),
-        const Text('답을 만들고 있습니다'),
-        const SizedBox(height: 16),
+        if (!compact) ...[
+          const NxSkeleton(lines: 4),
+          const SizedBox(height: NxSpacing.sp6),
+        ],
         Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            TextButton(onPressed: onRetry, child: const Text('다시 확인')),
-            const SizedBox(width: 8),
-            // 「중단」이 아니라 「기다리지 않기」다 — 서버의 호출은 계속 돈다.
-            TextButton(onPressed: onAbandon, child: const Text('기다리지 않기')),
+            const NxSpinner(size: 14),
+            const SizedBox(width: NxSpacing.sp4),
+            Expanded(
+              child: Semantics(
+                liveRegion: true,
+                child: Text('답을 만들고 있습니다', style: nx.text.secondary),
+              ),
+            ),
+            ...actions,
           ],
         ),
       ],
+    );
+  }
+}
+
+class _Running extends StatelessWidget {
+  const _Running({required this.onAbandon, required this.onRetry});
+  final VoidCallback onAbandon;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      NxSpacing.sp7,
+      0,
+      NxSpacing.sp7,
+      NxSpacing.sp7,
     ),
+    child: _Waiting(onRetry: onRetry, onAbandon: onAbandon),
   );
 }
 
@@ -450,16 +479,25 @@ class _Failed extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(24),
+    padding: const EdgeInsets.fromLTRB(
+      NxSpacing.sp7,
+      0,
+      NxSpacing.sp7,
+      NxSpacing.sp7,
+    ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(message),
-        const SizedBox(height: 16),
+        Text(message, style: NxTheme.of(context).text.base),
+        const SizedBox(height: NxSpacing.sp6),
         Align(
           alignment: Alignment.centerRight,
-          child: TextButton(onPressed: onAskAgain, child: const Text('다시 묻기')),
+          child: NxButton(
+            label: '다시 묻기',
+            kind: NxButtonKind.secondary,
+            onPressed: onAskAgain,
+          ),
         ),
       ],
     ),
@@ -488,45 +526,50 @@ class _TurnView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final run = turn.run;
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (turn.question.isNotEmpty) ...[
-          Text(turn.question, style: theme.textTheme.labelMedium),
-          const SizedBox(height: 8),
+          // 질문은 오른쪽 말풍선처럼 한 단 밝은 판 — 답과 한눈에 갈린다.
+          Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: c.bgSurface,
+                borderRadius: BorderRadius.circular(NxRadius.md),
+              ),
+              child: Text(turn.question, style: nx.text.base),
+            ),
+          ),
+          const SizedBox(height: NxSpacing.sp5),
         ],
         if (run.isIssueDraft) ...[
-          Text(run.title ?? '', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 12),
+          Text(run.title ?? '', style: nx.text.title),
+          const SizedBox(height: NxSpacing.sp5),
           MarkdownBody(body: run.description ?? ''),
         ] else
           // `body:` 다 — `source:` 가 아니다 (markdown_body.dart:16).
           MarkdownBody(body: run.markdown ?? ''),
         if (run.citations.isNotEmpty && repoId != null) ...[
-          const SizedBox(height: 16),
-          Text('참고한 코드', style: theme.textTheme.labelMedium),
-          const SizedBox(height: 4),
-          for (final c in run.citations)
-            _CitationTile(citation: c, spaceId: spaceId, repoId: repoId!),
+          const SizedBox(height: NxSpacing.sp6),
+          Text('참고한 코드', style: nx.text.label),
+          const SizedBox(height: NxSpacing.sp2),
+          for (final citation in run.citations)
+            _CitationTile(citation: citation, spaceId: spaceId, repoId: repoId!),
         ],
         if (run.fallback) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: NxSpacing.sp5),
           // 품질이 조용히 떨어지지 않게 한다 — 이 답은 캐시에도 남지 않아
           // 나중에 같은 질문을 하면 주 모델이 다시 답한다.
           Row(
             children: [
-              Icon(
-                Icons.info_outline,
-                size: 14,
-                color: theme.textTheme.bodySmall?.color,
-              ),
+              NxIcon(NxIcons.info, size: 14, color: c.textSecondary),
               const SizedBox(width: 6),
               Expanded(
-                child: Text(
-                  '사용량이 많아 가벼운 모델이 답했습니다',
-                  style: theme.textTheme.bodySmall,
-                ),
+                child: Text('사용량이 많아 가벼운 모델이 답했습니다', style: nx.text.secondary),
               ),
             ],
           ),
@@ -567,7 +610,7 @@ class _ActionsState extends State<_Actions> {
       await widget.onPost!(widget.run.markdown ?? '');
       if (mounted) Navigator.of(context).pop();
     } finally {
-      // 실패해서 시트가 남으면 다시 누를 수 있어야 한다.
+      // 실패해서 패널이 남으면 다시 누를 수 있어야 한다.
       if (mounted) setState(() => _posting = false);
     }
   }
@@ -578,11 +621,7 @@ class _ActionsState extends State<_Actions> {
         ? '${run.title ?? ''}\n\n${run.description ?? ''}'
         : run.markdown ?? '';
     await Clipboard.setData(ClipboardData(text: text));
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('복사했습니다')));
-    }
+    if (mounted) NxToast.show(context, '복사했습니다', kind: NxToastKind.success);
   }
 
   @override
@@ -590,32 +629,28 @@ class _ActionsState extends State<_Actions> {
     final run = widget.run;
     return Wrap(
       alignment: WrapAlignment.end,
-      spacing: 8,
-      runSpacing: 8,
+      spacing: NxSpacing.sp3,
+      runSpacing: NxSpacing.sp3,
       children: [
-        TextButton(onPressed: widget.onAskAgain, child: const Text('다시 묻기')),
-        OutlinedButton.icon(
+        NxButton(
+          label: '다시 묻기',
+          kind: NxButtonKind.ghost,
+          onPressed: widget.onAskAgain,
+        ),
+        NxButton(
+          label: '복사',
+          icon: NxIcons.copy,
+          kind: NxButtonKind.secondary,
           onPressed: _copy,
-          icon: const Icon(Icons.copy, size: 18),
-          label: const Text('복사'),
         ),
         if (run.isIssueDraft && widget.onCreateIssue != null)
-          FilledButton.icon(
-            onPressed: widget.onCreateIssue,
-            icon: const Icon(Icons.task_alt, size: 18),
-            label: const Text('이슈 만들기'),
-          ),
+          NxButton(label: '이슈 만들기', onPressed: widget.onCreateIssue),
         if (!run.isIssueDraft && widget.onPost != null)
-          FilledButton.icon(
-            onPressed: _posting ? null : _handlePost,
-            icon: _posting
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.send_outlined, size: 18),
-            label: const Text('채널에 붙이기'),
+          NxButton(
+            label: '채널에 붙이기',
+            icon: NxIcons.send,
+            loading: _posting,
+            onPressed: _handlePost,
           ),
       ],
     );
@@ -636,59 +671,72 @@ class _CitationTile extends StatelessWidget {
   final String repoId;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    dense: true,
-    contentPadding: EdgeInsets.zero,
-    leading: Text('[${citation.n}]'),
-    title: Text(citation.location, overflow: TextOverflow.ellipsis),
-    onTap: () => context.push(
-      '/s/$spaceId/repos/$repoId/browse'
-      '?ref=${Uri.encodeQueryComponent(citation.commitSha)}'
-      '&path=${Uri.encodeQueryComponent(citation.path)}',
-    ),
-  );
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    return NxRow(
+      dense: true,
+      leading: Text('[${citation.n}]', style: nx.text.mono),
+      title: citation.location,
+      titleStyle: nx.text.code.copyWith(fontSize: 12, height: 1.3),
+      onPressed: () => context.push(
+        '/s/$spaceId/repos/$repoId/browse'
+        '?ref=${Uri.encodeQueryComponent(citation.commitSha)}'
+        '&path=${Uri.encodeQueryComponent(citation.path)}',
+      ),
+    );
+  }
 }
 
-/// 스페이스에 붙은 저장소 중 하나를 고른다.
+/// 스페이스에 붙은 저장소 중 하나를 고른다. [NxDialog.panel] 안에 뜬다.
 class _RepoPickerDialog extends ConsumerWidget {
   const _RepoPickerDialog({required this.spaceId});
   final String spaceId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final nx = NxTheme.of(context);
     final repos = ref.watch(spaceReposProvider(spaceId));
-    return SimpleDialog(
-      title: const Text('저장소 고르기'),
-      children: repos.when(
-        loading: () => const [
-          Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        ],
-        error: (_, _) => const [
-          Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('저장소 목록을 불러오지 못했습니다.'),
-          ),
-        ],
-        data: (items) => items.isEmpty
-            ? const [
-                Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text('이 스페이스에 붙은 저장소가 없습니다.'),
-                ),
-              ]
-            : [
+    Widget message(String text) => Padding(
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        0,
+        NxSpacing.sp7,
+        NxSpacing.sp7,
+      ),
+      child: Text(text, style: nx.text.secondary),
+    );
+    return repos.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.fromLTRB(
+          NxSpacing.sp7,
+          0,
+          NxSpacing.sp7,
+          NxSpacing.sp7,
+        ),
+        child: NxSkeleton(lines: 3, lineHeight: 28),
+      ),
+      error: (_, _) => message('저장소 목록을 불러오지 못했습니다.'),
+      data: (items) => items.isEmpty
+          ? message('이 스페이스에 붙은 저장소가 없습니다.')
+          : ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(
+                NxSpacing.sp5,
+                0,
+                NxSpacing.sp5,
+                NxSpacing.sp6,
+              ),
+              children: [
                 for (final r in items)
-                  SimpleDialogOption(
+                  NxRow(
+                    title: r.fullPath,
+                    dense: true,
                     onPressed: () => Navigator.of(
                       context,
                     ).pop(RepoContext(repoId: r.id, repoName: r.name)),
-                    child: Text(r.fullPath),
                   ),
               ],
-      ),
+            ),
     );
   }
 }

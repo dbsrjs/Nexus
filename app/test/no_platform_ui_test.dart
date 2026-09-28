@@ -14,12 +14,6 @@ import 'package:flutter_test/flutter_test.dart';
 const _allowed = <String>{
   'lib/core/router.dart',
   'lib/core/theme.dart',
-  'lib/features/ai/ai_panel.dart',
-  'lib/features/chat/attachment_widgets.dart',
-  'lib/features/chat/chat_screen.dart',
-  'lib/features/chat/mention_composer_controller.dart',
-  'lib/features/chat/selection_app_bar.dart',
-  'lib/features/chat/thread_screen.dart',
   'lib/main.dart',
 };
 

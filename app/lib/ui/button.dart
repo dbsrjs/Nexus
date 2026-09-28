@@ -64,7 +64,13 @@ class NxButton extends StatelessWidget {
       builder: (context, s) {
         final enabled = onPressed != null;
         final (Color bg, Color fg, Color? border) = switch (kind) {
-          _ when !enabled => (c.bgElevated, c.borderStrong, null),
+          // 꺼진 버튼은 옅은 중립 바탕. bgElevated 로 칠하면 같은 색인 패널 · 다이얼로그
+          // 위에서 사라진다(AI 패널의 「보내기」가 글자만 떠 있었다).
+          _ when !enabled => (
+            c.textSecondary.withValues(alpha: .12),
+            c.borderStrong,
+            null,
+          ),
           NxButtonKind.primary => (
             s.pressed || s.hovered ? c.accentPress : c.accent,
             c.onAccent,
@@ -179,7 +185,7 @@ class NxIconButton extends StatelessWidget {
         final Color fg;
         if (filled) {
           bg = !enabled
-              ? c.bgElevated
+              ? c.textSecondary.withValues(alpha: .12)
               : (s.pressed || s.hovered ? c.accentPress : c.accent);
           fg = enabled ? c.onAccent : c.borderStrong;
         } else {
