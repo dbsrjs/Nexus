@@ -206,16 +206,15 @@ class _LabelPickerState extends ConsumerState<_LabelPicker> {
                 child: NxField(
                   controller: _newLabel,
                   hint: '새 라벨 이름',
-                  dense: true,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _create(),
                 ),
               ),
               const SizedBox(width: NxSpacing.sp4),
+              // 입력칸과 같은 높이(36) — dense(32) 옆의 sm(28) 이 어긋나 보였다.
               NxButton(
                 label: '만들기',
                 kind: NxButtonKind.secondary,
-                size: NxSize.sm,
                 onPressed: _busy ? null : _create,
               ),
             ],
