@@ -379,6 +379,9 @@ class _MessageTileState extends ConsumerState<MessageTile> {
           child: Row(
             children: [
               if (selection.active) check(),
+              // 본문 칸에 맞춘다(아바타 32 + 간격). 맨 왼쪽에 붙어 있어 앞뒤 메시지의
+              // 글과 어긋났다(Android 에서 발견).
+              const SizedBox(width: 32 + NxSpacing.sp5),
               Text(
                 '삭제된 메시지입니다.',
                 style: nx.text.secondary.copyWith(fontStyle: FontStyle.italic),
