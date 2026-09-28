@@ -29,6 +29,11 @@ flutter run -d <에뮬레이터> --dart-define=API_BASE=http://10.0.2.2:3000
 ```bash
 flutter analyze
 flutter test
+npm --prefix .. run app:flow       # 통합 테스트 — Windows 앱을 실서버에 붙여 끝까지 돈다(서버 필요)
 ```
+
+**화면은 `lib/ui/` 의 자체 부품만 쓴다** — `lib/` 에서 material · cupertino 를 import 하면
+`test/no_platform_ui_test.dart` 가 실패한다. 부품 갤러리는 디버그 빌드의 `/dev/ui`
+(`--dart-define=NX_START=/dev/ui` 로 바로 연다).
 
 모델(freezed · drift)을 고쳤으면 `build_runner` 를 다시 돌리고 생성물(`.g.dart` · `.freezed.dart`)도 함께 커밋한다.
