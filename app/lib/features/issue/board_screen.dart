@@ -401,11 +401,11 @@ class _BoardColumn extends StatelessWidget {
     var k = 0;
     for (final issue in issues) {
       final isMoving = issue.id == moving?.id;
-      if (!isMoving && spotIndex == k) children.add(const _Placeholder());
+      if (!isMoving && spotIndex == k) children.add(const _Placeholder(key: ValueKey('spot')));
       children.add(_card(issue, isMoving));
       if (!isMoving) k++;
     }
-    if (spotIndex == k) children.add(const _Placeholder());
+    if (spotIndex == k) children.add(const _Placeholder(key: ValueKey('spot')));
 
     return Padding(
       padding: const EdgeInsets.only(right: NxSpacing.sp6),
@@ -464,11 +464,22 @@ class _BoardColumn extends StatelessWidget {
                 child: issues.isEmpty && !hovering
                     // 빈 컬럼도 자리를 지킨다 — 사라지면 거기로 옮길 수 없다.
                     ? _EmptyColumn(status: status)
-                    : ListView.separated(
+                    // **키로 짝을 짓는다**(findChildIndexCallback). 놓일 자리가 끼어들면
+                    // 줄 번호가 밀리는데, 번호로 짝을 지으면 끄는 중인 Draggable 의 상태가
+                    // 옆 카드로 넘어가 엉뚱한 카드가 흐려졌다(Android 에서 발견).
+                    : ListView.builder(
                         itemCount: children.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: NxSpacing.sp4),
-                        itemBuilder: (_, i) => children[i],
+                        findChildIndexCallback: (key) {
+                          final i = children.indexWhere((w) => w.key == key);
+                          return i < 0 ? null : i;
+                        },
+                        itemBuilder: (_, i) => Padding(
+                          key: children[i].key,
+                          padding: EdgeInsets.only(
+                            top: i == 0 ? 0 : NxSpacing.sp4,
+                          ),
+                          child: children[i],
+                        ),
                       ),
               ),
             ],
@@ -499,6 +510,7 @@ class _BoardColumn extends StatelessWidget {
 
     if (_touchFirst) {
       return LongPressDraggable<Issue>(
+        key: ValueKey('drag-${issue.id}'),
         data: issue,
         feedback: feedback,
         childWhenDragging: faded,
@@ -508,6 +520,7 @@ class _BoardColumn extends StatelessWidget {
       );
     }
     return Draggable<Issue>(
+      key: ValueKey('drag-${issue.id}'),
       data: issue,
       feedback: feedback,
       childWhenDragging: faded,
@@ -520,7 +533,7 @@ class _BoardColumn extends StatelessWidget {
 
 /// 놓일 자리 — 점선 칸(캔버스 「보드」).
 class _Placeholder extends StatelessWidget {
-  const _Placeholder();
+  const _Placeholder({super.key});
 
   @override
   Widget build(BuildContext context) {

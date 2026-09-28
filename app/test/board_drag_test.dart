@@ -139,6 +139,35 @@ void main() {
       expect(actions.calls, isEmpty);
     });
 
+    testWidgets('★ 같은 컬럼 위쪽으로 끄는 동안 끄는 카드만 흐리다 - 옆 카드가 흐려졌었다', (tester) async {
+      await pump(tester);
+
+      final from = tester.getCenter(find.text('이슈 c'));
+      final to = tester.getTopLeft(find.text('이슈 a')) + const Offset(10, 2);
+      final gesture = await tester.startGesture(from);
+      await gesture.moveBy(const Offset(0, -20));
+      await tester.pump();
+      await gesture.moveTo(to);
+      await tester.pump();
+      await gesture.moveTo(to + const Offset(1, 0));
+      await tester.pump();
+
+      bool faded(String title) => find
+          .ancestor(
+            of: find.text(title),
+            matching: find.byWidgetPredicate((w) => w is Opacity && w.opacity < 1),
+          )
+          .evaluate()
+          .isNotEmpty;
+      // 손에 든 카드(피드백)가 아니라 목록 안의 카드만 본다.
+      expect(faded('이슈 a'), isFalse);
+      expect(faded('이슈 b'), isFalse);
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(actions.calls.single.before?.id, 'a');
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
     testWidgets('★ 마우스로 끌어 다른 컬럼 카드 위에 놓으면 그 앞으로 간다', (tester) async {
       await pump(tester);
 
