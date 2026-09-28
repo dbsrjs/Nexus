@@ -20,14 +20,6 @@ const _allowed = <String>{
   'lib/features/chat/mention_composer_controller.dart',
   'lib/features/chat/selection_app_bar.dart',
   'lib/features/chat/thread_screen.dart',
-  'lib/features/issue/board_screen.dart',
-  'lib/features/issue/burndown_chart.dart',
-  'lib/features/issue/issue_card.dart',
-  'lib/features/issue/issue_detail_screen.dart',
-  'lib/features/issue/issue_planning_row.dart',
-  'lib/features/issue/label_widgets.dart',
-  'lib/features/issue/new_issue_sheet.dart',
-  'lib/features/issue/sprint_screen.dart',
   'lib/main.dart',
 };
 

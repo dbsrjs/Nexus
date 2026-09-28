@@ -1,13 +1,14 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../shell/app_shell.dart';
-import '../../core/theme.dart';
 import '../../domain/models/sprint.dart';
+import '../../ui/ui.dart';
 import 'burndown_chart.dart';
 import 'sprint_controller.dart';
 
-/// 스프린트 목록과 번다운. 보드 위에 덮어서 연다.
+/// 스프린트 목록과 번다운. 셸 안에 머무는 화면이다.
 class SprintScreen extends ConsumerStatefulWidget {
   const SprintScreen({super.key, required this.spaceId});
 
@@ -26,42 +27,46 @@ class _SprintScreenState extends ConsumerState<SprintScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
     final sprints = ref.watch(sprintListProvider).value ?? const <Sprint>[];
 
-    return Scaffold(
-      appBar: AppBar(
-        // 셸 안이라 돌아갈 곳이 스택에 없다. 판에서 바로 오는 화면이다.
-        automaticallyImplyLeading: false,
-        title: const ShellPaneTrigger(child: Text('스프린트')),
+    return NxPage(
+      header: ShellHeader(
+        title: '스프린트',
         actions: [
-          IconButton(
-            tooltip: '새 스프린트',
-            icon: const Icon(Icons.add),
-            onPressed: () => _showCreateSheet(context),
-          ),
-          IconButton(
-            tooltip: '새로고침',
-            icon: const Icon(Icons.refresh),
+          NxIconButton(
+            icon: NxIcons.refresh,
+            label: '새로고침',
             onPressed: () => ref.read(sprintActionsProvider).refresh(),
+          ),
+          NxButton(
+            label: '새 스프린트',
+            icon: NxIcons.plus,
+            size: NxSize.sm,
+            onPressed: () => NxDialog.panel<void>(
+              context,
+              title: '새 스프린트',
+              builder: (_) => const _NewSprintSheet(),
+            ),
           ),
         ],
       ),
       body: sprints.isEmpty
-          ? const Center(child: Text('아직 스프린트가 없습니다.'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(NexusSpacing.sp5),
+          ? Center(child: Text('아직 스프린트가 없습니다.', style: nx.text.secondary))
+          : ListView.separated(
+              padding: const EdgeInsets.all(NxSpacing.sp7),
               itemCount: sprints.length,
-              itemBuilder: (_, i) => _SprintCard(sprint: sprints[i]),
+              separatorBuilder: (_, _) => const SizedBox(height: NxSpacing.sp5),
+              itemBuilder: (_, i) => Align(
+                alignment: Alignment.topLeft,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 880),
+                  child: _SprintCard(sprint: sprints[i]),
+                ),
+              ),
             ),
     );
   }
-
-  Future<void> _showCreateSheet(BuildContext context) =>
-      showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        builder: (_) => const _NewSprintSheet(),
-      );
 }
 
 class _SprintCard extends ConsumerWidget {
@@ -71,34 +76,42 @@ class _SprintCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: NexusSpacing.sp5),
-      child: Padding(
-        padding: const EdgeInsets.all(NexusSpacing.sp6),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(sprint.name, style: theme.textTheme.titleSmall),
-                ),
-                _StateChip(state: sprint.state),
-                _SprintMenu(sprint: sprint),
-              ],
-            ),
-            if (sprint.goal != null && sprint.goal!.isNotEmpty) ...[
-              const SizedBox(height: NexusSpacing.sp3),
-              Text(sprint.goal!, style: theme.textTheme.bodySmall),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        NxSpacing.sp6,
+        NxSpacing.sp4,
+        NxSpacing.sp7,
+      ),
+      decoration: BoxDecoration(
+        color: nx.colors.bgSurface,
+        borderRadius: BorderRadius.circular(NxRadius.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(sprint.name, style: nx.text.title)),
+              _StateTag(state: sprint.state),
+              const SizedBox(width: NxSpacing.sp2),
+              _SprintMenu(sprint: sprint),
             ],
-            const SizedBox(height: NexusSpacing.sp3),
-            Text(_periodLabel(sprint), style: theme.textTheme.labelSmall),
-            const SizedBox(height: NexusSpacing.sp5),
-            _Burndown(sprint: sprint),
+          ),
+          if (sprint.goal != null && sprint.goal!.isNotEmpty) ...[
+            const SizedBox(height: NxSpacing.sp3),
+            Text(sprint.goal!, style: nx.text.secondary),
           ],
-        ),
+          const SizedBox(height: NxSpacing.sp3),
+          Text(_periodLabel(sprint), style: nx.text.mono),
+          const SizedBox(height: NxSpacing.sp6),
+          Padding(
+            padding: const EdgeInsets.only(right: NxSpacing.sp4),
+            child: _Burndown(sprint: sprint),
+          ),
+        ],
       ),
     );
   }
@@ -108,12 +121,13 @@ class _SprintCard extends ConsumerWidget {
     final start = sprint.startsAt;
     final end = sprint.endsAt;
     if (start == null || end == null) return '기간 미정';
-    String fmt(DateTime d) =>
-        '${d.year}.${d.month.toString().padLeft(2, '0')}.'
-        '${d.day.toString().padLeft(2, '0')}';
-    return '${fmt(start.toLocal())} — ${fmt(end.toLocal())}';
+    return '${_fmt(start.toLocal())} — ${_fmt(end.toLocal())}';
   }
 }
+
+String _fmt(DateTime d) =>
+    '${d.year}.${d.month.toString().padLeft(2, '0')}.'
+    '${d.day.toString().padLeft(2, '0')}';
 
 class _Burndown extends ConsumerStatefulWidget {
   const _Burndown({required this.sprint});
@@ -129,29 +143,24 @@ class _BurndownState extends ConsumerState<_Burndown> {
 
   @override
   Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
     if (widget.sprint.startsAt == null || widget.sprint.endsAt == null) {
-      return Text(
-        '기간을 정하면 번다운이 그려집니다.',
-        style: Theme.of(context).textTheme.bodySmall,
-      );
+      return Text('기간을 정하면 번다운이 그려집니다.', style: nx.text.secondary);
     }
 
     final burndown = ref.watch(burndownProvider(widget.sprint.id));
+    final failed = SizedBox(
+      height: 180,
+      child: Center(
+        child: Text('번다운을 불러오지 못했습니다.', style: nx.text.secondary),
+      ),
+    );
 
     return burndown.when(
-      loading: () => const SizedBox(
-        height: 180,
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (_, _) => const SizedBox(
-        height: 180,
-        child: Center(child: Text('번다운을 불러오지 못했습니다.')),
-      ),
+      loading: () => const NxSkeleton(lines: 1, lineHeight: 180),
+      error: (_, _) => failed,
       data: (data) => data == null
-          ? const SizedBox(
-              height: 180,
-              child: Center(child: Text('번다운을 불러오지 못했습니다.')),
-            )
+          ? failed
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -161,25 +170,19 @@ class _BurndownState extends ConsumerState<_Burndown> {
                     const Spacer(),
                     // 포인트를 안 매기면 포인트 계열이 평평하다. 개수로
                     // 바꿔 볼 수 있어야 그때도 읽힌다.
-                    SegmentedButton<BurndownSeries>(
-                      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                    NxSegmented<BurndownSeries>(
+                      label: '번다운 계열',
+                      expand: false,
+                      value: _series,
                       segments: const [
-                        ButtonSegment(
-                          value: BurndownSeries.points,
-                          label: Text('포인트'),
-                        ),
-                        ButtonSegment(
-                          value: BurndownSeries.count,
-                          label: Text('개수'),
-                        ),
+                        (BurndownSeries.points, '포인트'),
+                        (BurndownSeries.count, '개수'),
                       ],
-                      selected: {_series},
-                      onSelectionChanged: (v) =>
-                          setState(() => _series = v.first),
+                      onChanged: (v) => setState(() => _series = v),
                     ),
                   ],
                 ),
-                const SizedBox(height: NexusSpacing.sp4),
+                const SizedBox(height: NxSpacing.sp4),
                 BurndownChart(burndown: data, series: _series),
               ],
             ),
@@ -187,35 +190,20 @@ class _BurndownState extends ConsumerState<_Burndown> {
   }
 }
 
-class _StateChip extends StatelessWidget {
-  const _StateChip({required this.state});
+class _StateTag extends StatelessWidget {
+  const _StateTag({required this.state});
 
   final SprintState state;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = NxTheme.of(context).colors;
     final color = switch (state) {
-      SprintState.active => NexusColors.success,
-      SprintState.planned => NexusColors.warning,
-      SprintState.closed => theme.dividerColor,
+      SprintState.active => c.success,
+      SprintState.planned => c.warning,
+      SprintState.closed => c.textSecondary,
     };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: NexusSpacing.sp4,
-        vertical: NexusSpacing.sp2,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(NexusRadius.sm),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
-      child: Text(
-        sprintStateLabel(state),
-        style: theme.textTheme.labelSmall?.copyWith(color: color),
-      ),
-    );
+    return NxTag(sprintStateLabel(state), dot: true, color: color);
   }
 }
 
@@ -228,41 +216,56 @@ class _SprintMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return PopupMenuButton<String>(
-      tooltip: '스프린트',
-      icon: const Icon(Icons.more_horiz, size: 18),
-      itemBuilder: (_) => [
-        if (sprint.state == SprintState.planned)
-          const PopupMenuItem(value: 'start', child: Text('시작하기')),
-        if (sprint.state == SprintState.active)
-          const PopupMenuItem(value: 'close', child: Text('끝내기')),
-        const PopupMenuItem(value: 'delete', child: Text('지우기')),
-      ],
-      onSelected: (action) async {
-        final messenger = ScaffoldMessenger.of(context);
-        final actions = ref.read(sprintActionsProvider);
-
-        final ok = switch (action) {
-          'start' => await actions.setState(sprint.id, SprintState.active),
-          'close' => await actions.setState(sprint.id, SprintState.closed),
-          _ => await actions.remove(sprint.id),
-        };
-        if (ok) return;
-
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              action == 'start'
-                  // 서버가 409 를 주는 유일한 경우다. 그 뜻을 그대로 말한다.
-                  ? '이미 진행 중인 스프린트가 있습니다.'
-                  : '바꾸지 못했습니다. 연결을 확인해 주세요.',
-            ),
-          ),
+    Future<void> run(String action) async {
+      final actions = ref.read(sprintActionsProvider);
+      if (action == 'delete') {
+        final sure = await NxDialog.confirm(
+          context,
+          title: '${sprint.name} 를 지울까요?',
+          body: '이슈는 지워지지 않고 백로그로 돌아갑니다.',
+          confirmLabel: '지우기',
+          danger: true,
         );
-      },
+        if (!sure) return;
+      }
+      final ok = switch (action) {
+        'start' => await actions.setState(sprint.id, SprintState.active),
+        'close' => await actions.setState(sprint.id, SprintState.closed),
+        _ => await actions.remove(sprint.id),
+      };
+      if (ok || !context.mounted) return;
+      NxToast.show(
+        context,
+        action == 'start'
+            // 서버가 409 를 주는 유일한 경우다. 그 뜻을 그대로 말한다.
+            ? '이미 진행 중인 스프린트가 있습니다.'
+            : '바꾸지 못했습니다. 연결을 확인해 주세요.',
+        kind: NxToastKind.error,
+      );
+    }
+
+    return NxMenu(
+      width: 160,
+      entries: [
+        if (sprint.state == SprintState.planned)
+          NxMenuItem('시작하기', onSelected: () => run('start')),
+        if (sprint.state == SprintState.active)
+          NxMenuItem('끝내기', onSelected: () => run('close')),
+        if (sprint.state != SprintState.closed) const NxMenuDivider(),
+        NxMenuItem('지우기', danger: true, onSelected: () => run('delete')),
+      ],
+      anchorBuilder: (context, toggle) => NxIconButton(
+        icon: NxIcons.more,
+        label: '${sprint.name} 더 보기',
+        onPressed: toggle,
+      ),
     );
   }
 }
+
+/// 스프린트 길이. 달력 대신 **시작일 + 길이**로 정한다 — Material 의 기간 달력
+/// (`showDateRangePicker`)을 걷었고, 스프린트는 보통 1~4주 단위라 이쪽이 더 빠르다.
+enum _Length { none, w1, w2, w3, w4 }
 
 class _NewSprintSheet extends ConsumerStatefulWidget {
   const _NewSprintSheet();
@@ -274,34 +277,53 @@ class _NewSprintSheet extends ConsumerStatefulWidget {
 class _NewSprintSheetState extends ConsumerState<_NewSprintSheet> {
   final _name = TextEditingController();
   final _goal = TextEditingController();
-  DateTimeRange? _period;
+  late final _start = TextEditingController(text: _fmt(DateTime.now()));
+  _Length _length = _Length.w2;
+  String? _startError;
   bool _sending = false;
 
   @override
   void dispose() {
     _name.dispose();
     _goal.dispose();
+    _start.dispose();
     super.dispose();
   }
 
-  Future<void> _pickPeriod() async {
-    final now = DateTime.now();
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 2),
-      initialDateRange:
-          _period ?? DateTimeRange(start: now, end: now.add(const Duration(days: 13))),
-    );
-    if (picked != null) setState(() => _period = picked);
+  /// `2026.09.28` · `2026-09-28` · `2026/9/28` 을 받는다. 못 읽으면 null.
+  static DateTime? _parse(String text) {
+    final parts = text.trim().split(RegExp(r'[.\-/ ]+'));
+    if (parts.length != 3) return null;
+    final y = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    final d = int.tryParse(parts[2]);
+    if (y == null || m == null || d == null) return null;
+    final date = DateTime(y, m, d);
+    // 2월 30일처럼 넘어가는 값은 거른다.
+    if (date.month != m || date.day != d) return null;
+    return date;
   }
 
   Future<void> _submit() async {
     final name = _name.text.trim();
     if (name.isEmpty || _sending) return;
 
-    setState(() => _sending = true);
-    final messenger = ScaffoldMessenger.of(context);
+    DateTime? start;
+    DateTime? end;
+    if (_length != _Length.none) {
+      start = _parse(_start.text);
+      if (start == null) {
+        setState(() => _startError = '날짜를 2026.09.28 처럼 적어 주세요');
+        return;
+      }
+      // 끝 날은 포함한다 — 2주면 시작일 + 13일.
+      end = start.add(Duration(days: _length.index * 7 - 1));
+    }
+
+    setState(() {
+      _sending = true;
+      _startError = null;
+    });
     final navigator = Navigator.of(context);
 
     final ok = await ref
@@ -309,8 +331,8 @@ class _NewSprintSheetState extends ConsumerState<_NewSprintSheet> {
         .create(
           name: name,
           goal: _goal.text.trim(),
-          startsAt: _period?.start,
-          endsAt: _period?.end,
+          startsAt: start,
+          endsAt: end,
         );
 
     if (!mounted) return;
@@ -319,56 +341,69 @@ class _NewSprintSheetState extends ConsumerState<_NewSprintSheet> {
       return;
     }
     setState(() => _sending = false);
-    messenger.showSnackBar(
-      const SnackBar(content: Text('만들지 못했습니다. 연결을 확인해 주세요.')),
-    );
+    NxToast.show(context, '만들지 못했습니다. 연결을 확인해 주세요.', kind: NxToastKind.error);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: NexusSpacing.sp6,
-        right: NexusSpacing.sp6,
-        top: NexusSpacing.sp6,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + NexusSpacing.sp6,
+    final nx = NxTheme.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        0,
+        NxSpacing.sp7,
+        NxSpacing.sp7,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('새 스프린트', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: NexusSpacing.sp5),
-          TextField(
+          NxField(
+            label: '이름',
             controller: _name,
             autofocus: true,
-            decoration: const InputDecoration(labelText: '이름'),
+            textInputAction: TextInputAction.next,
           ),
-          const SizedBox(height: NexusSpacing.sp5),
-          TextField(
-            controller: _goal,
-            decoration: const InputDecoration(labelText: '목표 (선택)'),
+          const SizedBox(height: NxSpacing.sp6),
+          NxField(label: '목표 (선택)', controller: _goal),
+          const SizedBox(height: NxSpacing.sp6),
+          Text(
+            '기간',
+            style: nx.text.xs.copyWith(
+              fontWeight: FontWeight.w600,
+              color: nx.colors.textSecondary,
+            ),
           ),
-          const SizedBox(height: NexusSpacing.sp5),
+          const SizedBox(height: NxSpacing.sp3),
+          NxSegmented<_Length>(
+            label: '기간',
+            value: _length,
+            segments: const [
+              (_Length.none, '미정'),
+              (_Length.w1, '1주'),
+              (_Length.w2, '2주'),
+              (_Length.w3, '3주'),
+              (_Length.w4, '4주'),
+            ],
+            onChanged: (v) => setState(() => _length = v),
+          ),
+          const SizedBox(height: NxSpacing.sp5),
           // 기간은 비워 둘 수 있다 — 계획 단계에서는 아직 정해지지 않는다.
           // 다만 없으면 번다운을 그릴 수 없으므로 그 사실을 적어 둔다.
-          OutlinedButton.icon(
-            icon: const Icon(Icons.date_range_outlined, size: 18),
-            label: Text(
-              _period == null
-                  ? '기간 정하기 (없으면 번다운을 그릴 수 없습니다)'
-                  : '${_period!.start.month}/${_period!.start.day}'
-                        ' — ${_period!.end.month}/${_period!.end.day}',
+          if (_length == _Length.none)
+            Text('기간이 없으면 번다운을 그릴 수 없습니다.', style: nx.text.secondary)
+          else
+            NxField(
+              label: '시작일',
+              controller: _start,
+              error: _startError,
+              keyboardType: TextInputType.datetime,
+              style: nx.text.code.copyWith(fontSize: 14, height: 1.3),
             ),
-            onPressed: _pickPeriod,
-          ),
-          const SizedBox(height: NexusSpacing.sp6),
+          const SizedBox(height: NxSpacing.sp7),
           Align(
             alignment: Alignment.centerRight,
-            child: FilledButton(
-              onPressed: _sending ? null : _submit,
-              child: Text(_sending ? '만드는 중…' : '만들기'),
-            ),
+            child: NxButton(label: '만들기', loading: _sending, onPressed: _submit),
           ),
         ],
       ),

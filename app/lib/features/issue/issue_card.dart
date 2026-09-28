@@ -1,128 +1,123 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../core/theme.dart';
-import '../../domain/models/issue.dart';
-import '../../shared/widgets/user_avatar.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/models/issue.dart';
+import '../../shared/widgets/user_avatar.dart';
+import '../../ui/ui.dart';
 import '../space/space_controller.dart';
 import 'board_controller.dart';
 import 'label_widgets.dart';
 
-/// 칸반 카드 한 장.
+/// 칸반 카드 한 장(캔버스 「보드」). 제목이 먼저, 아래 한 줄에 키 · 우선순위 · 담당 · 포인트.
 ///
-/// 상태 이동은 **메뉴**로 한다(9-1). 드래그는 서버 계약(`PUT .../position`)이
-/// 이미 서 있으므로 나중에 화면만 바꾸면 된다 — 좁은 폭에서 가로 스크롤과
-/// 드래그 제스처가 겹치는 문제를 푸느라 보드를 보는 일이 밀리는 것을 피했다.
+/// 상태 이동은 **메뉴**로도 한다 — 끌어 옮기기(D15)가 닿지 않는 보조 기술 · 키보드의 길이다.
 class IssueCard extends ConsumerWidget {
-  const IssueCard({super.key, required this.issue});
+  const IssueCard({super.key, required this.issue, this.dragging = false});
 
   final Issue issue;
 
+  /// 끌고 있는 카드 — 한 단 밝은 표면 + 액센트 테두리(그림자 대신, 캔버스 「보드」).
+  final bool dragging;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
     final assignee = issue.assignee;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: NexusSpacing.sp4),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(NexusRadius.md),
-        onTap: () => context.push(
-          '/s/${ref.read(currentSpaceIdProvider)}/issues/${issue.key}',
+    return NxPressable(
+      onPressed: () => context.push(
+        '/s/${ref.read(currentSpaceIdProvider)}/issues/${issue.key}',
+      ),
+      semanticLabel: '${issue.key} ${issue.title}',
+      builder: (context, s) => AnimatedContainer(
+        duration: NxMotion.micro,
+        padding: const EdgeInsets.fromLTRB(12, 12, 6, 10),
+        decoration: BoxDecoration(
+          color: dragging || s.hovered ? c.bgElevated : c.bgSurface,
+          borderRadius: BorderRadius.circular(NxRadius.md),
+          border: Border.all(
+            color: dragging ? c.accent : const Color(0x00000000),
+          ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(NexusSpacing.sp5),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    issue.key,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.textTheme.bodySmall?.color,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      issue.title,
+                      style: nx.text.base.copyWith(height: 1.45),
                     ),
                   ),
-                  const Spacer(),
-                  _PriorityDot(priority: issue.priority),
-                  _MoveMenu(issue: issue),
+                ),
+                _MoveMenu(issue: issue),
+              ],
+            ),
+            if (issue.labels.isNotEmpty) ...[
+              const SizedBox(height: NxSpacing.sp4),
+              Wrap(
+                spacing: NxSpacing.sp3,
+                runSpacing: NxSpacing.sp3,
+                children: [
+                  for (final label in issue.labels)
+                    LabelChip(label: label, dense: true),
                 ],
               ),
-              const SizedBox(height: NexusSpacing.sp2),
-              Text(issue.title, style: theme.textTheme.bodyMedium),
-              if (issue.labels.isNotEmpty) ...[
-                const SizedBox(height: NexusSpacing.sp4),
-                Wrap(
-                  spacing: NexusSpacing.sp3,
-                  runSpacing: NexusSpacing.sp3,
-                  children: [
-                    for (final label in issue.labels)
-                      LabelChip(label: label, dense: true),
+            ],
+            const SizedBox(height: NxSpacing.sp5),
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Row(
+                children: [
+                  Text(issue.key, style: nx.text.mono),
+                  const SizedBox(width: NxSpacing.sp4),
+                  _Priority(priority: issue.priority),
+                  const Spacer(),
+                  if (issue.storyPoints != null) ...[
+                    Text('${issue.storyPoints}p', style: nx.text.mono),
+                    if (assignee != null) const SizedBox(width: NxSpacing.sp4),
                   ],
-                ),
-              ],
-              if (assignee != null || issue.storyPoints != null) ...[
-                const SizedBox(height: NexusSpacing.sp5),
-                Row(
-                  children: [
-                    if (assignee != null) ...[
-                      UserAvatar(
+                  if (assignee != null)
+                    NxTooltip(
+                      message: '담당 ${assignee.name}',
+                      child: UserAvatar(
                         userId: assignee.id,
                         name: assignee.name,
                         avatarUrl: assignee.avatarUrl,
                         size: 20,
                       ),
-                      const SizedBox(width: NexusSpacing.sp3),
-                      Flexible(
-                        child: Text(
-                          assignee.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ),
-                    ],
-                    const Spacer(),
-                    if (issue.storyPoints != null)
-                      Text(
-                        '${issue.storyPoints}p',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                  ],
-                ),
-              ],
-            ],
-          ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// 우선순위는 점 하나로 보인다. 카드가 작아 글자를 넣을 자리가 없다.
-class _PriorityDot extends StatelessWidget {
-  const _PriorityDot({required this.priority});
+/// 우선순위 — 점과 글자(색만으로 말하지 않는다, 디자인 시스템 §6).
+class _Priority extends StatelessWidget {
+  const _Priority({required this.priority});
 
   final IssuePriority priority;
 
   @override
   Widget build(BuildContext context) {
+    final c = NxTheme.of(context).colors;
     final color = switch (priority) {
-      IssuePriority.high => NexusColors.danger,
-      IssuePriority.mid => NexusColors.warning,
-      IssuePriority.low => NexusColors.success,
+      IssuePriority.high => c.danger,
+      IssuePriority.mid => c.warning,
+      IssuePriority.low => c.success,
     };
-
-    return Tooltip(
-      message: '우선순위 ${issuePriorityLabel(priority)}',
-      child: Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      ),
-    );
+    return NxTag(issuePriorityLabel(priority), dot: true, color: color);
   }
 }
 
@@ -139,26 +134,32 @@ class _MoveMenu extends ConsumerWidget {
         .where((s) => s != issue.status)
         .toList(growable: false);
 
-    return PopupMenuButton<IssueStatus>(
-      tooltip: '옮기기',
-      icon: const Icon(Icons.more_horiz, size: 18),
-      padding: EdgeInsets.zero,
-      itemBuilder: (_) => [
+    Future<void> move(IssueStatus status) async {
+      final ok = await ref.read(boardActionsProvider).moveTo(issue, status);
+      if (ok || !context.mounted) return;
+      // 카드는 이미 제자리로 돌아가 있다(리포지토리가 되돌린다).
+      NxToast.show(
+        context,
+        '옮기지 못했습니다. 연결을 확인해 주세요.',
+        kind: NxToastKind.error,
+      );
+    }
+
+    return NxMenu(
+      width: 180,
+      entries: [
         for (final status in others)
-          PopupMenuItem(
-            value: status,
-            child: Text('${issueStatusLabel(status)}(으)로'),
+          NxMenuItem(
+            '${issueStatusLabel(status)}(으)로',
+            onSelected: () => move(status),
           ),
       ],
-      onSelected: (status) async {
-        final messenger = ScaffoldMessenger.of(context);
-        final ok = await ref.read(boardActionsProvider).moveTo(issue, status);
-        if (ok) return;
-        // 카드는 이미 제자리로 돌아가 있다(리포지토리가 되돌린다).
-        messenger.showSnackBar(
-          const SnackBar(content: Text('옮기지 못했습니다. 연결을 확인해 주세요.')),
-        );
-      },
+      anchorBuilder: (context, toggle) => NxIconButton(
+        icon: NxIcons.more,
+        label: '${issue.key} 옮기기',
+        size: NxSize.sm,
+        onPressed: toggle,
+      ),
     );
   }
 }

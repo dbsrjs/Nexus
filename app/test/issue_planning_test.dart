@@ -77,7 +77,7 @@ void main() {
     // 지난 기록이 흔들리면 안 된다.
     await pump(tester, issue());
 
-    await tester.tap(find.byIcon(Icons.flag_outlined));
+    await tester.tap(find.text('스프린트'));
     await tester.pumpAndSettle();
 
     expect(find.text('1주차 · 진행 중'), findsOneWidget);
@@ -88,7 +88,7 @@ void main() {
   testWidgets('백로그로 되돌리는 길이 메뉴에 있다', (tester) async {
     await pump(tester, issue(sprintId: 'sp-active'));
 
-    await tester.tap(find.byIcon(Icons.flag_outlined));
+    await tester.tap(find.text('스프린트'));
     await tester.pumpAndSettle();
 
     expect(find.text('백로그 (스프린트 없음)'), findsOneWidget);
@@ -98,7 +98,7 @@ void main() {
     // 7과 8을 나누는 것은 정확이 아니라 착각이다 — 눈금이 그것을 말한다.
     await pump(tester, issue());
 
-    await tester.tap(find.byIcon(Icons.timeline_outlined));
+    await tester.tap(find.text('포인트'));
     await tester.pumpAndSettle();
 
     for (final points in ['1', '2', '3', '5', '8', '13']) {

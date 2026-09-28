@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme.dart';
 import '../../domain/models/issue.dart';
 import '../../domain/models/sprint.dart';
+import '../../ui/ui.dart';
 import '../space/space_controller.dart';
 import 'board_controller.dart';
 import 'issue_detail_controller.dart';
@@ -21,8 +21,8 @@ class IssuePlanningRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Wrap(
-      spacing: NexusSpacing.sp4,
-      runSpacing: NexusSpacing.sp4,
+      spacing: NxSpacing.sp4,
+      runSpacing: NxSpacing.sp4,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _SprintPicker(issue: issue),
@@ -39,49 +39,52 @@ class _SprintPicker extends ConsumerWidget {
 
   final Issue issue;
 
+  Future<void> _set(BuildContext context, WidgetRef ref, String? sprintId) async {
+    final spaceId = ref.read(currentSpaceIdProvider);
+    if (spaceId == null) return;
+    final ok = await ref
+        .read(issueRepositoryProvider)
+        .setSprint(spaceId, issue, sprintId);
+    if (ok) {
+      ref.invalidate(currentIssueProvider);
+      return;
+    }
+    if (context.mounted) {
+      NxToast.show(
+        context,
+        '스프린트를 바꾸지 못했습니다. 연결을 확인해 주세요.',
+        kind: NxToastKind.error,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sprints = ref.watch(sprintListProvider).value ?? const <Sprint>[];
     final open = sprints
         .where((s) => s.state != SprintState.closed)
         .toList(growable: false);
-
     final current = sprints.where((s) => s.id == issue.sprintId).firstOrNull;
 
-    return PopupMenuButton<String?>(
-      tooltip: '스프린트',
-      // 값이 null 인 항목을 쓰므로 선택 결과를 구분하기 위해 래핑하지 않고
-      // '백로그' 를 빈 문자열로 표현한다 — null 은 "취소"와 겹친다.
-      itemBuilder: (_) => [
-        const PopupMenuItem<String?>(value: '', child: Text('백로그 (스프린트 없음)')),
+    return NxMenu(
+      width: 240,
+      entries: [
+        NxMenuItem(
+          '백로그 (스프린트 없음)',
+          selected: issue.sprintId == null,
+          onSelected: () => _set(context, ref, null),
+        ),
         for (final sprint in open)
-          PopupMenuItem<String?>(
-            value: sprint.id,
-            child: Text(
-              '${sprint.name} · ${sprintStateLabel(sprint.state)}',
-            ),
+          NxMenuItem(
+            '${sprint.name} · ${sprintStateLabel(sprint.state)}',
+            selected: sprint.id == issue.sprintId,
+            onSelected: () => _set(context, ref, sprint.id),
           ),
       ],
-      onSelected: (value) async {
-        final messenger = ScaffoldMessenger.of(context);
-        final spaceId = ref.read(currentSpaceIdProvider);
-        if (spaceId == null) return;
-
-        final ok = await ref
-            .read(issueRepositoryProvider)
-            .setSprint(spaceId, issue, value!.isEmpty ? null : value);
-
-        if (ok) {
-          ref.invalidate(currentIssueProvider);
-          return;
-        }
-        messenger.showSnackBar(
-          const SnackBar(content: Text('스프린트를 바꾸지 못했습니다. 연결을 확인해 주세요.')),
-        );
-      },
-      child: _Field(
-        icon: Icons.flag_outlined,
-        label: current?.name ?? '백로그',
+      anchorBuilder: (context, toggle) => _Field(
+        caption: '스프린트',
+        value: current?.name ?? '백로그',
+        onPressed: toggle,
       ),
     );
   }
@@ -96,68 +99,91 @@ class _StoryPointsPicker extends ConsumerWidget {
 
   final Issue issue;
 
+  Future<void> _set(BuildContext context, WidgetRef ref, int? points) async {
+    final spaceId = ref.read(currentSpaceIdProvider);
+    if (spaceId == null) return;
+    final ok = await ref
+        .read(issueRepositoryProvider)
+        .setStoryPoints(spaceId, issue, points);
+    if (ok) {
+      ref.invalidate(currentIssueProvider);
+      return;
+    }
+    if (context.mounted) {
+      NxToast.show(
+        context,
+        '포인트를 바꾸지 못했습니다. 연결을 확인해 주세요.',
+        kind: NxToastKind.error,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return PopupMenuButton<int>(
-      tooltip: '스토리 포인트',
-      itemBuilder: (_) => [
-        // -1 은 "지우기"다. 안 매기는 것도 뜻이 있어 되돌릴 길을 둔다.
-        const PopupMenuItem(value: -1, child: Text('포인트 없음')),
+    return NxMenu(
+      width: 160,
+      entries: [
+        // 안 매기는 것도 뜻이 있어 되돌릴 길을 둔다.
+        NxMenuItem(
+          '포인트 없음',
+          selected: issue.storyPoints == null,
+          onSelected: () => _set(context, ref, null),
+        ),
         for (final points in _pointChoices)
-          PopupMenuItem(value: points, child: Text('$points')),
+          NxMenuItem(
+            '$points',
+            selected: issue.storyPoints == points,
+            onSelected: () => _set(context, ref, points),
+          ),
       ],
-      onSelected: (value) async {
-        final messenger = ScaffoldMessenger.of(context);
-        final spaceId = ref.read(currentSpaceIdProvider);
-        if (spaceId == null) return;
-
-        final ok = await ref
-            .read(issueRepositoryProvider)
-            .setStoryPoints(spaceId, issue, value < 0 ? null : value);
-
-        if (ok) {
-          ref.invalidate(currentIssueProvider);
-          return;
-        }
-        messenger.showSnackBar(
-          const SnackBar(content: Text('포인트를 바꾸지 못했습니다. 연결을 확인해 주세요.')),
-        );
-      },
-      child: _Field(
-        icon: Icons.timeline_outlined,
-        label: issue.storyPoints == null ? '포인트 없음' : '${issue.storyPoints}p',
+      anchorBuilder: (context, toggle) => _Field(
+        caption: '포인트',
+        value: issue.storyPoints == null ? '포인트 없음' : '${issue.storyPoints}p',
+        onPressed: toggle,
       ),
     );
   }
 }
 
+/// 고르는 칸 — 작은 이름표 + 지금 값 + ▾. 앞 장식 아이콘 대신 이름표가 무엇을 고르는지 말한다.
 class _Field extends StatelessWidget {
-  const _Field({required this.icon, required this.label});
+  const _Field({
+    required this.caption,
+    required this.value,
+    required this.onPressed,
+  });
 
-  final IconData icon;
-  final String label;
+  final String caption;
+  final String value;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: NexusSpacing.sp5,
-        vertical: NexusSpacing.sp3,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(NexusRadius.md),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16),
-          const SizedBox(width: NexusSpacing.sp3),
-          Text(label, style: theme.textTheme.labelMedium),
-          const Icon(Icons.arrow_drop_down, size: 16),
-        ],
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    return NxPressable(
+      onPressed: onPressed,
+      semanticLabel: '$caption $value',
+      excludeChildSemantics: true,
+      builder: (context, s) => AnimatedContainer(
+        duration: NxMotion.micro,
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: s.hovered ? c.bgElevated : const Color(0x00000000),
+          borderRadius: BorderRadius.circular(NxRadius.md),
+          border: Border.all(color: s.hovered ? c.borderStrong : c.divider),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(caption, style: nx.text.meta),
+            const SizedBox(width: NxSpacing.sp3),
+            Text(value, style: nx.text.sm),
+            const SizedBox(width: NxSpacing.sp3),
+            NxIcon(NxIcons.chevronDown, size: 12, color: c.textSecondary),
+          ],
+        ),
       ),
     );
   }

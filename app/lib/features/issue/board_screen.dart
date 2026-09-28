@@ -1,16 +1,16 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../shell/app_shell.dart';
-import '../../core/theme.dart';
 import '../../domain/models/issue.dart';
+import '../../ui/ui.dart';
 import 'board_controller.dart';
 import 'issue_card.dart';
 import 'new_issue_sheet.dart';
 import 'sprint_controller.dart';
 
-/// 칸반 보드. 파일 목록과 같이 **셸 위에 덮어서** 연다.
+/// 칸반 보드. 셸 안에 머무는 화면이다.
 ///
 /// 열 넷을 가로 스크롤로 그린다. 폭에 따라 달라지는 것은 열 너비뿐이고
 /// **분기가 아니라 제약이다** — 반응형 분기는 `app_shell.dart` 한 곳에서만 한다.
@@ -40,76 +40,65 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     final board = ref.watch(scopedBoardProvider);
     final truncated = ref.watch(truncatedColumnsProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        // 셸 안이라 돌아갈 곳이 스택에 없다. 판에서 바로 오는 화면이다.
-        automaticallyImplyLeading: false,
-        title: const ShellPaneTrigger(child: Text('보드')),
+    return NxPage(
+      header: ShellHeader(
+        title: '보드',
         actions: [
-          IconButton(
-            tooltip: '스프린트',
-            icon: const Icon(Icons.flag_outlined),
-            onPressed: () => context.push('/s/${widget.spaceId}/sprints'),
+          NxButton(
+            label: '스프린트',
+            kind: NxButtonKind.ghost,
+            size: NxSize.sm,
+            onPressed: () => context.go('/s/${widget.spaceId}/sprints'),
           ),
-          // FAB 과 같은 일을 한다. 떠 있는 버튼은 창 크기나 겹친 창에 따라
-          // 화면 밖으로 밀릴 수 있어, 언제나 닿는 자리에도 둔다.
-          IconButton(
-            tooltip: '새 이슈',
-            icon: const Icon(Icons.add),
-            onPressed: () => showNewIssueSheet(context),
-          ),
-          IconButton(
-            tooltip: '새로고침',
-            icon: const Icon(Icons.refresh),
+          NxIconButton(
+            icon: NxIcons.refresh,
+            label: '새로고침',
             onPressed: () => ref.read(boardActionsProvider).refresh(),
+          ),
+          // 떠 있는 버튼(FAB)을 두지 않는다 — 머리 줄이 언제나 닿는 자리다(캔버스 「보드」).
+          NxButton(
+            label: '새 이슈',
+            icon: NxIcons.plus,
+            size: NxSize.sm,
+            onPressed: () => showNewIssueSheet(context),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showNewIssueSheet(context),
-        icon: const Icon(Icons.add),
-        label: const Text('새 이슈'),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            const _ScopeBar(),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  // 좁으면 한 열이 화면의 대부분을 쓰고, 넓으면 넷이 한눈에 들어온다.
-                  //
-                  // **리스트 좌우 패딩을 먼저 뺀다.** 빼지 않으면 네 컬럼의 합이
-                  // 화면보다 딱 그만큼 넓어져, 폭이 충분한데도 마지막 컬럼이
-                  // 잘린 채 가로 스크롤이 생긴다.
-                  final usable = constraints.maxWidth - _boardPadding * 2;
-                  final columnWidth = constraints.maxWidth < 720
-                      ? usable * 0.85
-                      : (usable / IssueStatus.values.length).clamp(
-                          240.0,
-                          360.0,
-                        );
+      body: Column(
+        children: [
+          const _ScopeBar(),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // 좁으면 한 열이 화면의 대부분을 쓰고, 넓으면 넷이 한눈에 들어온다.
+                //
+                // **리스트 좌우 패딩을 먼저 뺀다.** 빼지 않으면 네 컬럼의 합이
+                // 화면보다 딱 그만큼 넓어져, 폭이 충분한데도 마지막 컬럼이
+                // 잘린 채 가로 스크롤이 생긴다.
+                final usable = constraints.maxWidth - _boardPadding * 2;
+                final columnWidth = constraints.maxWidth < 720
+                    ? usable * 0.85
+                    : (usable / IssueStatus.values.length).clamp(240.0, 360.0);
 
-                  return ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.all(_boardPadding),
-                    children: [
-                      for (final status in IssueStatus.values)
-                        SizedBox(
-                          width: columnWidth,
-                          child: _BoardColumn(
-                            status: status,
-                            issues: board[status] ?? const [],
-                            truncated: truncated.contains(status),
-                          ),
+                return ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.all(_boardPadding),
+                  children: [
+                    for (final status in IssueStatus.values)
+                      SizedBox(
+                        width: columnWidth,
+                        child: _BoardColumn(
+                          status: status,
+                          issues: board[status] ?? const [],
+                          truncated: truncated.contains(status),
                         ),
-                    ],
-                  );
-                },
-              ),
+                      ),
+                  ],
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -137,27 +126,24 @@ class _ScopeBar extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          SegmentedButton<BoardScope>(
-            style: const ButtonStyle(visualDensity: VisualDensity.compact),
+          NxSegmented<BoardScope>(
+            label: '보기',
+            expand: false,
+            value: scope,
             segments: [
               for (final value in BoardScope.values)
-                ButtonSegment(
-                  value: value,
-                  label: Text(boardScopeLabel(value)),
-                ),
+                (value, boardScopeLabel(value)),
             ],
-            selected: {scope},
-            onSelectionChanged: (v) =>
-                ref.read(boardScopeProvider.notifier).set(v.first),
+            onChanged: (v) => ref.read(boardScopeProvider.notifier).set(v),
           ),
-          const SizedBox(width: NexusSpacing.sp5),
+          const SizedBox(width: NxSpacing.sp5),
           // 도는 스프린트가 없으면 '이번 스프린트'가 빈 보드가 된다.
           // 왜 비었는지 여기서 말해 준다.
           Expanded(
             child: Text(
               active == null ? '진행 중인 스프린트 없음' : active.name,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium,
+              style: NxTheme.of(context).text.secondary,
             ),
           ),
         ],
@@ -168,7 +154,15 @@ class _ScopeBar extends ConsumerWidget {
 
 /// 보드 바깥 여백. 컬럼 폭 계산이 이 값을 빼야 하므로 상수로 묶어 둔다 —
 /// 둘이 갈라지면 마지막 컬럼이 잘린다.
-const double _boardPadding = NexusSpacing.sp5;
+const double _boardPadding = NxSpacing.sp6;
+
+/// 컬럼 머리의 점 색 — 캔버스 「보드」의 상태 표시(백로그는 빈 고리).
+Color? _statusColor(NxColors c, IssueStatus status) => switch (status) {
+  IssueStatus.backlog => null,
+  IssueStatus.doing => c.accent,
+  IssueStatus.review => c.warning,
+  IssueStatus.done => c.success,
+};
 
 class _BoardColumn extends StatelessWidget {
   const _BoardColumn({
@@ -183,39 +177,58 @@ class _BoardColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    final dot = _statusColor(c, status);
 
     return Padding(
-      padding: const EdgeInsets.only(right: NexusSpacing.sp5),
+      padding: const EdgeInsets.only(right: NxSpacing.sp6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: NexusSpacing.sp4),
+          SizedBox(
+            height: 28,
             child: Row(
               children: [
-                Text(
-                  issueStatusLabel(status),
-                  style: theme.textTheme.titleSmall,
+                const SizedBox(width: 4),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: dot,
+                    shape: BoxShape.circle,
+                    border: dot == null
+                        ? Border.all(color: c.textSecondary, width: 1.5)
+                        : null,
+                  ),
                 ),
-                const SizedBox(width: NexusSpacing.sp3),
+                const SizedBox(width: NxSpacing.sp4),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    issueStatusLabel(status),
+                    style: nx.text.sm.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(width: NxSpacing.sp4),
                 Text(
                   // 상한에 걸려 잘렸으면 그렇다고 말한다. 조용히 자르면
                   // 다 봤다고 오해한다.
                   truncated ? '${issues.length}+' : '${issues.length}',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.textTheme.bodySmall?.color,
-                  ),
+                  style: nx.text.mono.copyWith(fontSize: 12),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: NxSpacing.sp4),
           Expanded(
             child: issues.isEmpty
                 // 빈 컬럼도 자리를 지킨다 — 사라지면 거기로 옮길 수 없다.
                 ? _EmptyColumn(status: status)
-                : ListView.builder(
+                : ListView.separated(
                     itemCount: issues.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: NxSpacing.sp4),
                     itemBuilder: (_, i) => IssueCard(issue: issues[i]),
                   ),
           ),
@@ -232,17 +245,17 @@ class _EmptyColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(NexusRadius.md),
-        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(NxRadius.md),
+        border: Border.all(color: nx.colors.divider),
       ),
       child: Center(
         child: Text(
           '${issueStatusLabel(status)} 없음',
-          style: theme.textTheme.bodySmall,
+          style: nx.text.secondary,
         ),
       ),
     );

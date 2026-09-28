@@ -1,12 +1,14 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme.dart';
 import '../../domain/models/issue.dart';
 import '../../domain/models/issue_comment.dart';
 import '../../shared/markdown/markdown_body.dart';
+import '../../shared/widgets/back_button.dart';
 import '../../shared/widgets/user_avatar.dart';
+import '../../ui/ui.dart';
 import '../space/members_controller.dart';
 import 'board_controller.dart';
 import 'issue_detail_controller.dart';
@@ -49,25 +51,41 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
     final issue = ref.watch(currentIssueProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.issueKey),
+    return NxPage(
+      header: NxHeader(
+        titleWidget: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            widget.issueKey,
+            style: nx.text.mono.copyWith(
+              fontSize: 14,
+              color: nx.colors.textPrimary,
+            ),
+          ),
+        ),
+        leading: NxBackButton(fallback: '/s/${widget.spaceId}/issues'),
         actions: [
           if (issue.value != null)
-            IconButton(
-              tooltip: '지우기',
-              icon: const Icon(Icons.delete_outline),
+            NxIconButton(
+              icon: NxIcons.trash,
+              label: '지우기',
               onPressed: () => _confirmDelete(issue.value!),
             ),
         ],
       ),
       body: issue.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const Center(child: Text('이슈를 불러오지 못했습니다.')),
+        loading: () => const Padding(
+          padding: EdgeInsets.all(NxSpacing.sp7),
+          child: NxSkeleton(lines: 6),
+        ),
+        error: (_, _) => Center(
+          child: Text('이슈를 불러오지 못했습니다.', style: nx.text.secondary),
+        ),
         data: (value) => value == null
-            ? const Center(child: Text('이슈를 찾을 수 없습니다.'))
+            ? Center(child: Text('이슈를 찾을 수 없습니다.', style: nx.text.secondary))
             : _Body(issue: value),
       ),
     );
@@ -75,37 +93,24 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
 
   /// **하드 삭제라 되돌릴 수 없다.** 그래서 한 번 묻는다.
   Future<void> _confirmDelete(Issue issue) async {
-    final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
 
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('${issue.key} 를 지울까요?'),
-        content: const Text('되돌릴 수 없습니다. 댓글도 함께 사라집니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('지우기'),
-          ),
-        ],
-      ),
+    final ok = await NxDialog.confirm(
+      context,
+      title: '${issue.key} 를 지울까요?',
+      body: '되돌릴 수 없습니다. 댓글도 함께 사라집니다.',
+      confirmLabel: '지우기',
+      danger: true,
     );
-    if (ok != true) return;
+    if (!ok) return;
 
     final removed = await ref.read(issueDetailActionsProvider).remove(issue.id);
     if (!mounted) return;
     if (removed) {
-      router.pop();
+      router.canPop() ? router.pop() : router.go('/s/${widget.spaceId}/issues');
       return;
     }
-    messenger.showSnackBar(
-      const SnackBar(content: Text('지우지 못했습니다. 연결을 확인해 주세요.')),
-    );
+    NxToast.show(context, '지우지 못했습니다. 연결을 확인해 주세요.', kind: NxToastKind.error);
   }
 }
 
@@ -116,41 +121,62 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
     final comments = ref.watch(issueCommentsProvider);
+    final priorityColor = switch (issue.priority) {
+      IssuePriority.high => c.danger,
+      IssuePriority.mid => c.warning,
+      IssuePriority.low => c.success,
+    };
 
     return Column(
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(NexusSpacing.sp6),
+            padding: const EdgeInsets.all(NxSpacing.sp7),
             children: [
-              Text(issue.title, style: theme.textTheme.titleLarge),
-              const SizedBox(height: NexusSpacing.sp5),
+              Text(issue.title, style: nx.text.heading),
+              const SizedBox(height: NxSpacing.sp5),
               Wrap(
-                spacing: NexusSpacing.sp4,
-                runSpacing: NexusSpacing.sp4,
+                spacing: NxSpacing.sp5,
+                runSpacing: NxSpacing.sp4,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  _Chip(label: issueStatusLabel(issue.status)),
-                  _Chip(label: '우선순위 ${issuePriorityLabel(issue.priority)}'),
-                  if (issue.storyPoints != null)
-                    _Chip(label: '${issue.storyPoints}p'),
+                  NxTag(issueStatusLabel(issue.status)),
+                  NxTag(
+                    '우선순위 ${issuePriorityLabel(issue.priority)}',
+                    dot: true,
+                    color: priorityColor,
+                  ),
                   if (issue.assignee != null)
-                    _Chip(label: '담당 ${issue.assignee!.name}'),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        UserAvatar(
+                          userId: issue.assignee!.id,
+                          name: issue.assignee!.name,
+                          avatarUrl: issue.assignee!.avatarUrl,
+                          size: 18,
+                        ),
+                        const SizedBox(width: NxSpacing.sp3),
+                        Text('담당 ${issue.assignee!.name}', style: nx.text.meta),
+                      ],
+                    ),
                 ],
               ),
-              const SizedBox(height: NexusSpacing.sp5),
+              const SizedBox(height: NxSpacing.sp6),
               // 스프린트와 포인트. 이 둘이 없으면 번다운이 언제나 비어 있다.
               IssuePlanningRow(issue: issue),
-              const SizedBox(height: NexusSpacing.sp5),
+              const SizedBox(height: NxSpacing.sp5),
               _LabelRow(issue: issue),
               if (issue.originMessage != null) ...[
-                const SizedBox(height: NexusSpacing.sp5),
+                const SizedBox(height: NxSpacing.sp6),
                 _OriginCard(origin: issue.originMessage!),
               ],
               if (issue.description != null &&
                   issue.description!.trim().isNotEmpty) ...[
-                const SizedBox(height: NexusSpacing.sp6),
+                const SizedBox(height: NxSpacing.sp7),
                 // 채팅과 **같은 위젯**을 쓴다 — 규칙이 갈라지면 "채팅에서는
                 // 되는데 이슈에서는 안 되는" 일이 생긴다(마크다운 설계 §4).
                 MarkdownBody(
@@ -158,25 +184,25 @@ class _Body extends ConsumerWidget {
                   // 이슈에는 서버가 멘션 목록을 실어 주지 않는다. 본문에
                   // `<@id>` 가 있을 수 있으므로 멤버 이름으로 채운다.
                   fallbackNames: ref.watch(memberNamesProvider),
-                  style: theme.textTheme.bodyMedium,
                 ),
               ],
-              const SizedBox(height: NexusSpacing.sp8),
-              Text('댓글', style: theme.textTheme.titleSmall),
-              const SizedBox(height: NexusSpacing.sp4),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: NxSpacing.sp7),
+                child: NxDivider(),
+              ),
+              Semantics(
+                header: true,
+                child: Text('댓글', style: nx.text.strong),
+              ),
+              const SizedBox(height: NxSpacing.sp5),
               comments.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(NexusSpacing.sp6),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
+                loading: () => const NxSkeleton(lines: 2),
                 // 댓글은 캐시하지 않으므로 오프라인에서는 비어 보인다.
                 // 그 사실을 그대로 말한다 — 댓글이 없는 것과 구분되어야 한다.
-                error: (_, _) => Text(
-                  '댓글을 불러오지 못했습니다.',
-                  style: theme.textTheme.bodySmall,
-                ),
+                error: (_, _) =>
+                    Text('댓글을 불러오지 못했습니다.', style: nx.text.secondary),
                 data: (items) => items.isEmpty
-                    ? Text('아직 댓글이 없습니다.', style: theme.textTheme.bodySmall)
+                    ? Text('아직 댓글이 없습니다.', style: nx.text.secondary)
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -202,14 +228,14 @@ class _LabelRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Wrap(
-      spacing: NexusSpacing.sp4,
-      runSpacing: NexusSpacing.sp4,
+      spacing: NxSpacing.sp4,
+      runSpacing: NxSpacing.sp4,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         for (final label in issue.labels) LabelChip(label: label),
-        ActionChip(
-          avatar: const Icon(Icons.label_outline, size: 16),
-          label: Text(issue.labels.isEmpty ? '라벨 붙이기' : '라벨 고치기'),
+        NxChip(
+          label: issue.labels.isEmpty ? '라벨 붙이기' : '라벨 고치기',
+          icon: NxIcons.plus,
           onPressed: () => showLabelPicker(context, issue),
         ),
       ],
@@ -228,66 +254,39 @@ class _OriginCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
     final spaceId = ref.watch(currentSpaceIdProvider);
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(NexusRadius.md),
-      onTap: spaceId == null
+    return NxPressable(
+      onPressed: spaceId == null
           ? null
-          : () => context.push('/s/$spaceId/c/${origin.channelId}'),
-      child: Container(
-        padding: const EdgeInsets.all(NexusSpacing.sp5),
+          : () => context.go('/s/$spaceId/c/${origin.channelId}'),
+      builder: (context, s) => AnimatedContainer(
+        duration: NxMotion.micro,
+        padding: const EdgeInsets.all(NxSpacing.sp5),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(NexusRadius.md),
-          border: Border.all(color: theme.dividerColor),
+          color: s.hovered ? c.bgElevated : c.bgSurface,
+          borderRadius: BorderRadius.circular(NxRadius.md),
+          // 인용처럼 왼쪽 선 하나로 「다른 곳에서 온 글」임을 말한다.
+          border: Border(left: BorderSide(color: c.accent, width: 2)),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.forum_outlined, size: 16),
-            const SizedBox(width: NexusSpacing.sp4),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('이 대화에서 만들어졌습니다', style: theme.textTheme.labelSmall),
-                  const SizedBox(height: NexusSpacing.sp1),
-                  Text(
-                    origin.deleted
-                        ? '${origin.authorName} · 지워진 메시지'
-                        : '${origin.authorName} · ${origin.body ?? ''}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
+            Text('이 대화에서 만들어졌습니다', style: nx.text.meta),
+            const SizedBox(height: NxSpacing.sp2),
+            Text(
+              origin.deleted
+                  ? '${origin.authorName} · 지워진 메시지'
+                  : '${origin.authorName} · ${origin.body ?? ''}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: nx.text.sm,
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: NexusSpacing.sp5,
-        vertical: NexusSpacing.sp3,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(NexusRadius.md),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      child: Text(label, style: theme.textTheme.labelMedium),
     );
   }
 }
@@ -302,10 +301,10 @@ class _CommentTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: NexusSpacing.sp5),
+      padding: const EdgeInsets.only(bottom: NxSpacing.sp6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -315,17 +314,16 @@ class _CommentTile extends ConsumerWidget {
             avatarUrl: comment.author.avatarUrl,
             size: 28,
           ),
-          const SizedBox(width: NexusSpacing.sp4),
+          const SizedBox(width: NxSpacing.sp5),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(comment.author.name, style: theme.textTheme.labelMedium),
-                const SizedBox(height: NexusSpacing.sp1),
+                Text(comment.author.name, style: nx.text.strong),
+                const SizedBox(height: NxSpacing.sp1),
                 MarkdownBody(
                   body: comment.body,
                   fallbackNames: ref.watch(memberNamesProvider),
-                  style: theme.textTheme.bodyMedium,
                 ),
               ],
             ),
@@ -360,7 +358,6 @@ class _CommentComposerState extends ConsumerState<_CommentComposer> {
     if (body.isEmpty || _sending) return;
 
     setState(() => _sending = true);
-    final messenger = ScaffoldMessenger.of(context);
     final ok = await ref
         .read(issueDetailActionsProvider)
         .comment(widget.issueId, body);
@@ -372,38 +369,39 @@ class _CommentComposerState extends ConsumerState<_CommentComposer> {
       return;
     }
     // 댓글은 큐에 넣지 않으므로 오프라인에서는 달 수 없다. 그대로 말한다.
-    messenger.showSnackBar(
-      const SnackBar(content: Text('댓글을 달지 못했습니다. 연결을 확인해 주세요.')),
-    );
+    NxToast.show(context, '댓글을 달지 못했습니다. 연결을 확인해 주세요.', kind: NxToastKind.error);
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = NxTheme.of(context).colors;
 
+    // 키보드는 NxPage 가 비킨다 — 여기서 인셋을 또 더하면 두 번 올라간다.
     return Container(
-      padding: EdgeInsets.only(
-        left: NexusSpacing.sp6,
-        right: NexusSpacing.sp6,
-        top: NexusSpacing.sp5,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + NexusSpacing.sp5,
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        NxSpacing.sp5,
+        NxSpacing.sp7,
+        NxSpacing.sp5,
       ),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: theme.dividerColor)),
+        border: Border(top: BorderSide(color: c.divider)),
       ),
       child: Row(
         children: [
           Expanded(
-            child: TextField(
+            child: NxField(
               controller: _controller,
-              decoration: const InputDecoration(hintText: '댓글 쓰기'),
+              hint: '댓글 쓰기',
+              textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
             ),
           ),
-          const SizedBox(width: NexusSpacing.sp4),
-          IconButton(
-            tooltip: '보내기',
-            icon: const Icon(Icons.send),
+          const SizedBox(width: NxSpacing.sp4),
+          NxIconButton(
+            icon: NxIcons.send,
+            label: '보내기',
+            filled: true,
             onPressed: _sending ? null : _send,
           ),
         ],

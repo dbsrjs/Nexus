@@ -1,12 +1,13 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme.dart';
 import '../../domain/models/issue.dart';
 import '../../domain/models/message.dart';
+import '../../ui/ui.dart';
 import 'board_controller.dart';
 
-/// 새 이슈를 만드는 시트.
+/// 새 이슈를 만드는 패널(바텀시트의 자리, 15단계 D8).
 ///
 /// 만들면 **그 컬럼 맨 위**에 놓인다(서버가 정한다). 방금 만든 것이 보이지
 /// 않으면 만든 사람은 실패했다고 믿는다.
@@ -21,9 +22,10 @@ Future<void> showNewIssueSheet(
   String? originMessageId,
   String? initialTitle,
   String? initialDescription,
-}) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
+}) => NxDialog.panel<void>(
+  context,
+  title: (fromMessage?.id ?? originMessageId) == null ? '새 이슈' : '대화에서 이슈 만들기',
+  width: 520,
   builder: (_) => _NewIssueSheet(
     fromMessage: fromMessage,
     originMessageId: originMessageId,
@@ -65,7 +67,9 @@ class _NewIssueSheetState extends ConsumerState<_NewIssueSheet> {
     final body = widget.fromMessage?.body.trim();
     if (body == null || body.isEmpty) return '';
     final firstLine = body.split('\n').first.trim();
-    return firstLine.length <= 80 ? firstLine : '${firstLine.substring(0, 79)}…';
+    return firstLine.length <= 80
+        ? firstLine
+        : '${firstLine.substring(0, 79)}…';
   }
 
   IssueStatus _status = IssueStatus.backlog;
@@ -84,7 +88,6 @@ class _NewIssueSheetState extends ConsumerState<_NewIssueSheet> {
     if (title.isEmpty || _sending) return;
 
     setState(() => _sending = true);
-    final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
     final ok = await ref
@@ -104,76 +107,75 @@ class _NewIssueSheetState extends ConsumerState<_NewIssueSheet> {
     }
     setState(() => _sending = false);
     // 큐에 넣지 않으므로 오프라인에서는 만들 수 없다. 그 사실을 그대로 말한다.
-    messenger.showSnackBar(
-      const SnackBar(content: Text('만들지 못했습니다. 연결을 확인해 주세요.')),
-    );
+    NxToast.show(context, '만들지 못했습니다. 연결을 확인해 주세요.', kind: NxToastKind.error);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: NexusSpacing.sp6,
-        right: NexusSpacing.sp6,
-        top: NexusSpacing.sp6,
-        // 키보드가 올라와도 입력창이 가리지 않게 한다.
-        bottom: MediaQuery.viewInsetsOf(context).bottom + NexusSpacing.sp6,
+    final nx = NxTheme.of(context);
+    Widget label(String text) => Padding(
+      padding: const EdgeInsets.only(bottom: NxSpacing.sp3),
+      child: Text(
+        text,
+        style: nx.text.xs.copyWith(
+          fontWeight: FontWeight.w600,
+          color: nx.colors.textSecondary,
+        ),
+      ),
+    );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        0,
+        NxSpacing.sp7,
+        NxSpacing.sp7,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            widget._originId == null ? '새 이슈' : '대화에서 이슈 만들기',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: NexusSpacing.sp5),
-          TextField(
+          NxField(
+            label: '제목',
             controller: _title,
             autofocus: true,
-            decoration: const InputDecoration(labelText: '제목'),
+            textInputAction: TextInputAction.done,
             onSubmitted: (_) => _submit(),
           ),
-          const SizedBox(height: NexusSpacing.sp5),
-          TextField(
+          const SizedBox(height: NxSpacing.sp6),
+          NxField(
+            label: '설명 (선택)',
             controller: _description,
-            maxLines: 3,
-            decoration: const InputDecoration(labelText: '설명 (선택)'),
+            minLines: 3,
+            maxLines: 6,
           ),
-          const SizedBox(height: NexusSpacing.sp5),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<IssueStatus>(
-                  initialValue: _status,
-                  decoration: const InputDecoration(labelText: '컬럼'),
-                  items: [
-                    for (final s in IssueStatus.values)
-                      DropdownMenuItem(value: s, child: Text(issueStatusLabel(s))),
-                  ],
-                  onChanged: (v) => setState(() => _status = v ?? _status),
-                ),
-              ),
-              const SizedBox(width: NexusSpacing.sp5),
-              Expanded(
-                child: DropdownButtonFormField<IssuePriority>(
-                  initialValue: _priority,
-                  decoration: const InputDecoration(labelText: '우선순위'),
-                  items: [
-                    for (final p in IssuePriority.values)
-                      DropdownMenuItem(value: p, child: Text(issuePriorityLabel(p))),
-                  ],
-                  onChanged: (v) => setState(() => _priority = v ?? _priority),
-                ),
-              ),
+          const SizedBox(height: NxSpacing.sp6),
+          label('컬럼'),
+          NxSegmented<IssueStatus>(
+            label: '컬럼',
+            value: _status,
+            segments: [
+              for (final s in IssueStatus.values) (s, issueStatusLabel(s)),
             ],
+            onChanged: (v) => setState(() => _status = v),
           ),
-          const SizedBox(height: NexusSpacing.sp6),
+          const SizedBox(height: NxSpacing.sp6),
+          label('우선순위'),
+          NxSegmented<IssuePriority>(
+            label: '우선순위',
+            value: _priority,
+            segments: [
+              for (final p in IssuePriority.values) (p, issuePriorityLabel(p)),
+            ],
+            onChanged: (v) => setState(() => _priority = v),
+          ),
+          const SizedBox(height: NxSpacing.sp7),
           Align(
             alignment: Alignment.centerRight,
-            child: FilledButton(
-              onPressed: _sending ? null : _submit,
-              child: Text(_sending ? '만드는 중…' : '만들기'),
+            child: NxButton(
+              label: '만들기',
+              loading: _sending,
+              onPressed: _submit,
             ),
           ),
         ],

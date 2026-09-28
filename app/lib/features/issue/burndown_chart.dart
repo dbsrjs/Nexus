@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
-import '../../core/theme.dart';
+import '../../ui/theme.dart';
 import '../../domain/models/sprint.dart';
 
 /// 어떤 계열을 그릴지. 포인트를 안 매기는 사람에게는 개수가 유일한 지표다.
@@ -22,7 +22,8 @@ class BurndownChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
     final total = series == BurndownSeries.points
         ? burndown.total.points
         : burndown.total.count;
@@ -40,7 +41,7 @@ class BurndownChart extends StatelessWidget {
             series == BurndownSeries.points
                 ? '스토리 포인트를 매긴 이슈가 없습니다.'
                 : '이 스프린트에 이슈가 없습니다.',
-            style: theme.textTheme.bodySmall,
+            style: nx.text.secondary,
           ),
         ),
       );
@@ -52,11 +53,11 @@ class BurndownChart extends StatelessWidget {
         painter: _BurndownPainter(
           values: values,
           total: total,
-          lineColor: theme.colorScheme.primary,
-          idealColor: theme.dividerColor,
-          axisColor: theme.dividerColor,
-          labelStyle:
-              theme.textTheme.labelSmall ?? const TextStyle(fontSize: 11),
+          lineColor: c.accent,
+          // 이상 선은 실제 선보다 한 단 흐리게. 구분선 색(α .10)은 거의 안 보였다.
+          idealColor: c.borderStrong,
+          axisColor: c.divider,
+          labelStyle: nx.text.mono,
         ),
         size: Size.infinite,
       ),
@@ -173,13 +174,13 @@ class BurndownLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final c = NxTheme.of(context).colors;
 
     return Row(
       children: [
-        _Swatch(color: theme.colorScheme.primary, label: '실제'),
-        const SizedBox(width: NexusSpacing.sp5),
-        _Swatch(color: theme.dividerColor, label: '이상'),
+        _Swatch(color: c.accent, label: '실제'),
+        const SizedBox(width: NxSpacing.sp5),
+        _Swatch(color: c.borderStrong, label: '이상'),
       ],
     );
   }
@@ -197,8 +198,8 @@ class _Swatch extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(width: 12, height: 2, color: color),
-        const SizedBox(width: NexusSpacing.sp3),
-        Text(label, style: Theme.of(context).textTheme.labelSmall),
+        const SizedBox(width: NxSpacing.sp3),
+        Text(label, style: NxTheme.of(context).text.meta),
       ],
     );
   }
