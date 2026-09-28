@@ -104,6 +104,19 @@ void main() {
     await tester.tap(find.text('이슈 보드'));
     await tester.pumpUntil(find.text(fx.issueTitle));
 
+    // 끌어 옮기기(15단계 D15) — 키보드 길로 백로그 → 진행. 서버의 자리까지 바뀌어야 한다.
+    Focus.of(tester.element(find.text(fx.issueTitle))).requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pumpUntilTrue(
+      () async => await fx.issueStatus() == 'doing',
+      '끌어 옮긴 이슈의 상태가 서버에 반영되지 않았다',
+    );
+
     await tester.tap(find.text('파일'));
     await tester.pumpUntil(find.text('아직 올라온 파일이 없습니다.'));
 
@@ -273,6 +286,16 @@ class _Fixture {
     return channels.cast<Map>().any(
       (c) => c['id'] == _channelId && c['muted'] == true,
     );
+  }
+
+  /// 픽스처 이슈의 서버 상태(`backlog` · `doing` …).
+  Future<String?> issueStatus() async {
+    final res = await _get('/spaces/$_spaceId/issues', _aliceToken) as Map;
+    final items = res['issues'] as List;
+    for (final i in items.cast<Map>()) {
+      if (i['title'] == issueTitle) return i['status'] as String?;
+    }
+    return null;
   }
 
   Future<bool> channelHas(String body) async {

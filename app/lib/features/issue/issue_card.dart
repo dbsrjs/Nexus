@@ -13,12 +13,23 @@ import 'label_widgets.dart';
 ///
 /// 상태 이동은 **메뉴**로도 한다 — 끌어 옮기기(D15)가 닿지 않는 보조 기술 · 키보드의 길이다.
 class IssueCard extends ConsumerWidget {
-  const IssueCard({super.key, required this.issue, this.dragging = false});
+  const IssueCard({
+    super.key,
+    required this.issue,
+    this.dragging = false,
+    this.shortcuts,
+    this.actions,
+  });
 
   final Issue issue;
 
-  /// 끌고 있는 카드 — 한 단 밝은 표면 + 액센트 테두리(그림자 대신, 캔버스 「보드」).
+  /// 끌고 있는(또는 키보드로 집은) 카드 — 한 단 밝은 표면 + 액센트 테두리(그림자 대신,
+  /// 캔버스 「보드」).
   final bool dragging;
+
+  /// 보드가 주는 키 — Space 로 집고 방향키로 옮긴다(D15).
+  final Map<ShortcutActivator, Intent>? shortcuts;
+  final Map<Type, Action<Intent>>? actions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -31,6 +42,8 @@ class IssueCard extends ConsumerWidget {
         '/s/${ref.read(currentSpaceIdProvider)}/issues/${issue.key}',
       ),
       semanticLabel: '${issue.key} ${issue.title}',
+      shortcuts: shortcuts,
+      actions: actions,
       builder: (context, s) => AnimatedContainer(
         duration: NxMotion.micro,
         padding: const EdgeInsets.fromLTRB(12, 12, 6, 10),

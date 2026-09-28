@@ -43,6 +43,8 @@ class NxPressable extends StatefulWidget {
     this.toggled,
     this.checked,
     this.inMutuallyExclusiveGroup = false,
+    this.shortcuts,
+    this.actions,
   });
 
   final Widget Function(BuildContext context, NxPressState state) builder;
@@ -66,6 +68,11 @@ class NxPressable extends StatefulWidget {
   final bool? toggled;
   final bool? checked;
   final bool inMutuallyExclusiveGroup;
+
+  /// 기본 키(Enter · Space → 누르기)에 **덧씌우는** 키와 동작. 보드 카드가 Space 를
+  /// 「집기」로 바꾸는 데 쓴다 — 바깥에 따로 감싸면 안쪽 기본 키가 먼저 받아 버린다.
+  final Map<ShortcutActivator, Intent>? shortcuts;
+  final Map<Type, Action<Intent>>? actions;
 
   @override
   State<NxPressable> createState() => _NxPressableState();
@@ -136,8 +143,12 @@ class _NxPressableState extends State<NxPressable> {
           enabled: _enabled,
           focusNode: widget.focusNode,
           autofocus: widget.autofocus,
-          shortcuts: _shortcuts,
-          actions: _actions,
+          shortcuts: widget.shortcuts == null
+              ? _shortcuts
+              : {..._shortcuts, ...widget.shortcuts!},
+          actions: widget.actions == null
+              ? _actions
+              : {..._actions, ...widget.actions!},
           mouseCursor: _enabled
               ? SystemMouseCursors.click
               : SystemMouseCursors.basic,

@@ -77,6 +77,41 @@ class IssueRepository {
     }
   }
 
+  /// 끌어 놓은 자리로 옮긴다(15단계 D15) — [after] 와 [before] 사이.
+  ///
+  /// **캐시에 먼저 옮겨 놓는다.** 두 이웃의 가운데 값으로 임시 자리를 매겨 카드가 곧바로
+  /// 그 자리에 선다. 서버가 정한 진짜 자리가 오면 덮고, 실패하면 원래 값으로 되돌린다 —
+  /// 메뉴 이동([moveTo])과 같은 규칙이다.
+  Future<bool> place(
+    String spaceId,
+    Issue issue,
+    IssueStatus status, {
+    Issue? after,
+    Issue? before,
+  }) async {
+    await _db.upsertIssue(
+      spaceId,
+      issue.copyWith(
+        status: status,
+        position: localPositionBetween(after?.position, before?.position),
+      ),
+    );
+    try {
+      final updated = await _api.move(
+        spaceId,
+        issue.id,
+        status: status,
+        afterId: after?.id,
+        beforeId: before?.id,
+      );
+      await _db.upsertIssue(spaceId, updated);
+      return true;
+    } on ApiException {
+      await _db.upsertIssue(spaceId, issue);
+      return false;
+    }
+  }
+
   /// 캐시에서 키로 찾는다. 보드를 거쳐 들어왔으면 여기서 끝난다.
   Future<Issue?> findCachedByKey(String spaceId, String key) async {
     final rows = await _db.watchIssues(spaceId).first;
@@ -222,3 +257,18 @@ class IssueRepository {
     updatedAt: r.updatedAt,
   );
 }
+
+/// 두 자리 사이의 임시 자리(캐시 전용). 서버의 `positionBetween` 과 같은 뜻이지만 정밀도는
+/// 필요 없다 — 곧 서버 값이 덮는다. 못 읽는 값은 없는 것으로 친다.
+String localPositionBetween(String? after, String? before) {
+  final a = after == null ? null : double.tryParse(after);
+  final b = before == null ? null : double.tryParse(before);
+  final value = switch ((a, b)) {
+    (null, null) => 1.0,
+    (final a?, null) => a + 1,
+    (null, final b?) => b - 1,
+    (final a?, final b?) => (a + b) / 2,
+  };
+  return value.toString();
+}
+

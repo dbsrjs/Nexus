@@ -90,9 +90,44 @@ class BoardActions {
     if (spaceId == null) return false;
     return _ref.read(issueRepositoryProvider).moveTo(spaceId, issue, status);
   }
+
+  /// 끌어 놓기(D15) — [after] 와 [before] 사이로. 제자리 판단은 보드가 한다.
+  Future<bool> place(
+    Issue issue,
+    IssueStatus status, {
+    Issue? after,
+    Issue? before,
+  }) async {
+    final spaceId = _ref.read(currentSpaceIdProvider);
+    if (spaceId == null) return false;
+    return _ref
+        .read(issueRepositoryProvider)
+        .place(spaceId, issue, status, after: after, before: before);
+  }
 }
 
 final boardActionsProvider = Provider<BoardActions>(BoardActions.new);
+
+/// 끌어 놓을 자리 [index] 의 앞뒤 이웃. [column] 은 **놓을 컬럼에 지금 보이는 카드**이고,
+/// 끄는 카드는 빼고 센다 — 같은 컬럼 안에서 옮길 때 자기 자신을 이웃으로 삼지 않게.
+///
+/// 보드가 걸러져(이번 스프린트 · 백로그) 있으면 보이지 않는 카드가 사이에 있을 수 있는데,
+/// 순서는 그대로라 서버의 「앞 < 뒤」 조건은 깨지지 않는다.
+({Issue? after, Issue? before}) dropNeighbours(
+  List<Issue> column,
+  String draggedId,
+  int index,
+) {
+  final others = [
+    for (final issue in column)
+      if (issue.id != draggedId) issue,
+  ];
+  final at = index.clamp(0, others.length);
+  return (
+    after: at == 0 ? null : others[at - 1],
+    before: at == others.length ? null : others[at],
+  );
+}
 
 /// 컬럼 이름. enum 이름을 그대로 보이면 영어가 새 나간다.
 String issueStatusLabel(IssueStatus status) => switch (status) {
