@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **기준 브랜치** | **`main`.** 새 작업은 `feat/*` 를 따 쓰고 끝나면 main 으로 합친다(CI 가 `main` 과 `feat/**` 를 돈다) |
-| **상태** | **1~14단계가 `main` 에 있다** — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널(이어 묻기 포함) · 사용자 설정(이름 · 사진 · 비밀번호 · 음소거 · 테마). 12 · 13단계는 진짜 GitHub · 진짜 임베딩 · 진짜 Gemini 로 완주했다(13-3 이어 묻기 · 자동 전환 포함). **지금은 15 UI/UX 개편** — 15-1(자체 컴포넌트 `lib/ui/`) · 15-2(모든 화면 이관 · 보드 끌어 옮기기)를 마쳤고 뼈대를 `WidgetsApp` 으로 바꾸는 15-3 이 다음이다(§5). 단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md) |
+| **상태** | **1~14단계가 `main` 에 있다** — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널(이어 묻기 포함) · 사용자 설정(이름 · 사진 · 비밀번호 · 음소거 · 테마). 12 · 13단계는 진짜 GitHub · 진짜 임베딩 · 진짜 Gemini 로 완주했다(13-3 이어 묻기 · 자동 전환 포함). **15 UI/UX 개편(자체 UI — 앱에 Material 이 없다)은 `feat/15-own-ui` 에서 끝났고 main 합치기 전이다.** 다음은 16 멤버 · 권한(§5). 단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md) |
 | **새 PC 셋업** | §1 순서대로. `.env` 는 `npm run env:setup` 이 만들고, 손으로 채울 값(GitHub OAuth App · 터널 주소 · AI provider)은 [server/README.md «선택 기능을 켜는 값»](server/README.md). PC 를 오갈 때 옮겨지지 않는 것은 `nexus-pc-handoff` 스킬 |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
@@ -193,6 +193,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `flutter run` 을 백그라운드로 띄우고 싶다 | stdin 이 EOF 라 죽는 것이므로 **stdin 을 열어 두면 산다**: `tail -f /dev/null \| flutter run -d web-server --web-port=5173 …`. 디버그 웹 빌드는 난독화되지 않아 **예외 원문과 Dart 스택이 그대로 보인다** — 릴리스 빌드(`flutter build web`)로는 `dartException: Sk` 같은 축약만 나와 원인을 못 찾는다 |
 | `prisma migrate dev` 가 거부됨 | 비대화형 환경에서 HNSW 드리프트를 감지해 확인을 물으려 한다. `migrate diff --from-schema-datasource … --to-schema-datamodel … --script` 로 SQL 을 만들어 손질한 뒤 `prisma:deploy` — 절차는 `nexus-migration` 스킬 |
 | `adb shell input text` 가 NullPointerException | 한글을 넣지 못한다. 실기기 검증 문구는 영문으로 쓸 것 |
+| `adb shell input swipe` 로 길게 눌러 끌기가 시작되지 않음 | 끌기는 500ms 길게 누르기 뒤에 시작하는데 `swipe` · `draganddrop` 은 누르는 시간을 따로 못 준다. `input motionevent DOWN x y` → 1초 → `MOVE` … → `UP` 으로 나눠 보낸다 |
 | `--dart-define=ROUTES=/s/...` 가 `s:/...` 로 바뀌어 들어감 | Git Bash 가 `/` 로 시작하는 인자를 Windows 경로로 바꾼다. `MSYS_NO_PATHCONV=1 flutter test …` 로 끈다 |
 | 브라우저 자동화로 Flutter 웹 입력이 안 먹음 | Flutter 웹은 캔버스로 그려 접근성 트리가 비어 있다. `flutter-semantics-placeholder` 를 클릭해 시맨틱스를 켜면 입력 요소가 노출된다. 그래도 **BackSpace · 값 직접 대입은 컨트롤러까지 전달되지 않고 타이핑만 append 된다** — 폼을 비우려면 페이지를 새로고침할 것 |
 
@@ -223,12 +224,15 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | Gemini 모델이 산발적으로 503 을 냄 | `-latest` 별칭은 "새 출시마다 핫스왑" 되는 가장 붐비는 모델을 가리킨다. 특정 안정화 버전(예: `gemini-3.5-flash`)을 박아 둘 것. **혼잡은 날마다 바뀐다** — 9-22 에 503 이던 3.5-flash 가 9-23 엔 매번 200 이었다 (13-1 · LLM 교체) |
 | AI 답이 4분 넘게 오지 않음 | Gemini 가 붐비면 200 을 **255초** 뒤에 준다(3.5-flash 실측). 전환은 429 · 5xx 에서만 일어나 느린 응답에는 소용이 없었다. 어댑터가 `AbortSignal.timeout` 으로 **60초**(`LLM_TIMEOUT_SEC`)에 끊고 504 로 던져 전환 모델이 받는다. Node 의 `fetch` 는 `TimeoutError` 로 던진다 (LLM 교체 후) |
 | 생각하는 모델로 바꿨더니 답이 몇 줄에서 끊김 | Gemini 3.x 는 **생각 토큰도 `maxOutputTokens` 에서 쓴다.** 3.5-flash 는 기본(medium)으로 생각에만 ~2,600 토큰을 써 상한 2048 에서 잘렸다. 상한 8192 · `thinkingLevel: low` 로 두고, 잘린 답(`finishReason: MAX_TOKENS`)은 러너가 실패로 돌린다 (LLM 교체) |
-| `ListTile` 의 선택 배경 · 눌림 물결이 안 보이고 디버그 콘솔에 assertion | `ListTile` 은 가장 가까운 `Material` 에 그린다. 사이에 색을 가진 `Container`(= `ColoredBox`)가 끼면 덮인다. **배경은 `Material(color:)` 로 칠한다** — 채널 패널이 그랬고 통합 테스트가 처음 잡았다 (2026-09-27) |
 | 통합 테스트에서 누른 버튼이 아무 일도 안 함(경고도 없음) | 입력으로 켜지는 버튼은 **다음 프레임에** 켜진다. `enterText` 직후 `tap` 하면 꺼진 버튼을 누른다 — 사이에 `pump()`. 팝업 메뉴는 펼쳐지는 동안 누르면 빗나간다(이쪽은 경고가 뜬다) (14) |
 | 테스트에서 provider 안의 `ref.listen` 이 아무 이벤트도 못 받음 | **Riverpod 3 은 구독자가 없는 provider 를 멈춘다.** `container.read` 로는 안 살아난다 — `container.listen` 으로 붙들 것. 앱은 `main.dart` 가 `watch` 해서 괜찮다 (2026-09-27) |
 | 길게 누르기 시트가 `BOTTOM OVERFLOWED` 로 잘림 | `showModalBottomSheet` 는 기본 최대 높이가 화면의 9/16 이다. `isScrollControlled: true` 가 없으면 항목이 늘 때 조용히 넘친다 (13-1) |
 | 실패한 provider 의 오류 화면이 수십 초 동안 안 뜸(뼈대만 보임) | **Riverpod 3 은 실패한 provider 를 스스로 재시도하고 그동안 상태가 「로딩 + 오류」다.** `AsyncError()` 패턴은 그 상태를 못 잡는다 — `hasError` 로 가를 것. 회전 스피너 시절에는 `pumpAndSettle` 이 재시도가 끝날 때까지 기다려 줘 테스트가 가렸다 (15-2) |
 | `tester.pageBack()` 이 뒤로 가기를 못 찾음 | Material · Cupertino 버튼만 찾는다. 자체 머리 줄은 `find.byType(NxBackButton)` 을 누른다 (15-2) |
+| 셸 안에서 띄운 오버레이가 모바일 탭 줄 아래에 깔림 | `ShellRoute` 는 제 Navigator(= 제 Overlay)를 가진다. 화면 전체를 덮을 것(동작 카드)은 **`Overlay.of(context, rootOverlay: true)`** 에 넣는다 (15-3) |
+| 오버레이에 띄운 패널이 앵커가 아니라 화면 끝에 붙음 | 오버레이 안의 `Align` 은 오버레이 전체로 늘어난다. 위로 여는 메뉴를 `topLeft` 로 두어 화면 맨 위로 튀었다 — **여는 방향 쪽 모서리**에 붙일 것 (15-3) |
+| 끌기가 시작되자 옆 카드가 흐려짐 | 키 없는 목록에서 끄는 항목이 빠지면 **이웃이 그 자리의 State 를 물려받는다.** `Draggable` 이 든 목록은 항목마다 키 + `findChildIndexCallback` (15-3) |
+| 같은 id 의 색이 플랫폼마다 다름 | **`String.hashCode` 는 VM 과 웹(JS)에서 다르고** 실행마다 같다는 보장도 없다. 화면에 드러나는 값은 직접 해시한다 — 웹의 수는 2^53 까지만 정확하니 31비트 안에서 굴린다(`avatarSlot`) (15-3) |
 | 화면을 닫으면 디버그 빌드에서 `deactivated widget's ancestor` 로 멈춤 | `dispose()` 안에서 `ProviderScope.containerOf(context)` 같은 조상 조회를 했다. **`didChangeDependencies` 에서 참조를 잡아 두고** `dispose` 는 그것만 쓴다 — 예외로 정리도 못 돌아 구독이 남았다 (13-2 후 `74ccc01`) |
 
 ---
@@ -320,9 +324,9 @@ JwtAuthGuard         전역(APP_GUARD). @Public() 으로만 예외
     멘션은 저장하지 않고 `@everyone` 이 `@channel` 을 덮는다 (7-4)
 13. **머무는 곳은 셸 안, 파고드는 곳은 덮어서.** 채널 · 이슈 보드 · 스프린트 · 파일은
     셸 안, 특정 메시지 · 저장소에서 파고드는 스레드 · 저장소 · 커밋 · PR 은 덮어서 연다.
-    **카드에 그림자를 쓰지 않는다**(표면 세 단계가 깊이를 맡는다). 컴포넌트 테마와
-    `fontFamily` 는 `ThemeData` 에 둔다 — 스타일마다 넣으면 `textTheme` 에 없는
-    스타일이 시스템 폰트로 그려진다 (UI 리디자인)
+    **카드에 그림자를 쓰지 않는다**(표면 세 단계가 깊이를 맡는다). 색 · 글자 · 간격은
+    `NxTheme` 에서만 꺼낸다 — 화면에 값을 박으면 다크 · 라이트 한쪽이 깨진다
+    (UI 리디자인 · 15)
 14. **웹훅은 서명이 곧 인증이다.** `@Public()` 이지만 **원문 바이트**(`rawBody`)로
     HMAC 을 검증하고 `timingSafeEqual` 로 비교한다 — 파싱한 객체를 다시 직렬화하면
     멀쩡한 요청이 위조로 판정된다. 시스템 메시지의 작성자는 **스페이스 멤버가 아니고
@@ -362,7 +366,6 @@ common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug
 
 ```
 core/env.dart            API 주소를 읽는 유일한 지점. 하드코딩 금지
-core/theme.dart          design-system/tokens.css 를 이름까지 그대로 이식(Material ThemeData — 15-3 에서 지운다)
 core/router.dart         go_router + 인증 가드(redirect). 셸 안(머무는 곳) / 셸 밖(덮어서)
 core/breakpoints.dart    Layout(mobile/tablet/desktop) + 고정 폭 상수
 data/api/                영역마다 한 파일 + api_client(dio · 401 → 리프레시 1회 재시도)
@@ -405,7 +408,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 - **API 주소는 `core/env.dart` 밖에서 만들지 않는다.** 옛 `www/api.js:6` 이 `localhost` 를 박아 실기기에서 연결 불가였다.
 - **디자인 토큰 이름을 바꾸지 않는다.** `--bg-surface` → `bgSurface` 처럼 표기만 바꿔 1:1 대응시킨다. 갈라지면 디자인 문서와 코드를 대조할 수 없다.
 - **서버 오류 문구를 화면에 그대로 쓰지 않는다.** 실패 종류(`AuthFailure` · `ApiFailure`)만 받아 앱이 자기 문구를 쓴다. 서버 문구가 바뀔 때마다 앱 UX 가 흔들리면 안 된다.
-- **화면은 `ui/` 만 본다(15단계).** Material · Cupertino 위젯도, 플랫폼 관용 패턴(손잡이 바텀시트 · NavigationBar · 햄버거 · 물결 · 목록 줄 앞 장식 아이콘)도 쓰지 않는다. `test/no_platform_ui_test.dart` 가 material · cupertino import 를 **줄어드는 허용 목록**으로 막는다 — 화면을 옮기면 목록에서 그 줄을 지워야 테스트가 통과한다(15-3 에서 빈 목록). 설계는 [15단계 설계](docs/superpowers/specs/2026-09-27-15-자체-UI-design.md)
+- **화면은 `ui/` 만 본다(15단계).** Material · Cupertino 위젯도, 플랫폼 관용 패턴(손잡이 바텀시트 · NavigationBar · 햄버거 · 물결 · 목록 줄 앞 장식 아이콘)도 쓰지 않는다. `test/no_platform_ui_test.dart` 가 material · cupertino import 를 **줄어드는 허용 목록**으로 막는다 — 화면을 옮기면 목록에서 그 줄을 지워야 테스트가 통과한다(15-3 에서 비었다 — **다시 채우지 않는다**). 설계는 [15단계 설계](docs/superpowers/specs/2026-09-27-15-자체-UI-design.md)
 - **반응형 폭 분기는 `features/shell/app_shell.dart` 한 곳에서만 한다.** 안쪽 위젯은 자기가 어떤 폭에 있는지 모른다. 분기가 화면마다 흩어지면 손댈 수 없게 된다.
 - **메시지 목록은 서버가 주는 최신순 그대로 둔다.** 화면은 `reverse: true` 로 그린다. 뒤집어 보관하면 페이지를 이어붙일 때마다 다시 뒤집어야 한다.
 - **전송 실패한 메시지를 조용히 지우지 않는다.** `failed` 로 표시해 재시도·삭제를 남긴다. 사라지면 사용자는 보냈다고 믿는다.
@@ -468,7 +471,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 | — | LLM 교체 — `gemini-3.1-flash-lite` → **`gemini-3.5-flash`**(무료 티어 재측정) · 생각 수준 `low` · 상한 8192 · 잘린 답 실패 처리 · **429 · 5xx 면 3.1-flash-lite 로 자동 전환**(무료 한도 3.5-flash 하루 20회 · lite 500회, 전환 답은 캐시 제외) | ✅ |
 | 13-3 | AI 멀티턴 — `parentRunId` 사슬 · user/assistant 역할 · 첫 문답 근거 물려받기 · 상한 10 · 앱 문답 목록 | ✅ |
 | 14 | 사용자 설정 — 설정 창(표시 이름 · 프로필 사진 · 비밀번호 변경 · 채널 음소거 · 테마) · `user:updated` · 아바타 열람 규칙 | ✅ |
-| **15** | **UI/UX 개편** — Flutter 기본(Material) 컴포넌트를 전부 자체 UI 로 교체 · 디자인 다듬기 · 이슈 보드 드래그 정렬 화면. 설계는 [15단계 설계](docs/superpowers/specs/2026-09-27-15-자체-UI-design.md) — 15-1 기반(자체 컴포넌트 · import 검사 · 갤러리) ✅ · 15-2 화면 옮기기(보드 끌어 옮기기 포함) ✅ · 15-3 뼈대(WidgetsApp) | 🔸 |
+| 15 | UI/UX 개편 — Flutter 기본(Material) 컴포넌트를 전부 자체 UI 로 교체 · 디자인 다듬기 · 이슈 보드 드래그 정렬 화면. 설계는 [15단계 설계](docs/superpowers/specs/2026-09-27-15-자체-UI-design.md) — 15-1 기반(자체 컴포넌트 · import 검사 · 갤러리) · 15-2 화면 옮기기(보드 끌어 옮기기 포함) · 15-3 뼈대(WidgetsApp) · Android · 웹 확인 | ✅ |
 | **16** | **멤버 · 권한** — 앱의 초대 · 멤버 관리 화면 · 비공개 채널 멤버 추가 · 제거 · 채널별 권한(`permissions` 재작성) | |
 | **17** | **DM · 프레즌스 · 타이핑 표시** — 스페이스 안 1:1 DM · 온라인 상태 · 입력 중 | |
 | **18** | **인앱 알림** — 알림함(멘션 · DM · 스레드 답글) · `notifications` 재작성 · 설정 창의 알림 스위치 | |
@@ -485,7 +488,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 [진행 기록](docs/진행-기록.md) «빚 정리 (2026-09-27)».
 
 - **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 454개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 16종 677 케이스**(14단계 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
-- **앱 통합 테스트가 CI 에서 돌지 않는다.** `npm run app:flow` 는 Windows 데스크톱에서만 돈다 — CI 는 ubuntu 인데 앱에 `linux/` 플랫폼이 없다. 들이는 것은 플랫폼을 하나 늘리는 결정이라 «마지막» 단계의 테넌트 격리 통합 테스트와 함께 정한다. 그때까지는 **화면을 건드린 변경마다 사람이 돌린다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **400개**
+- **앱 통합 테스트가 CI 에서 돌지 않는다.** `npm run app:flow` 는 Windows 데스크톱에서만 돈다 — CI 는 ubuntu 인데 앱에 `linux/` 플랫폼이 없다. 들이는 것은 플랫폼을 하나 늘리는 결정이라 «마지막» 단계의 테넌트 격리 통합 테스트와 함께 정한다. 그때까지는 **화면을 건드린 변경마다 사람이 돌린다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **413개**
 - **`local`(Ollama) LLM 경로는 실측하지 않았다(13-1) — `LLM_PROVIDER=local` 로 바꾸기 전에 먼저 태운다.** 지금 쓰는 경로는 `gemini` 이고 실제로 확인했다. `local` 은 쓰는 곳이 없어 미뤄도 깨지는 것이 없다(2026-09-27 판단). 바꾸게 되는 계기는 Gemini 무료 한도(3.5-flash 하루 20회)가 모자라거나, 비공개 저장소 코드를 외부로 보내지 않으려 할 때 — 늦어도 «마지막» 단계에서 운영 provider 를 정할 때다. `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. 설치(`winget install Ollama.Ollama`)와 모델 받기(약 4.7GB)는 사람이 한다.
 - **인덱싱 큐의 5xx 소진은 단위 테스트만 덮는다.** 재시도 대기가 1분씩이라 계약 검증으로 세 번을 태우면 3분이 걸린다. 판정(`shouldGiveUpIndexing` · `indexRetryDelayMs`)은 순수 함수로 빼 두었다. 429 · 리스 유효/만료는 `check:indexing` 이 본다.
 - `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다. 개발 PC 가 둘 다 Windows 라 그대로 둔다.
