@@ -2,6 +2,19 @@ import 'package:flutter/widgets.dart';
 
 import '../../ui/theme.dart';
 
+/// [seed] 가 받는 아바타 색 칸. **플랫폼과 실행에 상관없이 같은 값이어야 한다.**
+///
+/// `String.hashCode` 는 Dart VM 과 웹(JS)에서 다르고 실행마다 같다는 보장도 없다 —
+/// 같은 사람이 Android 에서는 베이지, 웹에서는 청록으로 보였다(15-3). 31 곱 해시를
+/// 31비트 안에서 굴린다 — 웹의 수는 2^53 까지만 정확해 FNV 처럼 크게 곱하면 어긋난다.
+int avatarSlot(String seed, int slots) {
+  var h = 0;
+  for (final unit in seed.codeUnits) {
+    h = (h * 31 + unit) & 0x7fffffff;
+  }
+  return h % slots;
+}
+
 /// 이름의 첫 글자를 담은 원형 아바타.
 ///
 /// 색은 `hash(seed) % 8` 로 고른다 — **같은 사람·같은 스페이스는 어디서든 같은
@@ -34,7 +47,7 @@ class NexusAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = NxTheme.of(context).colors;
-    final color = c.avatars[seed.hashCode.abs() % c.avatars.length];
+    final color = c.avatars[avatarSlot(seed, c.avatars.length)];
     final initial = label.characters.isEmpty ? '?' : label.characters.first;
     final radius = squircle ? NxRadius.md * 2 : size;
 
