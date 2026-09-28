@@ -313,10 +313,19 @@ bool get _pointerFirst =>
     defaultTargetPlatform != TargetPlatform.iOS;
 
 class MessageTile extends ConsumerStatefulWidget {
-  const MessageTile({super.key, required this.message, required this.grouped});
+  const MessageTile({
+    super.key,
+    required this.message,
+    required this.grouped,
+    this.showThreadSummary = true,
+  });
 
   final Message message;
   final bool grouped;
+
+  /// 「답글 N개」. 스레드 화면의 뿌리 메시지는 끈다 — 이미 그 스레드 안이라 누르면
+  /// 같은 화면이 한 겹 더 열렸다.
+  final bool showThreadSummary;
 
   @override
   ConsumerState<MessageTile> createState() => _MessageTileState();
@@ -463,7 +472,8 @@ class _MessageTileState extends ConsumerState<MessageTile> {
                 if (message.reactions.isNotEmpty)
                   _ReactionBar(message: message),
                 if (message.pinned) const _PinnedMark(),
-                if (message.hasThread) _ThreadSummary(message: message),
+                if (message.hasThread && widget.showThreadSummary)
+                  _ThreadSummary(message: message),
                 if (message.failed) _FailedActions(message: message),
               ],
             ),

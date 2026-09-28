@@ -13,6 +13,7 @@ import 'package:nexus_app/data/auth_storage.dart';
 import 'package:nexus_app/data/local/app_database.dart';
 import 'package:nexus_app/data/settings_storage.dart';
 import 'package:nexus_app/features/auth/auth_controller.dart';
+import 'package:nexus_app/features/chat/thread_screen.dart';
 import 'package:nexus_app/features/settings/settings_controller.dart';
 import 'package:nexus_app/features/settings/theme_controller.dart';
 import 'package:nexus_app/features/shell/app_shell.dart';
@@ -101,6 +102,15 @@ void main() {
     await tester.tap(find.text('답글 1개'));
     await tester.pumpUntil(_body(fx.replyBody));
     expect(find.text('스레드'), findsOneWidget);
+    // 뿌리 메시지에는 「답글 N개」가 없다 — 누르면 같은 스레드가 한 겹 더 열렸다.
+    // 스레드 화면 안에서만 찾는다 — 덮어 여는 동안에는 아래의 채널도 아직 무대에 있다.
+    expect(
+      find.descendant(
+        of: find.byType(ThreadScreen),
+        matching: find.text('답글 1개'),
+      ),
+      findsNothing,
+    );
     // 자체 머리 줄의 뒤로 가기(NxBackButton) — tester.pageBack 은 Material · Cupertino 버튼만 찾는다.
     await tester.tap(find.byType(NxBackButton));
     await tester.pumpUntil(_body(live));

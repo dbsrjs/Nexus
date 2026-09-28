@@ -46,4 +46,28 @@ void main() {
     final deleted = tester.getTopLeft(find.text('삭제된 메시지입니다.')).dx;
     expect(deleted, body);
   });
+
+  testWidgets('★ 스레드 뿌리로 그릴 때는 「답글 N개」를 감춘다 - 같은 스레드가 한 겹 더 열렸다', (
+    tester,
+  ) async {
+    final root = message('m1').copyWith(replyCount: 2);
+    Future<void> pump({required bool summary}) => tester.pumpWidget(
+      ProviderScope(
+        child: nxTestApp(
+          home: NxPage(
+            body: MessageTile(
+              message: root,
+              grouped: false,
+              showThreadSummary: summary,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await pump(summary: true);
+    expect(find.text('답글 2개'), findsOneWidget);
+    await pump(summary: false);
+    expect(find.text('답글 2개'), findsNothing);
+  });
 }

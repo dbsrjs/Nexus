@@ -120,7 +120,11 @@ class _ParentBlock extends StatelessWidget {
         border: Border(bottom: BorderSide(color: c.divider)),
       ),
       padding: const EdgeInsets.symmetric(vertical: NxSpacing.sp4),
-      child: MessageTile(message: parent, grouped: false),
+      child: MessageTile(
+        message: parent,
+        grouped: false,
+        showThreadSummary: false,
+      ),
     );
   }
 }
