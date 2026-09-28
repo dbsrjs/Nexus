@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../shell/app_shell.dart';
 import '../../data/socket/socket_event.dart';
 import '../../domain/models/connection.dart';
 import '../../domain/models/repo.dart';
@@ -102,7 +103,7 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
       appBar: AppBar(
         // 셸 안이라 돌아갈 곳이 스택에 없다. 판에서 바로 오는 화면이다.
         automaticallyImplyLeading: false,
-        title: const Text('저장소'),
+        title: const ShellPaneTrigger(child: Text('저장소')),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

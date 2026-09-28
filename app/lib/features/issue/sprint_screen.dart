@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../shell/app_shell.dart';
 import '../../core/theme.dart';
 import '../../domain/models/sprint.dart';
 import 'burndown_chart.dart';
@@ -31,7 +32,7 @@ class _SprintScreenState extends ConsumerState<SprintScreen> {
       appBar: AppBar(
         // 셸 안이라 돌아갈 곳이 스택에 없다. 판에서 바로 오는 화면이다.
         automaticallyImplyLeading: false,
-        title: const Text('스프린트'),
+        title: const ShellPaneTrigger(child: Text('스프린트')),
         actions: [
           IconButton(
             tooltip: '새 스프린트',

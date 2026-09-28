@@ -15,7 +15,6 @@ const _allowed = <String>{
   'lib/core/router.dart',
   'lib/core/theme.dart',
   'lib/features/ai/ai_panel.dart',
-  'lib/features/channel/channel_list.dart',
   'lib/features/chat/attachment_widgets.dart',
   'lib/features/chat/chat_screen.dart',
   'lib/features/chat/mention_composer_controller.dart',
@@ -38,9 +37,6 @@ const _allowed = <String>{
   'lib/features/repo/pulls_screen.dart',
   'lib/features/repo/repo_picker_sheet.dart',
   'lib/features/repo/repos_screen.dart',
-  'lib/features/shell/app_shell.dart',
-  'lib/features/shell/channel_pane.dart',
-  'lib/features/shell/space_rail.dart',
   'lib/main.dart',
 };
 

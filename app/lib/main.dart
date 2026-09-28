@@ -41,8 +41,14 @@ class NexusApp extends ConsumerWidget {
       routerConfig: ref.watch(routerProvider),
       // 자체 UI 의 바탕(15단계). 옮긴 화면은 NxTheme 을, 아직 안 옮긴 화면은 ThemeData 를
       // 본다 — 15-3 에서 MaterialApp 을 걷으면 이 줄만 남는다.
-      builder: (context, child) =>
-          NxRoot(preference: preference, child: child!),
+      //
+      // **투명 Material 은 15-2 동안의 임시 발판이다.** 아직 안 옮긴 화면의 TextField ·
+      // InkWell 은 Material 조상이 있어야 그려지는데, 옮긴 셸이 Scaffold 를 걷어 그 조상이
+      // 사라졌다(대화 입력창이 「No Material widget found」로 멈췄다). 15-3 에서 지운다.
+      builder: (context, child) => NxRoot(
+        preference: preference,
+        child: Material(type: MaterialType.transparency, child: child!),
+      ),
       // **기본은 시스템**이다. 디자인은 다크를 전제로 했지만
       // (design-system/tokens.css 가 다크를 :root 에 둔다) OS 설정을 따르는
       // 것이 사용자가 이미 고른 취향을 존중하는 길이다. 레일 하단 계정

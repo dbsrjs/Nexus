@@ -121,7 +121,9 @@ void main() {
     await tester.pumpUntil(find.text(bobRenamed));
 
     // ── 14단계: 설정 창 — 계정 메뉴 → 이름 바꾸기 → 닫기 ──
-    await tester.tap(find.byTooltip('AppFlow A'));
+    await tester.tap(
+      find.byWidgetPredicate((w) => w is NxTooltip && w.message == 'AppFlow A'),
+    );
     await tester.pumpUntil(find.text('설정'));
     // 메뉴가 펼쳐지는 동안은 누른 자리가 항목에 닿지 않는다.
     await tester.pump(const Duration(milliseconds: 500));
@@ -177,7 +179,10 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpUntil(_body(sent));
     await tester.pumpUntil(find.text(aliceRenamed));
-    expect(find.byIcon(Icons.notifications_off_outlined), findsOneWidget);
+    expect(
+      find.byWidgetPredicate((w) => w is NxIcon && w.icon == NxIcons.mutedBell),
+      findsOneWidget,
+    );
 
     expect(tester.takeException(), isNull);
   });

@@ -1,18 +1,20 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/channel.dart';
+import '../../ui/ui.dart';
 import '../space/space_controller.dart';
 import 'channel_controller.dart';
 
-/// 채널 패널의 본문. 카테고리 → 채널 순으로 그린다.
+/// 채널 패널의 채널 부분. 카테고리 → 채널 순으로 그린다.
+///
+/// **스스로 스크롤하지 않는다** — 채널 패널이 작업 갈래와 함께 한 목록으로 민다.
 class ChannelList extends ConsumerWidget {
   const ChannelList({super.key, this.onChannelTap});
 
-  /// 드로어로 열렸을 때 채널을 고르면 드로어를 닫기 위한 콜백.
+  /// 밀려 나온 패널에서 채널을 고르면 패널을 닫기 위한 콜백.
   final VoidCallback? onChannelTap;
 
   @override
@@ -21,41 +23,32 @@ class ChannelList extends ConsumerWidget {
     final groups = ref.watch(channelGroupsProvider);
 
     return channels.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      // 자리를 지키는 뼈대(15단계 D10).
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: NxSpacing.sp6),
+        child: NxSkeleton(lines: 5, lineHeight: 14),
+      ),
       error: (error, _) => _ErrorBlock(
         error: error,
         onRetry: () => ref.invalidate(channelsProvider),
       ),
       data: (_) {
         if (groups.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(NexusSpacing.sp6),
-              child: Text(
-                '볼 수 있는 채널이 없습니다.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+          return Padding(
+            padding: const EdgeInsets.all(NxSpacing.sp6),
+            child: Text(
+              '볼 수 있는 채널이 없습니다.',
+              textAlign: TextAlign.center,
+              style: NxTheme.of(context).text.secondary,
             ),
           );
         }
 
-        return ListView(
-          padding: const EdgeInsets.symmetric(vertical: NexusSpacing.sp4),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             for (final group in groups) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  NexusSpacing.sp5,
-                  NexusSpacing.sp4,
-                  NexusSpacing.sp5,
-                  NexusSpacing.sp2,
-                ),
-                child: Text(
-                  group.title,
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ),
+              PaneSectionTitle(group.title),
               for (final channel in group.channels)
                 _ChannelTile(channel: channel, onTap: onChannelTap),
             ],
@@ -66,6 +59,25 @@ class ChannelList extends ConsumerWidget {
   }
 }
 
+/// 목록 묶음의 제목(「작업」 · 카테고리 이름). 11px · 굵게 · 넓은 자간.
+class PaneSectionTitle extends StatelessWidget {
+  const PaneSectionTitle(this.text, {super.key, this.first = false});
+
+  final String text;
+
+  /// 맨 위 묶음은 위 여백을 줄인다.
+  final bool first;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(10, first ? 4 : NxSpacing.sp6, 10, 6),
+    child: Semantics(
+      header: true,
+      child: Text(text, style: NxTheme.of(context).text.label),
+    ),
+  );
+}
+
 class _ChannelTile extends ConsumerWidget {
   const _ChannelTile({required this.channel, this.onTap});
 
@@ -74,120 +86,83 @@ class _ChannelTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
     final selected = ref.watch(currentChannelIdProvider) == channel.id;
     final spaceId = ref.watch(currentSpaceIdProvider);
     // **음소거면 안 읽음을 없는 것으로 친다** — 굵기 · 뱃지 둘 다. 멘션은 나를
     // 부른 것이라 음소거해도 남긴다(디스코드와 같다, 14단계 설계 D17).
     final unread = channel.muted ? 0 : channel.unreadCount;
+    final bold = selected || unread > 0;
+
+    // 채널 앞 표시는 **뜻이 있는 것**만 — `#` 는 글자, 비공개는 자물쇠, 음소거는 종.
+    final Widget mark = channel.muted
+        ? NxIcon(NxIcons.mutedBell, size: 13, color: c.borderStrong)
+        : channel.isPrivate
+        ? NxIcon(
+            NxIcons.lock,
+            size: 13,
+            color: selected ? c.accent : c.borderStrong,
+          )
+        : Text(
+            '#',
+            style: nx.text.mono.copyWith(
+              fontSize: 14,
+              color: selected ? c.accent : c.borderStrong,
+            ),
+          );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: NexusSpacing.sp3,
-        vertical: 1,
-      ),
-      child: Material(
-        color: selected ? theme.colorScheme.surfaceContainerHighest : Colors.transparent,
-        borderRadius: BorderRadius.circular(NexusRadius.sm),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(NexusRadius.sm),
-          onTap: () {
-            if (spaceId != null) {
-              context.go('/s/$spaceId/c/${channel.id}');
-            }
-            onTap?.call();
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: NexusSpacing.sp3,
-              vertical: NexusSpacing.sp3,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  channel.muted
-                      ? Icons.notifications_off_outlined
-                      : channel.isPrivate
-                          ? Icons.lock_outline
-                          : Icons.tag,
-                  size: 16,
-                  color: theme.textTheme.bodySmall?.color,
-                ),
-                const SizedBox(width: NexusSpacing.sp2),
-                Expanded(
-                  child: Text(
-                    channel.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      // 안 읽은 것이 있으면 굵게 — 뱃지와 함께 두 겹으로 표시한다.
-                      fontWeight: unread > 0 ? FontWeight.w600 : FontWeight.w400,
-                      // 음소거는 흐리게. 아이콘과 같은 한 단계 낮은 글자색이다.
-                      color: channel.muted ? theme.textTheme.bodySmall?.color : null,
-                    ),
+      padding: const EdgeInsets.only(bottom: 2),
+      child: NxPressable(
+        selected: selected,
+        semanticLabel: channel.name,
+        onPressed: () {
+          if (spaceId != null) context.go('/s/$spaceId/c/${channel.id}');
+          onTap?.call();
+        },
+        builder: (context, s) => AnimatedContainer(
+          duration: NxMotion.micro,
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: selected
+                ? c.accentSubtle
+                : (s.hovered || s.pressed
+                      ? c.bgElevated
+                      : const Color(0x00000000)),
+            borderRadius: BorderRadius.circular(NxRadius.md),
+          ),
+          child: Row(
+            children: [
+              SizedBox(width: 14, child: Center(child: mark)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  channel.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: nx.text.base.copyWith(
+                    // 안 읽은 것이 있으면 굵게 — 뱃지와 함께 두 겹으로 표시한다.
+                    fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
+                    // 음소거는 가장 흐리게, 읽은 채널은 보조 글자색.
+                    color: channel.muted
+                        ? c.borderStrong
+                        : (bold ? c.textPrimary : c.textSecondary),
                   ),
                 ),
-                // 멘션은 안 읽은 수와 **따로** 보여 준다. 나를 부른 것이라
-                // 무게가 다르고, 숫자에 묻히면 놓친다.
-                if (channel.mentionCount > 0) ...[
-                  _MentionBadge(count: channel.mentionCount),
-                  const SizedBox(width: NexusSpacing.sp1),
-                ],
-                if (unread > 0) _UnreadBadge(count: unread),
+              ),
+              // 멘션은 안 읽은 수와 **따로** 보여 준다. 나를 부른 것이라
+              // 무게가 다르고, 숫자에 묻히면 놓친다.
+              if (channel.mentionCount > 0) ...[
+                const SizedBox(width: 6),
+                NxBadge(count: channel.mentionCount, mention: true),
               ],
-            ),
+              if (unread > 0) ...[
+                const SizedBox(width: 6),
+                NxBadge(count: unread),
+              ],
+            ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 안 읽은 멘션 수. 일반 뱃지와 색을 달리해 한눈에 갈린다.
-class _MentionBadge extends StatelessWidget {
-  const _MentionBadge({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.error,
-        borderRadius: BorderRadius.circular(NexusRadius.full),
-      ),
-      child: Text(
-        // 개수보다 "불렸다"는 사실이 먼저다. 한 건이면 @ 만 보여 준다.
-        count > 1 ? '@$count' : '@',
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onError,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-class _UnreadBadge extends StatelessWidget {
-  const _UnreadBadge({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary,
-        borderRadius: BorderRadius.circular(NexusRadius.full),
-      ),
-      child: Text(
-        count > 99 ? '99+' : '$count',
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onPrimary,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -206,19 +181,24 @@ class _ErrorBlock extends StatelessWidget {
         ? messageFor((error as ApiException).failure)
         : messageFor(ApiFailure.server);
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(NexusSpacing.sp6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(text,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: NexusSpacing.sp4),
-            OutlinedButton(onPressed: onRetry, child: const Text('다시 시도')),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(NxSpacing.sp6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: NxTheme.of(context).text.secondary,
+          ),
+          const SizedBox(height: NxSpacing.sp4),
+          NxButton(
+            label: '다시 시도',
+            kind: NxButtonKind.secondary,
+            size: NxSize.sm,
+            onPressed: onRetry,
+          ),
+        ],
       ),
     );
   }

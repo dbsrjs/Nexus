@@ -27,6 +27,7 @@ import 'message_controller.dart';
 import '../issue/new_issue_sheet.dart';
 import '../ai/ai_panel.dart';
 import '../ai/ai_request.dart';
+import '../shell/app_shell.dart';
 import 'selection_app_bar.dart';
 import 'selection_controller.dart';
 
@@ -151,9 +152,23 @@ class _ChannelHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.tag, size: 18, color: theme.textTheme.bodySmall?.color),
-          const SizedBox(width: NexusSpacing.sp2),
-          Text(name, style: theme.textTheme.titleSmall),
+          // 좁은 셸에서는 채널 이름이 곧 채널 패널을 여는 버튼이다(15단계 D12).
+          ShellPaneTrigger(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.tag, size: 18, color: theme.textTheme.bodySmall?.color),
+                const SizedBox(width: NexusSpacing.sp2),
+                Flexible(
+                  child: Text(
+                    name,
+                    style: theme.textTheme.titleSmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (topic != null && topic!.isNotEmpty) ...[
             const SizedBox(width: NexusSpacing.sp4),
             Expanded(

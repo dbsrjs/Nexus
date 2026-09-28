@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/breakpoints.dart';
-import '../../core/theme.dart';
+import '../../shared/widgets/nexus_avatar.dart';
 import '../../ui/ui.dart';
 import '../channel/channel_controller.dart';
 import '../settings/settings_widgets.dart';
@@ -20,8 +21,11 @@ import 'space_rail.dart';
 /// | 폭 | 구성 |
 /// |---|---|
 /// | ≥1024 | 레일 + 채널 + 본문 3단 고정 |
-/// | 600~1023 | 본문만. 레일+채널은 드로어 |
-/// | <600 | 본문 + 하단 탭. 채널은 드로어 |
+/// | 600~1023 | 본문만. 레일+채널은 왼쪽에서 밀려 나오는 패널 |
+/// | <600 | 본문 + 아래 글자 탭. 채널은 밀려 나오는 패널 |
+///
+/// **햄버거 · Drawer · NavigationBar 를 쓰지 않는다**(15단계 D12). 패널은 본문 머리의
+/// [ShellPaneTrigger](채널 · 화면 이름 버튼)가 연다.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({
     super.key,
@@ -70,12 +74,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     });
   }
 
-  /// 탭은 셸 안의 갈래를 고른다. **`go` 로 민다** — 이제 넷 다 셸 안에
-  /// 있으므로 덮어서 열 이유가 없다.
-  ///
-  /// 이전에는 보드만 `push` 로 덮어서 열었고 나머지 둘(알림 · 내정보)은
-  /// `setState(_tab)` 만 했다. 그런데 본문은 `_tab` 을 보지 않았으므로
-  /// **눌러도 화면이 그대로였다** — 아무 데도 가지 않는 탭이 둘 있었다.
+  /// 탭은 셸 안의 갈래를 고른다. **`go` 로 민다** — 넷 다 셸 안에 있다.
   void _onTab(int index) {
     final base = '/s/${widget.spaceId}';
     switch (index) {
@@ -98,13 +97,12 @@ class _AppShellState extends ConsumerState<AppShell> {
 
     return switch (layout) {
       Layout.desktop => _DesktopShell(child: widget.child),
-      Layout.tablet =>
-        _CompactShell(showBottomTabs: false, child: widget.child),
+      Layout.tablet => _CompactShell(showTabs: false, child: widget.child),
       Layout.mobile => _CompactShell(
-          showBottomTabs: true,
-          onTab: _onTab,
-          child: widget.child,
-        ),
+        showTabs: true,
+        onTab: _onTab,
+        child: widget.child,
+      ),
     };
   }
 }
@@ -117,19 +115,76 @@ class _DesktopShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // 데스크톱 OS 에는 상태 표시줄이 없지만, **Android 태블릿은 폭이 1024dp 를
-      // 넘으면 이 분기를 탄다.** SafeArea 가 없으면 레일 첫 아바타와 채널 헤더가
-      // 시계·배터리와 겹친다.
-      body: SafeArea(
+    // 데스크톱 OS 에는 상태 표시줄이 없지만, **Android 태블릿은 폭이 1024dp 를
+    // 넘으면 이 분기를 탄다.** NxPage 의 SafeArea 가 레일 · 채널 머리를 시계와
+    // 겹치지 않게 한다.
+    return NxPage(
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SpaceRail(),
+          const ChannelPane(),
+          const NxDivider(vertical: true),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+/// 밀려 나오는 패널을 여는 방법. **셸만 안다** — 좁은 셸이 깔고, 넓은 셸에는 없다.
+class _PaneScope extends InheritedWidget {
+  const _PaneScope({required this.open, required super.child});
+
+  final VoidCallback open;
+
+  @override
+  bool updateShouldNotify(_PaneScope old) => false;
+}
+
+/// 본문 머리의 제목 자리. 좁은 셸에서는 **누르면 채널 패널이 열리는 버튼**이 되고
+/// (스페이스 아바타 + 제목 + ▾ — 햄버거의 자리, 캔버스 「채널 · 모바일」), 넓은 셸에서는
+/// 제목 그대로다. 안쪽 화면은 자기가 어느 폭에 있는지 모른 채 이것으로 제목을 감싼다.
+class ShellPaneTrigger extends ConsumerWidget {
+  const ShellPaneTrigger({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scope = context.dependOnInheritedWidgetOfExactType<_PaneScope>();
+    if (scope == null) return child;
+    final c = NxTheme.of(context).colors;
+    final space = ref.watch(currentSpaceProvider);
+
+    return NxPressable(
+      onPressed: scope.open,
+      semanticLabel: '채널 바꾸기',
+      builder: (context, s) => AnimatedContainer(
+        duration: NxMotion.micro,
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        decoration: BoxDecoration(
+          color: s.hovered || s.pressed
+              ? c.bgElevated
+              : const Color(0x00000000),
+          borderRadius: BorderRadius.circular(NxRadius.md),
+        ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const SpaceRail(),
-            const VerticalDivider(width: 1),
-            const ChannelPane(),
-            const VerticalDivider(width: 1),
-            Expanded(child: child),
+            if (space != null) ...[
+              NexusAvatar(
+                seed: space.id,
+                label: space.name,
+                size: 24,
+                squircle: true,
+              ),
+              const SizedBox(width: NxSpacing.sp4),
+            ],
+            Flexible(child: child),
+            const SizedBox(width: 6),
+            NxIcon(NxIcons.chevronDown, size: 12, color: c.textSecondary),
           ],
         ),
       ),
@@ -137,26 +192,35 @@ class _DesktopShell extends StatelessWidget {
   }
 }
 
-/// 태블릿·모바일 공용. 좌측은 드로어로 접는다.
-class _CompactShell extends ConsumerWidget {
+/// 태블릿 · 모바일 공용. 레일 + 채널 패널은 왼쪽에서 밀려 나온다.
+class _CompactShell extends StatefulWidget {
   const _CompactShell({
-    required this.showBottomTabs,
+    required this.showTabs,
     required this.child,
     this.onTab,
   });
 
-  final bool showBottomTabs;
+  final bool showTabs;
   final Widget child;
   final ValueChanged<int>? onTab;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final space = ref.watch(currentSpaceProvider);
-    final channel = ref.watch(currentChannelProvider);
+  State<_CompactShell> createState() => _CompactShellState();
+}
 
-    // **선택된 탭을 셸이 들고 있지 않는다.** 라우트에서 읽어야 채널 판에서
-    // 직접 이동해도 탭이 따라온다. 이전에는 _tab 을 들고 있었는데 본문은
-    // 그것을 보지 않아 둘이 어긋났다.
+class _CompactShellState extends State<_CompactShell> {
+  bool _open = false;
+
+  void _setOpen(bool open) {
+    if (_open != open) setState(() => _open = open);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = NxTheme.of(context).colors;
+
+    // **고른 탭을 셸이 들고 있지 않는다.** 라우트에서 읽어야 채널 패널에서
+    // 직접 이동해도 탭이 따라온다.
     final location = GoRouterState.of(context).uri.path;
     final selectedTab = switch (location) {
       final p when p.contains('/issues') => 1,
@@ -164,98 +228,127 @@ class _CompactShell extends ConsumerWidget {
       final p when p.contains('/files') => 3,
       _ => 0,
     };
+    const paneWidth = NexusPaneWidth.rail + NexusPaneWidth.channels;
 
-    return Scaffold(
-      appBar: AppBar(
-        // 채널이 열려 있으면 채널 이름이 더 유용하다. 스페이스 이름은 드로어에 있다.
-        title: Text(channel?.name ?? space?.name ?? '…'),
-      ),
-      drawer: Builder(
-        builder: (drawerContext) => Drawer(
-          width: NexusPaneWidth.rail + NexusPaneWidth.channels + 1,
-          // Drawer 는 상태 표시줄 아래까지 그린다. SafeArea 가 없으면 레일의 첫
-          // 아바타와 채널 헤더가 시계·배터리와 겹친다.
-          child: SafeArea(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SpaceRail(),
-                const VerticalDivider(width: 1),
-                Expanded(
-                  child: ChannelPane(
-                    onClose: () => Scaffold.of(drawerContext).closeDrawer(),
-                    // 채널을 고르면 드로어를 닫는다. 안 닫으면 고른 대화가 가려진다.
-                    //
-                    // **Navigator.pop 을 쓰면 안 된다.** Scaffold 의 drawer 는
-                    // 라우트가 아니라서 pop 이 드로어가 아니라 현재 페이지를 닫는다.
-                    // 채널 탭이 context.go 로 라우트를 민 직후라, pop 하면 방금 연
-                    // 채널 라우트가 닫혀 선택이 취소된다.
-                    onChannelTap: () => Scaffold.of(drawerContext).closeDrawer(),
-                  ),
-                ),
-              ],
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () => _setOpen(false),
+      },
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: _PaneScope(
+              open: () => _setOpen(true),
+              child: NxPage(
+                body: widget.child,
+                // 데스크톱 두 번째 판의 「작업」 갈래와 같은 곳을 담는다.
+                bottom: widget.showTabs
+                    ? NxTabBar(
+                        tabs: const [
+                          NxTab('대화'),
+                          NxTab('이슈'),
+                          NxTab('저장소'),
+                          NxTab('파일'),
+                        ],
+                        index: selectedTab,
+                        onChanged: widget.onTab ?? (_) {},
+                      )
+                    : null,
+              ),
             ),
           ),
-        ),
+          // 막 — 누르면 닫힌다. 열려 있을 때만 누름을 받는다.
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: !_open,
+              child: GestureDetector(
+                onTap: () => _setOpen(false),
+                child: AnimatedOpacity(
+                  duration: NxMotion.panel,
+                  curve: NxMotion.ease,
+                  opacity: _open ? 1 : 0,
+                  child: ColoredBox(color: c.scrim),
+                ),
+              ),
+            ),
+          ),
+          AnimatedPositioned(
+            duration: NxMotion.panel,
+            curve: NxMotion.ease,
+            top: 0,
+            bottom: 0,
+            left: _open ? 0 : -paneWidth - 1,
+            width: paneWidth + 1,
+            // 닫힌 패널은 포커스 · 보조 기술에서 빠진다. 밀려 들어가는 동안에는 그린다.
+            child: ExcludeFocus(
+              excluding: !_open,
+              child: ExcludeSemantics(
+                excluding: !_open,
+                child: ColoredBox(
+                  color: c.bgSurface,
+                  child: SafeArea(
+                    right: false,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SpaceRail(),
+                        Expanded(
+                          child: ChannelPane(
+                            onClose: () => _setOpen(false),
+                            // 채널 · 작업 갈래를 고르면 닫는다. 안 닫으면 고른 곳이 가려진다.
+                            onChannelTap: () => _setOpen(false),
+                          ),
+                        ),
+                        const NxDivider(vertical: true),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      body: child,
-      // 데스크톱 두 번째 판의 '작업' 섹션과 같은 갈래를 담는다.
-      // 알림 · 내정보를 뺀 것은 갈 곳이 없어서다 — notifications 모듈은
-      // 아직 이관되지 않았고, 눌러도 화면이 그대로인 탭은 없느니만 못하다.
-      bottomNavigationBar: showBottomTabs
-          ? NavigationBar(
-              selectedIndex: selectedTab,
-              onDestinationSelected: onTab,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.forum_outlined),
-                  selectedIcon: Icon(Icons.forum),
-                  label: '대화',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.dashboard_outlined),
-                  selectedIcon: Icon(Icons.dashboard),
-                  label: '이슈',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.hub_outlined),
-                  selectedIcon: Icon(Icons.hub),
-                  label: '저장소',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.folder_outlined),
-                  selectedIcon: Icon(Icons.folder),
-                  label: '파일',
-                ),
-              ],
-            )
-          : null,
     );
   }
 }
 
 /// `/s/:spaceId` — 채널을 아직 고르지 않은 상태.
 ///
-/// 이전에는 셸이 `channelId` 를 보고 대화와 안내 중 하나를 골랐다. 이제
 /// 무엇을 그릴지는 라우터가 정하므로, 이 화면이 그 자리에 오는 라우트가 된다.
 class ShellHome extends StatelessWidget {
   const ShellHome({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
+    final nx = NxTheme.of(context);
     return ColoredBox(
-      color: theme.scaffoldBackgroundColor,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(NexusSpacing.sp6),
-          child: Text(
-            '채널을 선택하세요',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium,
+      color: nx.colors.bgBase,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 좁은 셸에서는 이 머리가 채널 패널을 여는 길이다.
+          NxHeader(
+            titleWidget: Align(
+              alignment: Alignment.centerLeft,
+              child: ShellPaneTrigger(
+                child: Text('채널 고르기', style: nx.text.strong),
+              ),
+            ),
           ),
-        ),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(NxSpacing.sp6),
+                child: Text(
+                  '채널을 선택하세요',
+                  textAlign: TextAlign.center,
+                  style: nx.text.secondary,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

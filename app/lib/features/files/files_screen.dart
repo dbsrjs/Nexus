@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../shell/app_shell.dart';
 import '../../core/theme.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/attachment_item.dart';
@@ -34,7 +35,7 @@ class FilesScreen extends ConsumerWidget {
       appBar: AppBar(
         // 셸 안이라 돌아갈 곳이 스택에 없다. 판에서 바로 오는 화면이다.
         automaticallyImplyLeading: false,
-        title: const Text('파일'),
+        title: const ShellPaneTrigger(child: Text('파일')),
       ),
       body: files.when(
         loading: () => const Center(child: CircularProgressIndicator()),

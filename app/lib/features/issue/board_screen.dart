@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../shell/app_shell.dart';
 import '../../core/theme.dart';
 import '../../domain/models/issue.dart';
 import 'board_controller.dart';
@@ -43,7 +44,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
       appBar: AppBar(
         // 셸 안이라 돌아갈 곳이 스택에 없다. 판에서 바로 오는 화면이다.
         automaticallyImplyLeading: false,
-        title: const Text('보드'),
+        title: const ShellPaneTrigger(child: Text('보드')),
         actions: [
           IconButton(
             tooltip: '스프린트',

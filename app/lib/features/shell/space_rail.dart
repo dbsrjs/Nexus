@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/breakpoints.dart';
-import '../../core/theme.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import '../../shared/widgets/user_avatar.dart';
+import '../../ui/ui.dart';
 import '../auth/auth_controller.dart';
 import '../space/space_controller.dart';
 import '../settings/settings_controller.dart';
@@ -16,47 +16,80 @@ class SpaceRail extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final c = NxTheme.of(context).colors;
     final spaces = ref.watch(spacesProvider).value ?? const [];
     final currentId = ref.watch(currentSpaceIdProvider);
 
     return Container(
       width: NexusPaneWidth.rail,
-      color: theme.scaffoldBackgroundColor,
+      color: c.bgBase,
       child: Column(
         children: [
-          const SizedBox(height: NexusSpacing.sp5),
+          const SizedBox(height: NxSpacing.sp6),
           Expanded(
             child: ListView.separated(
               padding: EdgeInsets.zero,
               itemCount: spaces.length,
-              separatorBuilder: (_, _) => const SizedBox(height: NexusSpacing.sp4),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (_, i) {
                 final space = spaces[i];
                 return Center(
-                  child: Tooltip(
-                    message: space.name,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(NexusRadius.md * 2),
-                      onTap: () => context.go('/s/${space.id}'),
-                      child: NexusAvatar(
-                        seed: space.id,
-                        label: space.name,
-                        squircle: true,
-                        selected: space.id == currentId,
-                      ),
-                    ),
+                  child: _SpaceButton(
+                    id: space.id,
+                    name: space.name,
+                    selected: space.id == currentId,
                   ),
                 );
               },
             ),
           ),
-          const Divider(height: 1),
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: NexusSpacing.sp5),
+            padding: EdgeInsets.symmetric(vertical: NxSpacing.sp6),
             child: _AccountButton(),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 스페이스 하나. 고른 것은 둘레에 3px 띄운 2px 고리(캔버스 「채널」).
+class _SpaceButton extends StatelessWidget {
+  const _SpaceButton({
+    required this.id,
+    required this.name,
+    required this.selected,
+  });
+
+  final String id;
+  final String name;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = NxTheme.of(context).colors;
+    return NxTooltip(
+      message: name,
+      child: NxPressable(
+        onPressed: () => context.go('/s/$id'),
+        selected: selected,
+        semanticLabel: name,
+        excludeChildSemantics: true,
+        focusRingRadius: 17,
+        builder: (context, s) => AnimatedContainer(
+          duration: NxMotion.micro,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              width: 2,
+              color: selected
+                  ? c.textPrimary
+                  : (s.hovered ? c.borderStrong : const Color(0x00000000)),
+            ),
+          ),
+          child: NexusAvatar(seed: id, label: name, size: 38, squircle: true),
+        ),
       ),
     );
   }
@@ -74,58 +107,46 @@ class _AccountButton extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     if (auth is! AuthSignedIn) return const SizedBox.shrink();
     final user = auth.user;
-    final theme = Theme.of(context);
 
-    return PopupMenuButton<String>(
-      tooltip: user.name,
-      offset: const Offset(NexusPaneWidth.rail, 0),
-      onSelected: (value) {
-        switch (value) {
-          case 'settings':
+    return NxMenu(
+      openUp: true,
+      entries: [
+        NxMenuHeader(user.name, subtitle: user.email),
+        const NxMenuDivider(),
+        NxMenuItem(
+          '설정',
+          onSelected: () {
             // 닫으면 지금 보던 곳으로 돌아오게 주소를 넘긴다.
-            context.go(settingsLocation(
-              SettingsSection.account,
-              spaceId: ref.read(currentSpaceIdProvider),
-              from: GoRouterState.of(context).uri.toString(),
-            ));
-          case 'signOut':
-            ref.read(authControllerProvider.notifier).signOut();
-        }
-      },
-      itemBuilder: (_) => [
-        PopupMenuItem<String>(
-          enabled: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(user.name, style: theme.textTheme.titleSmall),
-              Text(user.email, style: theme.textTheme.labelSmall),
-            ],
-          ),
+            context.go(
+              settingsLocation(
+                SettingsSection.account,
+                spaceId: ref.read(currentSpaceIdProvider),
+                from: GoRouterState.of(context).uri.toString(),
+              ),
+            );
+          },
         ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'settings',
-          child: Row(
-            children: [
-              Icon(Icons.settings_outlined, size: 18),
-              SizedBox(width: NexusSpacing.sp4),
-              Text('설정'),
-            ],
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'signOut',
-          child: Row(
-            children: [
-              Icon(Icons.logout, size: 18),
-              SizedBox(width: NexusSpacing.sp4),
-              Text('로그아웃'),
-            ],
-          ),
+        NxMenuItem(
+          '로그아웃',
+          danger: true,
+          onSelected: () => ref.read(authControllerProvider.notifier).signOut(),
         ),
       ],
-      child: UserAvatar(userId: user.id, name: user.name, avatarUrl: user.avatarUrl, size: 36),
+      anchorBuilder: (context, toggle) => NxTooltip(
+        message: user.name,
+        child: NxPressable(
+          onPressed: toggle,
+          semanticLabel: '내 계정 — ${user.name}',
+          excludeChildSemantics: true,
+          focusRingRadius: NxRadius.full,
+          builder: (context, s) => UserAvatar(
+            userId: user.id,
+            name: user.name,
+            avatarUrl: user.avatarUrl,
+            size: 36,
+          ),
+        ),
+      ),
     );
   }
 }

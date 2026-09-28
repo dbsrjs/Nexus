@@ -15,8 +15,11 @@ Widget nxTestApp({
   final preference = brightness == Brightness.dark
       ? ThemePreference.dark
       : ThemePreference.light;
-  Widget root(BuildContext context, Widget? child) =>
-      NxRoot(preference: preference, child: child!);
+  // main.dart 와 같은 임시 발판(15-3 에서 지운다).
+  Widget root(BuildContext context, Widget? child) => NxRoot(
+    preference: preference,
+    child: Material(type: MaterialType.transparency, child: child!),
+  );
   final theme = buildNexusTheme(brightness: brightness);
   return router != null
       ? MaterialApp.router(theme: theme, routerConfig: router, builder: root)
