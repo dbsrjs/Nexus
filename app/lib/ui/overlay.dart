@@ -231,11 +231,33 @@ class _NxMenuState extends State<NxMenu> {
   final _portal = OverlayPortalController();
   final _link = LayerLink();
 
-  void _toggle() => _portal.isShowing ? _portal.hide() : _portal.show();
+  /// 앵커의 오른쪽 끝에 맞춘다 — 왼쪽 끝에서 펼치면 화면 밖으로 넘칠 때.
+  bool _alignEnd = false;
+
+  void _toggle() {
+    if (_portal.isShowing) return _portal.hide();
+    // 열 때마다 잰다. 카드의 「⋯」처럼 오른쪽 끝에 붙은 앵커에서 폭 220 이 넘쳐
+    // 메뉴가 화면 밖으로 잘렸다(Android 에서 발견).
+    final box = context.findRenderObject() as RenderBox?;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (box != null && overlay != null && box.hasSize) {
+      final left = box.localToGlobal(Offset.zero, ancestor: overlay).dx;
+      _alignEnd = left + widget.width > overlay.size.width - NxSpacing.sp4;
+    }
+    _portal.show();
+  }
 
   void _close() {
     if (_portal.isShowing) _portal.hide();
   }
+
+  Alignment _corner({required bool top}) => switch ((top, _alignEnd)) {
+    (true, false) => Alignment.topLeft,
+    (true, true) => Alignment.topRight,
+    (false, false) => Alignment.bottomLeft,
+    (false, true) => Alignment.bottomRight,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -255,20 +277,14 @@ class _NxMenuState extends State<NxMenu> {
             CompositedTransformFollower(
               link: _link,
               showWhenUnlinked: false,
-              targetAnchor: widget.openUp
-                  ? Alignment.topLeft
-                  : Alignment.bottomLeft,
-              followerAnchor: widget.openUp
-                  ? Alignment.bottomLeft
-                  : Alignment.topLeft,
+              targetAnchor: _corner(top: widget.openUp),
+              followerAnchor: _corner(top: !widget.openUp),
               offset: Offset(0, widget.openUp ? -4 : 4),
               // Align 은 오버레이 전체로 늘어난다 — 위로 열 때는 **아래에** 붙여야 패널이
               // 앵커 바로 위에 온다. topLeft 로 두었더니 계정 메뉴가 화면 맨 위로 튀었다
-              // (Android 에서 사용자가 발견).
+              // (Android 에서 사용자가 발견). 가로도 같다 — 끝에 맞출 때는 오른쪽에 붙인다.
               child: Align(
-                alignment: widget.openUp
-                    ? Alignment.bottomLeft
-                    : Alignment.topLeft,
+                alignment: _corner(top: !widget.openUp),
                 child: NxMenuPanel(
                   entries: widget.entries,
                   onClose: _close,

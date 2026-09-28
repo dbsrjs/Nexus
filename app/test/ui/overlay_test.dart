@@ -302,6 +302,27 @@ void main() {
     expect(anchorTop - item, lessThan(80), reason: '앵커 바로 위여야 한다');
   });
 
+  testWidgets('★ 오른쪽 끝의 앵커에서 연 메뉴는 화면 안에 머문다 - 카드 「⋯」 메뉴가 잘렸다', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(app(Align(
+      alignment: Alignment.topRight,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: NxMenu(
+          entries: [NxMenuItem('완료로', onSelected: () {})],
+          anchorBuilder: (context, toggle) => NxButton(label: '더', onPressed: toggle),
+        ),
+      ),
+    )));
+    await tester.tap(find.text('더'));
+    await tester.pumpAndSettle();
+    final panel = find.byType(NxMenuPanel);
+    expect(tester.getTopRight(panel).dx, lessThanOrEqualTo(400));
+    expect(tester.getTopRight(panel).dx, tester.getTopRight(find.byType(NxButton)).dx);
+  });
+
   testWidgets('★ 터치 기기의 메뉴 항목은 44 높이다 - 32 라 손가락으로 누르기 어려웠다', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
