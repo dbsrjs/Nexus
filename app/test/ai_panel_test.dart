@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/data/api/ai_api.dart';
@@ -54,8 +54,7 @@ Future<_FakeAiApi> _pump(
         aiApiProvider.overrideWithValue(api),
         socketEventsProvider.overrideWith((ref) => const Stream.empty()),
       ],
-      child: nxTestApp(home: Scaffold(
-          body: SingleChildScrollView(
+      child: nxTestApp(home: NxPage(body: SingleChildScrollView(
             child: AiPanel(
               spaceId: 's1',
               initialContexts: contexts,

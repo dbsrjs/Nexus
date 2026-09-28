@@ -1,5 +1,4 @@
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/data/api/api_failure.dart';
@@ -53,7 +52,7 @@ void main() {
               return db;
             }),
           ],
-          child: nxTestApp(home: const Scaffold(body: AccountSection()),
+          child: nxTestApp(home: const NxPage(body: AccountSection()),
           ),
         ),
       );
@@ -73,7 +72,7 @@ void main() {
             settingsApiProvider.overrideWithValue(_FakeSettingsApi()),
             authControllerProvider.overrideWith(_SignedIn.new),
           ],
-          child: nxTestApp(home: const Scaffold(body: AccountSection())),
+          child: nxTestApp(home: const NxPage(body: AccountSection())),
         ),
       );
       NxButton save() => tester.widget<NxButton>(find.widgetWithText(NxButton, '저장'));
@@ -92,7 +91,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [settingsApiProvider.overrideWithValue(api)],
-          child: nxTestApp(home: const Scaffold(body: PasswordSection()),
+          child: nxTestApp(home: const NxPage(body: PasswordSection()),
           ),
         ),
       );

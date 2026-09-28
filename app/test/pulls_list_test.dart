@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/data/api/api_failure.dart';
@@ -211,8 +211,7 @@ void main() {
     // 것으로 읽힌다.
     await tester.pumpWidget(
       nxTestApp(
-        home: Scaffold(
-          body: PullList(pulls: const [], state: 'closed', onTap: (_) {}),
+        home: NxPage(body: PullList(pulls: const [], state: 'closed', onTap: (_) {}),
         ),
       ),
     );

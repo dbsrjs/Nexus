@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/shared/markdown/markdown_body.dart';
+import 'package:nexus_app/ui/ui.dart';
 
 import 'support/nx_host.dart';
 
 Future<void> pump(WidgetTester tester, String body) => tester.pumpWidget(
-      nxTestApp(home: Scaffold(body: MarkdownBody(body: body))),
+      nxTestApp(home: NxPage(body: MarkdownBody(body: body))),
     );
 
 void main() {

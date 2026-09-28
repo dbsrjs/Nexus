@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router.dart';
-import 'core/theme.dart';
 import 'data/settings_storage.dart';
 import 'features/realtime/socket_controller.dart';
 import 'features/settings/theme_controller.dart';
@@ -35,31 +34,20 @@ class NexusApp extends ConsumerWidget {
 
     final preference = ref.watch(themeModeProvider);
 
-    return MaterialApp.router(
+    // **Material 이 없는 뼈대**(15-3). 테마 · 토스트 · 스크롤은 NxRoot 가 깐다 — Material 의
+    // 물결 · 오버스크롤 글로 · 페이지 전환 · 선택 손잡이가 새어 나올 틈이 없다.
+    //
+    // **기본은 시스템**이다. 디자인은 다크를 전제로 했지만(design-system/tokens.css 가
+    // 다크를 :root 에 둔다) OS 설정을 따르는 것이 사용자가 이미 고른 취향을 존중하는
+    // 길이다. 설정 창 「화면」 에서 바꿀 수 있다.
+    return WidgetsApp.router(
       title: 'Nexus',
+      // 작업 전환기 · 웹 탭의 색. 다크 액센트.
+      color: const Color(0xFF77AECF),
       debugShowCheckedModeBanner: false,
       routerConfig: ref.watch(routerProvider),
-      // 자체 UI 의 바탕(15단계). 옮긴 화면은 NxTheme 을, 아직 안 옮긴 화면은 ThemeData 를
-      // 본다 — 15-3 에서 MaterialApp 을 걷으면 이 줄만 남는다.
-      //
-      // **투명 Material 은 15-2 동안의 임시 발판이다.** 아직 안 옮긴 화면의 TextField ·
-      // InkWell 은 Material 조상이 있어야 그려지는데, 옮긴 셸이 Scaffold 를 걷어 그 조상이
-      // 사라졌다(대화 입력창이 「No Material widget found」로 멈췄다). 15-3 에서 지운다.
-      builder: (context, child) => NxRoot(
-        preference: preference,
-        child: Material(type: MaterialType.transparency, child: child!),
-      ),
-      // **기본은 시스템**이다. 디자인은 다크를 전제로 했지만
-      // (design-system/tokens.css 가 다크를 :root 에 둔다) OS 설정을 따르는
-      // 것이 사용자가 이미 고른 취향을 존중하는 길이다. 레일 하단 계정
-      // 메뉴에서 바꿀 수 있다.
-      themeMode: switch (preference) {
-        ThemePreference.system => ThemeMode.system,
-        ThemePreference.light => ThemeMode.light,
-        ThemePreference.dark => ThemeMode.dark,
-      },
-      theme: buildNexusTheme(brightness: Brightness.light),
-      darkTheme: buildNexusTheme(brightness: Brightness.dark),
+      builder: (context, child) =>
+          NxRoot(preference: preference, child: child!),
     );
   }
 }

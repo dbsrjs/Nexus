@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/domain/models/issue.dart';
 import 'package:nexus_app/domain/models/sprint.dart';
 import 'package:nexus_app/features/issue/issue_planning_row.dart';
 import 'package:nexus_app/features/issue/sprint_controller.dart';
+import 'package:nexus_app/ui/ui.dart';
 
 import 'support/nx_host.dart';
 
@@ -40,7 +40,7 @@ void main() {
           sprintListProvider.overrideWith((ref) => Stream.value(sprints)),
         ],
         child: nxTestApp(
-          home: Scaffold(body: IssuePlanningRow(issue: value)),
+          home: NxPage(body: IssuePlanningRow(issue: value)),
         ),
       ),
     );

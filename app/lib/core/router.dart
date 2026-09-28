@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -23,6 +23,7 @@ import '../features/space/space_picker_screen.dart';
 import '../features/settings/settings_controller.dart';
 import '../features/settings/settings_screen.dart';
 import '../ui/gallery.dart';
+import '../ui/ui.dart';
 
 /// 라우트는 docs/앱-설계.md §5 를 따른다. 슬라이스 2 시점에서
 /// `/login` · `/spaces` · `/s/:spaceId` 까지 채웠다.
@@ -81,16 +82,19 @@ List<RouteBase> appRoutes() => [
     GoRoute(path: '/dev/ui', builder: (_, _) => const NxGallery()),
   // 설정 창(14단계). 셸 밖에 덮어서 연다 — 스페이스에 묶이지 않는다.
   // `space` 는 알림 섹션이 먼저 보일 스페이스, `from` 은 닫을 때 돌아갈 곳이다.
-  GoRoute(
+  _overlay(
     path: '/settings',
-    builder: (_, state) => SettingsScreen(
+    build: (state) => SettingsScreen(
       spaceId: state.uri.queryParameters['space'],
       from: state.uri.queryParameters['from'],
     ),
     routes: [
-      GoRoute(
+      // 섹션끼리는 **같은 페이지 키**다 — 옮겨 다닐 때 화면 전체가 다시 떠오르지 않고
+      // 제자리에서 본문만 바뀐다(탭처럼).
+      _overlay(
         path: ':section',
-        builder: (_, state) => SettingsScreen(
+        pageKey: const ValueKey('settings-section'),
+        build: (state) => SettingsScreen(
           section: SettingsSection.parse(state.pathParameters['section']),
           spaceId: state.uri.queryParameters['space'],
           from: state.uri.queryParameters['from'],
@@ -178,11 +182,11 @@ List<RouteBase> appRoutes() => [
   // `!keyReservation.contains(key)` 로 죽는다. 실제로 browse 만 셸 안에
   // 있었고, PR · 커밋 상세에서 파일을 누르면 빨간 화면이 떴다.
   // 근거와 재현은 `test/router_shell_test.dart` 에 있다.
-  GoRoute(
+  _overlay(
     // 저장소 안 들여다보기. **폴더 이동은 라우트를 쌓지 않는다** —
     // 경로는 화면의 상태이고 되돌아가는 길은 빵부스러기가 맡는다.
     path: '/s/:spaceId/repos/:repoId/browse',
-    builder: (_, state) => BrowseScreen(
+    build: (state) => BrowseScreen(
       spaceId: state.pathParameters['spaceId']!,
       repoId: state.pathParameters['repoId']!,
       // 커밋 상세 · PR 상세에서 오면 그 sha·브랜치와 경로로 시작한다.
@@ -190,55 +194,87 @@ List<RouteBase> appRoutes() => [
       initialPath: state.uri.queryParameters['path'],
     ),
   ),
-  GoRoute(
+  _overlay(
     path: '/s/:spaceId/c/:channelId/t/:messageId',
-    builder: (_, state) => ThreadScreen(
+    build: (state) => ThreadScreen(
       spaceId: state.pathParameters['spaceId']!,
       channelId: state.pathParameters['channelId']!,
       messageId: state.pathParameters['messageId']!,
     ),
   ),
   // 그 push 에 들어온 커밋들. 채널 메시지에서 들어온다(10-3b).
-  GoRoute(
+  _overlay(
     path: '/s/:spaceId/repo-events/:eventId',
-    builder: (_, state) => CommitsScreen(
+    build: (state) => CommitsScreen(
       spaceId: state.pathParameters['spaceId']!,
       eventId: state.pathParameters['eventId'],
     ),
   ),
   // 브랜치 이력. 탐색 화면의 커밋 버튼에서 들어온다.
-  GoRoute(
+  _overlay(
     path: '/s/:spaceId/repos/:repoId/commits',
-    builder: (_, state) => CommitsScreen(
+    build: (state) => CommitsScreen(
       spaceId: state.pathParameters['spaceId']!,
       repoId: state.pathParameters['repoId']!,
       branchRef: state.uri.queryParameters['ref'],
     ),
   ),
-  GoRoute(
+  _overlay(
     path: '/s/:spaceId/repos/:repoId/commits/:sha',
-    builder: (_, state) => CommitDetailScreen(
+    build: (state) => CommitDetailScreen(
       spaceId: state.pathParameters['spaceId']!,
       repoId: state.pathParameters['repoId']!,
       sha: state.pathParameters['sha']!,
     ),
   ),
-  GoRoute(
+  _overlay(
     path: '/s/:spaceId/repos/:repoId/pulls',
-    builder: (_, state) => PullsScreen(
+    build: (state) => PullsScreen(
       spaceId: state.pathParameters['spaceId']!,
       repoId: state.pathParameters['repoId']!,
     ),
   ),
-  GoRoute(
+  _overlay(
     path: '/s/:spaceId/repos/:repoId/pulls/:number',
-    builder: (_, state) => PullDetailScreen(
+    build: (state) => PullDetailScreen(
       spaceId: state.pathParameters['spaceId']!,
       repoId: state.pathParameters['repoId']!,
       number: int.parse(state.pathParameters['number']!),
     ),
   ),
 ];
+
+/// 덮어 여는 화면(셸 밖)의 라우트 — 180ms 페이드 + 8px 올라옴(15단계 D14). 셸 안은 전환이
+/// 없다(`builder` 라우트는 WidgetsApp 아래에서 go_router 가 전환 없이 그린다).
+GoRoute _overlay({
+  required String path,
+  required Widget Function(GoRouterState state) build,
+  LocalKey? pageKey,
+  List<RouteBase> routes = const [],
+}) => GoRoute(
+  path: path,
+  routes: routes,
+  pageBuilder: (_, state) => CustomTransitionPage<void>(
+    key: pageKey ?? state.pageKey,
+    child: build(state),
+    transitionDuration: NxMotion.panel,
+    reverseTransitionDuration: NxMotion.panel,
+    transitionsBuilder: (_, animation, _, child) {
+      final t = CurvedAnimation(parent: animation, curve: NxMotion.ease);
+      return FadeTransition(
+        opacity: t,
+        child: AnimatedBuilder(
+          animation: t,
+          builder: (_, child) => Transform.translate(
+            offset: Offset(0, 8 * (1 - t.value)),
+            child: child,
+          ),
+          child: child,
+        ),
+      );
+    },
+  ),
+);
 
 /// 토큰 복원이 끝날 때까지 보여 준다. 서버가 꺼져 있으면 타임아웃까지 여기 머문다.
 /// 그 시간이 짧지 않을 수 있어 **브랜드 마크를 둔다**(`NexusSplash`) — 빈
@@ -255,15 +291,20 @@ class _SignupPlaceholder extends StatelessWidget {
   const _SignupPlaceholder();
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => NxPage(
     body: Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('회원가입은 아직 만들지 않았습니다.'),
-          TextButton(
+          Text(
+            '회원가입은 아직 만들지 않았습니다.',
+            style: NxTheme.of(context).text.base,
+          ),
+          const SizedBox(height: NxSpacing.sp5),
+          NxButton(
+            label: '로그인으로',
+            kind: NxButtonKind.secondary,
             onPressed: () => context.go('/login'),
-            child: const Text('로그인으로'),
           ),
         ],
       ),

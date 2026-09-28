@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -175,11 +175,7 @@ void main() {
     await tester.tap(find.text('라이트'));
     await tester.pump(const Duration(milliseconds: 300));
     expect(container.read(themeModeProvider), ThemePreference.light);
-    expect(
-      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
-      ThemeMode.light,
-    );
-    // 옮긴 화면이 보는 자체 테마도 함께 바뀐다(NxRoot).
+    // 앱 뿌리의 자체 테마가 바뀐다(NxRoot).
     expect(
       tester.widget<NxTheme>(find.byType(NxTheme).first).data.brightness,
       Brightness.light,

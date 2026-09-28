@@ -32,9 +32,15 @@ final spacesApiProvider =
 ///
 /// 인증 상태를 지켜본다 — 로그아웃했다가 다른 계정으로 들어오면 이전 계정의
 /// 목록이 남아 있으면 안 된다.
+///
+/// **계정 id 만 지켜본다.** 인증 상태 전체를 보면 이름 · 사진을 바꿀 때마다(14단계
+/// `replaceUser`) 목록을 다시 받고 의존 provider 를 무효화했다 — 설정 창의 알림 섹션이
+/// build 중에 이것을 읽는 순간 그 무효화가 겹쳐 「build 중 setState」 로 멈췄다(15-3).
 final spacesProvider = StreamProvider<List<Space>>((ref) {
-  final auth = ref.watch(authControllerProvider);
-  if (auth is! AuthSignedIn) return Stream.value(const []);
+  final userId = ref.watch(
+    authControllerProvider.select((a) => a is AuthSignedIn ? a.user.id : null),
+  );
+  if (userId == null) return Stream.value(const []);
 
   final repository = ref.watch(workspaceRepositoryProvider);
   // 캐시를 먼저 흘려보내고, 갱신은 뒤에서 한다. 기다리면 캐시가 있어도 늦어진다.

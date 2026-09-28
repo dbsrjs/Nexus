@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/domain/models/channel.dart';
 import 'package:nexus_app/features/channel/channel_controller.dart';
 import 'package:nexus_app/features/channel/channel_list.dart';
+import 'package:nexus_app/ui/ui.dart';
 
 import 'support/nx_host.dart';
 
@@ -17,7 +18,7 @@ void main() {
           channelsProvider.overrideWith((ref) => Stream.value(channels)),
           categoriesProvider.overrideWith((ref) => Stream.value(const [])),
         ],
-        child: nxTestApp(home: const Scaffold(body: ChannelList()),
+        child: nxTestApp(home: const NxPage(body: ChannelList()),
         ),
       ),
     );
