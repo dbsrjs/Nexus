@@ -15,6 +15,7 @@ import 'package:nexus_app/data/settings_storage.dart';
 import 'package:nexus_app/features/auth/auth_controller.dart';
 import 'package:nexus_app/features/settings/settings_controller.dart';
 import 'package:nexus_app/features/settings/theme_controller.dart';
+import 'package:nexus_app/features/shell/app_shell.dart';
 import 'package:nexus_app/features/space/space_controller.dart';
 import 'package:nexus_app/main.dart';
 import 'package:nexus_app/ui/ui.dart';
@@ -108,7 +109,7 @@ void main() {
 
     // 저장소 화면은 GitHub 계정을 연결하지 않아도 떠야 한다 — 연결 안내를 보인다.
     await tester.tap(find.text('저장소'));
-    await tester.pumpUntil(find.widgetWithText(AppBar, '저장소'));
+    await tester.pumpUntil(find.widgetWithText(ShellHeader, '저장소'));
     await tester.pumpUntil(find.text('GitHub 연결'));
 
     // 셸 안에서 채널로 돌아온다 — 셸 페이지 키가 겹치면 여기서 죽는다.

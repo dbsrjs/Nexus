@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/domain/models/pull.dart';
 import 'package:nexus_app/features/repo/pull_detail_screen.dart';
 
+import 'package:nexus_app/ui/ui.dart';
+
 import 'support/nx_host.dart';
 
 /// `repos_screen_test.dart` 와 같은 방식이다 — **override 목록이 아니라 적재
@@ -90,15 +92,15 @@ void main() {
     await tester.pumpAndSettle();
 
     // 그 커밋 시점에 없어 열어도 404 다.
-    final gone = tester.widget<ListTile>(
-      find.ancestor(of: find.text('gone.dart'), matching: find.byType(ListTile)),
+    final gone = tester.widget<NxRow>(
+      find.ancestor(of: find.text('gone.dart'), matching: find.byType(NxRow)),
     );
-    expect(gone.onTap, isNull);
+    expect(gone.onPressed, isNull);
 
-    final live = tester.widget<ListTile>(
-      find.ancestor(of: find.text('live.dart'), matching: find.byType(ListTile)),
+    final live = tester.widget<NxRow>(
+      find.ancestor(of: find.text('live.dart'), matching: find.byType(NxRow)),
     );
-    expect(live.onTap, isNotNull);
+    expect(live.onPressed, isNotNull);
   });
 
   testWidgets('truncated 면 안내가 뜬다 — 조용히 자르지 않는다', (tester) async {

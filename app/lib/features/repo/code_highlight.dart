@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
-import '../../core/theme.dart';
+import '../../ui/theme.dart';
 
 /// 코드 한 줄을 색칠할 조각으로 쪼갠다.
 ///
@@ -154,18 +154,16 @@ class CodePalette {
   final Color comment;
 
   factory CodePalette.of(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-
+    final c = NxTheme.of(context).colors;
     return CodePalette(
-      plain: dark ? NexusColors.textPrimaryDark : NexusColors.textPrimaryLight,
+      plain: c.textPrimary,
       // 액센트를 키워드에 쓴다 — 이 앱에서 "구조"를 가리키는 색이다.
-      keyword: dark ? NexusColors.accentDark : NexusColors.accentLight,
-      string: NexusColors.success,
-      number: NexusColors.warning,
+      keyword: c.accent,
+      string: c.success,
+      number: c.warning,
       // 주석은 **가장 흐리게**. 코드를 읽을 때 먼저 건너뛰는 것이라
       // 눈에 띄면 방해가 된다.
-      comment:
-          dark ? NexusColors.textSecondaryDark : NexusColors.textSecondaryLight,
+      comment: c.textSecondary,
     );
   }
 

@@ -196,4 +196,50 @@ void main() {
     expect(picked, ['스레드']);
     expect(find.text('스레드로 답글'), findsNothing);
   });
+
+  group('NxDialog.panel', () {
+    testWidgets('제목과 본문을 띄우고, 본문이 pop 한 값을 돌려준다', (tester) async {
+      String? result = 'none';
+      await tester.pumpWidget(app(Builder(
+        builder: (context) => NxButton(
+          label: '열기',
+          onPressed: () async => result = await NxDialog.panel<String>(
+            context,
+            title: '저장소 추가',
+            builder: (context) => NxButton(
+              label: '고르기',
+              onPressed: () => Navigator.of(context).pop('repo-1'),
+            ),
+          ),
+        ),
+      )));
+      await tester.tap(find.text('열기'));
+      await tester.pumpAndSettle();
+      expect(find.text('저장소 추가'), findsOneWidget);
+      await tester.tap(find.text('고르기'));
+      await tester.pumpAndSettle();
+      expect(result, 'repo-1');
+    });
+
+    testWidgets('Esc 로 닫으면 null', (tester) async {
+      String? result = 'none';
+      await tester.pumpWidget(app(Builder(
+        builder: (context) => NxButton(
+          label: '열기',
+          onPressed: () async => result = await NxDialog.panel<String>(
+            context,
+            title: '패널',
+            builder: (_) => const Text('본문'),
+          ),
+        ),
+      )));
+      await tester.tap(find.text('열기'));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text('본문'), findsNothing);
+      expect(result, isNull);
+    });
+  });
 }
+

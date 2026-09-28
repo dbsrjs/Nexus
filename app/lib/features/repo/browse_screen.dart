@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../domain/models/repo_browse.dart';
+import '../../shared/widgets/back_button.dart';
+import '../../ui/ui.dart';
 import 'browse_controller.dart';
 import 'code_highlight.dart';
 import 'repo_controller.dart';
@@ -50,7 +52,8 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
   @override
   void initState() {
     super.initState();
-    _source = ref.read(browseSourceProvider) ??
+    _source =
+        ref.read(browseSourceProvider) ??
         ApiBrowseSource(
           api: ref.read(browseApiProvider),
           spaceId: widget.spaceId,
@@ -66,9 +69,10 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
       if (!mounted) return;
       setState(() {
         _branches = res.branches;
-        // 커밋 상세에서 왔으면 그 sha 가 기준이다. **드롭다운에는 없는 값이라**
-        // 브랜치 선택기는 비워 둔다(아래 value 계산이 그것을 처리한다).
-        _ref = widget.initialRef ??
+        // 커밋 상세에서 왔으면 그 sha 가 기준이다. **브랜치 목록에는 없는 값이라**
+        // 선택기는 짧은 sha 를 자리 표시로 보인다(아래 _BranchSelect).
+        _ref =
+            widget.initialRef ??
             res.defaultBranch ??
             (res.branches.isEmpty ? '' : res.branches.first.name);
       });
@@ -140,7 +144,9 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
   void _retry() {
     if (_blob != null) {
       final parts = _crumbs;
-      _openDir(parts.length <= 1 ? '' : parts.sublist(0, parts.length - 1).join('/'));
+      _openDir(
+        parts.length <= 1 ? '' : parts.sublist(0, parts.length - 1).join('/'),
+      );
       return;
     }
     _openDir(_path);
@@ -150,7 +156,8 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
   /// 목록에서 찾고, 없으면 일반 이름을 쓴다 — 이름 하나 때문에 기다리지 않는다.
   void _openAi() {
     final repos = ref.read(spaceReposProvider(widget.spaceId)).value;
-    final name = repos
+    final name =
+        repos
             ?.where((r) => r.id == widget.repoId)
             .map((r) => r.name)
             .firstOrNull ??
@@ -164,56 +171,44 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('코드'),
+    final base = '/s/${widget.spaceId}/repos/${widget.repoId}';
+    return NxPage(
+      header: NxHeader(
+        title: '코드',
+        leading: NxBackButton(fallback: '/s/${widget.spaceId}/repos'),
         actions: [
-          IconButton(
-            tooltip: 'AI 에게 묻기',
-            icon: const Icon(Icons.auto_awesome_outlined, size: 20),
-            onPressed: _openAi,
-          ),
-          IconButton(
-            tooltip: 'Pull Request',
-            icon: const Icon(Icons.merge_type, size: 20),
-            // PR 은 브랜치에 매이지 않는다 — ref 를 붙이지 않는다.
-            onPressed: () => context.push(
-              '/s/${widget.spaceId}/repos/${widget.repoId}/pulls',
-            ),
-          ),
-          IconButton(
-            tooltip: '커밋',
-            icon: const Icon(Icons.history, size: 20),
-            onPressed: () => context.push(
-              '/s/${widget.spaceId}/repos/${widget.repoId}/commits'
-              '?ref=${Uri.encodeQueryComponent(_ref)}',
-            ),
-          ),
           if (_branches.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: DropdownButton<String>(
-                // sha 로 열렸으면 드롭다운에 없는 값이라 비워 둔다 —
-                // 없는 값을 주면 DropdownButton 이 던진다.
-                value: _branches.any((b) => b.name == _ref) ? _ref : null,
-                underline: const SizedBox.shrink(),
-                items: [
-                  for (final b in _branches)
-                    DropdownMenuItem(value: b.name, child: Text(b.name)),
-                ],
-                onChanged: (v) {
-                  if (v == null || v == _ref) return;
-                  setState(() => _ref = v);
-                  // **브랜치를 바꾸면 루트로 돌아간다** — 지금 경로가 새
-                  // 브랜치에도 있으리라는 보장이 없다.
-                  _openDir('');
-                },
-              ),
+            _BranchSelect(
+              branches: _branches,
+              current: _ref,
+              onChanged: (v) {
+                if (v == _ref) return;
+                setState(() => _ref = v);
+                // **브랜치를 바꾸면 루트로 돌아간다** — 지금 경로가 새
+                // 브랜치에도 있으리라는 보장이 없다.
+                _openDir('');
+              },
             ),
+          NxButton(
+            label: '커밋',
+            kind: NxButtonKind.ghost,
+            size: NxSize.sm,
+            onPressed: () => context.push(
+              '$base/commits?ref=${Uri.encodeQueryComponent(_ref)}',
+            ),
+          ),
+          // PR 은 브랜치에 매이지 않는다 — ref 를 붙이지 않는다.
+          NxButton(
+            label: 'PR',
+            kind: NxButtonKind.ghost,
+            size: NxSize.sm,
+            onPressed: () => context.push('$base/pulls'),
+          ),
+          NxIconButton(icon: NxIcons.ai, label: 'AI 에게 묻기', onPressed: _openAi),
         ],
       ),
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Crumbs(
             crumbs: _crumbs,
@@ -225,7 +220,7 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
               _openDir(target);
             },
           ),
-          const Divider(height: 1),
+          const NxDivider(),
           Expanded(child: _body()),
         ],
       ),
@@ -233,7 +228,13 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
   }
 
   Widget _body() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    final nx = NxTheme.of(context);
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.all(NxSpacing.sp7),
+        child: NxSkeleton(lines: 8, lineHeight: 16),
+      );
+    }
 
     final error = _error;
     if (error != null) {
@@ -241,9 +242,13 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(error),
-            const SizedBox(height: 8),
-            OutlinedButton(onPressed: _retry, child: const Text('다시 확인')),
+            Text(error, style: nx.text.base),
+            const SizedBox(height: NxSpacing.sp4),
+            NxButton(
+              label: '다시 확인',
+              kind: NxButtonKind.secondary,
+              onPressed: _retry,
+            ),
           ],
         ),
       );
@@ -253,28 +258,102 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
     if (blob != null) return _FileBody(blob: blob);
 
     final entries = _entries ?? const <TreeEntry>[];
-    if (entries.isEmpty) return const Center(child: Text('비어 있습니다'));
+    if (entries.isEmpty) {
+      return Center(child: Text('비어 있습니다', style: nx.text.secondary));
+    }
 
     return ListView.builder(
+      padding: const EdgeInsets.symmetric(
+        horizontal: NxSpacing.sp5,
+        vertical: NxSpacing.sp4,
+      ),
       itemCount: entries.length,
       itemBuilder: (_, i) {
         final e = entries[i];
-        return ListTile(
-          dense: true,
-          leading: Icon(
-            e.isDir ? Icons.folder_outlined : Icons.description_outlined,
-            size: 18,
-          ),
-          title: Text(e.name),
-          onTap: () => e.isDir ? _openDir(e.path) : _openFile(e.path),
+        return _EntryRow(
+          entry: e,
+          onPressed: () => e.isDir ? _openDir(e.path) : _openFile(e.path),
         );
       },
     );
   }
 }
 
+/// 트리 한 줄. **폴더는 이름 뒤 `/`** 로 가른다 — 앞 장식 아이콘을 두지 않는다(15단계 D5).
+class _EntryRow extends StatelessWidget {
+  const _EntryRow({required this.entry, required this.onPressed});
+
+  final TreeEntry entry;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    return NxPressable(
+      onPressed: onPressed,
+      semanticLabel: entry.isDir ? '${entry.name} 폴더' : entry.name,
+      builder: (context, s) => AnimatedContainer(
+        duration: NxMotion.micro,
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: s.hovered || s.pressed
+              ? c.bgElevated
+              : const Color(0x00000000),
+          borderRadius: BorderRadius.circular(NxRadius.md),
+        ),
+        child: Row(
+          children: [
+            Flexible(
+              child: Text(
+                entry.name,
+                overflow: TextOverflow.ellipsis,
+                style: nx.text.base.copyWith(
+                  fontWeight: entry.isDir ? FontWeight.w600 : null,
+                ),
+              ),
+            ),
+            if (entry.isDir)
+              Text('/', style: nx.text.mono.copyWith(fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 브랜치 고르기. sha 로 열렸으면 목록에 없는 값이라 **짧은 sha 를 자리 표시로** 보인다.
+class _BranchSelect extends StatelessWidget {
+  const _BranchSelect({
+    required this.branches,
+    required this.current,
+    required this.onChanged,
+  });
+
+  final List<RepoBranch> branches;
+  final String current;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final known = branches.any((b) => b.name == current);
+    return NxSelect<String>(
+      width: 180,
+      value: known ? current : null,
+      placeholder: current.length > 7 ? current.substring(0, 7) : current,
+      options: [for (final b in branches) (b.name, b.name)],
+      onChanged: onChanged,
+    );
+  }
+}
+
 class _Crumbs extends StatelessWidget {
-  const _Crumbs({required this.crumbs, required this.onRoot, required this.onCrumb});
+  const _Crumbs({
+    required this.crumbs,
+    required this.onRoot,
+    required this.onCrumb,
+  });
 
   final List<String> crumbs;
   final VoidCallback onRoot;
@@ -282,15 +361,27 @@ class _Crumbs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    final slash = Text('/', style: nx.text.mono.copyWith(fontSize: 13));
+    Widget crumb(String label, VoidCallback onPressed) => NxButton(
+      label: label,
+      kind: NxButtonKind.ghost,
+      size: NxSize.sm,
+      onPressed: onPressed,
+    );
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: NxSpacing.sp5,
+        vertical: NxSpacing.sp3,
+      ),
       child: Row(
         children: [
-          TextButton(onPressed: onRoot, child: const Text('/')),
+          crumb('/', onRoot),
           for (var i = 0; i < crumbs.length; i++) ...[
-            const Text('/'),
-            TextButton(onPressed: () => onCrumb(i), child: Text(crumbs[i])),
+            if (i > 0) slash,
+            crumb(crumbs[i], () => onCrumb(i)),
           ],
         ],
       ),
@@ -298,8 +389,7 @@ class _Crumbs extends StatelessWidget {
   }
 }
 
-/// **등폭 폰트 + 줄 번호.** 신택스 하이라이팅은 넣지 않는다 (설계 §4) —
-/// 9-3 에서 차트 라이브러리 대신 `CustomPainter` 를 쓴 것과 같은 판단이다.
+/// **등폭 폰트 + 줄 번호.** 색칠은 언어 규칙 없는 공통 넷(code_highlight.dart).
 ///
 /// **긴 줄은 접지 않고 가로로 스크롤한다** — 접으면 줄 번호와 내용이 어긋나
 /// 코드를 읽을 수 없다.
@@ -310,20 +400,20 @@ class _FileBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
     final message = blob.omittedMessage;
-    if (message != null) return Center(child: Text(message));
+    if (message != null) {
+      return Center(child: Text(message, style: nx.text.secondary));
+    }
 
     final lines = (blob.content ?? '').split('\n');
-    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
-          fontFamily: 'monospace',
-          height: 1.5,
-        );
+    final style = nx.text.code.copyWith(height: 1.5);
     final palette = CodePalette.of(context);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(NxSpacing.sp5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -336,10 +426,10 @@ class _FileBody extends StatelessWidget {
                     child: Text(
                       '${i + 1}',
                       textAlign: TextAlign.right,
-                      style: style?.copyWith(color: Theme.of(context).hintColor),
+                      style: style.copyWith(color: nx.colors.borderStrong),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: NxSpacing.sp5),
                   CodeLine(line: lines[i], style: style, palette: palette),
                 ],
               ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,13 +7,13 @@ import '../shell/app_shell.dart';
 import '../../data/socket/socket_event.dart';
 import '../../domain/models/connection.dart';
 import '../../domain/models/repo.dart';
+import '../../ui/ui.dart';
 import '../realtime/socket_controller.dart';
 import 'connection_controller.dart';
 import 'repo_controller.dart';
 import 'repo_picker_sheet.dart';
 
-/// 저장소 화면. **10-2a 는 상단 연결 영역만 채운다** — 저장소 목록과
-/// 붙이기는 10-2b 다.
+/// 저장소 화면 — 위는 GitHub 연결, 아래는 붙은 저장소 목록.
 class ReposScreen extends ConsumerStatefulWidget {
   const ReposScreen({super.key, required this.spaceId});
 
@@ -55,14 +55,15 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
     ref.invalidate(connectionsProvider);
   }
 
-  void _toast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _toast(String message) =>
+      NxToast.show(context, message, kind: NxToastKind.error);
 
   Future<void> _openPicker(String login) async {
-    final added = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
+    // 바텀시트가 아니라 가운데 패널이다(15단계 D8).
+    final added = await NxDialog.panel<bool>(
+      context,
+      title: '@$login 의 저장소',
+      width: 520,
       builder: (_) => RepoPickerSheet(spaceId: widget.spaceId, login: login),
     );
     if (added == true) ref.invalidate(spaceReposProvider(widget.spaceId));
@@ -96,79 +97,116 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
       ref.invalidate(connectionsProvider);
     });
 
+    final nx = NxTheme.of(context);
     final connections = ref.watch(connectionsProvider);
     final github = ref.watch(githubConnectionProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        // 셸 안이라 돌아갈 곳이 스택에 없다. 판에서 바로 오는 화면이다.
-        automaticallyImplyLeading: false,
-        title: const ShellPaneTrigger(child: Text('저장소')),
-      ),
+    return NxPage(
+      header: const ShellHeader(title: '저장소'),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(NxSpacing.sp7),
         children: [
-          switch (connections) {
-            AsyncError() => _Retry(onRetry: () => ref.invalidate(connectionsProvider)),
-            AsyncLoading() => const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-            _ => github == null
-                ? _Disconnected(waiting: _waiting, onConnect: _connect)
-                : _Connected(connection: github, onDisconnect: _disconnect),
-          },
-          // **연결 전에는 목록을 부르지 않는다** — 토큰이 없으면 서버가 400 이다.
-          if (github != null) ...[
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: Text('붙은 저장소',
-                      style: Theme.of(context).textTheme.titleSmall),
-                ),
-                TextButton.icon(
-                  onPressed: () => _openPicker(github.login),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('저장소 추가'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            switch (ref.watch(spaceReposProvider(widget.spaceId))) {
-              AsyncError() => _Retry(
-                  onRetry: () =>
-                      ref.invalidate(spaceReposProvider(widget.spaceId)),
-                ),
-              AsyncLoading() => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-              AsyncValue(:final value?) when value.isEmpty =>
-                const Text('아직 붙인 저장소가 없습니다'),
-              AsyncValue(:final value?) => Column(
-                  children: [
-                    for (final repo in value)
-                      _RepoRow(
-                        repo: repo,
-                        onOpen: () => context.push(
-                          '/s/${widget.spaceId}/repos/${repo.id}/browse',
+          Align(
+            alignment: Alignment.topLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // **재시도 중에도 오류를 보인다.** Riverpod 3 은 실패한 provider 를 스스로
+                  // 다시 부르는데 그동안 상태가 「로딩 + 오류」다 — `AsyncError()` 로만
+                  // 가르면 수십 초 동안 뼈대만 보인다(회전 스피너 시절에는 테스트가 그
+                  // 시간을 기다려 줘 드러나지 않았다).
+                  switch (connections) {
+                    _ when connections.hasError => _Retry(
+                      onRetry: () => ref.invalidate(connectionsProvider),
+                    ),
+                    AsyncLoading() => const NxSkeleton(lines: 1, lineHeight: 64),
+                    _ =>
+                      github == null
+                          ? _Disconnected(waiting: _waiting, onConnect: _connect)
+                          : _Connected(
+                              connection: github,
+                              onDisconnect: _disconnect,
+                            ),
+                  },
+                  // **연결 전에는 목록을 부르지 않는다** — 토큰이 없으면 서버가 400 이다.
+                  if (github != null) ...[
+                    const SizedBox(height: NxSpacing.sp9),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Semantics(
+                            header: true,
+                            child: Text('붙은 저장소', style: nx.text.strong),
+                          ),
                         ),
-                        onReattach: () => _reattach(repo.id),
-                        onRemove: () => _remove(repo.id),
+                        NxButton(
+                          label: '저장소 추가',
+                          icon: NxIcons.plus,
+                          kind: NxButtonKind.secondary,
+                          size: NxSize.sm,
+                          onPressed: () => _openPicker(github.login),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: NxSpacing.sp5),
+                    switch (ref.watch(spaceReposProvider(widget.spaceId))) {
+                      final repos when repos.hasError => _Retry(
+                        onRetry: () =>
+                            ref.invalidate(spaceReposProvider(widget.spaceId)),
                       ),
+                      AsyncValue(:final value?) when value.isEmpty => Text(
+                        '아직 붙인 저장소가 없습니다',
+                        style: nx.text.secondary,
+                      ),
+                      AsyncValue(:final value?) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (final repo in value)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: NxSpacing.sp4,
+                              ),
+                              child: _RepoRow(
+                                repo: repo,
+                                onOpen: () => context.push(
+                                  '/s/${widget.spaceId}/repos/${repo.id}/browse',
+                                ),
+                                onReattach: () => _reattach(repo.id),
+                                onRemove: () => _remove(repo.id),
+                              ),
+                            ),
+                        ],
+                      ),
+                      _ => const NxSkeleton(lines: 2, lineHeight: 56),
+                    },
                   ],
-                ),
-            },
-          ],
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+/// 표면 한 단 위의 판 — 그림자 없이 표면 색으로만 떠 보인다(§3-13).
+class _Surface extends StatelessWidget {
+  const _Surface({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(NxSpacing.sp6),
+    decoration: BoxDecoration(
+      color: NxTheme.of(context).colors.bgSurface,
+      borderRadius: BorderRadius.circular(NxRadius.md),
+    ),
+    child: child,
+  );
 }
 
 class _RepoRow extends StatelessWidget {
@@ -188,21 +226,63 @@ class _RepoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        onTap: onOpen,
-        title: Text(repo.fullPath),
-        // 훅이 안 걸린 것을 조용히 두면 사용자는 커밋이 왜 안 오는지 모른다.
-        subtitle: Text(repo.webhookActive ? '웹훅 연결됨' : '웹훅 등록 실패'),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    return NxPressable(
+      onPressed: onOpen,
+      builder: (context, s) => AnimatedContainer(
+        duration: NxMotion.micro,
+        padding: const EdgeInsets.fromLTRB(
+          NxSpacing.sp6,
+          NxSpacing.sp5,
+          NxSpacing.sp4,
+          NxSpacing.sp5,
+        ),
+        decoration: BoxDecoration(
+          color: s.hovered || s.pressed ? c.bgElevated : c.bgSurface,
+          borderRadius: BorderRadius.circular(NxRadius.md),
+        ),
+        child: Row(
           children: [
-            if (!repo.webhookActive)
-              TextButton(onPressed: onReattach, child: const Text('다시 걸기')),
-            IconButton(
-              tooltip: '떼어 내기',
-              icon: const Icon(Icons.link_off, size: 18),
-              onPressed: onRemove,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    repo.fullPath,
+                    overflow: TextOverflow.ellipsis,
+                    style: nx.text.strong,
+                  ),
+                  const SizedBox(height: NxSpacing.sp2),
+                  // 훅이 안 걸린 것을 조용히 두면 사용자는 커밋이 왜 안 오는지 모른다.
+                  NxTag(
+                    repo.webhookActive ? '웹훅 연결됨' : '웹훅 등록 실패',
+                    dot: true,
+                    color: repo.webhookActive ? c.success : c.danger,
+                  ),
+                ],
+              ),
+            ),
+            if (!repo.webhookActive) ...[
+              NxButton(
+                label: '다시 걸기',
+                kind: NxButtonKind.secondary,
+                size: NxSize.sm,
+                onPressed: onReattach,
+              ),
+              const SizedBox(width: NxSpacing.sp2),
+            ],
+            // 떼어 내기는 한 번 더 눌러야 닿게 메뉴 안에 둔다 — 행을 누르려다 빗나가지 않게.
+            NxMenu(
+              width: 180,
+              entries: [
+                NxMenuItem('떼어 내기', danger: true, onSelected: onRemove),
+              ],
+              anchorBuilder: (context, toggle) => NxIconButton(
+                icon: NxIcons.more,
+                label: '${repo.fullPath} 더 보기',
+                onPressed: toggle,
+              ),
             ),
           ],
         ),
@@ -219,25 +299,18 @@ class _Disconnected extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('GitHub 을 연결하면 커밋과 PR 이 채널로 들어옵니다',
-                style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: 12),
-            if (waiting)
-              const Text('브라우저에서 계속하세요…')
-            else
-              FilledButton.icon(
-                onPressed: onConnect,
-                icon: const Icon(Icons.link, size: 18),
-                label: const Text('GitHub 연결'),
-              ),
-          ],
-        ),
+    final nx = NxTheme.of(context);
+    return _Surface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('GitHub 을 연결하면 커밋과 PR 이 채널로 들어옵니다', style: nx.text.base),
+          const SizedBox(height: NxSpacing.sp5),
+          if (waiting)
+            Text('브라우저에서 계속하세요…', style: nx.text.secondary)
+          else
+            NxButton(label: 'GitHub 연결', onPressed: onConnect),
+        ],
       ),
     );
   }
@@ -251,17 +324,49 @@ class _Connected extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundImage: connection.avatarUrl == null
-              ? null
-              : NetworkImage(connection.avatarUrl!),
-          child: connection.avatarUrl == null ? const Icon(Icons.person) : null,
-        ),
-        title: Text('@${connection.login}'),
-        subtitle: const Text('GitHub 연결됨'),
-        trailing: TextButton(onPressed: onDisconnect, child: const Text('연결 해제')),
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    final initial = Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: c.bgElevated, shape: BoxShape.circle),
+      child: Text(
+        connection.login.characters.firstOrNull?.toUpperCase() ?? '?',
+        style: nx.text.strong,
+      ),
+    );
+    return _Surface(
+      child: Row(
+        children: [
+          connection.avatarUrl == null
+              ? initial
+              : ClipOval(
+                  child: Image.network(
+                    connection.avatarUrl!,
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => initial,
+                  ),
+                ),
+          const SizedBox(width: NxSpacing.sp5),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('@${connection.login}', style: nx.text.strong),
+                Text('GitHub 연결됨', style: nx.text.meta),
+              ],
+            ),
+          ),
+          NxButton(
+            label: '연결 해제',
+            kind: NxButtonKind.ghost,
+            size: NxSize.sm,
+            onPressed: onDisconnect,
+          ),
+        ],
       ),
     );
   }
@@ -275,12 +380,20 @@ class _Retry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Text('연결 상태를 불러오지 못했습니다'),
-        const SizedBox(height: 8),
-        OutlinedButton(onPressed: onRetry, child: const Text('다시 확인')),
-      ],
+    return _Surface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('연결 상태를 불러오지 못했습니다', style: NxTheme.of(context).text.base),
+          const SizedBox(height: NxSpacing.sp4),
+          NxButton(
+            label: '다시 확인',
+            kind: NxButtonKind.secondary,
+            size: NxSize.sm,
+            onPressed: onRetry,
+          ),
+        ],
+      ),
     );
   }
 }

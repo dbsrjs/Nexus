@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../domain/models/repo_browse.dart';
+import '../../shared/widgets/back_button.dart';
+import '../../ui/ui.dart';
 import 'browse_controller.dart';
 
 /// 커밋 목록. **두 곳이 같은 위젯을 쓴다** — 그 push 에 들어온 커밋들과
@@ -24,32 +26,92 @@ class CommitList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (commits.isEmpty) return const Center(child: Text('커밋이 없습니다'));
+    final nx = NxTheme.of(context);
+    if (commits.isEmpty) {
+      return Center(child: Text('커밋이 없습니다', style: nx.text.secondary));
+    }
 
     return ListView.builder(
+      padding: const EdgeInsets.symmetric(
+        horizontal: NxSpacing.sp5,
+        vertical: NxSpacing.sp4,
+      ),
       itemCount: commits.length + (onMore == null ? 0 : 1),
       itemBuilder: (_, i) {
         if (i == commits.length) {
-          return TextButton(onPressed: onMore, child: const Text('더 불러오기'));
+          return Padding(
+            padding: const EdgeInsets.only(top: NxSpacing.sp4),
+            child: NxButton(
+              label: '더 불러오기',
+              kind: NxButtonKind.ghost,
+              onPressed: onMore,
+            ),
+          );
         }
-
-        final c = commits[i];
-        final count = c.changedCount;
-        final who = c.authorName;
-
-        return ListTile(
-          dense: true,
-          // 제목만 그린다. 본문까지 넣으면 목록이 문단이 된다.
-          title: Text(c.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text([
-            c.shortSha,
-            ?who,
-            // **모르면 말하지 않는다** — 0 으로 그리면 "안 바뀐 커밋"이 된다.
-            if (count != null) '파일 $count개',
-          ].join(' · ')),
-          onTap: () => onTap(c),
-        );
+        return _CommitRow(commit: commits[i], onPressed: () => onTap(commits[i]));
       },
+    );
+  }
+}
+
+class _CommitRow extends StatelessWidget {
+  const _CommitRow({required this.commit, required this.onPressed});
+
+  final CommitSummary commit;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    final count = commit.changedCount;
+    final who = commit.authorName;
+    final meta = [
+      ?who,
+      // **모르면 말하지 않는다** — 0 으로 그리면 "안 바뀐 커밋"이 된다.
+      if (count != null) '파일 $count개',
+    ];
+
+    return NxPressable(
+      onPressed: onPressed,
+      builder: (context, s) => AnimatedContainer(
+        duration: NxMotion.micro,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: s.hovered || s.pressed
+              ? c.bgElevated
+              : const Color(0x00000000),
+          borderRadius: BorderRadius.circular(NxRadius.md),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 제목만 그린다. 본문까지 넣으면 목록이 문단이 된다.
+            Text(
+              commit.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: nx.text.base,
+            ),
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                Text(commit.shortSha, style: nx.text.mono),
+                if (meta.isNotEmpty) ...[
+                  const SizedBox(width: NxSpacing.sp4),
+                  Flexible(
+                    child: Text(
+                      meta.join(' · '),
+                      overflow: TextOverflow.ellipsis,
+                      style: nx.text.meta,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -141,32 +203,29 @@ class _CommitsScreenState extends ConsumerState<CommitsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('커밋'),
-        bottom: _title == null
-            ? null
-            : PreferredSize(
-                preferredSize: const Size.fromHeight(24),
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 16, bottom: 8),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      _title!,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                ),
-              ),
+    final repoId = _repoId;
+    return NxPage(
+      header: NxHeader(
+        title: '커밋',
+        // 브랜치 이력이면 브랜치, push 에서 왔으면 저장소 · ref 를 제목 곁에.
+        subtitle: _title,
+        leading: NxBackButton(
+          fallback: repoId == null
+              ? '/s/${widget.spaceId}'
+              : '/s/${widget.spaceId}/repos/$repoId/browse',
+        ),
       ),
       body: _body(),
     );
   }
 
   Widget _body() {
+    final nx = NxTheme.of(context);
     if (_loading && _commits.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const Padding(
+        padding: EdgeInsets.all(NxSpacing.sp7),
+        child: NxSkeleton(lines: 6, lineHeight: 32),
+      );
     }
 
     final error = _error;
@@ -175,9 +234,13 @@ class _CommitsScreenState extends ConsumerState<CommitsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(error),
-            const SizedBox(height: 8),
-            OutlinedButton(onPressed: _load, child: const Text('다시 확인')),
+            Text(error, style: nx.text.base),
+            const SizedBox(height: NxSpacing.sp4),
+            NxButton(
+              label: '다시 확인',
+              kind: NxButtonKind.secondary,
+              onPressed: _load,
+            ),
           ],
         ),
       );

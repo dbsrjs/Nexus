@@ -9,6 +9,8 @@ import 'package:nexus_app/domain/models/pull.dart';
 import 'package:nexus_app/features/repo/browse_controller.dart';
 import 'package:nexus_app/features/repo/pulls_screen.dart';
 
+import 'package:nexus_app/ui/ui.dart';
+
 import 'support/nx_host.dart';
 
 /// **`implements` 로 만든다** — `PullsApi` 는 `ApiClient` 를 받는데 테스트에는
@@ -173,11 +175,11 @@ void main() {
     await tester.pump();
 
     expect(find.text('더 불러오기'), findsNothing);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(NxSpinner), findsOneWidget);
 
     api.gate!.complete();
     await tester.pumpAndSettle();
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(NxSpinner), findsNothing);
   });
 
   testWidgets('미연결(400)일 때만 저장소 화면으로 가는 길을 보여 준다', (tester) async {

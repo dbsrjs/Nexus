@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../shell/app_shell.dart';
-import '../../core/theme.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/attachment_item.dart';
-import '../chat/attachment_widgets.dart';
+import '../../shared/widgets/file_kind.dart';
+import '../../ui/ui.dart';
+import '../chat/attachment_widgets.dart' show formatBytes;
 import '../chat/message_controller.dart';
 import '../space/space_controller.dart';
 
@@ -29,31 +30,43 @@ class FilesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final nx = NxTheme.of(context);
     final files = ref.watch(spaceFilesProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        // 셸 안이라 돌아갈 곳이 스택에 없다. 판에서 바로 오는 화면이다.
-        automaticallyImplyLeading: false,
-        title: const ShellPaneTrigger(child: Text('파일')),
+    return NxPage(
+      // 끌어 내려 새로고침(RefreshIndicator)은 Material 이라 버튼으로 둔다.
+      header: ShellHeader(
+        title: '파일',
+        actions: [
+          NxIconButton(
+            icon: NxIcons.refresh,
+            label: '새로고침',
+            onPressed: () => ref.invalidate(spaceFilesProvider),
+          ),
+        ],
       ),
       body: files.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Padding(
+          padding: EdgeInsets.all(NxSpacing.sp7),
+          child: NxSkeleton(lines: 6, lineHeight: 40),
+        ),
         error: (error, _) => _FilesError(
           error: error,
           onRetry: () => ref.invalidate(spaceFilesProvider),
         ),
         data: (items) => items.isEmpty
-            ? const Center(child: Text('아직 올라온 파일이 없습니다.'))
-            : RefreshIndicator(
-                onRefresh: () async => ref.invalidate(spaceFilesProvider),
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(NexusSpacing.sp4),
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, index) =>
-                      _FileTile(item: items[index], spaceId: spaceId),
+            ? Center(
+                child: Text('아직 올라온 파일이 없습니다.', style: nx.text.secondary),
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: NxSpacing.sp7,
+                  vertical: NxSpacing.sp4,
                 ),
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const NxDivider(),
+                itemBuilder: (_, index) =>
+                    _FileTile(item: items[index], spaceId: spaceId),
               ),
       ),
     );
@@ -68,38 +81,53 @@ class _FileTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final nx = NxTheme.of(context);
     final api = ref.watch(attachmentsApiProvider);
+    final attachment = item.attachment;
+    final kind = FileKindBadge(name: attachment.name);
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: item.attachment.isImage
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(NexusRadius.sm),
-              child: Image.network(
-                api.urlFor(
-                  spaceId: spaceId,
-                  attachmentId: item.attachment.id,
-                  thumb: true,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: NxSpacing.sp4),
+      child: Row(
+        children: [
+          // 사진은 썸네일, 나머지는 확장자 — 둘 다 무엇인지 알려 주는 표시다.
+          attachment.isImage
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(NxRadius.sm),
+                  child: Image.network(
+                    api.urlFor(
+                      spaceId: spaceId,
+                      attachmentId: attachment.id,
+                      thumb: true,
+                    ),
+                    headers: api.authHeaders,
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => kind,
+                  ),
+                )
+              : kind,
+          const SizedBox(width: NxSpacing.sp5),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  attachment.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: nx.text.base,
                 ),
-                headers: api.authHeaders,
-                width: 40,
-                height: 40,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) =>
-                    Icon(iconForAttachment(item.attachment)),
-              ),
-            )
-          : Icon(iconForAttachment(item.attachment)),
-      title: Text(
-        item.attachment.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyMedium,
-      ),
-      subtitle: Text(
-        formatBytes(item.attachment.sizeBytes),
-        style: theme.textTheme.labelSmall,
+                const SizedBox(height: 2),
+                Text(
+                  formatBytes(attachment.sizeBytes),
+                  style: nx.text.mono,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -122,9 +150,13 @@ class _FilesError extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(message, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: NexusSpacing.sp3),
-          OutlinedButton(onPressed: onRetry, child: const Text('다시 시도')),
+          Text(message, style: NxTheme.of(context).text.secondary),
+          const SizedBox(height: NxSpacing.sp4),
+          NxButton(
+            label: '다시 시도',
+            kind: NxButtonKind.secondary,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );

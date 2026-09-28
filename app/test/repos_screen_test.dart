@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/domain/models/connection.dart';
 import 'package:nexus_app/features/repo/connection_controller.dart';
+import 'package:nexus_app/features/repo/repo_controller.dart';
 import 'package:nexus_app/features/repo/repos_screen.dart';
 
 import 'support/nx_host.dart';
@@ -14,7 +15,11 @@ import 'support/nx_host.dart';
 /// 더 이상 export 하지 않아 목록에 타입을 붙일 수 없다.
 Widget harness(Future<List<GithubConnection>> Function() load) {
   return ProviderScope(
-    overrides: [connectionsProvider.overrideWith((ref) => load())],
+    overrides: [
+      connectionsProvider.overrideWith((ref) => load()),
+      // 붙은 저장소 목록은 이 테스트의 주제가 아니다 — 실제 API 로 나가지 않게 막는다.
+      spaceReposProvider.overrideWith((ref, spaceId) async => const []),
+    ],
     child: nxTestApp(home: ReposScreen(spaceId: 'space-1')),
   );
 }

@@ -20,7 +20,6 @@ const _allowed = <String>{
   'lib/features/chat/mention_composer_controller.dart',
   'lib/features/chat/selection_app_bar.dart',
   'lib/features/chat/thread_screen.dart',
-  'lib/features/files/files_screen.dart',
   'lib/features/issue/board_screen.dart',
   'lib/features/issue/burndown_chart.dart',
   'lib/features/issue/issue_card.dart',
@@ -29,14 +28,6 @@ const _allowed = <String>{
   'lib/features/issue/label_widgets.dart',
   'lib/features/issue/new_issue_sheet.dart',
   'lib/features/issue/sprint_screen.dart',
-  'lib/features/repo/browse_screen.dart',
-  'lib/features/repo/code_highlight.dart',
-  'lib/features/repo/commit_detail_screen.dart',
-  'lib/features/repo/commits_screen.dart',
-  'lib/features/repo/pull_detail_screen.dart',
-  'lib/features/repo/pulls_screen.dart',
-  'lib/features/repo/repo_picker_sheet.dart',
-  'lib/features/repo/repos_screen.dart',
   'lib/main.dart',
 };
 

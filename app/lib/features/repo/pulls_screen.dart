@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/pull.dart';
+import '../../shared/widgets/back_button.dart';
+import '../../ui/ui.dart';
 import 'browse_controller.dart';
 
 typedef PullListKey = ({String spaceId, String repoId, String state});
@@ -20,12 +21,15 @@ typedef PullListKey = ({String spaceId, String repoId, String state});
 /// 다시 들어오는 것이 곧 새로고침이 된다.
 final pullsProvider = FutureProvider.autoDispose
     .family<({List<PullSummary> pulls, int? nextPage}), PullListKey>(
-  (ref, key) =>
-      ref.read(pullsApiProvider).list(key.spaceId, key.repoId, state: key.state),
-);
+      (ref, key) => ref
+          .read(pullsApiProvider)
+          .list(key.spaceId, key.repoId, state: key.state),
+    );
 
-/// PR 상태 칩. 목록과 상세가 같이 쓴다. **`draft` 가 상태보다 먼저다** —
+/// PR 상태 표지. 목록과 상세가 같이 쓴다. **`draft` 가 상태보다 먼저다** —
 /// 초안은 열림 안의 하위 상태라 그대로 두면 "열림"으로 오해한다.
+///
+/// 색만으로 말하지 않게 점과 글자를 함께 쓴다(디자인 시스템 §6).
 class PullStateChip extends StatelessWidget {
   const PullStateChip({super.key, required this.state, this.draft = false});
 
@@ -34,24 +38,14 @@ class PullStateChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (draft) {
-      return Chip(
-        label: const Text('초안'),
-        labelStyle: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(color: NexusColors.warning),
-      );
-    }
+    final c = NxTheme.of(context).colors;
+    if (draft) return NxTag('초안', dot: true, color: c.warning);
     final (label, color) = switch (state) {
-      PullState.open => ('열림', NexusColors.success),
-      PullState.merged => ('머지됨', NexusColors.merged),
-      PullState.closed => ('닫힘', NexusColors.danger),
+      PullState.open => ('열림', c.success),
+      PullState.merged => ('머지됨', c.merged),
+      PullState.closed => ('닫힘', c.danger),
     };
-    return Chip(
-      label: Text(label),
-      labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(color: color),
-    );
+    return NxTag(label, dot: true, color: color);
   }
 }
 
@@ -75,15 +69,19 @@ class PullList extends StatelessWidget {
   final void Function(PullSummary pull) onTap;
   final VoidCallback? onMore;
 
-  /// 이어 받는 중. **버튼을 없애지 않고 자리를 지킨 채 스피너로 바꾼다** —
-  /// 사라지면 목록이 튀고, 누른 것이 먹었는지 알 수 없다.
+  /// 이어 받는 중. **자리를 지킨 채 작은 호로 바꾼다** — 사라지면 목록이 튀고,
+  /// 누른 것이 먹었는지 알 수 없다.
   final bool loadingMore;
 
   @override
   Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
     if (pulls.isEmpty) {
       return Center(
-        child: Text(state == 'closed' ? '닫힌 PR 이 없습니다' : '열린 PR 이 없습니다'),
+        child: Text(
+          state == 'closed' ? '닫힌 PR 이 없습니다' : '열린 PR 이 없습니다',
+          style: nx.text.secondary,
+        ),
       );
     }
 
@@ -93,38 +91,86 @@ class PullList extends StatelessWidget {
       itemCount: pulls.length + (hasMoreRow ? 1 : 0),
       itemBuilder: (_, i) {
         if (i == pulls.length) {
-          return loadingMore
-              ? const Padding(
-                  padding: EdgeInsets.all(NexusSpacing.sp4),
-                  child: Center(
-                    child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+          return SizedBox(
+            height: 44,
+            child: Center(
+              child: loadingMore
+                  ? const NxSpinner(size: 16)
+                  : NxButton(
+                      label: '더 불러오기',
+                      kind: NxButtonKind.ghost,
+                      onPressed: onMore,
                     ),
-                  ),
-                )
-              : TextButton(onPressed: onMore, child: const Text('더 불러오기'));
+            ),
+          );
         }
-
-        final p = pulls[i];
-        return ListTile(
-          dense: true,
-          title: Text(
-            '#${p.number} · ${p.title}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text('${p.sourceBranch ?? '?'} → ${p.targetBranch ?? '?'}'),
-          trailing: PullStateChip(state: p.state, draft: p.draft),
-          onTap: () => onTap(p),
-        );
+        return _PullRow(pull: pulls[i], onPressed: () => onTap(pulls[i]));
       },
     );
   }
 }
 
-/// PR 목록 화면. 열림 · 닫힘(머지 포함) 필터를 `SegmentedButton` 으로 둔다.
+class _PullRow extends StatelessWidget {
+  const _PullRow({required this.pull, required this.onPressed});
+
+  final PullSummary pull;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    return NxPressable(
+      onPressed: onPressed,
+      builder: (context, s) => AnimatedContainer(
+        duration: NxMotion.micro,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: s.hovered || s.pressed
+              ? c.bgElevated
+              : const Color(0x00000000),
+          borderRadius: BorderRadius.circular(NxRadius.md),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '#${pull.number}',
+                          style: nx.text.mono.copyWith(fontSize: 13),
+                        ),
+                        const TextSpan(text: ' · '),
+                        TextSpan(text: pull.title),
+                      ],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: nx.text.base,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${pull.sourceBranch ?? '?'} → ${pull.targetBranch ?? '?'}',
+                    overflow: TextOverflow.ellipsis,
+                    style: nx.text.mono,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: NxSpacing.sp4),
+            PullStateChip(state: pull.state, draft: pull.draft),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// PR 목록 화면. 열림 · 닫힘(머지 포함) 필터를 세그먼트로 둔다.
 class PullsScreen extends ConsumerStatefulWidget {
   const PullsScreen({super.key, required this.spaceId, required this.repoId});
 
@@ -188,22 +234,34 @@ class _PullsScreenState extends ConsumerState<PullsScreen> {
   Widget build(BuildContext context) {
     final async = ref.watch(pullsProvider(_key));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Pull Request')),
+    return NxPage(
+      header: NxHeader(
+        title: 'Pull Request',
+        leading: NxBackButton(
+          fallback: '/s/${widget.spaceId}/repos/${widget.repoId}/browse',
+        ),
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(NexusSpacing.sp6),
+        padding: const EdgeInsets.fromLTRB(
+          NxSpacing.sp5,
+          NxSpacing.sp6,
+          NxSpacing.sp5,
+          0,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'open', label: Text('열림')),
-                ButtonSegment(value: 'closed', label: Text('닫힘')),
-              ],
-              selected: {_state},
-              onSelectionChanged: (s) => _changeState(s.first),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: NxSegmented<String>(
+                label: 'PR 상태',
+                expand: false,
+                value: _state,
+                segments: const [('open', '열림'), ('closed', '닫힘')],
+                onChanged: _changeState,
+              ),
             ),
-            const SizedBox(height: NexusSpacing.sp6),
+            const SizedBox(height: NxSpacing.sp5),
             Expanded(child: _body(async)),
           ],
         ),
@@ -212,29 +270,33 @@ class _PullsScreenState extends ConsumerState<PullsScreen> {
   }
 
   Widget _body(AsyncValue<({List<PullSummary> pulls, int? nextPage})> async) {
+    // 재시도 중(「로딩 + 오류」)에도 오류를 보인다 — 저장소 화면과 같은 이유.
     return switch (async) {
-      AsyncError(:final error) => _PullsError(
-          error: error,
-          spaceId: widget.spaceId,
-          onRetry: () => ref.invalidate(pullsProvider(_key)),
-        ),
+      _ when async.hasError => _PullsError(
+        error: async.error!,
+        spaceId: widget.spaceId,
+        onRetry: () => ref.invalidate(pullsProvider(_key)),
+      ),
       AsyncData(:final value) => () {
-          final nextPage = _pagedOnce ? _extraNextPage : value.nextPage;
-          return PullList(
-            pulls: [...value.pulls, ..._extra],
-            state: _state,
-            // 이어 받는 중에는 `onMore` 를 끊어 두 번 눌리지 않게 하되,
-            // 행 자체는 `loadingMore` 가 지킨다.
-            onMore: _loadingMore || nextPage == null
-                ? null
-                : () => _loadMore(nextPage),
-            loadingMore: _loadingMore,
-            onTap: (p) => context.push(
-              '/s/${widget.spaceId}/repos/${widget.repoId}/pulls/${p.number}',
-            ),
-          );
-        }(),
-      _ => const Center(child: CircularProgressIndicator()),
+        final nextPage = _pagedOnce ? _extraNextPage : value.nextPage;
+        return PullList(
+          pulls: [...value.pulls, ..._extra],
+          state: _state,
+          // 이어 받는 중에는 `onMore` 를 끊어 두 번 눌리지 않게 하되,
+          // 행 자체는 `loadingMore` 가 지킨다.
+          onMore: _loadingMore || nextPage == null
+              ? null
+              : () => _loadMore(nextPage),
+          loadingMore: _loadingMore,
+          onTap: (p) => context.push(
+            '/s/${widget.spaceId}/repos/${widget.repoId}/pulls/${p.number}',
+          ),
+        );
+      }(),
+      _ => const Padding(
+        padding: EdgeInsets.all(10),
+        child: NxSkeleton(lines: 5, lineHeight: 36),
+      ),
     };
   }
 }
@@ -259,24 +321,32 @@ class _PullsError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final failure = error is ApiException ? (error as ApiException).failure : null;
+    final failure = error is ApiException
+        ? (error as ApiException).failure
+        : null;
 
     if (failure != ApiFailure.badRequest) {
       return _Message(
-        text: failure == null ? messageFor(ApiFailure.server) : messageFor(failure),
-        action: OutlinedButton(onPressed: onRetry, child: const Text('다시 확인')),
+        text: failure == null
+            ? messageFor(ApiFailure.server)
+            : messageFor(failure),
+        action: NxButton(
+          label: '다시 확인',
+          kind: NxButtonKind.secondary,
+          onPressed: onRetry,
+        ),
       );
     }
 
     return _Message(
       text: 'GitHub 을 연결하세요',
-      action: FilledButton(
+      action: NxButton(
+        label: '저장소 화면으로',
         // **`push` 가 아니라 `go` 다.** 여기는 셸 밖이고 저장소 화면은 셸
         // 안이라, `push` 하면 `ShellRoute` 가 두 번 쌓여 페이지 키가 겹친다
         // (`test/router_shell_test.dart`). 뜻으로 봐도 `go` 가 맞다 —
         // 연결하러 가는 것이지 PR 목록 위에 얹어 보고 돌아올 일이 아니다.
         onPressed: () => context.go('/s/$spaceId/repos'),
-        child: const Text('저장소 화면으로'),
       ),
     );
   }
@@ -294,8 +364,8 @@ class _Message extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(text),
-          const SizedBox(height: NexusSpacing.sp4),
+          Text(text, style: NxTheme.of(context).text.base),
+          const SizedBox(height: NxSpacing.sp4),
           action,
         ],
       ),

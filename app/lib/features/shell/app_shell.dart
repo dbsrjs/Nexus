@@ -192,6 +192,36 @@ class ShellPaneTrigger extends ConsumerWidget {
   }
 }
 
+/// 셸 안 화면의 머리 줄 — 제목이 [ShellPaneTrigger] 로 감싸인 [NxHeader].
+/// 보드 · 스프린트 · 파일 · 저장소 · 셸 홈이 같은 모양을 쓴다.
+class ShellHeader extends StatelessWidget {
+  const ShellHeader({super.key, required this.title, this.actions = const []});
+
+  final String title;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    return NxHeader(
+      titleWidget: Align(
+        alignment: Alignment.centerLeft,
+        child: ShellPaneTrigger(
+          child: Semantics(
+            header: true,
+            child: Text(
+              title,
+              overflow: TextOverflow.ellipsis,
+              style: nx.text.title.copyWith(fontSize: 15),
+            ),
+          ),
+        ),
+      ),
+      actions: actions,
+    );
+  }
+}
+
 /// 태블릿 · 모바일 공용. 레일 + 채널 패널은 왼쪽에서 밀려 나온다.
 class _CompactShell extends StatefulWidget {
   const _CompactShell({
@@ -328,14 +358,7 @@ class ShellHome extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // 좁은 셸에서는 이 머리가 채널 패널을 여는 길이다.
-          NxHeader(
-            titleWidget: Align(
-              alignment: Alignment.centerLeft,
-              child: ShellPaneTrigger(
-                child: Text('채널 고르기', style: nx.text.strong),
-              ),
-            ),
-          ),
+          const ShellHeader(title: '채널 고르기'),
           Expanded(
             child: Center(
               child: Padding(
