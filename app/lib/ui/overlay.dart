@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -198,6 +199,10 @@ class NxMenuPanel extends StatelessWidget {
   }
 }
 
+bool get _isTouch =>
+    defaultTargetPlatform == TargetPlatform.android ||
+    defaultTargetPlatform == TargetPlatform.iOS;
+
 /// 누르면 메뉴가 붙어 열리는 것(15단계 설계 D8). PopupMenuButton 의 자리.
 ///
 /// 앵커 아래에 열리고, 화면 밖으로 넘치면 위로 뒤집는다. 바깥을 누르거나 Esc 면 닫힌다.
@@ -257,12 +262,19 @@ class _NxMenuState extends State<NxMenu> {
                   ? Alignment.bottomLeft
                   : Alignment.topLeft,
               offset: Offset(0, widget.openUp ? -4 : 4),
+              // Align 은 오버레이 전체로 늘어난다 — 위로 열 때는 **아래에** 붙여야 패널이
+              // 앵커 바로 위에 온다. topLeft 로 두었더니 계정 메뉴가 화면 맨 위로 튀었다
+              // (Android 에서 사용자가 발견).
               child: Align(
-                alignment: Alignment.topLeft,
+                alignment: widget.openUp
+                    ? Alignment.bottomLeft
+                    : Alignment.topLeft,
                 child: NxMenuPanel(
                   entries: widget.entries,
                   onClose: _close,
                   width: widget.width,
+                  // 손가락으로 누르는 기기에서는 32px 줄이 너무 얇다 — 동작 카드와 같은 44.
+                  touch: _isTouch,
                 ),
               ),
             ),

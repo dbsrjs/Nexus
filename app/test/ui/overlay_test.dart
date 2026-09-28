@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -276,6 +277,47 @@ void main() {
     final scrim = tester.getSize(find.ancestor(of: find.byType(ColoredBox).last, matching: find.byType(GestureDetector)).last);
     expect(scrim.height, 800, reason: '막이 탭 줄까지 덮어야 한다');
     expect(tester.getTopLeft(find.text('리액션 줄')).dy, greaterThanOrEqualTo(0));
+  });
+
+  testWidgets('★ 위로 여는 메뉴는 앵커 바로 위에 뜬다 - 계정 메뉴가 화면 맨 위로 튀었다', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(app(Align(
+      alignment: Alignment.bottomLeft,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: NxMenu(
+          openUp: true,
+          entries: [NxMenuItem('설정', onSelected: () {})],
+          anchorBuilder: (context, toggle) => NxButton(label: '계정', onPressed: toggle),
+        ),
+      ),
+    )));
+    await tester.tap(find.text('계정'));
+    await tester.pumpAndSettle();
+    final anchorTop = tester.getTopLeft(find.text('계정')).dy;
+    final item = tester.getBottomLeft(find.text('설정')).dy;
+    expect(item, lessThan(anchorTop));
+    expect(anchorTop - item, lessThan(80), reason: '앵커 바로 위여야 한다');
+  });
+
+  testWidgets('★ 터치 기기의 메뉴 항목은 44 높이다 - 32 라 손가락으로 누르기 어려웠다', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.pumpWidget(app(Center(
+      child: NxMenu(
+        entries: [NxMenuItem('설정', onSelected: () {})],
+        anchorBuilder: (context, toggle) => NxButton(label: '계정', onPressed: toggle),
+      ),
+    )));
+    await tester.tap(find.text('계정'));
+    await tester.pumpAndSettle();
+    final row = find
+        .ancestor(of: find.text('설정'), matching: find.byType(AnimatedContainer))
+        .first;
+    expect(tester.getSize(row).height, 44);
+    debugDefaultTargetPlatformOverride = null;
   });
 }
 
