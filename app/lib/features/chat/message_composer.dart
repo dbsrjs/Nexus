@@ -233,18 +233,25 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
                           },
                         ),
                       },
-                      child: NxField(
-                        controller: _controller,
-                        focusNode: _focus,
-                        borderless: true,
-                        minLines: 1,
-                        maxLines: 5,
-                        style: nx.text.body,
-                        hint:
-                            widget.hint ??
-                            (channel == null
-                                ? '채널을 선택하세요'
-                                : '#${channel.name} 에 메시지 보내기'),
+                      // 아이콘 버튼(32px)과 같은 최소 높이에 가운데 — 한 줄일 때 글자가 버튼과
+                      // 가운데가 맞는다. 없으면 한 줄(24px)이 줄의 바닥에 붙어 4px 처졌다.
+                      // 여러 줄로 늘면 칸이 커지고 버튼은 바닥에 남는다(줄은 end 맞춤).
+                      child: Container(
+                        constraints: const BoxConstraints(minHeight: 32),
+                        alignment: Alignment.centerLeft,
+                        child: NxField(
+                          controller: _controller,
+                          focusNode: _focus,
+                          borderless: true,
+                          minLines: 1,
+                          maxLines: 5,
+                          style: nx.text.body,
+                          hint:
+                              widget.hint ??
+                              (channel == null
+                                  ? '채널을 선택하세요'
+                                  : '#${channel.name} 에 메시지 보내기'),
+                        ),
                       ),
                     ),
                   ),

@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import '../data/settings_storage.dart';
@@ -29,12 +30,25 @@ class NxRoot extends StatelessWidget {
       preference,
       MediaQuery.platformBrightnessOf(context),
     );
-    return NxTheme(
-      data: NxThemeData.of(brightness),
-      child: NxToastHost(
-        child: ScrollConfiguration(
-          behavior: const NxScrollBehavior(),
-          child: child,
+    final dark = brightness == Brightness.dark;
+    // 시스템 바의 아이콘 밝기 — Material 의 AppBar 가 대신 해 주던 일이다. 없으면 라이트
+    // 테마에서 상태 표시줄 아이콘이 흰색으로 남아 보이지 않았다(Android 에뮬레이터에서 발견).
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+          .copyWith(
+            statusBarColor: const Color(0x00000000),
+            systemNavigationBarColor: NxThemeData.of(brightness).colors.bgBase,
+            systemNavigationBarIconBrightness: dark
+                ? Brightness.light
+                : Brightness.dark,
+          ),
+      child: NxTheme(
+        data: NxThemeData.of(brightness),
+        child: NxToastHost(
+          child: ScrollConfiguration(
+            behavior: const NxScrollBehavior(),
+            child: child,
+          ),
         ),
       ),
     );

@@ -309,7 +309,10 @@ class NxActionCard {
         ),
       ),
     );
-    Overlay.of(context).insert(entry);
+    // **가장 바깥 오버레이에** 띄운다. 셸 안 화면은 ShellRoute 의 안쪽 내비게이터 속이라
+    // 가까운 오버레이에 넣으면 막이 탭 줄 · 상태 표시줄을 덮지 못하고 위쪽 리액션 줄이
+    // 잘렸다(Android 에뮬레이터에서 발견). 앵커도 전역 좌표라 바깥 쪽이 맞다.
+    Overlay.of(context, rootOverlay: true).insert(entry);
     return done.future;
   }
 }
@@ -335,6 +338,7 @@ class _ActionCardLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = NxTheme.of(context).colors;
     final screen = MediaQuery.sizeOf(context);
+    final padding = MediaQuery.paddingOf(context);
     const margin = 12.0;
     final width = (screen.width - margin * 2).clamp(0.0, 360.0);
     final left = anchor.left.clamp(margin, screen.width - width - margin);
@@ -352,25 +356,36 @@ class _ActionCardLayer extends StatelessWidget {
         ),
         if (header != null)
           Positioned(left: left, width: width, top: anchor.top, child: header!),
+        // 남은 자리 안에서만 그린다 — 넘치면 잘리지 않고 밀어 볼 수 있게. 위로 열 때는
+        // 상태 표시줄 아래까지만 쓴다.
         Positioned(
           left: left,
-          top: below ? anchor.bottom + 8 : null,
-          bottom: below ? null : screen.height - anchor.top + 8,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (above != null) ...[
-                above!(onClose),
-                const SizedBox(height: NxSpacing.sp4),
-              ],
-              NxMenuPanel(
-                entries: entries,
-                onClose: onClose,
-                width: 240,
-                touch: true,
+          right: margin,
+          top: below ? anchor.bottom + 8 : padding.top + margin,
+          bottom: below
+              ? padding.bottom + margin
+              : screen.height - anchor.top + 8,
+          child: Align(
+            alignment: below ? Alignment.topLeft : Alignment.bottomLeft,
+            child: SingleChildScrollView(
+              reverse: !below,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (above != null) ...[
+                    above!(onClose),
+                    const SizedBox(height: NxSpacing.sp4),
+                  ],
+                  NxMenuPanel(
+                    entries: entries,
+                    onClose: onClose,
+                    width: 240,
+                    touch: true,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ],

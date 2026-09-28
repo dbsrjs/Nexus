@@ -241,5 +241,41 @@ void main() {
       expect(result, isNull);
     });
   });
+
+  testWidgets('★ 동작 카드는 안쪽 내비게이터 속에서 열어도 화면 전체를 덮는다 - 셸 안에서 탭 줄이 안 덮였다', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(app(SizedBox(
+      width: 400,
+      height: 800,
+      child: Column(children: [
+        // 셸 본문처럼 안쪽 내비게이터 — 아래 50px 는 탭 줄 자리.
+        Expanded(
+          child: Navigator(
+            onGenerateRoute: (_) => PageRouteBuilder<void>(
+              pageBuilder: (context, _, _) => Center(
+                child: NxButton(
+                  label: '길게',
+                  onPressed: () => NxActionCard.show(
+                    context,
+                    anchor: const Rect.fromLTWH(20, 600, 300, 40),
+                    above: (_) => const Text('리액션 줄'),
+                    entries: [NxMenuItem('답장', onSelected: () {})],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 50, child: Text('탭 줄')),
+      ]),
+    )));
+    await tester.tap(find.text('길게'));
+    await tester.pumpAndSettle();
+    final scrim = tester.getSize(find.ancestor(of: find.byType(ColoredBox).last, matching: find.byType(GestureDetector)).last);
+    expect(scrim.height, 800, reason: '막이 탭 줄까지 덮어야 한다');
+    expect(tester.getTopLeft(find.text('리액션 줄')).dy, greaterThanOrEqualTo(0));
+  });
 }
 

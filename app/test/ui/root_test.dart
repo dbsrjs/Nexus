@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/data/settings_storage.dart';
@@ -54,4 +55,20 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
   });
+
+  testWidgets('★ 라이트면 시스템 바 아이콘이 어둡다 - AppBar 가 대신 해 주던 일', (tester) async {
+    Future<SystemUiOverlayStyle> styleFor(ThemePreference p) async {
+      await tester.pumpWidget(Directionality(
+        textDirection: TextDirection.ltr,
+        child: NxRoot(preference: p, child: const SizedBox()),
+      ));
+      return tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+        find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
+      ).value;
+    }
+
+    expect((await styleFor(ThemePreference.light)).statusBarIconBrightness, Brightness.dark);
+    expect((await styleFor(ThemePreference.dark)).statusBarIconBrightness, Brightness.light);
+  });
 }
+
