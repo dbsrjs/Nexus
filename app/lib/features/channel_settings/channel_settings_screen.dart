@@ -38,13 +38,28 @@ class ChannelSettingsScreen extends ConsumerWidget {
     final channel = channels?.where((c) => c.id == channelId).firstOrNull;
 
     if (space == null || channel == null) {
-      // 목록을 받았는데 없다 — 볼 수 없게 됐다. build 중에 옮기지 않는다(CLAUDE.md §2).
-      if (spaces != null && channels != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted) context.go(space == null ? '/spaces' : '/s/$spaceId');
-        });
+      if (spaces == null || channels == null) {
+        return const NxPage(body: NxSkeleton(lines: 4));
       }
-      return const NxPage(body: NxSkeleton(lines: 4));
+      // 목록에 없다 — 그렇다고 **곧바로 내보내지 않는다.** 이 캐시는 한동안 구독자가 없으면
+      // Riverpod 이 멈춰 두었다가, 다시 깨어난 첫 값으로 옛 목록을 준다. 방금 만든 채널의
+      // 설정을 열자마자 쫓겨났다(16-2 app:flow). 이유를 보이고, 새 값이 오면 저절로 바로잡힌다.
+      return NxPage(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('이 채널을 볼 수 없습니다.', style: NxTheme.of(context).text.body),
+              const SizedBox(height: NxSpacing.sp5),
+              NxButton(
+                label: '돌아가기',
+                kind: NxButtonKind.secondary,
+                onPressed: () => context.go(space == null ? '/spaces' : '/s/$spaceId'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     final visible = ChannelSettingsSection.visibleFor(

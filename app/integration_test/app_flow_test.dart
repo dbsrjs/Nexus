@@ -238,6 +238,44 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpUntil(find.byType(SpaceMenu));
 
+    // ── 16-2: 카테고리 「+」 → 비공개 채널 만들기 → 채널 설정의 명단 · 스프린트 스위치 ──
+    final secret = 'secret ${fx.stamp}';
+    await tester.tap(
+      find.byWidgetPredicate((w) => w is NxIconButton && w.label.endsWith('에 채널 만들기')).first,
+    );
+    await tester.pumpUntil(find.text('채널 만들기'));
+    await tester.enterText(find.widgetWithText(NxField, '이름'), secret);
+    await tester.tap(find.byWidgetPredicate((w) => w is NxSwitch && w.label == '비공개 채널'));
+    // 만들기 버튼은 이름을 본 다음 프레임에 켜진다.
+    await tester.pump();
+    await tester.tap(find.widgetWithText(NxButton, '만들기'));
+    await tester.pumpUntilTrue(() => fx.hasPrivateChannel(secret), '비공개 채널이 서버에 없다');
+    // 만든 채널로 들어간다 — 머리 줄에 이름이 보인다.
+    await tester.pumpUntil(find.text(secret));
+
+    await tester.tap(find.byWidgetPredicate((w) => w is NxIconButton && w.label == '채널 설정'));
+
+    await tester.pumpUntil(find.widgetWithText(NxRow, '멤버'));
+    await tester.tap(find.widgetWithText(NxRow, '멤버'));
+    // 만든 사람 혼자다 — 나갈 수 없다고 미리 말한다(서버는 409).
+    await tester.pumpUntil(find.text('마지막 멤버는 나갈 수 없습니다'));
+    expect(find.text('명단 1명'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpUntil(find.byType(SpaceMenu));
+
+    // 스프린트는 기본 꺼져 있다 — 켜면 채널 판에 갈래가 생긴다(D31 · D32).
+    expect(find.widgetWithText(NxRow, '스프린트'), findsNothing);
+    await tester.tap(find.byType(SpaceMenu));
+    await tester.pumpUntil(find.text('스페이스 설정'));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('스페이스 설정'));
+    final sprintSwitch = find.byWidgetPredicate((w) => w is NxSwitch && w.label == '스프린트 사용');
+    await tester.pumpUntil(sprintSwitch);
+    await tester.tap(sprintSwitch);
+    await tester.pumpUntilTrue(() => fx.sprintsEnabled(), '스프린트 스위치가 서버에 반영되지 않았다');
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpUntil(find.widgetWithText(NxRow, '스프린트'));
+
     expect(tester.takeException(), isNull);
   });
 }
@@ -324,6 +362,18 @@ class _Fixture {
   Future<bool> bobIsMember() async {
     final spaces = await _get('/spaces', _bobToken) as List;
     return spaces.cast<Map>().any((s) => s['id'] == _spaceId);
+  }
+
+  /// 그 이름의 비공개 채널이 픽스처 스페이스에 있는가(16-2).
+  Future<bool> hasPrivateChannel(String name) async {
+    final channels = await _get('/spaces/$_spaceId/channels', _aliceToken) as List;
+    return channels.cast<Map>().any((c) => c['name'] == name && c['isPrivate'] == true);
+  }
+
+  /// 픽스처 스페이스의 스프린트 스위치(16-2).
+  Future<bool> sprintsEnabled() async {
+    final spaces = await _get('/spaces', _aliceToken) as List;
+    return spaces.cast<Map>().any((s) => s['id'] == _spaceId && s['sprintsEnabled'] == true);
   }
 
   Future<bool> aliceMuted() async {
