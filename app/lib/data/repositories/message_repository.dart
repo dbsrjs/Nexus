@@ -319,8 +319,11 @@ class MessageRepository {
     );
   }
 
+  /// 상한은 **`1 << 32` 로 쓰지 않는다.** 웹(JS)의 시프트는 32비트라 그 값이 0 이 되고,
+  /// `nextInt(0)` 이 던져 **웹에서는 메시지를 하나도 보낼 수 없었다**(6-2 부터, 16단계 웹
+  /// 확인에서 잡았다). VM 에서는 멀쩡해 테스트가 못 잡는다 — 리터럴로 둔다.
   static String _localId() =>
-      'local-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 32)}';
+      'local-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(0x7fffffff)}';
 }
 
 /// 낙관적 토글. 서버 응답이 오기 전 화면에 보일 값을 만든다.
