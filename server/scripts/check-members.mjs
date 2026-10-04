@@ -36,6 +36,9 @@ check('admin 초대를 수락한다', bobAccept.status === 200, `status=${bobAcc
 
 const aliceSocket = await connect(alice.token);
 const carolSocket = await connect(carol.token);
+// 'connect' 직후에는 서버의 룸 조인(handleConnection)이 아직 끝나지 않았을 수 있다.
+// ack 를 받으면 룸에 들어가 있다 — 이걸 빼면 member:joined 를 간헐적으로 놓친다.
+await aliceSocket.emitWithAck('rooms:sync');
 
 const memberInvite = await invite(alice.token, { role: 'member', maxUses: 1 });
 const joined = waitFor(aliceSocket, 'member:joined');
@@ -154,6 +157,7 @@ check('owner 는 내보낼 수 없다(403)', kickOwner.status === 403, `status=$
 console.log('\n[나가기]');
 
 const bobSocket = await connect(bob.token);
+await bobSocket.emitWithAck('rooms:sync');
 const bobRemoved = waitFor(bobSocket, 'space:removed');
 const leakSpace = silence(carolSocket, 'member:left', 2000);
 const bobLeave = await api('POST', `/spaces/${spaceId}/leave`, { token: bob.token });
