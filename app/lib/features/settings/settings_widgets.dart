@@ -106,3 +106,60 @@ class SettingsError extends StatelessWidget {
     );
   }
 }
+
+/// 설정 창 왼쪽 목록 — 사용자 설정(14단계)과 스페이스 설정(16단계)이 함께 쓴다.
+///
+/// 캔버스 「설정」 — 글자만 있는 목록. 앞 장식 아이콘을 두지 않는다(15단계 D5).
+/// [footer] 는 구분선 아래에 붙는다(로그아웃처럼 섹션이 아닌 동작).
+class SettingsNav extends StatelessWidget {
+  const SettingsNav({
+    super.key,
+    required this.title,
+    required this.items,
+    this.footer = const [],
+  });
+
+  final String title;
+  final List<({String label, bool selected, VoidCallback onPressed})> items;
+  final List<Widget> footer;
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp5,
+        NxSpacing.sp9,
+        NxSpacing.sp5,
+        NxSpacing.sp7,
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+          child: Text(title, style: nx.text.label, overflow: TextOverflow.ellipsis),
+        ),
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: NxRow(
+              title: item.label,
+              dense: true,
+              selected: item.selected,
+              titleStyle: item.selected
+                  ? null
+                  : nx.text.base.copyWith(color: c.textSecondary),
+              onPressed: item.onPressed,
+            ),
+          ),
+        if (footer.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: NxDivider(),
+          ),
+          ...footer,
+        ],
+      ],
+    );
+  }
+}

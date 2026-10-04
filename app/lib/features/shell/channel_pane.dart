@@ -6,6 +6,7 @@ import '../../core/breakpoints.dart';
 import '../../ui/ui.dart';
 import '../channel/channel_list.dart';
 import '../space/space_controller.dart';
+import '../space/space_menu.dart';
 
 /// 가운데 240px — 스페이스 이름 헤더 + 작업 갈래 + 카테고리/채널 목록.
 class ChannelPane extends ConsumerWidget {
@@ -43,14 +44,19 @@ class ChannelPane extends ConsumerWidget {
                 Expanded(
                   child: Semantics(
                     header: true,
-                    child: Text(
-                      space?.name ?? '…',
-                      style: nx.text.title.copyWith(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    // 이름을 누르면 스페이스 메뉴(16단계 설계 D6).
+                    child: space == null
+                        ? Text(
+                            '…',
+                            style: nx.text.title.copyWith(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          )
+                        : Align(
+                            alignment: Alignment.centerLeft,
+                            child: SpaceMenu(space: space),
+                          ),
                   ),
                 ),
                 if (onClose != null)

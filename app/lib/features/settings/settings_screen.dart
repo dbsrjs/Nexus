@@ -11,6 +11,7 @@ import 'appearance_section.dart';
 import 'notifications_section.dart';
 import 'password_section.dart';
 import 'settings_controller.dart';
+import 'settings_widgets.dart';
 
 /// 설정 창(14단계). 셸 밖에 덮어서 연다 — 머무는 곳이 아니라 들어갔다 나오는 곳이다.
 ///
@@ -76,41 +77,21 @@ class _SettingsNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
-    final c = nx.colors;
-    // 캔버스 「설정」 — 글자만 있는 목록. 앞 장식 아이콘을 두지 않는다(15단계 D5).
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        NxSpacing.sp5,
-        NxSpacing.sp9,
-        NxSpacing.sp5,
-        NxSpacing.sp7,
-      ),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-          child: Text('사용자 설정', style: nx.text.label),
-        ),
+    return SettingsNav(
+      title: '사용자 설정',
+      items: [
         for (final section in SettingsSection.values)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: NxRow(
-              title: section.label,
-              dense: true,
-              selected: section == selected,
-              titleStyle: section == selected
-                  ? null
-                  : nx.text.base.copyWith(color: c.textSecondary),
-              onPressed: () => onSelect(section),
-            ),
+          (
+            label: section.label,
+            selected: section == selected,
+            onPressed: () => onSelect(section),
           ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          child: NxDivider(),
-        ),
+      ],
+      footer: [
         NxRow(
           title: '로그아웃',
           dense: true,
-          titleStyle: nx.text.base.copyWith(color: c.danger),
+          titleStyle: nx.text.base.copyWith(color: nx.colors.danger),
           onPressed: onSignOut,
         ),
       ],

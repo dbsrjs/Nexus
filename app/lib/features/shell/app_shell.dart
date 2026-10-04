@@ -8,6 +8,7 @@ import '../../shared/widgets/nexus_avatar.dart';
 import '../../ui/ui.dart';
 import '../channel/channel_controller.dart';
 import '../settings/settings_widgets.dart';
+import '../space/space_actions.dart';
 import '../space/space_controller.dart';
 import 'channel_pane.dart';
 import 'space_rail.dart';
@@ -93,6 +94,15 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    // 지금 보고 있는 스페이스에서 빠졌으면 나가고 알린다(16단계 설계 D13). 소켓 리스너는
+    // 화면을 모르므로 여기서 받는다. 메뉴의 「나가기」로 나온 경우도 같은 길이다.
+    ref.listen<String?>(removedSpaceProvider, (_, removed) {
+      if (removed == null || removed != widget.spaceId) return;
+      ref.read(removedSpaceProvider.notifier).set(null);
+      NxToast.show(context, '스페이스에서 나왔습니다');
+      context.go('/spaces');
+    });
+
     final layout = Layout.ofContext(context);
 
     return switch (layout) {
@@ -396,8 +406,11 @@ class SettingsFrame extends StatelessWidget {
     required this.fallback,
     required this.onClose,
     required this.onBack,
+    this.title = '설정',
   });
 
+  /// 좁은 화면 머리 줄의 제목 — 「설정」 또는 「스페이스 설정」(16단계).
+  final String title;
   final Widget nav;
 
   /// 고른 섹션. null 이면 모바일은 목록을, 넓은 화면은 [fallback] 을 보인다.
@@ -414,7 +427,7 @@ class SettingsFrame extends StatelessWidget {
       return NxPage(
         // 제목은 늘 「설정」이다 — 섹션 이름은 본문 머리가 이미 크게 보인다.
         header: NxHeader(
-          title: '설정',
+          title: title,
           leading: body == null
               ? NxIconButton(icon: NxIcons.close, label: '설정 닫기', onPressed: onClose)
               : NxIconButton(icon: NxIcons.back, label: '뒤로', onPressed: onBack),

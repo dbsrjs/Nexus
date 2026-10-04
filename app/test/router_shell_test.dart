@@ -49,6 +49,16 @@ void main() {
     expect(inShell, isNot(contains('/settings/:section')));
   });
 
+  test('스페이스 설정 창은 셸 밖에 있다 - 있기는 하다(16단계)', () {
+    final routes = appRoutes();
+    final inShell = _pathsUnderShell(routes);
+    final all = _pathsUnderShell([ShellRoute(builder: (_, _, child) => child, routes: routes)]);
+    for (final path in const ['/s/:spaceId/settings', '/s/:spaceId/settings/:section']) {
+      expect(all, contains(path), reason: '$path 라우트가 없다');
+      expect(inShell, isNot(contains(path)), reason: '$path 가 셸 안에 있다');
+    }
+  });
+
   test('머무는 갈래는 그대로 셸 안이다', () {
     // 반대쪽도 못 박는다 — 겁이 나서 전부 셸 밖으로 빼면 갈래를 옮길 때마다
     // 레일과 채널 목록이 다시 만들어져 리디자인이 없던 일이 된다.

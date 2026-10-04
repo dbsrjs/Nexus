@@ -20,6 +20,8 @@ import '../features/repo/repos_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../shared/widgets/nexus_logo.dart';
 import '../features/space/space_picker_screen.dart';
+import '../features/space_settings/space_settings_controller.dart';
+import '../features/space_settings/space_settings_screen.dart';
 import '../features/settings/settings_controller.dart';
 import '../features/settings/settings_screen.dart';
 import '../ui/gallery.dart';
@@ -182,6 +184,23 @@ List<RouteBase> appRoutes() => [
   // `!keyReservation.contains(key)` 로 죽는다. 실제로 browse 만 셸 안에
   // 있었고, PR · 커밋 상세에서 파일을 누르면 빨간 화면이 떴다.
   // 근거와 재현은 `test/router_shell_test.dart` 에 있다.
+  // 스페이스 설정 창(16단계 설계 D5). 사용자 설정 창과 같은 틀 · 같은 페이지 키 규칙 —
+  // 섹션을 옮겨도 화면 전체가 다시 떠오르지 않는다.
+  _overlay(
+    path: '/s/:spaceId/settings',
+    build: (state) =>
+        SpaceSettingsScreen(spaceId: state.pathParameters['spaceId']!),
+    routes: [
+      _overlay(
+        path: ':section',
+        pageKey: const ValueKey('space-settings-section'),
+        build: (state) => SpaceSettingsScreen(
+          spaceId: state.pathParameters['spaceId']!,
+          section: SpaceSettingsSection.parse(state.pathParameters['section']),
+        ),
+      ),
+    ],
+  ),
   _overlay(
     // 저장소 안 들여다보기. **폴더 이동은 라우트를 쌓지 않는다** —
     // 경로는 화면의 상태이고 되돌아가는 길은 빵부스러기가 맡는다.
