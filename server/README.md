@@ -17,12 +17,13 @@
 **Redis 는 쓰지 않는다.** 인덱싱 · AI 작업 큐는 Postgres 테이블(`FOR UPDATE SKIP LOCKED`)이고,
 서버가 한 대라 소켓 어댑터도 필요 없다. `.env.example` 의 `REDIS_URL` 은 자리만 남아 있다.
 
-## 현재 상태 — 13-2 까지
+## 현재 상태 — 16단계까지
 
 대화(스레드 · 답장 · 멘션 · 리액션 · 핀) · 첨부 · 이슈 · 스프린트 · GitHub 연동(웹훅 · 계정 연결 ·
-열람 · 커밋 · PR) · 저장소 인덱싱 · AI 패널이 동작한다. 남은 것은 AI 멀티턴 · 알림 · 프레즌스 · DM.
+열람 · 커밋 · PR) · 저장소 인덱싱 · AI 패널(이어 묻기) · 사용자 설정 · 멤버 · 권한(초대 목록 · 취소 ·
+나가기 · 비공개 채널 명단 · 역할별 채널 권한)이 동작한다. 남은 것은 DM · 프레즌스 · 알림 · AI 기록 · GitLab.
 
-**미이관 모듈은 컴파일 대상에서 빠져 있다.** `src/permissions` `src/notifications`
+**미이관 모듈은 컴파일 대상에서 빠져 있다.** `src/notifications`
 `src/gitlab` 은 옛 스키마를 참조해 `tsconfig.json` · `tsconfig.build.json` 의 `exclude` 에
 들어 있다. 소스는 참고용이다. `src/realtime/redis-io.adapter.ts` 도 다중 인스턴스가 될
 때까지 개별 제외돼 있다.
