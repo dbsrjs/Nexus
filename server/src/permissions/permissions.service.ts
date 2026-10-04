@@ -1,106 +1,101 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { ChannelPermission, Role } from '@prisma/client';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { SpaceMember, SpaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeEmitter } from '../realtime/realtime-emitter';
+import { room } from '../realtime/rooms';
+import { ChannelsService } from '../channels/channels.service';
+import { SetPermissionDto } from './dto/set-permission.dto';
+
+/** 권한 행을 둘 수 있는 역할(16단계 설계 D21). admin · owner 는 늘 기본값(전부 허용)이다. */
+export const OVERRIDABLE_ROLES = [SpaceRole.guest, SpaceRole.member] as const;
+type OverridableRole = (typeof OVERRIDABLE_ROLES)[number];
+
+export interface RolePermission {
+  role: OverridableRole;
+  canView: boolean;
+  canSend: boolean;
+  /** 행이 있는가. 없으면 기본값이다. */
+  explicit: boolean;
+}
 
 /**
- * Central policy for channel-level access control. Used by ChannelPermissionGuard
- * and by feature modules (channels/messages) that need to filter by view/send.
+ * 채널별 권한 행(`channel_permissions`)을 읽고 쓴다(16단계 — `permissions` 재작성).
  *
- * Resolution rules:
- *  - If a ChannelPermission row exists for (channelId, role), use its can_view/can_send.
- *  - If no row exists, fall back to permissive defaults (view=true) but respect
- *    the channel's is_readonly_default for sending.
+ * **판정은 여기서 하지 않는다** — `ChannelsService`(→ `channelAccess()`) 한 곳이다. 이 서비스는
+ * 행을 고치고, 바뀐 결과가 소켓 룸에 곧바로 반영되게 할 뿐이다.
  */
 @Injectable()
 export class PermissionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly channels: ChannelsService,
+    private readonly realtime: RealtimeEmitter,
+  ) {}
 
-  async getPermission(
+  /** guest · member 두 줄을 늘 돌려준다. 행이 없는 역할은 기본값(보기 · 보내기). */
+  async list(channelId: string, member: SpaceMember): Promise<RolePermission[]> {
+    await this.channels.assertCanView(channelId, member);
+    const rows = await this.prisma.channelPermission.findMany({ where: { channelId } });
+    return OVERRIDABLE_ROLES.map((role) => {
+      const row = rows.find((r) => r.role === role);
+      return {
+        role,
+        canView: row?.canView ?? true,
+        canSend: row?.canSend ?? true,
+        explicit: row !== undefined,
+      };
+    });
+  }
+
+  async set(
     channelId: string,
-    role: Role,
-  ): Promise<ChannelPermission | null> {
-    return this.prisma.channelPermission.findUnique({
-      where: { channelId_role: { channelId, role } },
+    member: SpaceMember,
+    role: string,
+    dto: SetPermissionDto,
+  ): Promise<RolePermission[]> {
+    const target = this.requireRole(role);
+    const channel = await this.channels.assertCanView(channelId, member);
+    if (channel.isPrivate && !dto.canView) {
+      // 비공개 채널은 명단이 정한다(D22). 둘이 겹치면 「명단에 있는데 안 보임」이 생긴다.
+      throw new BadRequestException('비공개 채널은 역할로 가릴 수 없습니다 — 멤버에서 빼세요');
+    }
+
+    await this.prisma.channelPermission.upsert({
+      where: { channelId_role: { channelId, role: target } },
+      update: { canView: dto.canView, canSend: dto.canSend },
+      create: { channelId, role: target, canView: dto.canView, canSend: dto.canSend },
     });
+
+    if (!dto.canView) await this.evictRole(member.spaceId, channelId, target);
+    this.realtime.toSpace(member.spaceId, 'rooms:invalidate', { reason: 'channel.permissions' });
+    return this.list(channelId, member);
   }
 
-  async canView(channelId: string, role: Role): Promise<boolean> {
-    const perm = await this.getPermission(channelId, role);
-    if (perm) {
-      return perm.canView;
-    }
-    // No explicit row: default to viewable.
-    return true;
+  /** 기본값으로 — 행을 지운다. 예외로만 쓰는 행이 남지 않는다(D24). */
+  async reset(channelId: string, member: SpaceMember, role: string): Promise<void> {
+    const target = this.requireRole(role);
+    await this.channels.assertCanView(channelId, member);
+    await this.prisma.channelPermission.deleteMany({ where: { channelId, role: target } });
+    this.realtime.toSpace(member.spaceId, 'rooms:invalidate', { reason: 'channel.permissions' });
   }
 
-  async canSend(channelId: string, role: Role): Promise<boolean> {
-    const perm = await this.getPermission(channelId, role);
-    if (perm) {
-      return perm.canSend;
+  private requireRole(role: string): OverridableRole {
+    const found = OVERRIDABLE_ROLES.find((r) => r === role);
+    if (!found) {
+      throw new BadRequestException('권한을 둘 수 있는 역할은 guest · member 입니다');
     }
-    // No explicit row: sending follows the channel's readonly default.
-    const channel = await this.prisma.channel.findUnique({
-      where: { id: channelId },
-      select: { isReadonlyDefault: true },
-    });
-    if (!channel) {
-      throw new NotFoundException('Channel not found');
-    }
-    return !channel.isReadonlyDefault;
+    return found;
   }
 
   /**
-   * Admin matrix: full role×channel permission grid.
-   * Returns one entry per channel with a per-role breakdown, materializing
-   * defaults for roles that have no explicit row.
+   * 그 역할의 스페이스 멤버를 채널 룸에서 **서버가 직접** 뺀다(16단계 설계 D25 · D13a).
+   * `rooms:invalidate` 만 보내면 고친 클라이언트는 계속 듣는다.
    */
-  async getMatrix() {
-    const roles: Role[] = [Role.admin, Role.lead, Role.member, Role.guest];
-
-    const channels = await this.prisma.channel.findMany({
-      orderBy: { name: 'asc' },
-      include: { permissions: true },
+  private async evictRole(spaceId: string, channelId: string, role: SpaceRole): Promise<void> {
+    const members = await this.prisma.spaceMember.findMany({
+      where: { spaceId, role },
+      select: { userId: true },
     });
-
-    return channels.map((channel) => ({
-      channelId: channel.id,
-      key: channel.key,
-      name: channel.name,
-      kind: channel.kind,
-      isReadonlyDefault: channel.isReadonlyDefault,
-      roles: roles.map((role) => {
-        const perm = channel.permissions.find((p) => p.role === role);
-        return {
-          role,
-          canView: perm ? perm.canView : true,
-          canSend: perm ? perm.canSend : !channel.isReadonlyDefault,
-          explicit: Boolean(perm),
-        };
-      }),
-    }));
-  }
-
-  /**
-   * Upsert a single (channel, role) permission cell. Admin-only (enforced at controller).
-   */
-  async setPermission(
-    channelId: string,
-    role: Role,
-    canView: boolean,
-    canSend: boolean,
-  ): Promise<ChannelPermission> {
-    const channel = await this.prisma.channel.findUnique({
-      where: { id: channelId },
-      select: { id: true },
-    });
-    if (!channel) {
-      throw new NotFoundException('Channel not found');
-    }
-
-    return this.prisma.channelPermission.upsert({
-      where: { channelId_role: { channelId, role } },
-      create: { channelId, role, canView, canSend },
-      update: { canView, canSend },
-    });
+    for (const m of members) this.realtime.evict(m.userId, [room.channel(channelId)]);
   }
 }

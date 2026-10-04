@@ -11,6 +11,7 @@ import { UsersModule } from './users/users.module';
 import { SpacesModule } from './spaces/spaces.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ChannelsModule } from './channels/channels.module';
+import { PermissionsModule } from './permissions/permissions.module';
 import { MessagesModule } from './messages/messages.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { IssuesModule } from './issues/issues.module';
@@ -25,12 +26,13 @@ import { AiModule } from './ai/ai.module';
 /**
  * 전환 3단계 시점의 모듈 구성 (docs/전환-계획.md §6).
  *
- * 아직 spaceId 기준으로 이관하지 않은 모듈들 — permissions ·
- * notifications · files · gitlab — 은 여기서 등록을 뺐고,
+ * 아직 spaceId 기준으로 이관하지 않은 모듈들 — notifications · gitlab —
+ * 은 여기서 등록을 뺐고,
  * tsconfig 의 exclude 로 컴파일 대상에서도 제외했다.
  * 되살리는 절차: tsconfig(.build).json 의 exclude 에서 해당 경로를 지우고
  * 여기 imports 에 다시 넣는다.
- * (issues 는 9-1 에서, ai 는 13-1 에서 각각 다시 써 편입했다.)
+ * (issues 는 9-1 에서, ai 는 13-1 에서, permissions 는 16-2 에서 각각 다시 써 편입했다.
+ *  files 는 8-1 에서 attachments 로 다시 쓰고 옛 소스를 지웠다.)
  */
 @Module({
   imports: [
@@ -44,6 +46,7 @@ import { AiModule } from './ai/ai.module';
     SpacesModule,
     CategoriesModule,
     ChannelsModule,
+    PermissionsModule,
     MessagesModule,
     AttachmentsModule,
     IssuesModule,
