@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   UseGuards,
@@ -102,5 +103,25 @@ export class SpacesController {
     @Body() dto: CreateInviteDto,
   ) {
     return this.spaces.createInvite(spaceId, userId, dto);
+  }
+
+  /** GET /api/spaces/:spaceId/invites (admin+) — 아직 쓸 수 있는 초대 */
+  @Get(':spaceId/invites')
+  @UseGuards(SpaceGuard, SpaceRoleGuard)
+  @MinRole('admin')
+  listInvites(@Param('spaceId') spaceId: string) {
+    return this.spaces.listInvites(spaceId);
+  }
+
+  /** DELETE /api/spaces/:spaceId/invites/:inviteId (admin+) */
+  @Delete(':spaceId/invites/:inviteId')
+  @UseGuards(SpaceGuard, SpaceRoleGuard)
+  @MinRole('admin')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  revokeInvite(
+    @Param('spaceId') spaceId: string,
+    @Param('inviteId', new ParseUUIDPipe()) inviteId: string,
+  ) {
+    return this.spaces.revokeInvite(spaceId, inviteId);
   }
 }

@@ -14,6 +14,7 @@ import { slugify } from '../common/slug';
 import { UpdateSpaceDto } from './dto/update-space.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { outranks } from './space-role';
+import { isInviteUsable } from './invite-usable';
 
 /** 새 스페이스에 기본으로 만들어 두는 채널. 빈 화면으로 시작하지 않게 한다. */
 const DEFAULT_CATEGORY = '일반';
@@ -230,6 +231,33 @@ export class SpacesService {
         maxUses: dto.maxUses ?? null,
       },
     });
+  }
+
+  /**
+   * GET /api/spaces/:spaceId/invites (admin+) — **아직 쓸 수 있는 것만**(16단계 설계 D9).
+   * 지난 행은 지우지 않는다 — 누가 언제 만들었는지는 남는다.
+   */
+  async listInvites(spaceId: string) {
+    const invites = await this.prisma.invite.findMany({
+      where: { spaceId },
+      orderBy: { createdAt: 'desc' },
+      include: { createdBy: { select: { id: true, name: true } } },
+    });
+    const now = new Date();
+    return invites.filter((invite) => isInviteUsable(invite, now));
+  }
+
+  /**
+   * DELETE /api/spaces/:spaceId/invites/:inviteId (admin+) — 행을 지운다(설계 D8).
+   * 초대는 사용자가 쓴 글이 아니다. 다른 스페이스의 id 는 404.
+   */
+  async revokeInvite(spaceId: string, inviteId: string): Promise<void> {
+    const { count } = await this.prisma.invite.deleteMany({
+      where: { id: inviteId, spaceId },
+    });
+    if (count === 0) {
+      throw new NotFoundException('초대를 찾을 수 없습니다');
+    }
   }
 
   /**
