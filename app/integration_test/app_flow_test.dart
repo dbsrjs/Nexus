@@ -18,6 +18,7 @@ import 'package:nexus_app/features/settings/settings_controller.dart';
 import 'package:nexus_app/features/settings/theme_controller.dart';
 import 'package:nexus_app/features/shell/app_shell.dart';
 import 'package:nexus_app/features/space/space_controller.dart';
+import 'package:nexus_app/features/space/space_menu.dart';
 import 'package:nexus_app/main.dart';
 import 'package:nexus_app/shared/widgets/back_button.dart';
 import 'package:nexus_app/ui/ui.dart';
@@ -209,6 +210,34 @@ void main() {
       findsOneWidget,
     );
 
+    // ── 16단계: 스페이스 메뉴 → 초대하기 → 코드 만들기 → 멤버 → 내보내기 ──
+    await tester.tap(find.byType(SpaceMenu));
+    await tester.pumpUntil(find.text('초대하기'));
+    // 메뉴가 펼쳐지는 동안은 누른 자리가 항목에 닿지 않는다.
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('초대하기'));
+    await tester.pumpUntil(find.widgetWithText(NxButton, '초대 코드 만들기'));
+    await tester.tap(find.widgetWithText(NxButton, '초대 코드 만들기'));
+    await tester.pumpUntil(find.widgetWithText(NxButton, '복사'));
+    // 만든 코드가 「쓸 수 있는 초대」 목록에도 있다(초대 취소 버튼).
+    await tester.pumpUntil(find.widgetWithText(NxButton, '취소'));
+
+    // 「멤버」는 역할 고르기에도 있다 — 왼쪽 목록의 줄을 누른다.
+    await tester.tap(find.widgetWithText(NxRow, '멤버'));
+    final bobActions = find.bySemanticsLabel('$bobRenamed의 동작');
+    await tester.pumpUntil(bobActions);
+    await tester.tap(bobActions);
+    await tester.pumpUntil(find.text('내보내기'));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('내보내기'));
+    await tester.pumpUntil(find.widgetWithText(NxButton, '내보내기'));
+    await tester.tap(find.widgetWithText(NxButton, '내보내기'));
+    await tester.pumpUntilTrue(() async => !(await fx.bobIsMember()), '내보내기가 서버에 반영되지 않았다');
+    await tester.pumpUntilGone(find.text(bobRenamed));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpUntil(find.byType(SpaceMenu));
+
     expect(tester.takeException(), isNull);
   });
 }
@@ -290,6 +319,12 @@ class _Fixture {
 
   Future<void> bobRenames(String name) =>
       _patch('/me', _bobToken, {'name': name});
+
+  /// bob 이 아직 픽스처 스페이스의 멤버인가(16단계 — 내보내기).
+  Future<bool> bobIsMember() async {
+    final spaces = await _get('/spaces', _bobToken) as List;
+    return spaces.cast<Map>().any((s) => s['id'] == _spaceId);
+  }
 
   Future<bool> aliceMuted() async {
     final channels =
@@ -400,6 +435,19 @@ extension on WidgetTester {
     for (final e in find.byType(RichText).evaluate())
       (e.widget as RichText).text.toPlainText(),
   ].where((t) => t.trim().isNotEmpty).take(60).toList();
+
+  /// 보이던 것이 사라질 때까지.
+  Future<void> pumpUntilGone(
+    Finder finder, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final end = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(end)) {
+      await pump(const Duration(milliseconds: 100));
+      if (finder.evaluate().isEmpty) return;
+    }
+    throw TestFailure('시간 안에 사라지지 않았다: $finder');
+  }
 
   /// 화면 밖의 조건(서버 상태)을 기다린다. 도는 동안 프레임도 계속 돌린다.
   Future<void> pumpUntilTrue(
