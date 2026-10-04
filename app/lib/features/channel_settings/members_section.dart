@@ -35,6 +35,7 @@ class ChannelMembersSection extends ConsumerWidget {
   Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() call) async {
     try {
       await call();
+      if (!context.mounted) return;
       ref.invalidate(channelMembersProvider(_key));
     } on ApiException catch (e) {
       if (context.mounted) {
@@ -52,9 +53,12 @@ class ChannelMembersSection extends ConsumerWidget {
       danger: true,
     );
     if (!ok || !context.mounted) return;
+    // await 사이에 화면이 내려갈 수 있다(나간 채널이 목록에서 빠지면 셸이 옮긴다) — 미리 잡는다.
+    final api = ref.read(channelsApiProvider);
+    final repository = ref.read(workspaceRepositoryProvider);
     try {
-      await ref.read(channelsApiProvider).removeMember(spaceId, channelId, myId);
-      await ref.read(workspaceRepositoryProvider).refreshChannels(spaceId);
+      await api.removeMember(spaceId, channelId, myId);
+      await repository.refreshChannels(spaceId);
       if (context.mounted) context.go('/s/$spaceId');
     } on ApiException catch (e) {
       if (context.mounted) {

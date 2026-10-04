@@ -1,12 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/api/channels_api.dart';
 import '../../domain/models/channel_access.dart';
 import '../../domain/models/space.dart';
-import '../auth/auth_controller.dart';
+import '../channel/channel_controller.dart';
 
-final channelsApiProvider =
-    Provider<ChannelsApi>((ref) => ChannelsApi(ref.watch(apiClientProvider)));
+// channelsApiProvider 는 channel_controller.dart 의 것 하나를 쓴다(같은 이름을 둘 두지 않는다).
+export '../channel/channel_controller.dart' show channelsApiProvider;
 
 /// 채널 설정 창의 섹션(16단계 설계 D16). `slug` 는 주소에 쓰인다.
 enum ChannelSettingsSection {

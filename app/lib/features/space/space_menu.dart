@@ -76,10 +76,13 @@ class SpaceMenu extends ConsumerWidget {
       danger: true,
     );
     if (!ok || !context.mounted) return;
+    // 소켓 `space:removed` 가 응답보다 먼저 오면 셸이 옮겨 이 위젯이 내려간다 — 미리 잡는다.
+    final api = ref.read(spacesApiProvider);
+    final forget = ref.read(forgetSpaceProvider);
     try {
-      await ref.read(spacesApiProvider).leave(space.id);
+      await api.leave(space.id);
       // 소켓 `space:removed` 로도 오지만 응답으로 먼저 정리한다 — 소켓이 끊겨 있어도 나간다.
-      await ref.read(forgetSpaceProvider)(space.id);
+      await forget(space.id);
     } on ApiException catch (e) {
       if (context.mounted) {
         NxToast.show(context, messageFor(e.failure), kind: NxToastKind.error);

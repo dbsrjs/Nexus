@@ -70,6 +70,8 @@ class _MemberRow extends ConsumerWidget {
   Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() call) async {
     try {
       await call();
+      // 소켓 member:left 로 목록이 먼저 바뀌면 이 줄은 이미 내려가 있다 — 그때 ref 는 못 쓴다.
+      if (!context.mounted) return;
       ref.invalidate(spaceMembersOfProvider(spaceId));
     } on ApiException catch (e) {
       if (context.mounted) {

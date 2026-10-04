@@ -40,9 +40,10 @@ class _GeneralSectionState extends ConsumerState<GeneralSection> {
       _error = null;
     });
     try {
+      final repository = ref.read(workspaceRepositoryProvider);
       await ref.read(spacesApiProvider).update(widget.space.id, name: _name.text.trim());
       // 레일 · 채널 판 머리 줄이 스페이스 목록(drift)을 본다.
-      await ref.read(workspaceRepositoryProvider).refreshSpaces();
+      await repository.refreshSpaces();
       if (mounted) {
         NxToast.show(context, '이름을 바꿨습니다', kind: NxToastKind.success);
       }
@@ -114,8 +115,9 @@ class _SprintsSwitchState extends ConsumerState<_SprintsSwitch> {
       _error = null;
     });
     try {
+      final repository = ref.read(workspaceRepositoryProvider);
       await ref.read(spacesApiProvider).update(widget.space.id, sprintsEnabled: enabled);
-      await ref.read(workspaceRepositoryProvider).refreshSpaces();
+      await repository.refreshSpaces();
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = messageFor(e.failure));
     } finally {

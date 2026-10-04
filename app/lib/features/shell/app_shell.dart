@@ -73,6 +73,11 @@ class _AppShellState extends ConsumerState<AppShell> {
       if (!mounted) return;
       ref.read(currentSpaceIdProvider.notifier).set(widget.spaceId);
       ref.read(currentChannelIdProvider.notifier).set(widget.channelId);
+      // 빠졌던 스페이스에 다시 들어왔다(재초대) — 지난 사건을 비워 채널 리스너가 다시 듣게 한다.
+      final removed = ref.read(removedSpaceProvider);
+      if (removed?.spaceId == widget.spaceId) {
+        ref.read(removedSpaceProvider.notifier).clear();
+      }
     });
   }
 
@@ -97,9 +102,8 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     // 지금 보고 있는 스페이스에서 빠졌으면 나가고 알린다(16단계 설계 D13). 소켓 리스너는
     // 화면을 모르므로 여기서 받는다. 메뉴의 「나가기」로 나온 경우도 같은 길이다.
-    ref.listen<String?>(removedSpaceProvider, (_, removed) {
-      if (removed == null || removed != widget.spaceId) return;
-      ref.read(removedSpaceProvider.notifier).set(null);
+    ref.listen<SpaceRemoval?>(removedSpaceProvider, (_, removed) {
+      if (removed == null || removed.spaceId != widget.spaceId) return;
       NxToast.show(context, '스페이스에서 나왔습니다');
       context.go('/spaces');
     });
@@ -115,6 +119,8 @@ class _AppShellState extends ConsumerState<AppShell> {
       final was = before.any((c) => c.id == channelId);
       final still = after.any((c) => c.id == channelId);
       if (!was || still) return;
+      // 스페이스째 빠진 것이면 위 리스너가 이미 알렸다 — 같은 사건에 두 번 말하지 않는다.
+      if (ref.read(removedSpaceProvider)?.spaceId == widget.spaceId) return;
       NxToast.show(context, '이 채널을 더는 볼 수 없습니다');
       context.go('/s/${widget.spaceId}');
     });
