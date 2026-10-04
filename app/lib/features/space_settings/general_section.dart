@@ -7,7 +7,7 @@ import '../../ui/ui.dart';
 import '../settings/settings_widgets.dart';
 import '../space/space_controller.dart';
 
-/// 스페이스 설정 「일반」(16단계 설계 D14) — 이름 바꾸기만. admin+ 에게만 보인다.
+/// 스페이스 설정 「일반」(16단계 설계 D14 · D31) — 이름 바꾸기와 스프린트 스위치. admin+ 에게만 보인다.
 class GeneralSection extends ConsumerStatefulWidget {
   const GeneralSection({super.key, required this.space});
 
@@ -86,6 +86,67 @@ class _GeneralSectionState extends ConsumerState<GeneralSection> {
             onPressed: canSave ? _save : null,
           ),
         ),
+        const SettingsGap(),
+        _SprintsSwitch(space: widget.space),
+      ],
+    );
+  }
+}
+
+/// 스프린트 켜고 끄기(16단계 D31~D33). 바꾸면 곧바로 저장한다 — 스위치에 「저장」을 따로
+/// 두면 켠 줄 알고 나가는 일이 생긴다. 서버가 `space:updated` 로 다른 멤버 화면도 맞춘다.
+class _SprintsSwitch extends ConsumerStatefulWidget {
+  const _SprintsSwitch({required this.space});
+
+  final Space space;
+
+  @override
+  ConsumerState<_SprintsSwitch> createState() => _SprintsSwitchState();
+}
+
+class _SprintsSwitchState extends ConsumerState<_SprintsSwitch> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _set(bool enabled) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(spacesApiProvider).update(widget.space.id, sprintsEnabled: enabled);
+      await ref.read(workspaceRepositoryProvider).refreshSpaces();
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = messageFor(e.failure));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SettingsLabel('스프린트'),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '이슈 보드에 스프린트 · 번다운을 보입니다. 꺼도 기록은 남고, 다시 켜면 그대로 보입니다.',
+                style: nx.text.secondary,
+              ),
+            ),
+            const SizedBox(width: NxSpacing.sp6),
+            NxSwitch(
+              value: widget.space.sprintsEnabled,
+              label: '스프린트 사용',
+              onChanged: _busy ? null : _set,
+            ),
+          ],
+        ),
+        if (_error != null) SettingsError(_error!),
       ],
     );
   }

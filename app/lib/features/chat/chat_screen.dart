@@ -17,6 +17,7 @@ import '../space/members_controller.dart';
 import 'attachment_widgets.dart';
 import 'mention_text.dart';
 import 'message_composer.dart';
+import 'read_only_bar.dart';
 import 'message_controller.dart';
 import '../issue/new_issue_sheet.dart';
 import '../ai/ai_panel.dart';
@@ -88,7 +89,11 @@ class ChatScreen extends ConsumerWidget {
                   : MessageList(items: items),
             ),
           ),
-          const MessageComposer(),
+          // 보낼 수 없는 채널은 입력창 대신 이유를 말한다(16단계 D27).
+          if (channel != null && !channel.canSend)
+            const ReadOnlyBar()
+          else
+            const MessageComposer(),
         ],
       ),
     );
@@ -112,7 +117,10 @@ void _openAi(
     contexts: [contextFor(channelId)],
     canAddRepo: true,
     // 「채널에 붙이기」는 평범한 메시지 전송이다 — 서버에 새 경로가 없다.
-    onPost: (markdown) => ref.read(messageActionsProvider).send(markdown),
+    // 읽기 전용 채널에서는 붙일 수 없으니 버튼을 두지 않는다(§3-7).
+    onPost: ref.read(channelCanSendProvider(channelId))
+        ? (markdown) => ref.read(messageActionsProvider).send(markdown)
+        : null,
     // 이슈 초안은 기존 생성 화면을 채운 채로 연다 — 사람이 확인한 뒤
     // 만든다(판단 #7). 첫 메시지를 원문으로 넘겨 9-2b 의 링크를 살린다.
     onCreateIssue: ({required title, required description, originMessageId}) {
@@ -546,6 +554,8 @@ class _HoverToolbar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = NxTheme.of(context).colors;
+    // 읽기 전용 채널에서는 답장 · 스레드를 감춘다 — 리액션은 남는다(16단계 D27).
+    final canSend = ref.watch(channelCanSendProvider(message.channelId));
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
@@ -562,18 +572,20 @@ class _HoverToolbar extends ConsumerWidget {
             size: NxSize.sm,
             onPressed: onMore,
           ),
-          NxIconButton(
-            icon: NxIcons.reply,
-            label: '답장',
-            size: NxSize.sm,
-            onPressed: () => ref.read(replyTargetProvider.notifier).set(message),
-          ),
-          NxIconButton(
-            icon: NxIcons.thread,
-            label: '스레드로 답글',
-            size: NxSize.sm,
-            onPressed: () => _openThread(context, ref, message),
-          ),
+          if (canSend) ...[
+            NxIconButton(
+              icon: NxIcons.reply,
+              label: '답장',
+              size: NxSize.sm,
+              onPressed: () => ref.read(replyTargetProvider.notifier).set(message),
+            ),
+            NxIconButton(
+              icon: NxIcons.thread,
+              label: '스레드로 답글',
+              size: NxSize.sm,
+              onPressed: () => _openThread(context, ref, message),
+            ),
+          ],
           NxIconButton(
             icon: NxIcons.more,
             label: '더 보기',
@@ -811,6 +823,8 @@ Future<void> _showMessageActions(
   final actions = ref.read(messageActionsProvider);
   final selection = ref.read(selectionControllerProvider.notifier);
   final reply = ref.read(replyTargetProvider.notifier);
+  // 읽기 전용이면 답장 · 스레드 · 고정을 감춘다. 리액션 줄 · 이슈 · 선택은 남는다(D27).
+  final canSend = ref.read(channelCanSendProvider(message.channelId));
 
   return NxActionCard.show(
     context,
@@ -825,11 +839,13 @@ Future<void> _showMessageActions(
     ),
     entries: [
       // 답장은 흐름 안에 남고, 스레드는 곁가지로 접힌다. 둘을 나란히 두어 차이가 보이게.
-      NxMenuItem('답장', onSelected: () => reply.set(message)),
-      NxMenuItem(
-        '스레드로 답글',
-        onSelected: () => _openThread(context, ref, message),
-      ),
+      if (canSend) ...[
+        NxMenuItem('답장', onSelected: () => reply.set(message)),
+        NxMenuItem(
+          '스레드로 답글',
+          onSelected: () => _openThread(context, ref, message),
+        ),
+      ],
       // 대화 → 이슈. 원문이 이슈에 링크로 남아, 이슈에서 이 대화로 돌아올 수 있다.
       NxMenuItem(
         '이슈로 만들기',
@@ -839,7 +855,7 @@ Future<void> _showMessageActions(
       ),
       // 답글은 고정할 수 없다(서버가 400). 항목 자체를 감춘다 —
       // 눌러 봐야 실패하는 버튼은 없느니만 못하다.
-      if (message.parentId == null)
+      if (canSend && message.parentId == null)
         NxMenuItem(
           message.pinned ? '고정 해제' : '고정',
           onSelected: () => actions.togglePin(message),

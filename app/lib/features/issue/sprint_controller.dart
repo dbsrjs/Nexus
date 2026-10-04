@@ -50,6 +50,13 @@ enum BoardScope {
   backlog,
 }
 
+/// 지금 스페이스가 스프린트를 쓰는가(16단계 D31~D32). 끄면 **화면 노출만** 가린다 —
+/// 채널 판의 갈래 · 보드의 「스프린트」 버튼과 보기 줄 · 이슈 상세의 스프린트 칸.
+/// 서버의 스프린트 · 번다운은 그대로라 다시 켜면 기록이 그대로 보인다.
+final sprintsEnabledProvider = Provider<bool>(
+  (ref) => ref.watch(currentSpaceProvider)?.sprintsEnabled ?? false,
+);
+
 class BoardScopeNotifier extends Notifier<BoardScope> {
   @override
   BoardScope build() => BoardScope.all;
@@ -67,7 +74,8 @@ final boardScopeProvider = NotifierProvider<BoardScopeNotifier, BoardScope>(
 final scopedBoardProvider = Provider<Map<IssueStatus, List<Issue>>>((ref) {
   final board = ref.watch(boardProvider);
   final scope = ref.watch(boardScopeProvider);
-  if (scope == BoardScope.all) return board;
+  // 스프린트를 끄면 보기 줄도 감춰진다 — 전에 골라 둔 보기가 남아 보드를 거르면 안 된다.
+  if (scope == BoardScope.all || !ref.watch(sprintsEnabledProvider)) return board;
 
   final activeId = ref.watch(activeSprintProvider)?.id;
 

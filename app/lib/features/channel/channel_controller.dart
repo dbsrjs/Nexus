@@ -48,6 +48,17 @@ class CurrentChannelId extends Notifier<String?> {
 final currentChannelIdProvider =
     NotifierProvider<CurrentChannelId, String?>(CurrentChannelId.new);
 
+/// 그 채널에 보낼 수 있는가(16단계 D27). 목록에 없으면(아직 못 받았거나 오프라인 첫 진입)
+/// **보낼 수 있다고 본다** — 막는 것은 서버가 하고, 모르는 동안 입력창을 지우면 오프라인
+/// 전송 큐가 쓸모없어진다. 스레드 화면(셸 밖)도 쓰므로 현재 채널이 아니라 id 를 받는다.
+final channelCanSendProvider = Provider.family<bool, String>((ref, channelId) {
+  final channels = ref.watch(channelsProvider).value ?? const <Channel>[];
+  for (final channel in channels) {
+    if (channel.id == channelId) return channel.canSend;
+  }
+  return true;
+});
+
 final currentChannelProvider = Provider<Channel?>((ref) {
   final id = ref.watch(currentChannelIdProvider);
   if (id == null) return null;

@@ -33,11 +33,13 @@ void main() {
     Sprint(id: 'sp-closed', name: '0주차', state: SprintState.closed),
   ];
 
-  Future<void> pump(WidgetTester tester, Issue value) async {
+  Future<void> pump(WidgetTester tester, Issue value, {bool sprintsOn = true}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sprintListProvider.overrideWith((ref) => Stream.value(sprints)),
+          // 스프린트는 16단계부터 스페이스마다 켜는 기능이다(기본 끔).
+          sprintsEnabledProvider.overrideWithValue(sprintsOn),
         ],
         child: nxTestApp(
           home: NxPage(body: IssuePlanningRow(issue: value)),
@@ -107,5 +109,11 @@ void main() {
     // 안 매기는 것도 뜻이 있어 되돌릴 길을 둔다.
     expect(find.text('포인트 없음'), findsWidgets);
     expect(find.text('4'), findsNothing);
+  });
+
+  testWidgets('★ 스프린트를 끈 스페이스는 스프린트 칸을 감춘다(16단계 D32)', (tester) async {
+    await pump(tester, issue(), sprintsOn: false);
+    expect(find.text('스프린트'), findsNothing);
+    expect(find.text('백로그'), findsNothing);
   });
 }

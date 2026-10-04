@@ -76,7 +76,11 @@ class ChannelPane extends ConsumerWidget {
               ),
               children: [
                 if (space != null)
-                  _WorkSection(spaceId: space.id, onTap: onChannelTap),
+                  _WorkSection(
+                    spaceId: space.id,
+                    sprintsEnabled: space.sprintsEnabled,
+                    onTap: onChannelTap,
+                  ),
                 ChannelList(onChannelTap: onChannelTap),
               ],
             ),
@@ -92,9 +96,16 @@ class ChannelPane extends ConsumerWidget {
 /// **글자만 둔다**(15단계 D5 — 목록 줄 앞 장식 아이콘을 두지 않는다). 이 판에는 이미
 /// 채널이 카테고리로 묶여 있다. 구조를 새로 만드는 것이 아니라 있던 것을 끝까지 쓴다.
 class _WorkSection extends StatelessWidget {
-  const _WorkSection({required this.spaceId, this.onTap});
+  const _WorkSection({
+    required this.spaceId,
+    required this.sprintsEnabled,
+    this.onTap,
+  });
 
   final String spaceId;
+
+  /// 스프린트를 끈 스페이스는 갈래를 감춘다(16단계 D32).
+  final bool sprintsEnabled;
 
   /// 밀려 나온 패널에서 고르면 패널을 닫기 위한 콜백. 채널을 고를 때와 같다.
   final VoidCallback? onTap;
@@ -132,7 +143,7 @@ class _WorkSection extends StatelessWidget {
       children: [
         const PaneSectionTitle('작업', first: true),
         item('이슈 보드', '/issues'),
-        item('스프린트', '/sprints'),
+        if (sprintsEnabled) item('스프린트', '/sprints'),
         item('파일', '/files'),
         item('저장소', '/repos'),
       ],

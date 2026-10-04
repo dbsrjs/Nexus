@@ -25,7 +25,7 @@ class IssuePlanningRow extends ConsumerWidget {
       runSpacing: NxSpacing.sp4,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        _SprintPicker(issue: issue),
+        if (ref.watch(sprintsEnabledProvider)) _SprintPicker(issue: issue),
         _StoryPointsPicker(issue: issue),
       ],
     );

@@ -193,12 +193,13 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
       header: ShellHeader(
         title: '보드',
         actions: [
-          NxButton(
-            label: '스프린트',
-            kind: NxButtonKind.ghost,
-            size: NxSize.sm,
-            onPressed: () => context.go('/s/${widget.spaceId}/sprints'),
-          ),
+          if (ref.watch(sprintsEnabledProvider))
+            NxButton(
+              label: '스프린트',
+              kind: NxButtonKind.ghost,
+              size: NxSize.sm,
+              onPressed: () => context.go('/s/${widget.spaceId}/sprints'),
+            ),
           NxIconButton(
             icon: NxIcons.refresh,
             label: '새로고침',
@@ -218,7 +219,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         onPointerMove: (e) => _pointer = e.position,
         child: Column(
           children: [
-            const _ScopeBar(),
+            if (ref.watch(sprintsEnabledProvider)) const _ScopeBar(),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {

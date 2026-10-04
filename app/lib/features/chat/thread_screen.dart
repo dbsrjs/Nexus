@@ -7,6 +7,7 @@ import '../../ui/ui.dart';
 import '../channel/channel_controller.dart';
 import '../space/space_controller.dart';
 import 'chat_screen.dart';
+import 'read_only_bar.dart';
 import 'thread_controller.dart';
 
 /// 스레드 하나. 부모 메시지 + 답글 목록 + 답글 입력창.
@@ -88,16 +89,21 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
               // 답글은 캐시에서 오므로 오류 화면 대신 빈 목록을 보여 준다.
               // 부모는 이미 위에 그려져 있어 화면이 비지 않는다.
               error: (_, _) => const _NoReplies(),
-              data: (items) =>
-                  items.isEmpty ? const _NoReplies() : MessageList(items: items),
+              data: (items) => items.isEmpty
+                  ? const _NoReplies()
+                  : MessageList(items: items),
             ),
           ),
-          MessageComposer(
-            hint: '스레드에 답글 달기',
-            onSend: (body, attachments) => ref
-                .read(threadActionsProvider)
-                .reply(body, attachments: attachments),
-          ),
+          // 읽기 전용 채널의 스레드에도 답글을 달 수 없다(서버가 403) — 이유를 말한다.
+          if (!ref.watch(channelCanSendProvider(widget.channelId)))
+            const ReadOnlyBar()
+          else
+            MessageComposer(
+              hint: '스레드에 답글 달기',
+              onSend: (body, attachments) => ref
+                  .read(threadActionsProvider)
+                  .reply(body, attachments: attachments),
+            ),
         ],
       ),
     );
