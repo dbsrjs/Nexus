@@ -1222,6 +1222,21 @@ class $CachedChannelsTable extends CachedChannels
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _canSendMeta = const VerificationMeta(
+    'canSend',
+  );
+  @override
+  late final GeneratedColumn<bool> canSend = GeneratedColumn<bool>(
+    'can_send',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("can_send" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1235,6 +1250,7 @@ class $CachedChannelsTable extends CachedChannels
     unreadCount,
     mentionCount,
     muted,
+    canSend,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1325,6 +1341,12 @@ class $CachedChannelsTable extends CachedChannels
         muted.isAcceptableOrUnknown(data['muted']!, _mutedMeta),
       );
     }
+    if (data.containsKey('can_send')) {
+      context.handle(
+        _canSendMeta,
+        canSend.isAcceptableOrUnknown(data['can_send']!, _canSendMeta),
+      );
+    }
     return context;
   }
 
@@ -1378,6 +1400,10 @@ class $CachedChannelsTable extends CachedChannels
         DriftSqlType.bool,
         data['${effectivePrefix}muted'],
       )!,
+      canSend: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}can_send'],
+      )!,
     );
   }
 
@@ -1403,6 +1429,9 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
 
   /// 음소거(14단계). 목록에서 흐리게 · 안 읽음 표시를 끈다 — 멘션은 그대로 보인다.
   final bool muted;
+
+  /// 보낼 수 있는가(16단계). 오프라인에서도 읽기 전용 입력창이 맞게 보여야 해 캐시한다.
+  final bool canSend;
   const CachedChannel({
     required this.id,
     required this.spaceId,
@@ -1415,6 +1444,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     required this.unreadCount,
     required this.mentionCount,
     required this.muted,
+    required this.canSend,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1434,6 +1464,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     map['unread_count'] = Variable<int>(unreadCount);
     map['mention_count'] = Variable<int>(mentionCount);
     map['muted'] = Variable<bool>(muted);
+    map['can_send'] = Variable<bool>(canSend);
     return map;
   }
 
@@ -1454,6 +1485,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       unreadCount: Value(unreadCount),
       mentionCount: Value(mentionCount),
       muted: Value(muted),
+      canSend: Value(canSend),
     );
   }
 
@@ -1474,6 +1506,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       unreadCount: serializer.fromJson<int>(json['unreadCount']),
       mentionCount: serializer.fromJson<int>(json['mentionCount']),
       muted: serializer.fromJson<bool>(json['muted']),
+      canSend: serializer.fromJson<bool>(json['canSend']),
     );
   }
   @override
@@ -1491,6 +1524,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       'unreadCount': serializer.toJson<int>(unreadCount),
       'mentionCount': serializer.toJson<int>(mentionCount),
       'muted': serializer.toJson<bool>(muted),
+      'canSend': serializer.toJson<bool>(canSend),
     };
   }
 
@@ -1506,6 +1540,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     int? unreadCount,
     int? mentionCount,
     bool? muted,
+    bool? canSend,
   }) => CachedChannel(
     id: id ?? this.id,
     spaceId: spaceId ?? this.spaceId,
@@ -1518,6 +1553,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     unreadCount: unreadCount ?? this.unreadCount,
     mentionCount: mentionCount ?? this.mentionCount,
     muted: muted ?? this.muted,
+    canSend: canSend ?? this.canSend,
   );
   CachedChannel copyWithCompanion(CachedChannelsCompanion data) {
     return CachedChannel(
@@ -1538,6 +1574,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
           ? data.mentionCount.value
           : this.mentionCount,
       muted: data.muted.present ? data.muted.value : this.muted,
+      canSend: data.canSend.present ? data.canSend.value : this.canSend,
     );
   }
 
@@ -1554,7 +1591,8 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
           ..write('position: $position, ')
           ..write('unreadCount: $unreadCount, ')
           ..write('mentionCount: $mentionCount, ')
-          ..write('muted: $muted')
+          ..write('muted: $muted, ')
+          ..write('canSend: $canSend')
           ..write(')'))
         .toString();
   }
@@ -1572,6 +1610,7 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     unreadCount,
     mentionCount,
     muted,
+    canSend,
   );
   @override
   bool operator ==(Object other) =>
@@ -1587,7 +1626,8 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
           other.position == this.position &&
           other.unreadCount == this.unreadCount &&
           other.mentionCount == this.mentionCount &&
-          other.muted == this.muted);
+          other.muted == this.muted &&
+          other.canSend == this.canSend);
 }
 
 class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
@@ -1602,6 +1642,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
   final Value<int> unreadCount;
   final Value<int> mentionCount;
   final Value<bool> muted;
+  final Value<bool> canSend;
   final Value<int> rowid;
   const CachedChannelsCompanion({
     this.id = const Value.absent(),
@@ -1615,6 +1656,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     this.unreadCount = const Value.absent(),
     this.mentionCount = const Value.absent(),
     this.muted = const Value.absent(),
+    this.canSend = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedChannelsCompanion.insert({
@@ -1629,6 +1671,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     this.unreadCount = const Value.absent(),
     this.mentionCount = const Value.absent(),
     this.muted = const Value.absent(),
+    this.canSend = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        spaceId = Value(spaceId),
@@ -1646,6 +1689,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     Expression<int>? unreadCount,
     Expression<int>? mentionCount,
     Expression<bool>? muted,
+    Expression<bool>? canSend,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1660,6 +1704,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
       if (unreadCount != null) 'unread_count': unreadCount,
       if (mentionCount != null) 'mention_count': mentionCount,
       if (muted != null) 'muted': muted,
+      if (canSend != null) 'can_send': canSend,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1676,6 +1721,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     Value<int>? unreadCount,
     Value<int>? mentionCount,
     Value<bool>? muted,
+    Value<bool>? canSend,
     Value<int>? rowid,
   }) {
     return CachedChannelsCompanion(
@@ -1690,6 +1736,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
       unreadCount: unreadCount ?? this.unreadCount,
       mentionCount: mentionCount ?? this.mentionCount,
       muted: muted ?? this.muted,
+      canSend: canSend ?? this.canSend,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1730,6 +1777,9 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     if (muted.present) {
       map['muted'] = Variable<bool>(muted.value);
     }
+    if (canSend.present) {
+      map['can_send'] = Variable<bool>(canSend.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1750,6 +1800,7 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
           ..write('unreadCount: $unreadCount, ')
           ..write('mentionCount: $mentionCount, ')
           ..write('muted: $muted, ')
+          ..write('canSend: $canSend, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2115,8 +2166,30 @@ class $CachedSpacesTable extends CachedSpaces
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sprintsEnabledMeta = const VerificationMeta(
+    'sprintsEnabled',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, slug, name, role, iconUrl];
+  late final GeneratedColumn<bool> sprintsEnabled = GeneratedColumn<bool>(
+    'sprints_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("sprints_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    slug,
+    name,
+    role,
+    iconUrl,
+    sprintsEnabled,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2164,6 +2237,15 @@ class $CachedSpacesTable extends CachedSpaces
         iconUrl.isAcceptableOrUnknown(data['icon_url']!, _iconUrlMeta),
       );
     }
+    if (data.containsKey('sprints_enabled')) {
+      context.handle(
+        _sprintsEnabledMeta,
+        sprintsEnabled.isAcceptableOrUnknown(
+          data['sprints_enabled']!,
+          _sprintsEnabledMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2193,6 +2275,10 @@ class $CachedSpacesTable extends CachedSpaces
         DriftSqlType.string,
         data['${effectivePrefix}icon_url'],
       ),
+      sprintsEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}sprints_enabled'],
+      )!,
     );
   }
 
@@ -2208,12 +2294,16 @@ class CachedSpace extends DataClass implements Insertable<CachedSpace> {
   final String name;
   final String role;
   final String? iconUrl;
+
+  /// 스프린트를 보일지(16단계). 채널 판 갈래가 오프라인에서도 맞게 보이도록 캐시한다.
+  final bool sprintsEnabled;
   const CachedSpace({
     required this.id,
     required this.slug,
     required this.name,
     required this.role,
     this.iconUrl,
+    required this.sprintsEnabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2225,6 +2315,7 @@ class CachedSpace extends DataClass implements Insertable<CachedSpace> {
     if (!nullToAbsent || iconUrl != null) {
       map['icon_url'] = Variable<String>(iconUrl);
     }
+    map['sprints_enabled'] = Variable<bool>(sprintsEnabled);
     return map;
   }
 
@@ -2237,6 +2328,7 @@ class CachedSpace extends DataClass implements Insertable<CachedSpace> {
       iconUrl: iconUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(iconUrl),
+      sprintsEnabled: Value(sprintsEnabled),
     );
   }
 
@@ -2251,6 +2343,7 @@ class CachedSpace extends DataClass implements Insertable<CachedSpace> {
       name: serializer.fromJson<String>(json['name']),
       role: serializer.fromJson<String>(json['role']),
       iconUrl: serializer.fromJson<String?>(json['iconUrl']),
+      sprintsEnabled: serializer.fromJson<bool>(json['sprintsEnabled']),
     );
   }
   @override
@@ -2262,6 +2355,7 @@ class CachedSpace extends DataClass implements Insertable<CachedSpace> {
       'name': serializer.toJson<String>(name),
       'role': serializer.toJson<String>(role),
       'iconUrl': serializer.toJson<String?>(iconUrl),
+      'sprintsEnabled': serializer.toJson<bool>(sprintsEnabled),
     };
   }
 
@@ -2271,12 +2365,14 @@ class CachedSpace extends DataClass implements Insertable<CachedSpace> {
     String? name,
     String? role,
     Value<String?> iconUrl = const Value.absent(),
+    bool? sprintsEnabled,
   }) => CachedSpace(
     id: id ?? this.id,
     slug: slug ?? this.slug,
     name: name ?? this.name,
     role: role ?? this.role,
     iconUrl: iconUrl.present ? iconUrl.value : this.iconUrl,
+    sprintsEnabled: sprintsEnabled ?? this.sprintsEnabled,
   );
   CachedSpace copyWithCompanion(CachedSpacesCompanion data) {
     return CachedSpace(
@@ -2285,6 +2381,9 @@ class CachedSpace extends DataClass implements Insertable<CachedSpace> {
       name: data.name.present ? data.name.value : this.name,
       role: data.role.present ? data.role.value : this.role,
       iconUrl: data.iconUrl.present ? data.iconUrl.value : this.iconUrl,
+      sprintsEnabled: data.sprintsEnabled.present
+          ? data.sprintsEnabled.value
+          : this.sprintsEnabled,
     );
   }
 
@@ -2295,13 +2394,15 @@ class CachedSpace extends DataClass implements Insertable<CachedSpace> {
           ..write('slug: $slug, ')
           ..write('name: $name, ')
           ..write('role: $role, ')
-          ..write('iconUrl: $iconUrl')
+          ..write('iconUrl: $iconUrl, ')
+          ..write('sprintsEnabled: $sprintsEnabled')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, slug, name, role, iconUrl);
+  int get hashCode =>
+      Object.hash(id, slug, name, role, iconUrl, sprintsEnabled);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2310,7 +2411,8 @@ class CachedSpace extends DataClass implements Insertable<CachedSpace> {
           other.slug == this.slug &&
           other.name == this.name &&
           other.role == this.role &&
-          other.iconUrl == this.iconUrl);
+          other.iconUrl == this.iconUrl &&
+          other.sprintsEnabled == this.sprintsEnabled);
 }
 
 class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
@@ -2319,6 +2421,7 @@ class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
   final Value<String> name;
   final Value<String> role;
   final Value<String?> iconUrl;
+  final Value<bool> sprintsEnabled;
   final Value<int> rowid;
   const CachedSpacesCompanion({
     this.id = const Value.absent(),
@@ -2326,6 +2429,7 @@ class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
     this.name = const Value.absent(),
     this.role = const Value.absent(),
     this.iconUrl = const Value.absent(),
+    this.sprintsEnabled = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedSpacesCompanion.insert({
@@ -2334,6 +2438,7 @@ class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
     required String name,
     required String role,
     this.iconUrl = const Value.absent(),
+    this.sprintsEnabled = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        slug = Value(slug),
@@ -2345,6 +2450,7 @@ class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
     Expression<String>? name,
     Expression<String>? role,
     Expression<String>? iconUrl,
+    Expression<bool>? sprintsEnabled,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2353,6 +2459,7 @@ class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
       if (name != null) 'name': name,
       if (role != null) 'role': role,
       if (iconUrl != null) 'icon_url': iconUrl,
+      if (sprintsEnabled != null) 'sprints_enabled': sprintsEnabled,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2363,6 +2470,7 @@ class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
     Value<String>? name,
     Value<String>? role,
     Value<String?>? iconUrl,
+    Value<bool>? sprintsEnabled,
     Value<int>? rowid,
   }) {
     return CachedSpacesCompanion(
@@ -2371,6 +2479,7 @@ class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
       name: name ?? this.name,
       role: role ?? this.role,
       iconUrl: iconUrl ?? this.iconUrl,
+      sprintsEnabled: sprintsEnabled ?? this.sprintsEnabled,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2393,6 +2502,9 @@ class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
     if (iconUrl.present) {
       map['icon_url'] = Variable<String>(iconUrl.value);
     }
+    if (sprintsEnabled.present) {
+      map['sprints_enabled'] = Variable<bool>(sprintsEnabled.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2407,6 +2519,7 @@ class CachedSpacesCompanion extends UpdateCompanion<CachedSpace> {
           ..write('name: $name, ')
           ..write('role: $role, ')
           ..write('iconUrl: $iconUrl, ')
+          ..write('sprintsEnabled: $sprintsEnabled, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5645,6 +5758,7 @@ typedef $$CachedChannelsTableCreateCompanionBuilder =
       Value<int> unreadCount,
       Value<int> mentionCount,
       Value<bool> muted,
+      Value<bool> canSend,
       Value<int> rowid,
     });
 typedef $$CachedChannelsTableUpdateCompanionBuilder =
@@ -5660,6 +5774,7 @@ typedef $$CachedChannelsTableUpdateCompanionBuilder =
       Value<int> unreadCount,
       Value<int> mentionCount,
       Value<bool> muted,
+      Value<bool> canSend,
       Value<int> rowid,
     });
 
@@ -5724,6 +5839,11 @@ class $$CachedChannelsTableFilterComposer
 
   ColumnFilters<bool> get muted => $composableBuilder(
     column: $table.muted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get canSend => $composableBuilder(
+    column: $table.canSend,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -5791,6 +5911,11 @@ class $$CachedChannelsTableOrderingComposer
     column: $table.muted,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get canSend => $composableBuilder(
+    column: $table.canSend,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedChannelsTableAnnotationComposer
@@ -5840,6 +5965,9 @@ class $$CachedChannelsTableAnnotationComposer
 
   GeneratedColumn<bool> get muted =>
       $composableBuilder(column: $table.muted, builder: (column) => column);
+
+  GeneratedColumn<bool> get canSend =>
+      $composableBuilder(column: $table.canSend, builder: (column) => column);
 }
 
 class $$CachedChannelsTableTableManager
@@ -5886,6 +6014,7 @@ class $$CachedChannelsTableTableManager
                 Value<int> unreadCount = const Value.absent(),
                 Value<int> mentionCount = const Value.absent(),
                 Value<bool> muted = const Value.absent(),
+                Value<bool> canSend = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedChannelsCompanion(
                 id: id,
@@ -5899,6 +6028,7 @@ class $$CachedChannelsTableTableManager
                 unreadCount: unreadCount,
                 mentionCount: mentionCount,
                 muted: muted,
+                canSend: canSend,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5914,6 +6044,7 @@ class $$CachedChannelsTableTableManager
                 Value<int> unreadCount = const Value.absent(),
                 Value<int> mentionCount = const Value.absent(),
                 Value<bool> muted = const Value.absent(),
+                Value<bool> canSend = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedChannelsCompanion.insert(
                 id: id,
@@ -5927,6 +6058,7 @@ class $$CachedChannelsTableTableManager
                 unreadCount: unreadCount,
                 mentionCount: mentionCount,
                 muted: muted,
+                canSend: canSend,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -6148,6 +6280,7 @@ typedef $$CachedSpacesTableCreateCompanionBuilder =
       required String name,
       required String role,
       Value<String?> iconUrl,
+      Value<bool> sprintsEnabled,
       Value<int> rowid,
     });
 typedef $$CachedSpacesTableUpdateCompanionBuilder =
@@ -6157,6 +6290,7 @@ typedef $$CachedSpacesTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String> role,
       Value<String?> iconUrl,
+      Value<bool> sprintsEnabled,
       Value<int> rowid,
     });
 
@@ -6191,6 +6325,11 @@ class $$CachedSpacesTableFilterComposer
 
   ColumnFilters<String> get iconUrl => $composableBuilder(
     column: $table.iconUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get sprintsEnabled => $composableBuilder(
+    column: $table.sprintsEnabled,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -6228,6 +6367,11 @@ class $$CachedSpacesTableOrderingComposer
     column: $table.iconUrl,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get sprintsEnabled => $composableBuilder(
+    column: $table.sprintsEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedSpacesTableAnnotationComposer
@@ -6253,6 +6397,11 @@ class $$CachedSpacesTableAnnotationComposer
 
   GeneratedColumn<String> get iconUrl =>
       $composableBuilder(column: $table.iconUrl, builder: (column) => column);
+
+  GeneratedColumn<bool> get sprintsEnabled => $composableBuilder(
+    column: $table.sprintsEnabled,
+    builder: (column) => column,
+  );
 }
 
 class $$CachedSpacesTableTableManager
@@ -6291,6 +6440,7 @@ class $$CachedSpacesTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String> role = const Value.absent(),
                 Value<String?> iconUrl = const Value.absent(),
+                Value<bool> sprintsEnabled = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedSpacesCompanion(
                 id: id,
@@ -6298,6 +6448,7 @@ class $$CachedSpacesTableTableManager
                 name: name,
                 role: role,
                 iconUrl: iconUrl,
+                sprintsEnabled: sprintsEnabled,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6307,6 +6458,7 @@ class $$CachedSpacesTableTableManager
                 required String name,
                 required String role,
                 Value<String?> iconUrl = const Value.absent(),
+                Value<bool> sprintsEnabled = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedSpacesCompanion.insert(
                 id: id,
@@ -6314,6 +6466,7 @@ class $$CachedSpacesTableTableManager
                 name: name,
                 role: role,
                 iconUrl: iconUrl,
+                sprintsEnabled: sprintsEnabled,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

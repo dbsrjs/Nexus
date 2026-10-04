@@ -18,6 +18,7 @@ _Channel _$ChannelFromJson(Map<String, dynamic> json) => _Channel(
   mentionCount: (json['mentionCount'] as num?)?.toInt() ?? 0,
   lastReadMessageId: json['lastReadMessageId'] as String?,
   muted: json['muted'] as bool? ?? false,
+  canSend: json['canSend'] as bool? ?? true,
 );
 
 Map<String, dynamic> _$ChannelToJson(_Channel instance) => <String, dynamic>{
@@ -32,6 +33,7 @@ Map<String, dynamic> _$ChannelToJson(_Channel instance) => <String, dynamic>{
   'mentionCount': instance.mentionCount,
   'lastReadMessageId': instance.lastReadMessageId,
   'muted': instance.muted,
+  'canSend': instance.canSend,
 };
 
 _Category _$CategoryFromJson(Map<String, dynamic> json) => _Category(

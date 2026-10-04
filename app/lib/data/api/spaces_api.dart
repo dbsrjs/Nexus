@@ -36,10 +36,13 @@ class SpacesApi {
     }
   }
 
-  /// PATCH /api/spaces/:spaceId (admin+)
-  Future<void> rename(String spaceId, String name) async {
+  /// PATCH /api/spaces/:spaceId (admin+) — 준 값만 바꾼다(이름 · 스프린트 스위치).
+  Future<void> update(String spaceId, {String? name, bool? sprintsEnabled}) async {
     try {
-      await _client.dio.patch<void>('/spaces/$spaceId', data: {'name': name});
+      await _client.dio.patch<void>(
+        '/spaces/$spaceId',
+        data: {'name': ?name, 'sprintsEnabled': ?sprintsEnabled},
+      );
     } on DioException catch (e) {
       throw ApiException(classifyDioException(e));
     }

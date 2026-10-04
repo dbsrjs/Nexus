@@ -148,6 +148,10 @@ final realtimeChannelSyncProvider = Provider<void>((ref) {
           ref.read(workspaceRepositoryProvider).refreshSpaces();
         }
 
+      case SpaceUpdated():
+        // 이름 · 스프린트 스위치. 스페이스 목록(drift)을 다시 받으면 화면이 따라온다.
+        ref.read(workspaceRepositoryProvider).refreshSpaces();
+
       case SpaceRemoved():
         forgetSpace(ref, event.spaceId);
 

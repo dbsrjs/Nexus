@@ -40,7 +40,7 @@ class _GeneralSectionState extends ConsumerState<GeneralSection> {
       _error = null;
     });
     try {
-      await ref.read(spacesApiProvider).rename(widget.space.id, _name.text.trim());
+      await ref.read(spacesApiProvider).update(widget.space.id, name: _name.text.trim());
       // 레일 · 채널 판 머리 줄이 스페이스 목록(drift)을 본다.
       await ref.read(workspaceRepositoryProvider).refreshSpaces();
       if (mounted) {

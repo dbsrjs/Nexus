@@ -69,6 +69,7 @@ class SocketClient {
       ..on('member:updated', (d) => _onMember(d, MemberChange.updated))
       ..on('member:left', (d) => _onMember(d, MemberChange.left))
       ..on('space:removed', _onSpaceRemoved)
+      ..on('space:updated', _onSpaceUpdated)
       ..on('rooms:invalidate', _onRoomsInvalidate);
 
     _socket = socket;
@@ -320,6 +321,12 @@ class SocketClient {
           ? SpaceRole.values.where((r) => r.wire == wire).firstOrNull
           : null,
     ));
+  }
+
+  void _onSpaceUpdated(dynamic data) {
+    final spaceId = _asMap(data)?['spaceId'];
+    if (spaceId is! String) return;
+    _emit(SpaceUpdated(spaceId));
   }
 
   void _onSpaceRemoved(dynamic data) {

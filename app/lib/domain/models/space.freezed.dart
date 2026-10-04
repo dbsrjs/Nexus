@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Space {
 
- String get id; String get slug; String get name; SpaceRole get role; String? get iconUrl; String? get ownerId;
+ String get id; String get slug; String get name; SpaceRole get role; String? get iconUrl; String? get ownerId;/// 스프린트 · 번다운을 화면에 보일지(16단계 D31). 기본 끔 — 화면 노출만 가린다.
+ bool get sprintsEnabled;
 /// Create a copy of Space
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +29,16 @@ $SpaceCopyWith<Space> get copyWith => _$SpaceCopyWithImpl<Space>(this as Space, 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Space&&(identical(other.id, id) || other.id == id)&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.name, name) || other.name == name)&&(identical(other.role, role) || other.role == role)&&(identical(other.iconUrl, iconUrl) || other.iconUrl == iconUrl)&&(identical(other.ownerId, ownerId) || other.ownerId == ownerId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Space&&(identical(other.id, id) || other.id == id)&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.name, name) || other.name == name)&&(identical(other.role, role) || other.role == role)&&(identical(other.iconUrl, iconUrl) || other.iconUrl == iconUrl)&&(identical(other.ownerId, ownerId) || other.ownerId == ownerId)&&(identical(other.sprintsEnabled, sprintsEnabled) || other.sprintsEnabled == sprintsEnabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,slug,name,role,iconUrl,ownerId);
+int get hashCode => Object.hash(runtimeType,id,slug,name,role,iconUrl,ownerId,sprintsEnabled);
 
 @override
 String toString() {
-  return 'Space(id: $id, slug: $slug, name: $name, role: $role, iconUrl: $iconUrl, ownerId: $ownerId)';
+  return 'Space(id: $id, slug: $slug, name: $name, role: $role, iconUrl: $iconUrl, ownerId: $ownerId, sprintsEnabled: $sprintsEnabled)';
 }
 
 
@@ -48,7 +49,7 @@ abstract mixin class $SpaceCopyWith<$Res>  {
   factory $SpaceCopyWith(Space value, $Res Function(Space) _then) = _$SpaceCopyWithImpl;
 @useResult
 $Res call({
- String id, String slug, String name, SpaceRole role, String? iconUrl, String? ownerId
+ String id, String slug, String name, SpaceRole role, String? iconUrl, String? ownerId, bool sprintsEnabled
 });
 
 
@@ -65,7 +66,7 @@ class _$SpaceCopyWithImpl<$Res>
 
 /// Create a copy of Space
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? slug = null,Object? name = null,Object? role = null,Object? iconUrl = freezed,Object? ownerId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? slug = null,Object? name = null,Object? role = null,Object? iconUrl = freezed,Object? ownerId = freezed,Object? sprintsEnabled = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
@@ -73,7 +74,8 @@ as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non
 as String,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as SpaceRole,iconUrl: freezed == iconUrl ? _self.iconUrl : iconUrl // ignore: cast_nullable_to_non_nullable
 as String?,ownerId: freezed == ownerId ? _self.ownerId : ownerId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,sprintsEnabled: null == sprintsEnabled ? _self.sprintsEnabled : sprintsEnabled // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -158,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String slug,  String name,  SpaceRole role,  String? iconUrl,  String? ownerId)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String slug,  String name,  SpaceRole role,  String? iconUrl,  String? ownerId,  bool sprintsEnabled)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Space() when $default != null:
-return $default(_that.id,_that.slug,_that.name,_that.role,_that.iconUrl,_that.ownerId);case _:
+return $default(_that.id,_that.slug,_that.name,_that.role,_that.iconUrl,_that.ownerId,_that.sprintsEnabled);case _:
   return orElse();
 
 }
@@ -179,10 +181,10 @@ return $default(_that.id,_that.slug,_that.name,_that.role,_that.iconUrl,_that.ow
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String slug,  String name,  SpaceRole role,  String? iconUrl,  String? ownerId)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String slug,  String name,  SpaceRole role,  String? iconUrl,  String? ownerId,  bool sprintsEnabled)  $default,) {final _that = this;
 switch (_that) {
 case _Space():
-return $default(_that.id,_that.slug,_that.name,_that.role,_that.iconUrl,_that.ownerId);case _:
+return $default(_that.id,_that.slug,_that.name,_that.role,_that.iconUrl,_that.ownerId,_that.sprintsEnabled);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +201,10 @@ return $default(_that.id,_that.slug,_that.name,_that.role,_that.iconUrl,_that.ow
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String slug,  String name,  SpaceRole role,  String? iconUrl,  String? ownerId)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String slug,  String name,  SpaceRole role,  String? iconUrl,  String? ownerId,  bool sprintsEnabled)?  $default,) {final _that = this;
 switch (_that) {
 case _Space() when $default != null:
-return $default(_that.id,_that.slug,_that.name,_that.role,_that.iconUrl,_that.ownerId);case _:
+return $default(_that.id,_that.slug,_that.name,_that.role,_that.iconUrl,_that.ownerId,_that.sprintsEnabled);case _:
   return null;
 
 }
@@ -214,7 +216,7 @@ return $default(_that.id,_that.slug,_that.name,_that.role,_that.iconUrl,_that.ow
 @JsonSerializable()
 
 class _Space implements Space {
-  const _Space({required this.id, required this.slug, required this.name, required this.role, this.iconUrl, this.ownerId});
+  const _Space({required this.id, required this.slug, required this.name, required this.role, this.iconUrl, this.ownerId, this.sprintsEnabled = false});
   factory _Space.fromJson(Map<String, dynamic> json) => _$SpaceFromJson(json);
 
 @override final  String id;
@@ -223,6 +225,8 @@ class _Space implements Space {
 @override final  SpaceRole role;
 @override final  String? iconUrl;
 @override final  String? ownerId;
+/// 스프린트 · 번다운을 화면에 보일지(16단계 D31). 기본 끔 — 화면 노출만 가린다.
+@override@JsonKey() final  bool sprintsEnabled;
 
 /// Create a copy of Space
 /// with the given fields replaced by the non-null parameter values.
@@ -237,16 +241,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Space&&(identical(other.id, id) || other.id == id)&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.name, name) || other.name == name)&&(identical(other.role, role) || other.role == role)&&(identical(other.iconUrl, iconUrl) || other.iconUrl == iconUrl)&&(identical(other.ownerId, ownerId) || other.ownerId == ownerId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Space&&(identical(other.id, id) || other.id == id)&&(identical(other.slug, slug) || other.slug == slug)&&(identical(other.name, name) || other.name == name)&&(identical(other.role, role) || other.role == role)&&(identical(other.iconUrl, iconUrl) || other.iconUrl == iconUrl)&&(identical(other.ownerId, ownerId) || other.ownerId == ownerId)&&(identical(other.sprintsEnabled, sprintsEnabled) || other.sprintsEnabled == sprintsEnabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,slug,name,role,iconUrl,ownerId);
+int get hashCode => Object.hash(runtimeType,id,slug,name,role,iconUrl,ownerId,sprintsEnabled);
 
 @override
 String toString() {
-  return 'Space(id: $id, slug: $slug, name: $name, role: $role, iconUrl: $iconUrl, ownerId: $ownerId)';
+  return 'Space(id: $id, slug: $slug, name: $name, role: $role, iconUrl: $iconUrl, ownerId: $ownerId, sprintsEnabled: $sprintsEnabled)';
 }
 
 
@@ -257,7 +261,7 @@ abstract mixin class _$SpaceCopyWith<$Res> implements $SpaceCopyWith<$Res> {
   factory _$SpaceCopyWith(_Space value, $Res Function(_Space) _then) = __$SpaceCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String slug, String name, SpaceRole role, String? iconUrl, String? ownerId
+ String id, String slug, String name, SpaceRole role, String? iconUrl, String? ownerId, bool sprintsEnabled
 });
 
 
@@ -274,7 +278,7 @@ class __$SpaceCopyWithImpl<$Res>
 
 /// Create a copy of Space
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? slug = null,Object? name = null,Object? role = null,Object? iconUrl = freezed,Object? ownerId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? slug = null,Object? name = null,Object? role = null,Object? iconUrl = freezed,Object? ownerId = freezed,Object? sprintsEnabled = null,}) {
   return _then(_Space(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
@@ -282,7 +286,8 @@ as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non
 as String,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as SpaceRole,iconUrl: freezed == iconUrl ? _self.iconUrl : iconUrl // ignore: cast_nullable_to_non_nullable
 as String?,ownerId: freezed == ownerId ? _self.ownerId : ownerId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,sprintsEnabled: null == sprintsEnabled ? _self.sprintsEnabled : sprintsEnabled // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

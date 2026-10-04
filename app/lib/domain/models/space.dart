@@ -37,6 +37,9 @@ abstract class Space with _$Space {
     required SpaceRole role,
     String? iconUrl,
     String? ownerId,
+
+    /// 스프린트 · 번다운을 화면에 보일지(16단계 D31). 기본 끔 — 화면 노출만 가린다.
+    @Default(false) bool sprintsEnabled,
   }) = _Space;
 
   factory Space.fromJson(Map<String, dynamic> json) => _$SpaceFromJson(json);

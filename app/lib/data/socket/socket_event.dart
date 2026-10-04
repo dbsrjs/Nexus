@@ -237,6 +237,14 @@ class MemberChanged extends SocketEvent {
   final SpaceRole? role;
 }
 
+/// 스페이스의 이름이나 스프린트 스위치가 바뀌었다(16단계 D34). 스페이스 룸으로 온다 —
+/// 내용을 싣지 않으니 스페이스 목록을 다시 받는다.
+class SpaceUpdated extends SocketEvent {
+  const SpaceUpdated(this.spaceId);
+
+  final String spaceId;
+}
+
 /// 내가 그 스페이스에서 빠졌다 — 내보내졌거나 다른 기기에서 나갔다(16단계). 개인 룸으로 온다.
 class SpaceRemoved extends SocketEvent {
   const SpaceRemoved(this.spaceId);

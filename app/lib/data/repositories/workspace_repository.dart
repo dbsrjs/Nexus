@@ -38,6 +38,7 @@ class WorkspaceRepository {
                     orElse: () => SpaceRole.member,
                   ),
                   iconUrl: r.iconUrl,
+                  sprintsEnabled: r.sprintsEnabled,
                 ))
             .toList(growable: false),
       );
@@ -53,6 +54,7 @@ class WorkspaceRepository {
             name: s.name,
             role: s.role.wire,
             iconUrl: Value(s.iconUrl),
+            sprintsEnabled: Value(s.sprintsEnabled),
           ),
       ]);
       return true;
@@ -77,6 +79,7 @@ class WorkspaceRepository {
                       unreadCount: r.unreadCount,
                       mentionCount: r.mentionCount,
                       muted: r.muted,
+                      canSend: r.canSend,
                     ))
                 .toList(growable: false),
           );
@@ -99,6 +102,7 @@ class WorkspaceRepository {
             unreadCount: Value(c.unreadCount),
             mentionCount: Value(c.mentionCount),
             muted: Value(c.muted),
+            canSend: Value(c.canSend),
           ),
       ]);
       return true;

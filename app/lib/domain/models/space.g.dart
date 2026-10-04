@@ -13,6 +13,7 @@ _Space _$SpaceFromJson(Map<String, dynamic> json) => _Space(
   role: $enumDecode(_$SpaceRoleEnumMap, json['role']),
   iconUrl: json['iconUrl'] as String?,
   ownerId: json['ownerId'] as String?,
+  sprintsEnabled: json['sprintsEnabled'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$SpaceToJson(_Space instance) => <String, dynamic>{
@@ -22,6 +23,7 @@ Map<String, dynamic> _$SpaceToJson(_Space instance) => <String, dynamic>{
   'role': _$SpaceRoleEnumMap[instance.role]!,
   'iconUrl': instance.iconUrl,
   'ownerId': instance.ownerId,
+  'sprintsEnabled': instance.sprintsEnabled,
 };
 
 const _$SpaceRoleEnumMap = {

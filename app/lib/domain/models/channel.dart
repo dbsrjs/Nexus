@@ -26,6 +26,10 @@ abstract class Channel with _$Channel {
     @Default(0) int mentionCount,
     String? lastReadMessageId,
     @Default(false) bool muted,
+
+    /// 내가 이 채널에 보낼 수 있는가(16단계 D26). 거짓이면 입력창 대신 「읽기 전용」을 보이고
+    /// 답장 · 스레드 · 고정을 감춘다 — 리액션은 남는다. 서버가 안 주면(옛 응답) 보낼 수 있다고 본다.
+    @Default(true) bool canSend,
   }) = _Channel;
 
   factory Channel.fromJson(Map<String, dynamic> json) => _$ChannelFromJson(json);
