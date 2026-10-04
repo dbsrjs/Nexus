@@ -93,6 +93,14 @@ export class SpacesController {
     return this.spaces.removeMember(spaceId, actor, targetUserId);
   }
 
+  /** POST /api/spaces/:spaceId/leave — 스스로 나간다. owner 는 403 */
+  @Post(':spaceId/leave')
+  @UseGuards(SpaceGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  leave(@CurrentSpaceMember() member: SpaceMember) {
+    return this.spaces.leave(member);
+  }
+
   /** POST /api/spaces/:spaceId/invites (admin+) */
   @Post(':spaceId/invites')
   @UseGuards(SpaceGuard, SpaceRoleGuard)

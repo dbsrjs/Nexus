@@ -32,6 +32,17 @@ export class RealtimeEmitter {
     this.emit(room.channel(channelId), event, payload);
   }
 
+  /**
+   * 그 사용자의 소켓 전부를 주어진 룸에서 **서버가 직접** 뺀다(16단계 설계 D13a).
+   *
+   * `rooms:invalidate` 는 앱에게 다시 계산해 달라는 부탁일 뿐이다. 고친 클라이언트가
+   * `rooms:sync` 를 부르지 않으면 내보내진 뒤에도 그 스페이스의 메시지를 받는다.
+   */
+  evict(userId: string, rooms: string[]): void {
+    if (!this.server || rooms.length === 0) return;
+    this.server.in(room.user(userId)).socketsLeave(rooms);
+  }
+
   private emit(target: string, event: string, payload: unknown): void {
     if (!this.server) {
       // 부팅 순서상 afterInit 이 첫 요청보다 먼저다. 그래도 여기서 던지지는

@@ -3,12 +3,14 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { Prisma, Space, SpaceMember, SpaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
+import { room } from '../realtime/rooms';
 import { CreateSpaceDto } from './dto/create-space.dto';
 import { slugify } from '../common/slug';
 import { UpdateSpaceDto } from './dto/update-space.dto';
@@ -35,6 +37,8 @@ export type SpaceMemberWithUser = Prisma.SpaceMemberGetPayload<{
 
 @Injectable()
 export class SpacesService {
+  private readonly logger = new Logger(SpacesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeEmitter,
@@ -176,6 +180,8 @@ export class SpacesService {
     // 다만 역할에 걸린 ChannelPermission 때문에 볼 수 있는 채널이 달라질 수
     // 있어, 그 사용자에게만 룸 재계산을 요청한다.
     this.realtime.toUser(targetUserId, 'rooms:invalidate', { reason: 'member.role' });
+    // 모두에게 같은 값이다(§3-6). 받은 앱은 멤버 목록을 다시 받는다.
+    this.realtime.toSpace(spaceId, 'member:updated', { spaceId, userId: targetUserId, role });
 
     return updated;
   }
@@ -205,16 +211,59 @@ export class SpacesService {
       );
     }
 
+    await this.dropMembership(spaceId, targetUserId);
+    this.notifyRemoved(spaceId, targetUserId);
+  }
+
+  /**
+   * POST /api/spaces/:spaceId/leave — 스스로 나간다(16단계 설계 D11).
+   * owner 는 403 — 소유권 이전이 없어 나가면 주인 없는 스페이스가 된다.
+   */
+  async leave(member: SpaceMember): Promise<void> {
+    if (member.role === SpaceRole.owner) {
+      throw new ForbiddenException('owner 는 스페이스를 나갈 수 없습니다');
+    }
+    await this.dropMembership(member.spaceId, member.userId);
+    this.notifyRemoved(member.spaceId, member.userId);
+  }
+
+  /**
+   * 스페이스 멤버십과 그 스페이스의 채널 멤버십을 한 트랜잭션으로 지운다.
+   * 채널 멤버십을 남기면 나간 사람이 읽음 마커 · 멘션 계산에 끼어든다.
+   */
+  private async dropMembership(spaceId: string, userId: string): Promise<void> {
     await this.prisma.$transaction([
-      // 채널 멤버십을 함께 정리한다. 남겨 두면 추방된 사용자가 여전히
-      // 채널 멤버로 잡혀 읽음 마커·멘션 계산에 끼어든다.
       this.prisma.channelMember.deleteMany({
-        where: { userId: targetUserId, channel: { spaceId } },
+        where: { userId, channel: { spaceId } },
       }),
       this.prisma.spaceMember.delete({
-        where: { spaceId_userId: { spaceId, userId: targetUserId } },
+        where: { spaceId_userId: { spaceId, userId } },
       }),
     ]);
+  }
+
+  /**
+   * 내보내지거나 나간 뒤의 실시간 처리(설계 D12 · D13 · D13a).
+   *
+   * **룸에서 먼저 뺀다** — 그 뒤로 이 스페이스에 쏘는 것은 그 사람에게 닿지 않는다.
+   * 채널은 그 스페이스의 전부다(볼 수 있던 것만 고를 필요가 없다 — 들어가 있지 않은
+   * 룸에서 빼는 것은 아무 일도 하지 않는다). 응답을 늦추지 않게 기다리지 않는다.
+   */
+  private notifyRemoved(spaceId: string, userId: string): void {
+    this.prisma.channel
+      .findMany({ where: { spaceId }, select: { id: true } })
+      .then((channels) => {
+        this.realtime.evict(userId, [
+          room.space(spaceId),
+          ...channels.map((c) => room.channel(c.id)),
+        ]);
+        this.realtime.toUser(userId, 'space:removed', { spaceId });
+        this.realtime.toUser(userId, 'rooms:invalidate', { reason: 'member.left' });
+        this.realtime.toSpace(spaceId, 'member:left', { spaceId, userId });
+      })
+      .catch((err: unknown) => {
+        this.logger.error(`나간 사용자의 룸 정리 실패 (space=${spaceId}, user=${userId})`, err as Error);
+      });
   }
 
   /** POST /api/spaces/:spaceId/invites (admin+) */
@@ -309,6 +358,10 @@ export class SpacesService {
         data: { spaceId: invite.spaceId, userId, role: invite.role },
       });
     });
+
+    // 새 스페이스 룸에 붙어야 실시간이 온다. 기존 멤버의 멘션 자동완성에는 바로 떠야 한다.
+    this.realtime.toUser(userId, 'rooms:invalidate', { reason: 'member.joined' });
+    this.realtime.toSpace(invite.spaceId, 'member:joined', { spaceId: invite.spaceId, userId });
 
     return invite.space;
   }
