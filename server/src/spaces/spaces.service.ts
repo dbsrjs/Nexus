@@ -127,15 +127,23 @@ export class SpacesService {
     return space;
   }
 
-  /** PATCH /api/spaces/:spaceId (admin+) */
-  update(spaceId: string, dto: UpdateSpaceDto): Promise<Space> {
-    return this.prisma.space.update({
+  /**
+   * PATCH /api/spaces/:spaceId (admin+)
+   *
+   * 바뀌면 스페이스 룸에 `space:updated` 를 보낸다(16단계 설계 D34) — 이름 · 스프린트
+   * 스위치는 모두에게 같은 값이라 브로드캐스트해도 된다(§3-6). 받은 앱은 목록을 다시 받는다.
+   */
+  async update(spaceId: string, dto: UpdateSpaceDto): Promise<Space> {
+    const updated = await this.prisma.space.update({
       where: { id: spaceId },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
         ...(dto.iconUrl !== undefined ? { iconUrl: dto.iconUrl } : {}),
+        ...(dto.sprintsEnabled !== undefined ? { sprintsEnabled: dto.sprintsEnabled } : {}),
       },
     });
+    this.realtime.toSpace(spaceId, 'space:updated', { spaceId });
+    return updated;
   }
 
   /** GET /api/spaces/:spaceId/members */

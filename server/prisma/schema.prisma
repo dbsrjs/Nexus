@@ -235,6 +235,10 @@ model Space {
   /// 원자적으로 올린다. count() 로 세면 동시 생성이 같은 키를 받고, 이슈를
   /// 지우면 번호가 되돌아간다 — 연번은 세는 것이 아니라 발급하는 것이다.
   issueSeq Int @default(0) @map("issue_seq")
+  /// 스프린트 · 번다운을 화면에 보일지(16단계 설계 D31~D33). 기본 끔 — 개인 허브에 스프린트는
+  /// 무겁다. **화면 노출만** 가린다(서버 API 는 그대로). 이미 스프린트가 있던 스페이스는
+  /// 마이그레이션이 켜 두었다.
+  sprintsEnabled Boolean @default(false) @map("sprints_enabled")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
