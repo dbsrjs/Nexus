@@ -62,11 +62,17 @@ export class SpacesService {
    * 전부 한 트랜잭션이다 — 멤버 없는 스페이스나 채널 없는 스페이스가 남으면 안 된다.
    */
   async create(userId: string, dto: CreateSpaceDto): Promise<Space> {
-    const slug = dto.slug ?? slugify(dto.name, 'space');
+    let slug = dto.slug ?? slugify(dto.name, 'space');
 
     const taken = await this.prisma.space.findUnique({ where: { slug } });
     if (taken) {
-      throw new ConflictException('이미 사용 중인 slug 입니다');
+      // 직접 고른 slug 만 거절한다. 이름에서 만든 것은 사용자가 고른 적이 없다 —
+      // slug 는 전역 유일이라, 남이 「Dev」를 먼저 만들었다고 내 「Dev」가 막히면
+      // 안 된다(16단계 — 앱이 이름만 받는 만들기 화면을 갖게 됐다).
+      if (dto.slug) {
+        throw new ConflictException('이미 사용 중인 slug 입니다');
+      }
+      slug = `${slug.slice(0, 31)}-${randomBytes(4).toString('hex')}`;
     }
 
     return this.prisma.$transaction(async (tx) => {

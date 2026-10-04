@@ -27,6 +27,24 @@ const accept = (token, code) => api('POST', `/invites/${code}/accept`, { token }
 /** 이벤트가 오지 않아야 하는 쪽. 받으면 그 페이로드, 안 오면 null. */
 const silence = (socket, event, ms = 1200) => waitFor(socket, event, ms);
 
+// ── 만들기 ──────────────────────────────────────
+console.log('\n[만들기]');
+
+// 앱은 이름만 받는다 — 같은 영문 이름이 이미 있어도 막히면 안 된다(slug 는 전역 유일).
+const sameName = `Members Same ${stamp}`;
+const first = await api('POST', '/spaces', { token: carol.token, body: { name: sameName } });
+const second = await api('POST', '/spaces', { token: dave.token, body: { name: sameName } });
+check(
+  '같은 이름의 스페이스를 둘 만들 수 있다',
+  first.status === 201 && second.status === 201 && !!first.json?.slug && first.json.slug !== second.json?.slug,
+  `status=${first.status},${second.status}`,
+);
+const pinned = await api('POST', '/spaces', {
+  token: dave.token,
+  body: { name: 'pinned', slug: first.json?.slug },
+});
+check('직접 고른 slug 가 겹치면 여전히 409', pinned.status === 409, `status=${pinned.status}`);
+
 // ── 초대 ────────────────────────────────────────
 console.log('\n[초대]');
 
