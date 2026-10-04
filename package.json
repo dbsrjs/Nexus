@@ -33,6 +33,7 @@
     "check:indexing": "node server/scripts/check-indexing.mjs",
     "check:ai": "node server/scripts/check-ai.mjs",
     "check:settings": "node server/scripts/check-settings.mjs",
+    "check:members": "node server/scripts/check-members.mjs",
     "app:flow": "cd app && flutter test integration_test -d windows",
     "check:migrations": "node server/scripts/check-migrations.mjs",
     "check:sql-time": "node server/scripts/check-sql-time.mjs"

@@ -209,7 +209,7 @@ jobs:
           node scripts/check-sql-time.mjs
           echo "── check:realtime ──"
           node scripts/check-realtime.mjs
-          for s in reactions threads quotes mentions pins attachments issues repos oauth browse pulls indexing ai settings; do
+          for s in reactions threads quotes mentions pins attachments issues repos oauth browse pulls indexing ai settings members; do
             echo "── check:$s ──"
             node "scripts/check-$s.mjs"
           done
