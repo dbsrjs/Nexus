@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/breakpoints.dart';
+import '../../domain/models/channel.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import '../../ui/ui.dart';
 import '../channel/channel_controller.dart';
@@ -101,6 +102,21 @@ class _AppShellState extends ConsumerState<AppShell> {
       ref.read(removedSpaceProvider.notifier).set(null);
       NxToast.show(context, '스페이스에서 나왔습니다');
       context.go('/spaces');
+    });
+
+    // 보고 있던 채널이 목록에서 **빠지는 순간** 스페이스 홈으로 보낸다(16단계 — 명단에서 빠졌거나
+    // 역할로 가려졌다). 처음 받은 목록에 없는 것은 따지지 않는다 — 빠진 것만 본다. 그래야
+    // 방금 만든 채널 · 첫 진입처럼 목록이 아직 따라오지 못한 때에 엉뚱하게 내보내지 않는다.
+    ref.listen<AsyncValue<List<Channel>>>(channelsProvider, (previous, next) {
+      final channelId = widget.channelId;
+      final before = previous?.value;
+      final after = next.value;
+      if (channelId == null || before == null || after == null) return;
+      final was = before.any((c) => c.id == channelId);
+      final still = after.any((c) => c.id == channelId);
+      if (!was || still) return;
+      NxToast.show(context, '이 채널을 더는 볼 수 없습니다');
+      context.go('/s/${widget.spaceId}');
     });
 
     final layout = Layout.ofContext(context);

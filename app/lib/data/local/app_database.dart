@@ -769,6 +769,13 @@ class AppDatabase extends _$AppDatabase {
     await transaction(() async {
       await (delete(cachedChannels)..where((c) => c.spaceId.equals(spaceId))).go();
       await batch((b) => b.insertAll(cachedChannels, channels));
+      // 서버 목록에서 빠진 채널(명단에서 빠졌거나 역할로 가려졌다, 16단계)의 메시지 캐시를 지운다 —
+      // 볼 수 없게 된 대화가 기기에 남지 않게. 이 메서드는 서버 응답으로만 불린다(오프라인에서는
+      // 부르지 않는다). **전송 큐는 남긴다** — 사용자가 쓴 유일본이라 실패로 남겨 보이게 한다.
+      final keep = [for (final c in channels) c.id.value];
+      await (delete(cachedMessages)
+            ..where((m) => m.spaceId.equals(spaceId) & m.channelId.isNotIn(keep)))
+          .go();
     });
   }
 

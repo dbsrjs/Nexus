@@ -43,6 +43,21 @@ void main() {
     expect(await db.watchChannelMessages('c2').first, hasLength(2));
   });
 
+  test('★ 서버 목록에서 빠진 채널의 메시지 캐시는 지우고 큐는 남긴다(16-2)', () async {
+    await db.upsertMessages('s1', [message('m1', 'c1'), message('m2', 'c2')]);
+    await queue('local-9', 's1', 'c2');
+
+    // c2 가 명단에서 빠졌다 — 서버가 c1 만 준다.
+    await db.replaceChannels('s1', [
+      CachedChannelsCompanion.insert(id: 'c1', spaceId: 's1', key: 'c1', name: 'c1'),
+    ]);
+
+    expect(await db.watchChannelMessages('c1').first, hasLength(1));
+    final left = await db.watchChannelMessages('c2').first;
+    // 캐시 m2 는 사라지고, 사용자가 쓴 큐만 남는다.
+    expect(left.map((m) => m.id), ['local-9']);
+  });
+
   test('채널 · 스페이스 행도 지운다', () async {
     await db.replaceSpaces([
       CachedSpacesCompanion.insert(id: 's1', slug: 's1', name: '하나', role: 'member'),
