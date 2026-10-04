@@ -6,6 +6,7 @@ import {
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { Channel, Prisma, SpaceMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
@@ -237,13 +238,18 @@ export class ChannelsService {
     member: SpaceMember,
     dto: CreateChannelDto,
   ): Promise<Channel> {
-    const key = dto.key ?? slugify(dto.name, 'channel');
+    let key = dto.key ?? slugify(dto.name, 'channel');
 
     const taken = await this.prisma.channel.findUnique({
       where: { spaceId_key: { spaceId, key } },
     });
     if (taken) {
-      throw new ConflictException('이미 사용 중인 채널 key 입니다');
+      // 직접 고른 key 만 거절한다. 앱은 이름만 받는다(16단계) — 「Dev」가 이미 있다고 두 번째
+      // 「Dev」가 막히면 안 된다. 스페이스 slug 와 같은 규칙이다.
+      if (dto.key) {
+        throw new ConflictException('이미 사용 중인 채널 key 입니다');
+      }
+      key = `${key.slice(0, 31)}-${randomBytes(4).toString('hex')}`;
     }
 
     if (dto.categoryId) {

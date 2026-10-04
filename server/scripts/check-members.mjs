@@ -210,6 +210,20 @@ check('준비 (스페이스 · 공개 채널)', !!sp2 && !!pub?.id);
 const memSocket = await connect(mem.token);
 await memSocket.emitWithAck('rooms:sync');
 
+// ── 채널 만들기 ──
+console.log('\n[채널 만들기]');
+const dupA = await api('POST', ch(''), { token: adm.token, body: { name: 'Dev Talk' } });
+const dupB = await api('POST', ch(''), { token: adm.token, body: { name: 'Dev Talk' } });
+check(
+  '같은 이름의 채널을 둘 만들 수 있다(이름에서 만든 key 는 꼬리를 붙인다)',
+  dupA.status === 201 && dupB.status === 201 && !!dupA.json?.key && dupA.json.key !== dupB.json?.key,
+  `status=${dupA.status},${dupB.status}`,
+);
+const dupKey = await api('POST', ch(''), { token: adm.token, body: { name: 'x', key: dupA.json?.key } });
+check('직접 고른 key 가 겹치면 여전히 409', dupKey.status === 409, `status=${dupKey.status}`);
+const memCreates = await api('POST', ch(''), { token: mem.token, body: { name: 'nope' } });
+check('member 는 채널을 못 만든다(403)', memCreates.status === 403, `status=${memCreates.status}`);
+
 // ── 비공개 채널 명단 ──
 console.log('\n[비공개 채널 명단]');
 const priv = (await api('POST', ch(''), { token: adm.token, body: { name: 'secret room', isPrivate: true } })).json;
