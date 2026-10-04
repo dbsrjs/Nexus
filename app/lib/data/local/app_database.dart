@@ -775,6 +775,21 @@ class AppDatabase extends _$AppDatabase {
       (update(cachedChannels)..where((c) => c.id.equals(channelId)))
           .write(CachedChannelsCompanion(muted: Value(muted)));
 
+  /// 내보내졌거나 나간 스페이스를 기기에서 지운다(16단계 설계 D13).
+  ///
+  /// **전송 큐도 지운다** — 보낼 곳이 사라졌다. 남기면 다시 초대받았을 때 옛 메시지가
+  /// 뒤늦게 나간다. 사용자가 한 일(나가기)이거나 화면이 알린 일(토스트)이라
+  /// 「실패한 메시지를 조용히 지우지 않는다」와 어긋나지 않는다.
+  Future<void> purgeSpace(String spaceId) => transaction(() async {
+        await (delete(cachedMessages)..where((t) => t.spaceId.equals(spaceId))).go();
+        await (delete(outboxMessages)..where((t) => t.spaceId.equals(spaceId))).go();
+        await (delete(cachedChannels)..where((t) => t.spaceId.equals(spaceId))).go();
+        await (delete(cachedCategories)..where((t) => t.spaceId.equals(spaceId))).go();
+        await (delete(cachedIssues)..where((t) => t.spaceId.equals(spaceId))).go();
+        await (delete(cachedSprints)..where((t) => t.spaceId.equals(spaceId))).go();
+        await (delete(cachedSpaces)..where((t) => t.id.equals(spaceId))).go();
+      });
+
   /// 사람의 이름 · 사진이 바뀌었다(`user:updated`, 14단계).
   ///
   /// **캐시 메시지 · 전송 큐 · 담당 이슈**의 작성자 칸을 한 트랜잭션으로 고친다.

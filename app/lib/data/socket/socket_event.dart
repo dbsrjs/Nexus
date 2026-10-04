@@ -1,5 +1,6 @@
 import '../../domain/models/issue.dart';
 import '../../domain/models/message.dart';
+import '../../domain/models/space.dart';
 
 /// 서버 → 클라이언트 소켓 이벤트.
 ///
@@ -214,4 +215,31 @@ class ChannelMuted extends SocketEvent {
   final String spaceId;
   final String channelId;
   final bool muted;
+}
+
+enum MemberChange { joined, updated, left }
+
+/// 스페이스의 멤버가 들어왔다 · 역할이 바뀌었다 · 나갔다(16단계). 스페이스 룸으로 온다.
+/// 사람 하나를 가리킬 뿐 내용을 싣지 않는다 — 앱은 멤버 목록을 다시 받는다.
+class MemberChanged extends SocketEvent {
+  const MemberChanged({
+    required this.spaceId,
+    required this.userId,
+    required this.kind,
+    this.role,
+  });
+
+  final String spaceId;
+  final String userId;
+  final MemberChange kind;
+
+  /// `updated` 에서만 있다.
+  final SpaceRole? role;
+}
+
+/// 내가 그 스페이스에서 빠졌다 — 내보내졌거나 다른 기기에서 나갔다(16단계). 개인 룸으로 온다.
+class SpaceRemoved extends SocketEvent {
+  const SpaceRemoved(this.spaceId);
+
+  final String spaceId;
 }

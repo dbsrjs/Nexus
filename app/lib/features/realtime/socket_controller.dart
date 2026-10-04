@@ -7,6 +7,7 @@ import '../channel/channel_controller.dart';
 import '../chat/message_controller.dart';
 import '../issue/board_controller.dart';
 import '../space/members_controller.dart';
+import '../space/space_actions.dart';
 import '../space/space_controller.dart';
 
 /// 앱 전체에 하나뿐인 소켓 연결.
@@ -136,6 +137,18 @@ final realtimeChannelSyncProvider = Provider<void>((ref) {
 
       case ChannelMuted():
         ref.read(appDatabaseProvider).setChannelMuted(event.channelId, event.muted);
+
+      case MemberChanged():
+        // 멤버 목록은 캐시하지 않는다 — 다시 받는다(16단계 설계 D12).
+        ref.invalidate(spaceMembersOfProvider(event.spaceId));
+        // 내 역할이 바뀌었으면 메뉴 · 설정 창이 보는 역할(스페이스 목록)도 바뀐다.
+        final me = ref.read(authControllerProvider);
+        if (me is AuthSignedIn && me.user.id == event.userId) {
+          ref.read(workspaceRepositoryProvider).refreshSpaces();
+        }
+
+      case SpaceRemoved():
+        forgetSpace(ref, event.spaceId);
 
       case MessageEdited():
       case MessageDeleted():

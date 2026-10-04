@@ -6,6 +6,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../../core/env.dart';
 import '../../domain/models/issue.dart';
 import '../../domain/models/message.dart';
+import '../../domain/models/space.dart';
 import '../api/api_client.dart';
 import 'socket_event.dart';
 
@@ -64,6 +65,10 @@ class SocketClient {
       ..on('ai:run:done', _onAiRunDone)
       ..on('user:updated', _onUserUpdated)
       ..on('channel:muted', _onChannelMuted)
+      ..on('member:joined', (d) => _onMember(d, MemberChange.joined))
+      ..on('member:updated', (d) => _onMember(d, MemberChange.updated))
+      ..on('member:left', (d) => _onMember(d, MemberChange.left))
+      ..on('space:removed', _onSpaceRemoved)
       ..on('rooms:invalidate', _onRoomsInvalidate);
 
     _socket = socket;
@@ -299,6 +304,28 @@ class SocketClient {
   void _onRoomsInvalidate(dynamic data) {
     final map = _asMap(data);
     _emit(RoomsInvalidated(map?['reason'] as String?));
+  }
+
+  void _onMember(dynamic data, MemberChange kind) {
+    final map = _asMap(data);
+    final spaceId = map?['spaceId'];
+    final userId = map?['userId'];
+    if (map == null || spaceId is! String || userId is! String) return;
+    final wire = map['role'];
+    _emit(MemberChanged(
+      spaceId: spaceId,
+      userId: userId,
+      kind: kind,
+      role: wire is String
+          ? SpaceRole.values.where((r) => r.wire == wire).firstOrNull
+          : null,
+    ));
+  }
+
+  void _onSpaceRemoved(dynamic data) {
+    final spaceId = _asMap(data)?['spaceId'];
+    if (spaceId is! String) return;
+    _emit(SpaceRemoved(spaceId));
   }
 
   static Map<String, dynamic>? _asMap(dynamic data) =>
