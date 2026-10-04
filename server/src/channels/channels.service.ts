@@ -14,6 +14,7 @@ import { CreateChannelDto } from './dto/create-channel.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
 import { MentionsService } from '../messages/mentions.service';
+import { channelAccess } from './channel-access';
 
 /** 채널 목록 한 줄. 사이드바가 필요로 하는 것만 담는다. */
 export interface ChannelListItem extends Channel {
@@ -26,6 +27,11 @@ export interface ChannelListItem extends Channel {
    * 뜻이라 무게가 다르고, 화면에서도 다른 색으로 표시한다.
    */
   mentionCount: number;
+  /**
+   * 내가 이 채널에 보낼 수 있는가(16단계 D26). 받는 사람마다 다르지만 목록은 원래 사람마다
+   * 따로 받는다 — 브로드캐스트가 아니다. 앱은 거짓이면 입력창 대신 「읽기 전용」을 보인다.
+   */
+  canSend: boolean;
 }
 
 @Injectable()
@@ -46,34 +52,31 @@ export class ChannelsService {
   // 권한 행이 없으면 아무도 못 보는 구조라, 새로 만든 채널이 아무에게도 보이지
   // 않는 상태가 기본값이었다.
   //
-  // 새 규칙은 `is_private` 를 기준으로 삼는다:
-  //   - 비공개 채널 → 채널 멤버만
-  //   - 공개 채널   → 스페이스 멤버 전원. 단 그 역할에 대한 ChannelPermission
-  //                   행이 canView=false 로 있으면 가린다 (명시적 차단)
-  //
-  // 전송(canSend)도 같은 방식이다. 권한 행이 있으면 그것이 우선이고,
-  // 없으면 "볼 수 있으면 보낼 수 있다".
+  // 새 규칙은 `is_private` 를 기준으로 삼는다 — 판정은 `channel-access.ts` 한 곳이다
+  // (16단계 설계 §2). 공개 채널의 가림(canView=false)은 멤버 행보다 앞선다.
   // ──────────────────────────────────────────────
 
   async canView(channelId: string, member: SpaceMember): Promise<boolean> {
+    return (await this.access(channelId, member))?.view ?? false;
+  }
+
+  async canSend(channelId: string, member: SpaceMember): Promise<boolean> {
+    return (await this.access(channelId, member))?.send ?? false;
+  }
+
+  /** 채널 하나의 판정. 없는 채널 · 다른 스페이스의 채널이면 null. */
+  private async access(channelId: string, member: SpaceMember) {
     const channel = await this.prisma.channel.findFirst({
       where: { id: channelId, spaceId: member.spaceId },
       select: { id: true, isPrivate: true },
     });
-    if (!channel) return false;
+    if (!channel) return null;
 
-    if (await this.isChannelMember(channelId, member.userId)) return true;
-    if (channel.isPrivate) return false;
-
-    const perm = await this.permissionFor(channelId, member);
-    return perm?.canView ?? true;
-  }
-
-  async canSend(channelId: string, member: SpaceMember): Promise<boolean> {
-    if (!(await this.canView(channelId, member))) return false;
-
-    const perm = await this.permissionFor(channelId, member);
-    return perm?.canSend ?? true;
+    const [isMember, perm] = await Promise.all([
+      this.isChannelMember(channelId, member.userId),
+      this.permissionFor(channelId, member),
+    ]);
+    return channelAccess({ isPrivate: channel.isPrivate, isMember, perm });
   }
 
   /** 볼 수 없으면 404. 존재 여부 자체를 흘리지 않는다. */
@@ -105,7 +108,19 @@ export class ChannelsService {
 
   /** 내가 볼 수 있는 채널 id 집합. 목록과 (4단계의) 소켓 룸 조인이 함께 쓴다. */
   async viewableChannelIds(member: SpaceMember): Promise<string[]> {
-    const [channels, memberships, blocked] = await Promise.all([
+    return [...(await this.accessMap(member)).entries()]
+      .filter(([, a]) => a.view)
+      .map(([id]) => id);
+  }
+
+  /**
+   * 스페이스의 모든 채널에 대한 내 판정을 **쿼리 셋으로** 낸다(채널마다 묻지 않는다).
+   * 판정 자체는 `channelAccess()` 한 곳이다.
+   */
+  private async accessMap(
+    member: SpaceMember,
+  ): Promise<Map<string, { view: boolean; send: boolean }>> {
+    const [channels, memberships, perms] = await Promise.all([
       this.prisma.channel.findMany({
         where: { spaceId: member.spaceId },
         select: { id: true, isPrivate: true },
@@ -115,26 +130,30 @@ export class ChannelsService {
         select: { channelId: true },
       }),
       this.prisma.channelPermission.findMany({
-        where: {
-          role: member.role,
-          canView: false,
-          channel: { spaceId: member.spaceId },
-        },
-        select: { channelId: true },
+        where: { role: member.role, channel: { spaceId: member.spaceId } },
+        select: { channelId: true, canView: true, canSend: true },
       }),
     ]);
 
     const joined = new Set(memberships.map((m) => m.channelId));
-    const hidden = new Set(blocked.map((p) => p.channelId));
+    const permByChannel = new Map(perms.map((p) => [p.channelId, p]));
 
-    return channels
-      .filter((c) => joined.has(c.id) || (!c.isPrivate && !hidden.has(c.id)))
-      .map((c) => c.id);
+    return new Map(
+      channels.map((c) => [
+        c.id,
+        channelAccess({
+          isPrivate: c.isPrivate,
+          isMember: joined.has(c.id),
+          perm: permByChannel.get(c.id) ?? null,
+        }),
+      ]),
+    );
   }
 
   /** GET /api/spaces/:spaceId/channels — 사이드바용. 안 읽은 수를 함께 준다. */
   async listForMember(member: SpaceMember): Promise<ChannelListItem[]> {
-    const ids = await this.viewableChannelIds(member);
+    const access = await this.accessMap(member);
+    const ids = [...access.entries()].filter(([, a]) => a.view).map(([id]) => id);
     if (ids.length === 0) return [];
 
     const [channels, memberships, unread, mentions] = await Promise.all([
@@ -160,6 +179,7 @@ export class ChannelsService {
         muted: own?.muted ?? false,
         unreadCount: unread.get(channel.id) ?? 0,
         mentionCount: mentions.get(channel.id) ?? 0,
+        canSend: access.get(channel.id)?.send ?? false,
       };
     });
   }
