@@ -7,6 +7,8 @@ import '../../domain/models/channel.dart';
 import '../../ui/ui.dart';
 import '../space/space_controller.dart';
 import 'channel_controller.dart';
+import '../../domain/models/space.dart';
+import 'channel_dialogs.dart';
 
 /// 채널 패널의 채널 부분. 카테고리 → 채널 순으로 그린다.
 ///
@@ -21,6 +23,9 @@ class ChannelList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final channels = ref.watch(channelsProvider);
     final groups = ref.watch(channelGroupsProvider);
+    final space = ref.watch(currentSpaceProvider);
+    final spaceId = space?.id;
+    final admin = space?.role.atLeast(SpaceRole.admin) ?? false;
 
     return channels.when(
       // 자리를 지키는 뼈대(15단계 D10).
@@ -36,10 +41,24 @@ class ChannelList extends ConsumerWidget {
         if (groups.isEmpty) {
           return Padding(
             padding: const EdgeInsets.all(NxSpacing.sp6),
-            child: Text(
-              '볼 수 있는 채널이 없습니다.',
-              textAlign: TextAlign.center,
-              style: NxTheme.of(context).text.secondary,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '볼 수 있는 채널이 없습니다.',
+                  textAlign: TextAlign.center,
+                  style: NxTheme.of(context).text.secondary,
+                ),
+                if (admin && spaceId != null) ...[
+                  const SizedBox(height: NxSpacing.sp5),
+                  NxButton(
+                    label: '채널 만들기',
+                    kind: NxButtonKind.secondary,
+                    size: NxSize.sm,
+                    onPressed: () => showCreateChannelDialog(context, ref, spaceId: spaceId),
+                  ),
+                ],
+              ],
             ),
           );
         }
@@ -48,7 +67,23 @@ class ChannelList extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             for (final group in groups) ...[
-              PaneSectionTitle(group.title),
+              PaneSectionTitle(
+                group.title,
+                // 채널 구조는 admin+ 가 바꾼다(§3-9) — 볼 수 없는 버튼은 두지 않는다.
+                trailing: admin && spaceId != null
+                    ? NxIconButton(
+                        icon: NxIcons.plus,
+                        label: '${group.title}에 채널 만들기',
+                        size: NxSize.sm,
+                        onPressed: () => showCreateChannelDialog(
+                          context,
+                          ref,
+                          spaceId: spaceId,
+                          categoryId: group.categoryId,
+                        ),
+                      )
+                    : null,
+              ),
               for (final channel in group.channels)
                 _ChannelTile(channel: channel, onTap: onChannelTap),
             ],
@@ -61,21 +96,28 @@ class ChannelList extends ConsumerWidget {
 
 /// 목록 묶음의 제목(「작업」 · 카테고리 이름). 11px · 굵게 · 넓은 자간.
 class PaneSectionTitle extends StatelessWidget {
-  const PaneSectionTitle(this.text, {super.key, this.first = false});
+  const PaneSectionTitle(this.text, {super.key, this.first = false, this.trailing});
 
   final String text;
 
   /// 맨 위 묶음은 위 여백을 줄인다.
   final bool first;
 
+  /// 제목 끝의 작은 동작(카테고리의 「채널 만들기」, 16단계).
+  final Widget? trailing;
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.fromLTRB(10, first ? 4 : NxSpacing.sp6, 10, 6),
-    child: Semantics(
+  Widget build(BuildContext context) {
+    final title = Semantics(
       header: true,
       child: Text(text, style: NxTheme.of(context).text.label),
-    ),
-  );
+    );
+    final extra = trailing;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(10, first ? 4 : NxSpacing.sp6, extra == null ? 10 : 2, 6),
+      child: extra == null ? title : Row(children: [Expanded(child: title), extra]),
+    );
+  }
 }
 
 class _ChannelTile extends ConsumerWidget {

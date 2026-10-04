@@ -25,6 +25,7 @@ import '../ai/ai_request.dart';
 import '../shell/app_shell.dart';
 import 'selection_app_bar.dart';
 import 'selection_controller.dart';
+import '../channel_settings/channel_settings_controller.dart';
 
 export 'message_composer.dart' show MessageComposer;
 
@@ -201,11 +202,30 @@ class _ChannelHeader extends StatelessWidget {
             const Spacer(),
           NxIconButton(icon: NxIcons.ai, label: 'AI 에게 묻기', onPressed: onAsk),
           const _PinnedButton(),
+          const _ChannelSettingsButton(),
           const _FilesButton(),
           const SizedBox(width: NxSpacing.sp3),
           const _ConnectionDot(),
         ],
       ),
+    );
+  }
+}
+
+/// 채널 설정 창을 연다(16단계 D16) — 개요는 누구나 보고, 명단 · 권한은 창이 역할로 가린다.
+/// 섹션 없는 주소로 간다 — 넓은 화면은 `SettingsFrame` 이 첫 섹션을, 좁은 화면은 목록을 보인다.
+class _ChannelSettingsButton extends ConsumerWidget {
+  const _ChannelSettingsButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spaceId = ref.watch(currentSpaceIdProvider);
+    final channelId = ref.watch(currentChannelIdProvider);
+    if (spaceId == null || channelId == null) return const SizedBox.shrink();
+    return NxIconButton(
+      icon: NxIcons.settings,
+      label: '채널 설정',
+      onPressed: () => context.go(channelSettingsLocation(spaceId, channelId, null)),
     );
   }
 }

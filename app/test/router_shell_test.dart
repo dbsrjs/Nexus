@@ -53,7 +53,12 @@ void main() {
     final routes = appRoutes();
     final inShell = _pathsUnderShell(routes);
     final all = _pathsUnderShell([ShellRoute(builder: (_, _, child) => child, routes: routes)]);
-    for (final path in const ['/s/:spaceId/settings', '/s/:spaceId/settings/:section']) {
+    for (final path in const [
+      '/s/:spaceId/settings',
+      '/s/:spaceId/settings/:section',
+      '/s/:spaceId/c/:channelId/settings',
+      '/s/:spaceId/c/:channelId/settings/:section',
+    ]) {
       expect(all, contains(path), reason: '$path 라우트가 없다');
       expect(inShell, isNot(contains(path)), reason: '$path 가 셸 안에 있다');
     }

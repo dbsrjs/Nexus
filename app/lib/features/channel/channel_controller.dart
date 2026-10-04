@@ -75,10 +75,13 @@ final currentChannelProvider = Provider<Channel?>((ref) {
 /// 카테고리별로 묶은 채널. 카테고리가 없는 채널은 마지막에 미분류로 모은다
 /// (카테고리를 지워도 채널은 남기 때문에 — onDelete: SetNull).
 class ChannelGroup {
-  const ChannelGroup({required this.title, required this.channels});
+  const ChannelGroup({required this.title, required this.channels, this.categoryId});
 
   final String title;
   final List<Channel> channels;
+
+  /// 그 카테고리. 「기타」는 null — 거기서 만든 채널은 카테고리 없이 들어간다(16단계).
+  final String? categoryId;
 }
 
 final channelGroupsProvider = Provider<List<ChannelGroup>>((ref) {
@@ -93,7 +96,11 @@ final channelGroupsProvider = Provider<List<ChannelGroup>>((ref) {
         channels.where((c) => c.categoryId == category.id).toList()
           ..sort((a, b) => a.position.compareTo(b.position));
     if (inCategory.isNotEmpty) {
-      groups.add(ChannelGroup(title: category.name, channels: inCategory));
+      groups.add(ChannelGroup(
+        title: category.name,
+        channels: inCategory,
+        categoryId: category.id,
+      ));
       placed.addAll(inCategory.map((c) => c.id));
     }
   }

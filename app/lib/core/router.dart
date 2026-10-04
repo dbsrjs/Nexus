@@ -26,6 +26,8 @@ import '../features/settings/settings_controller.dart';
 import '../features/settings/settings_screen.dart';
 import '../ui/gallery.dart';
 import '../ui/ui.dart';
+import '../features/channel_settings/channel_settings_controller.dart';
+import '../features/channel_settings/channel_settings_screen.dart';
 
 /// 라우트는 docs/앱-설계.md §5 를 따른다. 슬라이스 2 시점에서
 /// `/login` · `/spaces` · `/s/:spaceId` 까지 채웠다.
@@ -184,6 +186,26 @@ List<RouteBase> appRoutes() => [
   // `!keyReservation.contains(key)` 로 죽는다. 실제로 browse 만 셸 안에
   // 있었고, PR · 커밋 상세에서 파일을 누르면 빨간 화면이 떴다.
   // 근거와 재현은 `test/router_shell_test.dart` 에 있다.
+  // 채널 설정 창(16단계 설계 D16). 대화 라우트(셸 안 `c/:channelId`)는 자식이 없어 이
+  // 주소와 겹치지 않는다 — 스레드(`…/t/:messageId`)와 같은 자리다.
+  _overlay(
+    path: '/s/:spaceId/c/:channelId/settings',
+    build: (state) => ChannelSettingsScreen(
+      spaceId: state.pathParameters['spaceId']!,
+      channelId: state.pathParameters['channelId']!,
+    ),
+    routes: [
+      _overlay(
+        path: ':section',
+        pageKey: const ValueKey('channel-settings-section'),
+        build: (state) => ChannelSettingsScreen(
+          spaceId: state.pathParameters['spaceId']!,
+          channelId: state.pathParameters['channelId']!,
+          section: ChannelSettingsSection.parse(state.pathParameters['section']),
+        ),
+      ),
+    ],
+  ),
   // 스페이스 설정 창(16단계 설계 D5). 사용자 설정 창과 같은 틀 · 같은 페이지 키 규칙 —
   // 섹션을 옮겨도 화면 전체가 다시 떠오르지 않는다.
   _overlay(
