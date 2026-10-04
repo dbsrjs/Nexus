@@ -133,7 +133,9 @@ class _EmptyBlock extends StatelessWidget {
     final nx = NxTheme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: NxSpacing.sp9),
+      // 내용 높이만 차지한다 — 아니면 위 Flexible 안에서 늘어나 아래 버튼을 화면 끝으로 민다.
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text('속한 스페이스가 없습니다.', style: nx.text.body),
           const SizedBox(height: NxSpacing.sp2),
@@ -160,6 +162,7 @@ class _ErrorBlock extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: NxSpacing.sp9),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(text, style: NxTheme.of(context).text.body),
           const SizedBox(height: NxSpacing.sp5),
