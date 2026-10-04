@@ -22,8 +22,10 @@ final spaceMembersProvider =
   final spaceId = ref.watch(currentSpaceIdProvider);
   if (spaceId == null) return const [];
 
+  // 아래 family 와 따로 부른다 — 이쪽은 실패를 삼키고(자동완성이 비어 있을 뿐이다)
+  // 그쪽은 던진다(설정 창이 오류를 보인다). 소켓 `member:*` 는 둘을 함께 무효화한다.
   try {
-    return await ref.watch(spaceMembersOfProvider(spaceId).future);
+    return await ref.watch(membersApiProvider).list(spaceId);
   } catch (_) {
     return const [];
   }
@@ -31,7 +33,7 @@ final spaceMembersProvider =
 
 /// 스페이스 하나의 멤버 목록(16단계). **실패를 던진다** — 스페이스 설정 창의 멤버
 /// 섹션이 오류를 보여야 한다. 셸 밖(설정 창)에서도 쓰므로 현재 스페이스가 아니라
-/// id 를 받는다. 위의 [spaceMembersProvider] 는 이것을 감싼다.
+/// id 를 받는다. 소켓 `member:*` 는 둘을 함께 무효화한다.
 final spaceMembersOfProvider =
     FutureProvider.family<List<SpaceMemberProfile>, String>(
   (ref, spaceId) => ref.watch(membersApiProvider).list(spaceId),
