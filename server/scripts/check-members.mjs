@@ -190,5 +190,179 @@ check('owner 는 나갈 수 없다(403)', ownerLeave.status === 403, `status=${o
 const strangerLeave = await api('POST', `/spaces/${spaceId}/leave`, { token: carol.token });
 check('멤버가 아니면 나가기도 404', strangerLeave.status === 404, `status=${strangerLeave.status}`);
 
-for (const s of [aliceSocket, carolSocket, bobSocket]) s?.close?.();
+// ══ 16-2 — 채널 수준 ══════════════════════════════
+// 새 스페이스 하나에 owner(own) · admin(adm) · member(mem) · 손님(gst) · 남(out).
+console.log('\n[16-2 준비]');
+const own = await signup('members2', 'o', 'Ch Owner');
+const adm = await signup('members2', 'a', 'Ch Admin');
+const mem = await signup('members2', 'm', 'Ch Member');
+const gst = await signup('members2', 'g', 'Ch Guest');
+const out = await signup('members2', 'x', 'Ch Outsider');
+const sp2 = (await api('POST', '/spaces', { token: own.token, body: { name: `members2 ${stamp}` } })).json?.id;
+for (const [who, role] of [[adm, 'admin'], [mem, 'member'], [gst, 'guest']]) {
+  const inv = await api('POST', `/spaces/${sp2}/invites`, { token: own.token, body: { role } });
+  await accept(who.token, inv.json?.code);
+}
+const ch = (path) => `/spaces/${sp2}/channels${path}`;
+const pub = (await api('GET', ch(''), { token: own.token })).json?.[0];
+check('준비 (스페이스 · 공개 채널)', !!sp2 && !!pub?.id);
+
+const memSocket = await connect(mem.token);
+await memSocket.emitWithAck('rooms:sync');
+
+// ── 비공개 채널 명단 ──
+console.log('\n[비공개 채널 명단]');
+const priv = (await api('POST', ch(''), { token: adm.token, body: { name: 'secret room', isPrivate: true } })).json;
+check('admin 이 비공개 채널을 만든다', !!priv?.id && priv.isPrivate === true);
+const memCantSee = await api('GET', ch(`/${priv?.id}`), { token: mem.token });
+check('명단에 없는 member 는 비공개 채널이 404', memCantSee.status === 404, `status=${memCantSee.status}`);
+
+const memRooms = waitFor(memSocket, 'rooms:invalidate');
+const add = await api('POST', ch(`/${priv?.id}/members`), { token: adm.token, body: { userIds: [mem.userId] } });
+check(
+  '명단의 admin 이 member 를 들인다',
+  add.status === 200 && (add.json ?? []).some((m) => m.userId === mem.userId),
+  `status=${add.status}`,
+);
+check('들어온 사람이 rooms:invalidate(channel.members) 를 받는다', (await memRooms)?.reason === 'channel.members');
+const memList = (await api('GET', ch(''), { token: mem.token })).json ?? [];
+check('들어온 사람의 채널 목록에 비공개 채널이 생긴다', memList.some((c) => c.id === priv?.id));
+const again = await api('POST', ch(`/${priv?.id}/members`), { token: adm.token, body: { userIds: [mem.userId] } });
+check(
+  '같은 사람을 다시 들여도 멱등(200, 한 줄)',
+  again.status === 200 && (again.json ?? []).filter((m) => m.userId === mem.userId).length === 1,
+);
+
+const withOutsider = await api('POST', ch(`/${priv?.id}/members`), {
+  token: adm.token,
+  body: { userIds: [gst.userId, out.userId] },
+});
+check('스페이스 멤버가 아닌 id 가 섞이면 404', withOutsider.status === 404, `status=${withOutsider.status}`);
+const listAfter404 = (await api('GET', ch(`/${priv?.id}/members`), { token: adm.token })).json ?? [];
+check(
+  '…그때는 아무도 들어가지 않는다(손님도)',
+  listAfter404.length === 2 && !listAfter404.some((m) => m.userId === gst.userId),
+  `n=${listAfter404.length}`,
+);
+
+const memAddsGuest = await api('POST', ch(`/${priv?.id}/members`), { token: mem.token, body: { userIds: [gst.userId] } });
+check('명단의 member 도 사람을 들인다', memAddsGuest.status === 200, `status=${memAddsGuest.status}`);
+const gstAdds = await api('POST', ch(`/${priv?.id}/members`), { token: gst.token, body: { userIds: [own.userId] } });
+check('손님은 들일 수 없다(403)', gstAdds.status === 403, `status=${gstAdds.status}`);
+const pubMembers = await api('POST', ch(`/${pub?.id}/members`), { token: own.token, body: { userIds: [mem.userId] } });
+check('공개 채널에는 명단이 없다(400)', pubMembers.status === 400, `status=${pubMembers.status}`);
+const emptyIds = await api('POST', ch(`/${priv?.id}/members`), { token: adm.token, body: { userIds: [] } });
+check('userIds 가 비면 400', emptyIds.status === 400, `status=${emptyIds.status}`);
+
+const memKicksGuest = await api('DELETE', ch(`/${priv?.id}/members/${gst.userId}`), { token: mem.token });
+check('member 가 남을 빼면 403', memKicksGuest.status === 403, `status=${memKicksGuest.status}`);
+const gstLeaves = await api('DELETE', ch(`/${priv?.id}/members/${gst.userId}`), { token: gst.token });
+check('본인은 나갈 수 있다(204)', gstLeaves.status === 204, `status=${gstLeaves.status}`);
+
+// 빼낸 사람의 소켓은 sync 없이도 그 채널의 새 메시지를 받지 않는다(D20 · D13a).
+await memSocket.emitWithAck('rooms:sync');
+const memHearsPriv = waitFor(memSocket, 'message:new');
+await api('POST', ch(`/${priv?.id}/messages`), { token: adm.token, body: { body: 'priv before' } });
+check('빼기 전에는 비공개 채널의 message:new 를 받는다', (await memHearsPriv)?.message?.body === 'priv before');
+const kickMem = await api('DELETE', ch(`/${priv?.id}/members/${mem.userId}`), { token: adm.token });
+check('admin 이 남을 뺀다(204)', kickMem.status === 204, `status=${kickMem.status}`);
+const privLeak = silence(memSocket, 'message:new');
+await api('POST', ch(`/${priv?.id}/messages`), { token: adm.token, body: { body: 'priv after' } });
+check('★ 빠진 소켓은 sync 없이도 비공개 채널 메시지를 받지 않는다', (await privLeak) === null);
+const notMember = await api('DELETE', ch(`/${priv?.id}/members/${mem.userId}`), { token: adm.token });
+check('명단에 없는 사람을 빼면 404', notMember.status === 404, `status=${notMember.status}`);
+
+const lastOne = await api('DELETE', ch(`/${priv?.id}/members/${adm.userId}`), { token: adm.token });
+check('마지막 한 명은 나갈 수 없다(409)', lastOne.status === 409, `status=${lastOne.status}`);
+
+// ── 채널별 권한 ──
+console.log('\n[채널별 권한]');
+const perms0 = await api('GET', ch(`/${pub?.id}/permissions`), { token: own.token });
+check(
+  '권한은 손님 · 멤버 두 줄, 행이 없으면 기본값',
+  perms0.status === 200 && perms0.json?.length === 2 && perms0.json.every((p) => p.canView && p.canSend && !p.explicit),
+  JSON.stringify(perms0.json),
+);
+const memPerms = await api('GET', ch(`/${pub?.id}/permissions`), { token: mem.token });
+check('member 는 권한을 못 본다(403)', memPerms.status === 403, `status=${memPerms.status}`);
+const adminRow = await api('PUT', ch(`/${pub?.id}/permissions/admin`), {
+  token: own.token,
+  body: { canView: false, canSend: false },
+});
+check('admin 역할 행은 400(D21)', adminRow.status === 400, `status=${adminRow.status}`);
+const privHide = await api('PUT', ch(`/${priv?.id}/permissions/member`), {
+  token: adm.token,
+  body: { canView: false, canSend: true },
+});
+check('비공개 채널에 canView=false 는 400(D22)', privHide.status === 400, `status=${privHide.status}`);
+
+// 읽기 전용
+const ro = await api('PUT', ch(`/${pub?.id}/permissions/member`), {
+  token: own.token,
+  body: { canView: true, canSend: false },
+});
+check(
+  'member 를 읽기 전용으로',
+  ro.status === 200 && ro.json?.find((p) => p.role === 'member')?.explicit === true,
+  `status=${ro.status}`,
+);
+const memSend = await api('POST', ch(`/${pub?.id}/messages`), { token: mem.token, body: { body: 'blocked' } });
+check('읽기 전용 채널에 member 가 보내면 403', memSend.status === 403, `status=${memSend.status}`);
+const ownMsg = (await api('POST', ch(`/${pub?.id}/messages`), { token: own.token, body: { body: 'owner speaks' } })).json;
+check('owner 는 그대로 보낸다', !!ownMsg?.id);
+const memReact = await api('POST', `/spaces/${sp2}/messages/${ownMsg?.id}/reactions`, {
+  token: mem.token,
+  body: { emoji: '👍' },
+});
+check('읽기 전용이어도 리액션은 남긴다(§3-9)', memReact.status === 201, `status=${memReact.status}`);
+const memPin = await api('POST', `/spaces/${sp2}/messages/${ownMsg?.id}/pin`, { token: mem.token });
+check('읽기 전용이면 고정은 403', memPin.status === 403, `status=${memPin.status}`);
+const memChannels = (await api('GET', ch(''), { token: mem.token })).json ?? [];
+check('채널 목록에 canSend 가 실린다 — member 는 false', memChannels.find((c) => c.id === pub?.id)?.canSend === false);
+const ownChannels = (await api('GET', ch(''), { token: own.token })).json ?? [];
+check('…owner 는 true', ownChannels.find((c) => c.id === pub?.id)?.canSend === true);
+const reset = await api('DELETE', ch(`/${pub?.id}/permissions/member`), { token: own.token });
+check('기본값으로 되돌린다(204)', reset.status === 204, `status=${reset.status}`);
+const memSendAgain = await api('POST', ch(`/${pub?.id}/messages`), { token: mem.token, body: { body: 'free again' } });
+check('…되돌리면 다시 보낸다', memSendAgain.status === 201, `status=${memSendAgain.status}`);
+
+// 가리기 — member 는 이 공개 채널을 읽어(멤버 행이 있어) 본 적이 있다(D23).
+const readRes = await api('POST', ch(`/${pub?.id}/read`), { token: mem.token, body: { lastReadMessageId: ownMsg?.id } });
+check('준비 — member 가 공개 채널을 읽어 멤버 행이 생긴다', readRes.status === 200, `status=${readRes.status}`);
+await memSocket.emitWithAck('rooms:sync');
+const memInvalid = waitFor(memSocket, 'rooms:invalidate');
+const hide = await api('PUT', ch(`/${pub?.id}/permissions/member`), {
+  token: own.token,
+  body: { canView: false, canSend: false },
+});
+check('member 에게서 공개 채널을 가린다', hide.status === 200, `status=${hide.status}`);
+check('가리면 스페이스에 rooms:invalidate(channel.permissions)', (await memInvalid)?.reason === 'channel.permissions');
+const hiddenGet = await api('GET', ch(`/${pub?.id}`), { token: mem.token });
+check('★ 읽어 본 적 있는 공개 채널도 가리면 404(D23)', hiddenGet.status === 404, `status=${hiddenGet.status}`);
+const hiddenList = (await api('GET', ch(''), { token: mem.token })).json ?? [];
+check('…채널 목록에서도 빠진다', !hiddenList.some((c) => c.id === pub?.id));
+const pubLeak = silence(memSocket, 'message:new');
+await api('POST', ch(`/${pub?.id}/messages`), { token: own.token, body: { body: 'hidden talk' } });
+check('★ 가려진 소켓은 sync 없이도 그 채널 메시지를 받지 않는다', (await pubLeak) === null);
+const gstSees = await api('GET', ch(`/${pub?.id}`), { token: gst.token });
+check('다른 역할(손님)은 그대로 본다', gstSees.status === 200, `status=${gstSees.status}`);
+await api('DELETE', ch(`/${pub?.id}/permissions/member`), { token: own.token });
+
+// ── 스프린트 스위치 ──
+console.log('\n[스프린트 스위치]');
+const before = (await api('GET', '/spaces', { token: own.token })).json?.find((s) => s.id === sp2);
+check('새 스페이스는 스프린트가 꺼져 있다(D31)', before?.sprintsEnabled === false, JSON.stringify(before?.sprintsEnabled));
+const memToggle = await api('PATCH', `/spaces/${sp2}`, { token: mem.token, body: { sprintsEnabled: true } });
+check('member 는 못 켠다(403)', memToggle.status === 403, `status=${memToggle.status}`);
+await memSocket.emitWithAck('rooms:sync');
+const spaceUpdated = waitFor(memSocket, 'space:updated');
+const toggle = await api('PATCH', `/spaces/${sp2}`, { token: adm.token, body: { sprintsEnabled: true } });
+check('admin 이 켠다', toggle.status === 200 && toggle.json?.sprintsEnabled === true, `status=${toggle.status}`);
+check('멤버가 space:updated 를 받는다(D34)', (await spaceUpdated)?.spaceId === sp2);
+const after = (await api('GET', '/spaces', { token: mem.token })).json?.find((s) => s.id === sp2);
+check('…목록에 반영된다', after?.sprintsEnabled === true);
+const badToggle = await api('PATCH', `/spaces/${sp2}`, { token: adm.token, body: { sprintsEnabled: 'yes' } });
+check('불리언이 아니면 400', badToggle.status === 400, `status=${badToggle.status}`);
+
+for (const s of [aliceSocket, carolSocket, bobSocket, memSocket]) s?.close?.();
 process.exit(summary() === 0 ? 0 : 1);
