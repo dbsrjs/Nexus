@@ -55,7 +55,12 @@ class ChannelList extends ConsumerWidget {
                     label: '채널 만들기',
                     kind: NxButtonKind.secondary,
                     size: NxSize.sm,
-                    onPressed: () => showCreateChannelDialog(context, ref, spaceId: spaceId),
+                    onPressed: () => showCreateChannelDialog(
+                      context,
+                      ref,
+                      spaceId: spaceId,
+                      onCreated: onChannelTap,
+                    ),
                   ),
                 ],
               ],
@@ -80,6 +85,7 @@ class ChannelList extends ConsumerWidget {
                           ref,
                           spaceId: spaceId,
                           categoryId: group.categoryId,
+                          onCreated: onChannelTap,
                         ),
                       )
                     : null,

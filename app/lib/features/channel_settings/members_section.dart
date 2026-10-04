@@ -113,7 +113,14 @@ class ChannelMembersSection extends ConsumerWidget {
         else ...[
           Row(
             children: [
-              Expanded(child: SettingsLabel('명단 ${members.value!.length}명')),
+              // SettingsLabel 은 아래 여백을 품고 있어 버튼과 나란히 두면 글자가 위로 뜬다
+              // (Android 에서 보였다). 같은 글꼴로 여백 없이 그린다.
+              Expanded(
+                child: Text(
+                  '명단 ${members.value!.length}명',
+                  style: NxTheme.of(context).text.meta.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
               // 손님은 들일 수 없다(D17) — 버튼을 두지 않는다.
               if (me.atLeast(SpaceRole.member))
                 NxButton(
@@ -221,6 +228,9 @@ class _AddMembersPickerState extends ConsumerState<_AddMembersPicker> {
             Flexible(
               child: ListView(
                 shrinkWrap: true,
+                // 기본값이면 기기의 안전 영역(상태 표시줄 · 내비게이션 바)을 여백으로 가져와
+                // 다이얼로그 안에 큰 빈칸이 생긴다(Android 에서 보였다).
+                padding: EdgeInsets.zero,
                 children: [
                   for (final m in candidates)
                     NxRow(

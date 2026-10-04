@@ -14,6 +14,7 @@ Future<void> showCreateChannelDialog(
   WidgetRef ref, {
   required String spaceId,
   String? categoryId,
+  VoidCallback? onCreated,
 }) =>
     NxDialog.panel<void>(
       context,
@@ -32,6 +33,8 @@ Future<void> showCreateChannelDialog(
         },
         onDone: (id) {
           if (context.mounted) context.go('/s/$spaceId/c/$id');
+          // 밀려 나온 채널 패널에서 만들었으면 닫는다 — 채널을 고를 때와 같다.
+          onCreated?.call();
         },
       ),
     );
