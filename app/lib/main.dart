@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router.dart';
 import 'data/settings_storage.dart';
 import 'features/realtime/socket_controller.dart';
+import 'features/space/members_controller.dart';
 import 'features/settings/theme_controller.dart';
 import 'ui/root.dart';
 
@@ -31,6 +32,14 @@ class NexusApp extends ConsumerWidget {
     // 소켓 연결과 채널 목록 동기화를 앱 수명 내내 살려 둔다. 화면에서 watch 하면
     // 그 화면을 벗어날 때 연결이 끊긴다.
     ref.watch(realtimeChannelSyncProvider);
+
+    // 멤버 이름표를 **앱이 사는 동안 내내** 구독해 둔다(listen — 앱을 다시 그리지 않는다).
+    // 메시지 본문들이 build 중에 이것을 구독하는데, 구독자가 0 이 된 사이(셸 밖 설정 창에
+    // 들어가 있는 동안) 멤버 목록이 바뀌면 Riverpod 3 이 멈춰 둔 갱신을 돌아온 본문의
+    // build 안에서 터뜨려 「build 중 setState」로 멈췄다 — 15단계까지 간헐적으로 숨어
+    // 있던 결함이다(16단계 app:flow 에서 잡았다). 셸은 설정 창이 열리면 내려가므로
+    // 셸이 아니라 여기서 붙든다.
+    ref.listen(memberNamesProvider, (_, _) {});
 
     final preference = ref.watch(themeModeProvider);
 
