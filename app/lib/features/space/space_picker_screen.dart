@@ -7,11 +7,12 @@ import '../../domain/models/space.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import '../../ui/ui.dart';
 import 'space_controller.dart';
+import 'space_dialogs.dart';
 
 /// `/spaces` — 어느 스페이스로 들어갈지 고른다.
 ///
-/// 스페이스 생성은 슬라이스 2 범위 밖이다. 시드가 하나 만들어 두므로 목록이
-/// 비는 경우는 초대만 받은 계정 정도인데, 그 안내만 해 둔다.
+/// 아래에 스페이스 만들기 · 초대 코드로 참여(16단계 설계 D1 · D2)를 둔다. 처음 가입한
+/// 사람은 목록이 비어 있으니 이 둘이 첫 화면의 할 일이다.
 class SpacePickerScreen extends ConsumerWidget {
   const SpacePickerScreen({super.key});
 
@@ -55,6 +56,23 @@ class SpacePickerScreen extends ConsumerWidget {
                             itemBuilder: (_, i) => _SpaceTile(space: list[i]),
                           ),
                   ),
+                ),
+                const SizedBox(height: NxSpacing.sp8),
+                Wrap(
+                  spacing: NxSpacing.sp4,
+                  runSpacing: NxSpacing.sp4,
+                  children: [
+                    NxButton(
+                      label: '스페이스 만들기',
+                      kind: NxButtonKind.secondary,
+                      onPressed: () => showCreateSpaceDialog(context, ref),
+                    ),
+                    NxButton(
+                      label: '초대 코드로 참여',
+                      kind: NxButtonKind.ghost,
+                      onPressed: () => showJoinSpaceDialog(context, ref),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -119,7 +137,7 @@ class _EmptyBlock extends StatelessWidget {
         children: [
           Text('속한 스페이스가 없습니다.', style: nx.text.body),
           const SizedBox(height: NxSpacing.sp2),
-          Text('초대 링크를 받아 참여하세요.', style: nx.text.secondary),
+          Text('초대 코드로 참여하거나 새로 만드세요.', style: nx.text.secondary),
         ],
       ),
     );

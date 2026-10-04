@@ -8,6 +8,7 @@ import '../../shared/widgets/user_avatar.dart';
 import '../../ui/ui.dart';
 import '../auth/auth_controller.dart';
 import '../space/space_controller.dart';
+import '../space/space_dialogs.dart';
 import '../settings/settings_controller.dart';
 
 /// 왼쪽 끝 72px 레일. 스페이스 전환과 내 계정이 여기 있다.
@@ -43,6 +44,8 @@ class SpaceRail extends ConsumerWidget {
               },
             ),
           ),
+          const SizedBox(height: NxSpacing.sp4),
+          const _AddSpaceButton(),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: NxSpacing.sp6),
             child: _AccountButton(),
@@ -146,6 +149,27 @@ class _AccountButton extends ConsumerWidget {
             size: 36,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 스페이스 더하기(16단계 설계 D1) — 만들기 · 초대 코드로 참여.
+class _AddSpaceButton extends ConsumerWidget {
+  const _AddSpaceButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return NxMenu(
+      openUp: true,
+      entries: [
+        NxMenuItem('스페이스 만들기', onSelected: () => showCreateSpaceDialog(context, ref)),
+        NxMenuItem('초대 코드로 참여', onSelected: () => showJoinSpaceDialog(context, ref)),
+      ],
+      anchorBuilder: (context, toggle) => NxIconButton(
+        icon: NxIcons.plus,
+        label: '스페이스 더하기',
+        onPressed: toggle,
       ),
     );
   }
