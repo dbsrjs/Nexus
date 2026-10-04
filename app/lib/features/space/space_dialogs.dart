@@ -11,10 +11,10 @@ import 'space_controller.dart';
 /// 초대 수락 실패 문구(16단계 설계 D3). 만료와 소진을 가르지 않는다 — 할 일(새 코드를
 /// 받는다)이 같다.
 String joinMessageFor(ApiFailure failure) => switch (failure) {
-      ApiFailure.notFound => '없는 초대 코드입니다',
-      ApiFailure.badRequest => '만료됐거나 사용 한도가 찬 초대 코드입니다',
-      _ => messageFor(failure),
-    };
+  ApiFailure.notFound => '없는 초대 코드입니다',
+  ApiFailure.badRequest => '만료됐거나 사용 한도가 찬 초대 코드입니다',
+  _ => messageFor(failure),
+};
 
 /// 스페이스 만들기(설계 D1). 만들면 목록을 다시 받고 그 스페이스로 들어간다.
 Future<void> showCreateSpaceDialog(BuildContext context, WidgetRef ref) =>
@@ -128,30 +128,39 @@ class _OneFieldFormState extends State<_OneFieldForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        NxField(
-          controller: _controller,
-          label: widget.label,
-          hint: widget.hint,
-          error: _error,
-          maxLength: widget.maxLength,
-          autofocus: true,
-          onChanged: (_) => setState(() {}),
-          onSubmitted: (_) => _submit(),
-        ),
-        const SizedBox(height: NxSpacing.sp6),
-        Align(
-          alignment: Alignment.centerRight,
-          child: NxButton(
-            label: widget.submitLabel,
-            loading: _busy,
-            onPressed: _value == null ? null : _submit,
+    // 패널(NxDialog.panel)은 머리 줄만 그린다 — 본문 여백은 여기서 준다.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        0,
+        NxSpacing.sp7,
+        NxSpacing.sp7,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          NxField(
+            controller: _controller,
+            label: widget.label,
+            hint: widget.hint,
+            error: _error,
+            maxLength: widget.maxLength,
+            autofocus: true,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => _submit(),
           ),
-        ),
-      ],
+          const SizedBox(height: NxSpacing.sp6),
+          Align(
+            alignment: Alignment.centerRight,
+            child: NxButton(
+              label: widget.submitLabel,
+              loading: _busy,
+              onPressed: _value == null ? null : _submit,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
