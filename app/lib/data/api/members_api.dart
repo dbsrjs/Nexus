@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../domain/models/space.dart';
 import '../../domain/models/space_member.dart';
 import 'api_client.dart';
 import 'api_failure.dart';
@@ -22,6 +23,27 @@ class MembersApi {
           .cast<Map<String, dynamic>>()
           .map(SpaceMemberProfile.fromJson)
           .toList(growable: false);
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// PATCH /api/spaces/:spaceId/members/:userId (admin+, 나보다 낮은 사람만)
+  Future<void> updateRole(String spaceId, String userId, SpaceRole role) async {
+    try {
+      await _client.dio.patch<void>(
+        '/spaces/$spaceId/members/$userId',
+        data: {'role': role.wire},
+      );
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// DELETE /api/spaces/:spaceId/members/:userId (admin+, 나보다 낮은 사람만)
+  Future<void> remove(String spaceId, String userId) async {
+    try {
+      await _client.dio.delete<void>('/spaces/$spaceId/members/$userId');
     } on DioException catch (e) {
       throw ApiException(classifyDioException(e));
     }

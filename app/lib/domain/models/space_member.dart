@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'space.dart';
+
 part 'space_member.freezed.dart';
 
 // json_serializable 을 쓰지 않는다 — 서버가 `user` 를 중첩해 주는데 화면은
@@ -16,6 +18,9 @@ abstract class SpaceMemberProfile with _$SpaceMemberProfile {
     required String name,
     String? avatarUrl,
     String? nickname,
+
+    /// 이 스페이스에서의 역할(16단계). 멤버 관리 화면이 동작을 보일지 정한다.
+    @Default(SpaceRole.member) SpaceRole role,
   }) = _SpaceMemberProfile;
 
   const SpaceMemberProfile._();
@@ -27,6 +32,10 @@ abstract class SpaceMemberProfile with _$SpaceMemberProfile {
       name: (user?['name'] as String?) ?? '(이름 없음)',
       avatarUrl: user?['avatarUrl'] as String?,
       nickname: json['nickname'] as String?,
+      role: SpaceRole.values.firstWhere(
+        (r) => r.wire == json['role'],
+        orElse: () => SpaceRole.member,
+      ),
     );
   }
 
@@ -35,6 +44,7 @@ abstract class SpaceMemberProfile with _$SpaceMemberProfile {
         'name': name,
         'avatarUrl': avatarUrl,
         'nickname': nickname,
+        'role': role.wire,
       };
 
   /// 스페이스에서 부르는 이름. 별명이 있으면 그것이 우선이다.

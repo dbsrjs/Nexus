@@ -24,4 +24,33 @@ class SpacesApi {
       throw ApiException(classifyDioException(e));
     }
   }
+
+  /// POST /api/spaces — 만든 사람은 owner 다. 응답에 역할이 없어 채워 넣는다.
+  Future<Space> create(String name) async {
+    try {
+      final res = await _client.dio
+          .post<Map<String, dynamic>>('/spaces', data: {'name': name});
+      return Space.fromJson({...res.data!, 'role': SpaceRole.owner.wire});
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// PATCH /api/spaces/:spaceId (admin+)
+  Future<void> rename(String spaceId, String name) async {
+    try {
+      await _client.dio.patch<void>('/spaces/$spaceId', data: {'name': name});
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
+
+  /// POST /api/spaces/:spaceId/leave — owner 는 403(앱은 메뉴를 감춘다).
+  Future<void> leave(String spaceId) async {
+    try {
+      await _client.dio.post<void>('/spaces/$spaceId/leave');
+    } on DioException catch (e) {
+      throw ApiException(classifyDioException(e));
+    }
+  }
 }
