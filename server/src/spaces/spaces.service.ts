@@ -3,7 +3,6 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
@@ -11,6 +10,7 @@ import { Prisma, Space, SpaceMember, SpaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { room } from '../realtime/rooms';
+import { channelAccess } from '../channels/channel-access';
 import { CreateSpaceDto } from './dto/create-space.dto';
 import { slugify } from '../common/slug';
 import { UpdateSpaceDto } from './dto/update-space.dto';
@@ -37,8 +37,6 @@ export type SpaceMemberWithUser = Prisma.SpaceMemberGetPayload<{
 
 @Injectable()
 export class SpacesService {
-  private readonly logger = new Logger(SpacesService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeEmitter,
@@ -193,6 +191,9 @@ export class SpacesService {
     // 역할은 JWT 에도 소켓에도 담지 않으므로 토큰을 다시 발급할 필요는 없다.
     // 다만 역할에 걸린 ChannelPermission 때문에 볼 수 있는 채널이 달라질 수
     // 있어, 그 사용자에게만 룸 재계산을 요청한다.
+    // 새 역할로 볼 수 없게 된 채널 룸에서는 **서버가 직접** 뺀다(D13a · D25 와 같은 구멍 —
+    // 16단계 리뷰). 역할로 가린 공개 채널이 있을 때 강등되면 생긴다.
+    await this.evictHiddenChannels({ ...target, role });
     this.realtime.toUser(targetUserId, 'rooms:invalidate', { reason: 'member.role' });
     // 모두에게 같은 값이다(§3-6). 받은 앱은 멤버 목록을 다시 받는다.
     this.realtime.toSpace(spaceId, 'member:updated', { spaceId, userId: targetUserId, role });
@@ -225,8 +226,7 @@ export class SpacesService {
       );
     }
 
-    await this.dropMembership(spaceId, targetUserId);
-    this.notifyRemoved(spaceId, targetUserId);
+    await this.removeAndNotify(spaceId, targetUserId);
   }
 
   /**
@@ -237,8 +237,7 @@ export class SpacesService {
     if (member.role === SpaceRole.owner) {
       throw new ForbiddenException('owner 는 스페이스를 나갈 수 없습니다');
     }
-    await this.dropMembership(member.spaceId, member.userId);
-    this.notifyRemoved(member.spaceId, member.userId);
+    await this.removeAndNotify(member.spaceId, member.userId);
   }
 
   /**
@@ -257,27 +256,55 @@ export class SpacesService {
   }
 
   /**
-   * 내보내지거나 나간 뒤의 실시간 처리(설계 D12 · D13 · D13a).
+   * 멤버십을 지우고 실시간을 정리한다(설계 D12 · D13 · D13a).
    *
-   * **룸에서 먼저 뺀다** — 그 뒤로 이 스페이스에 쏘는 것은 그 사람에게 닿지 않는다.
-   * 채널은 그 스페이스의 전부다(볼 수 있던 것만 고를 필요가 없다 — 들어가 있지 않은
-   * 룸에서 빼는 것은 아무 일도 하지 않는다). 응답을 늦추지 않게 기다리지 않는다.
+   * 채널 id 는 **지우기 전에** 읽어 두고, 지운 **바로 뒤에 룸에서 동기로 뺀다** — 응답과
+   * 조회를 기다리는 사이에 그 스페이스로 나간 이벤트가 내보내진 소켓에 닿지 않게(16단계 리뷰).
+   * 채널은 그 스페이스의 전부다 — 들어가 있지 않은 룸에서 빼는 것은 아무 일도 하지 않는다.
    */
-  private notifyRemoved(spaceId: string, userId: string): void {
-    this.prisma.channel
-      .findMany({ where: { spaceId }, select: { id: true } })
-      .then((channels) => {
-        this.realtime.evict(userId, [
-          room.space(spaceId),
-          ...channels.map((c) => room.channel(c.id)),
-        ]);
-        this.realtime.toUser(userId, 'space:removed', { spaceId });
-        this.realtime.toUser(userId, 'rooms:invalidate', { reason: 'member.left' });
-        this.realtime.toSpace(spaceId, 'member:left', { spaceId, userId });
-      })
-      .catch((err: unknown) => {
-        this.logger.error(`나간 사용자의 룸 정리 실패 (space=${spaceId}, user=${userId})`, err as Error);
-      });
+  private async removeAndNotify(spaceId: string, userId: string): Promise<void> {
+    const channels = await this.prisma.channel.findMany({
+      where: { spaceId },
+      select: { id: true },
+    });
+    await this.dropMembership(spaceId, userId);
+    this.realtime.evict(userId, [room.space(spaceId), ...channels.map((c) => room.channel(c.id))]);
+    this.realtime.toUser(userId, 'space:removed', { spaceId });
+    this.realtime.toUser(userId, 'rooms:invalidate', { reason: 'member.left' });
+    this.realtime.toSpace(spaceId, 'member:left', { spaceId, userId });
+  }
+
+  /**
+   * 그 멤버가 (지금 역할로) 볼 수 없는 채널의 룸에서 서버가 직접 뺀다. 판정은 `channelAccess()`
+   * 한 곳이다 — ChannelsService 는 SpacesModule 을 가져다 쓰는 쪽이라 여기서 주입하면 모듈이
+   * 순환한다. 같은 순수 함수에 같은 세 가지(비공개 · 명단 · 역할 행)를 넣는다.
+   */
+  private async evictHiddenChannels(member: SpaceMember): Promise<void> {
+    const [channels, memberships, perms] = await Promise.all([
+      this.prisma.channel.findMany({
+        where: { spaceId: member.spaceId },
+        select: { id: true, isPrivate: true },
+      }),
+      this.prisma.channelMember.findMany({
+        where: { userId: member.userId, channel: { spaceId: member.spaceId } },
+        select: { channelId: true },
+      }),
+      this.prisma.channelPermission.findMany({
+        where: { role: member.role, channel: { spaceId: member.spaceId } },
+        select: { channelId: true, canView: true, canSend: true },
+      }),
+    ]);
+    const joined = new Set(memberships.map((m) => m.channelId));
+    const permOf = new Map(perms.map((p) => [p.channelId, p]));
+    const hidden = channels.filter(
+      (c) =>
+        !channelAccess({
+          isPrivate: c.isPrivate,
+          isMember: joined.has(c.id),
+          perm: permOf.get(c.id) ?? null,
+        }).view,
+    );
+    this.realtime.evict(member.userId, hidden.map((c) => room.channel(c.id)));
   }
 
   /** POST /api/spaces/:spaceId/invites (admin+) */

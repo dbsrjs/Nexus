@@ -4,6 +4,7 @@ import { IssueCommentsService } from './issue-comments.service';
 import { IssueLabelsService } from './issue-labels.service';
 import { IssueLabelsController } from './issue-labels.controller';
 import { IssuesController } from './issues.controller';
+import { ChannelsModule } from '../channels/channels.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
 
@@ -14,7 +15,7 @@ import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
  * 종속시키면 이 모듈이 부푼다.
  */
 @Module({
-  imports: [SpacesModule, RealtimeEmitterModule],
+  imports: [SpacesModule, RealtimeEmitterModule, ChannelsModule],
   controllers: [IssuesController, IssueLabelsController],
   providers: [IssuesService, IssueCommentsService, IssueLabelsService],
   exports: [IssuesService, IssueCommentsService, IssueLabelsService],

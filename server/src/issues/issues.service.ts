@@ -13,6 +13,7 @@ import { CreateIssueDto } from './dto/create-issue.dto';
 import { ListIssuesDto } from './dto/list-issues.dto';
 import { MoveIssueDto } from './dto/move-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
+import { ChannelsService } from '../channels/channels.service';
 
 /** 컬럼 하나가 한 번에 주는 최대 건수. 넘치면 truncated 로 알린다. */
 export const COLUMN_LIMIT = 200;
@@ -74,6 +75,7 @@ export class IssuesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeEmitter,
+    private readonly channels: ChannelsService,
   ) {}
 
   /**
@@ -301,20 +303,18 @@ export class IssuesService {
     userId: string,
     messageId: string,
   ) {
+    // 채널 판정은 `ChannelsService` 한 곳이다(16단계 — 역할로 가린 공개 채널의 원문이
+    // 이슈를 통해 새지 않게). 볼 수 없는 채널의 메시지는 없는 메시지와 같은 404.
     const message = await this.prisma.message.findFirst({
-      where: {
-        id: messageId,
-        spaceId,
-        channel: {
-          OR: [
-            { isPrivate: false },
-            { members: { some: { userId } } },
-          ],
-        },
-      },
-      select: { id: true },
+      where: { id: messageId, spaceId },
+      select: { channelId: true },
     });
-    if (!message) throw new NotFoundException('메시지를 찾을 수 없습니다');
+    const member = await this.prisma.spaceMember.findUnique({
+      where: { spaceId_userId: { spaceId, userId } },
+    });
+    if (!message || !member || !(await this.channels.canView(message.channelId, member))) {
+      throw new NotFoundException('메시지를 찾을 수 없습니다');
+    }
   }
 
   /** 에픽 → 스토리는 한 단계만이다. 부모가 이미 자식이면 거부한다. */

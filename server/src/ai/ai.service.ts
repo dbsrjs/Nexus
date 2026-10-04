@@ -17,6 +17,7 @@ import { AskInputShape, AskPreset, validateAskRequest } from './ask-request';
 import { Citation, citationsOf } from './code-context';
 import { AskMaterial, buildAskPrompt } from './prompts/build';
 import { FollowUpThread, MAX_THREAD_TURNS, buildFollowUpPrompt } from './prompts/follow-up';
+import { ChannelsService } from '../channels/channels.service';
 
 /** 채널만 줬을 때 읽는 최근 최상위 메시지 수 (13-2 설계 §2). */
 export const RECENT_MESSAGES = 50;
@@ -65,6 +66,7 @@ export class AiService {
     @Inject(LLM_PROVIDER) private readonly llm: LlmProvider | null,
     private readonly queue: AiQueueService,
     private readonly indexing: IndexingService,
+    private readonly channels: ChannelsService,
   ) {}
 
   /**
@@ -342,20 +344,16 @@ export class AiService {
   }
 
   /**
-   * 채널 가시성 규칙을 그대로 태운다 — `issues.service.ts` 의
-   * `requireVisibleMessage()` 와 같은 형태다. 볼 수 없으면 404(403 은 "그
-   * 채널이 존재한다"를 알려 준다).
+   * 채널 가시성 판정 — **`ChannelsService` 한 곳을 태운다**(16단계 — 판정은 `channelAccess()`).
+   * 예전에는 공개/비공개만 보는 규칙을 여기에 따로 들고 있어, 역할로 가린 공개 채널을
+   * AI 요약으로 읽을 수 있었다(16단계 리뷰에서 잡았다). 볼 수 없으면 404.
    */
   private async requireChannel(spaceId: string, userId: string, channelId: string) {
-    const channel = await this.prisma.channel.findFirst({
-      where: {
-        id: channelId,
-        spaceId,
-        OR: [{ isPrivate: false }, { members: { some: { userId } } }],
-      },
-      select: { id: true },
+    const member = await this.prisma.spaceMember.findUnique({
+      where: { spaceId_userId: { spaceId, userId } },
     });
-    if (!channel) throw new NotFoundException('채널을 찾을 수 없습니다');
+    if (!member) throw new NotFoundException('채널을 찾을 수 없습니다');
+    await this.channels.assertCanView(channelId, member);
   }
 
   /** 고른 메시지. 중복은 `validateAskRequest` 가 이미 접었다. */

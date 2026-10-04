@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ChannelsModule } from '../channels/channels.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
 import { LlmModule } from '../llm/llm.module';
@@ -14,7 +15,7 @@ import { AiWorker } from './ai.worker';
  * 13-3 코드 질의가 `IndexingService.search()` 를 부를 자리다.
  */
 @Module({
-  imports: [SpacesModule, RealtimeEmitterModule, LlmModule, ReposModule],
+  imports: [SpacesModule, RealtimeEmitterModule, LlmModule, ReposModule, ChannelsModule],
   controllers: [AiController],
   providers: [AiService, AiQueueService, AiRunnerService, AiWorker],
 })

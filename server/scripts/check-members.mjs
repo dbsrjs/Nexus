@@ -159,11 +159,15 @@ check('남은 멤버가 member:left 를 받는다', leftEvent?.userId === carol.
 
 // carol 의 소켓은 rooms:sync 를 부르지 않는다 — 고친 클라이언트의 흉내(설계 D13a).
 const leak = silence(carolSocket, 'message:new');
-await api('POST', `/spaces/${spaceId}/channels/${general?.id}/messages`, {
+const afterKick = await api('POST', `/spaces/${spaceId}/channels/${general?.id}/messages`, {
   token: alice.token,
   body: { body: 'after kick' },
 });
-check('★ 내보내진 소켓은 sync 없이도 그 채널의 새 메시지를 받지 않는다', (await leak) === null);
+check(
+  '★ 내보내진 소켓은 sync 없이도 그 채널의 새 메시지를 받지 않는다',
+  afterKick.status === 201 && (await leak) === null,
+  `send=${afterKick.status}`,
+);
 
 const kickedRead = await api('GET', `/spaces/${spaceId}/channels`, { token: carol.token });
 check('내보내진 사람은 채널 목록이 404', kickedRead.status === 404, `status=${kickedRead.status}`);
@@ -176,12 +180,25 @@ console.log('\n[나가기]');
 
 const bobSocket = await connect(bob.token);
 await bobSocket.emitWithAck('rooms:sync');
+// 양성 대조 — 나가기 전에는 bob 의 소켓이 스페이스 룸 이벤트를 받는다. 이게 없으면 아래 ★ 가
+// 「원래 못 받던 소켓」으로 공짜로 통과한다(16단계 리뷰에서 잡았다).
+const bobHearsBefore = waitFor(bobSocket, 'member:updated');
+await api('PATCH', `/spaces/${spaceId}/members/${dave.userId}`, { token: alice.token, body: { role: 'member' } });
+check('나가기 전에는 bob 소켓이 member:updated 를 받는다', (await bobHearsBefore)?.userId === dave.userId);
 const bobRemoved = waitFor(bobSocket, 'space:removed');
-const leakSpace = silence(carolSocket, 'member:left', 2000);
 const bobLeave = await api('POST', `/spaces/${spaceId}/leave`, { token: bob.token });
 check('admin 이 스스로 나간다(204)', bobLeave.status === 204, `status=${bobLeave.status}`);
 check('나간 사람도 space:removed 를 받는다', (await bobRemoved)?.spaceId === spaceId);
-check('★ 내보내진 소켓은 그 스페이스 룸의 이벤트(member:left)도 받지 않는다', (await leakSpace) === null);
+const leakSpace = silence(bobSocket, 'member:updated', 1500);
+const afterLeave = await api('PATCH', `/spaces/${spaceId}/members/${dave.userId}`, {
+  token: alice.token,
+  body: { role: 'guest' },
+});
+check(
+  '★ 나간 소켓은 sync 없이도 그 스페이스 룸의 이벤트(member:updated)를 받지 않는다',
+  afterLeave.status === 200 && (await leakSpace) === null,
+  `patch=${afterLeave.status}`,
+);
 const bobSpaces = await api('GET', '/spaces', { token: bob.token });
 check('나간 스페이스는 목록에서 빠진다', bobSpaces.status === 200 && !(bobSpaces.json ?? []).some((s) => s.id === spaceId));
 
@@ -281,8 +298,12 @@ check('빼기 전에는 비공개 채널의 message:new 를 받는다', (await m
 const kickMem = await api('DELETE', ch(`/${priv?.id}/members/${mem.userId}`), { token: adm.token });
 check('admin 이 남을 뺀다(204)', kickMem.status === 204, `status=${kickMem.status}`);
 const privLeak = silence(memSocket, 'message:new');
-await api('POST', ch(`/${priv?.id}/messages`), { token: adm.token, body: { body: 'priv after' } });
-check('★ 빠진 소켓은 sync 없이도 비공개 채널 메시지를 받지 않는다', (await privLeak) === null);
+const privAfter = await api('POST', ch(`/${priv?.id}/messages`), { token: adm.token, body: { body: 'priv after' } });
+check(
+  '★ 빠진 소켓은 sync 없이도 비공개 채널 메시지를 받지 않는다',
+  privAfter.status === 201 && (await privLeak) === null,
+  `send=${privAfter.status}`,
+);
 const notMember = await api('DELETE', ch(`/${priv?.id}/members/${mem.userId}`), { token: adm.token });
 check('명단에 없는 사람을 빼면 404', notMember.status === 404, `status=${notMember.status}`);
 
@@ -344,6 +365,9 @@ check('…되돌리면 다시 보낸다', memSendAgain.status === 201, `status=$
 const readRes = await api('POST', ch(`/${pub?.id}/read`), { token: mem.token, body: { lastReadMessageId: ownMsg?.id } });
 check('준비 — member 가 공개 채널을 읽어 멤버 행이 생긴다', readRes.status === 200, `status=${readRes.status}`);
 await memSocket.emitWithAck('rooms:sync');
+const memHearsPub = waitFor(memSocket, 'message:new');
+await api('POST', ch(`/${pub?.id}/messages`), { token: own.token, body: { body: 'pub before hide' } });
+check('가리기 전에는 member 소켓이 그 공개 채널의 message:new 를 받는다', (await memHearsPub)?.message?.body === 'pub before hide');
 const memInvalid = waitFor(memSocket, 'rooms:invalidate');
 const hide = await api('PUT', ch(`/${pub?.id}/permissions/member`), {
   token: own.token,
@@ -356,11 +380,65 @@ check('★ 읽어 본 적 있는 공개 채널도 가리면 404(D23)', hiddenGet
 const hiddenList = (await api('GET', ch(''), { token: mem.token })).json ?? [];
 check('…채널 목록에서도 빠진다', !hiddenList.some((c) => c.id === pub?.id));
 const pubLeak = silence(memSocket, 'message:new');
-await api('POST', ch(`/${pub?.id}/messages`), { token: own.token, body: { body: 'hidden talk' } });
-check('★ 가려진 소켓은 sync 없이도 그 채널 메시지를 받지 않는다', (await pubLeak) === null);
+const hiddenTalk = await api('POST', ch(`/${pub?.id}/messages`), { token: own.token, body: { body: 'hidden talk' } });
+check(
+  '★ 가려진 소켓은 sync 없이도 그 채널 메시지를 받지 않는다',
+  hiddenTalk.status === 201 && (await pubLeak) === null,
+  `send=${hiddenTalk.status}`,
+);
+
+// 다른 경로로도 새지 않는다 — 판정이 한 곳이어야 한다(16단계 리뷰: AI · 대화→이슈가 옛 규칙을 따로 들고 있었다).
+const viaIssue = await api('POST', `/spaces/${sp2}/issues`, {
+  token: mem.token,
+  body: { title: 'leak', originMessageId: hiddenTalk.json?.id },
+});
+check('★ 가려진 채널의 메시지로 이슈를 만들면 404', !!hiddenTalk.json?.id && viaIssue.status === 404, `status=${viaIssue.status}`);
+const viaAi = await api('POST', `/spaces/${sp2}/ai/ask`, {
+  token: mem.token,
+  body: { preset: 'summary', context: { channelId: pub?.id, messageIds: [hiddenTalk.json?.id] } },
+});
+if (viaAi.status === 503) {
+  console.log('  --  AI 우회 케이스는 건너뜀 — LLM_PROVIDER 미설정(503 이 판정보다 먼저다)');
+} else {
+  check('★ 가려진 채널을 AI 로 요약하려 하면 404', viaAi.status === 404, `status=${viaAi.status}`);
+}
 const gstSees = await api('GET', ch(`/${pub?.id}`), { token: gst.token });
 check('다른 역할(손님)은 그대로 본다', gstSees.status === 200, `status=${gstSees.status}`);
 await api('DELETE', ch(`/${pub?.id}/permissions/member`), { token: own.token });
+
+// ── 역할 변경 · 비공개 전환에도 서버가 룸에서 뺀다(16단계 리뷰) ──
+console.log('\n[강등 · 비공개 전환]');
+await api('PUT', ch(`/${pub?.id}/permissions/guest`), { token: own.token, body: { canView: false, canSend: false } });
+await memSocket.emitWithAck('rooms:sync');
+const memHearsBeforeDemote = waitFor(memSocket, 'message:new');
+await api('POST', ch(`/${pub?.id}/messages`), { token: own.token, body: { body: 'before demote' } });
+check('강등 전에는 member 가 그 채널 메시지를 받는다', (await memHearsBeforeDemote)?.message?.body === 'before demote');
+const toGuest = await api('PATCH', `/spaces/${sp2}/members/${mem.userId}`, { token: own.token, body: { role: 'guest' } });
+check('member 를 guest 로 강등한다', toGuest.status === 200, `status=${toGuest.status}`);
+const demoteLeak = silence(memSocket, 'message:new');
+const afterDemote = await api('POST', ch(`/${pub?.id}/messages`), { token: own.token, body: { body: 'after demote' } });
+check(
+  '★ 강등으로 가려진 채널은 sync 없이도 메시지가 오지 않는다',
+  afterDemote.status === 201 && (await demoteLeak) === null,
+  `send=${afterDemote.status}`,
+);
+await api('PATCH', `/spaces/${sp2}/members/${mem.userId}`, { token: own.token, body: { role: 'member' } });
+await api('DELETE', ch(`/${pub?.id}/permissions/guest`), { token: own.token });
+
+const openRoom = (await api('POST', ch(''), { token: adm.token, body: { name: 'open room' } })).json;
+await memSocket.emitWithAck('rooms:sync');
+const memHearsOpen = waitFor(memSocket, 'message:new');
+await api('POST', ch(`/${openRoom?.id}/messages`), { token: adm.token, body: { body: 'open before' } });
+check('공개일 때는 member 가 그 채널 메시지를 받는다', (await memHearsOpen)?.message?.body === 'open before');
+const toPrivate = await api('PATCH', ch(`/${openRoom?.id}`), { token: adm.token, body: { isPrivate: true } });
+check('admin 이 비공개로 바꾼다', toPrivate.status === 200, `status=${toPrivate.status}`);
+const privateLeak = silence(memSocket, 'message:new');
+const afterPrivate = await api('POST', ch(`/${openRoom?.id}/messages`), { token: adm.token, body: { body: 'now private' } });
+check(
+  '★ 비공개로 바뀌면 명단에 없는 소켓은 sync 없이도 메시지가 오지 않는다',
+  afterPrivate.status === 201 && (await privateLeak) === null,
+  `send=${afterPrivate.status}`,
+);
 
 // ── 스프린트 스위치 ──
 console.log('\n[스프린트 스위치]');

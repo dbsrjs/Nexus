@@ -10,6 +10,7 @@ import { randomBytes } from 'crypto';
 import { Channel, Prisma, SpaceMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
+import { room } from '../realtime/rooms';
 import { slugify } from '../common/slug';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
@@ -307,6 +308,17 @@ export class ChannelsService {
     });
 
     if (updated.isPrivate !== before.isPrivate) {
+      if (updated.isPrivate) {
+        // 공개 → 비공개 — 명단에 없는 스페이스 멤버를 그 채널 룸에서 **서버가 직접** 뺀다(D13a).
+        const [members, roster] = await Promise.all([
+          this.prisma.spaceMember.findMany({ where: { spaceId }, select: { userId: true } }),
+          this.prisma.channelMember.findMany({ where: { channelId }, select: { userId: true } }),
+        ]);
+        const kept = new Set(roster.map((r) => r.userId));
+        for (const m of members) {
+          if (!kept.has(m.userId)) this.realtime.evict(m.userId, [room.channel(channelId)]);
+        }
+      }
       this.realtime.toSpace(spaceId, 'rooms:invalidate', { reason: 'channel.visibility' });
     }
     return updated;

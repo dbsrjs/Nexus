@@ -14,11 +14,30 @@ function service(
     aiRun: { findFirst: jest.fn().mockResolvedValue(null) },
   };
   const queue = over.queue ?? { enqueue: jest.fn().mockResolvedValue('run-1') };
+  // 채널 판정은 16단계부터 ChannelsService 한 곳이다. 각 케이스가 「볼 수 있는가」를
+  // `channel.findFirst` 의 결과로 정해 두었으므로 가짜 판정이 그것을 그대로 따른다.
+  const db = prisma as {
+    channel?: { findFirst?: () => Promise<unknown> };
+    spaceMember?: { findUnique?: unknown };
+  };
+  // 멘션 이름을 위해 spaceMember 를 따로 흉내 낸 케이스도 있다 — 거기에 판정용 조회만 더한다.
+  db.spaceMember ??= {};
+  db.spaceMember.findUnique ??= jest
+    .fn()
+    .mockResolvedValue({ spaceId: 's-1', userId: 'u-1', role: 'member' });
+  const channels = {
+    assertCanView: jest.fn(async () => {
+      const visible = await db.channel?.findFirst?.();
+      if (!visible) throw new NotFoundException('채널을 찾을 수 없습니다');
+      return visible;
+    }),
+  };
   return new AiService(
     prisma as never,
     over.llm === undefined ? new FakeLlmProvider() : (over.llm as never),
     queue as never,
     (over.indexing ?? { search: jest.fn(), chunksByIds: jest.fn() }) as never,
+    channels as never,
   );
 }
 

@@ -99,18 +99,23 @@ export class ChannelMembersService {
       throw new ForbiddenException('다른 사람을 빼려면 관리자여야 합니다');
     }
 
-    const row = await this.prisma.channelMember.findUnique({
-      where: { channelId_userId: { channelId, userId: targetUserId } },
-    });
-    if (!row) throw new NotFoundException('채널 멤버가 아닙니다');
+    // 세기와 지우기를 **한 트랜잭션에서 채널 행을 잠근 채** 한다 — 둘만 남은 채널에서 둘이
+    // 동시에 나가면 둘 다 「2명」을 보고 통과해 아무도 없는 채널이 됐다(16단계 리뷰).
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM channels WHERE id = ${channelId} FOR UPDATE`;
+      const row = await tx.channelMember.findUnique({
+        where: { channelId_userId: { channelId, userId: targetUserId } },
+      });
+      if (!row) throw new NotFoundException('채널 멤버가 아닙니다');
 
-    const count = await this.prisma.channelMember.count({ where: { channelId } });
-    if (count <= 1) {
-      throw new ConflictException('마지막 멤버는 나갈 수 없습니다');
-    }
+      const count = await tx.channelMember.count({ where: { channelId } });
+      if (count <= 1) {
+        throw new ConflictException('마지막 멤버는 나갈 수 없습니다');
+      }
 
-    await this.prisma.channelMember.delete({
-      where: { channelId_userId: { channelId, userId: targetUserId } },
+      await tx.channelMember.delete({
+        where: { channelId_userId: { channelId, userId: targetUserId } },
+      });
     });
     // 룸에서 먼저 뺀다(D13a) — 그다음 앱에게 다시 계산하라고 알린다.
     this.realtime.evict(targetUserId, [room.channel(channelId)]);
