@@ -16,6 +16,7 @@ import { ReactionsService } from './reactions.service';
 import { MentionsService } from './mentions.service';
 import { AttachmentsService } from '../attachments/attachments.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { cursorArgs, pageOf } from '../common/pagination';
 
 /** 메시지에 함께 실어 보내는 작성자 정보. 이메일은 내보내지 않는다. */
 const AUTHOR_SELECT = {
@@ -66,17 +67,15 @@ export class MessagesService {
   ) {
     await this.channels.assertCanView(channelId, member);
 
-    const limit = query.limit ?? 30;
+    const { limit, args } = cursorArgs(query);
     const rows = await this.prisma.message.findMany({
       where: { channelId, spaceId: member.spaceId, parentId: null },
       orderBy: { createdAt: 'desc' },
-      take: limit + 1,
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      ...args,
       include: { author: AUTHOR_SELECT },
     });
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
+    const { page, nextCursor } = pageOf(rows, limit);
 
     // 리액션 · 인용 · 멘션 · 첨부는 한 번에 모아 붙인다. 메시지마다 조회하면 N+1 이 된다.
     const ids = page.map((m) => m.id);
@@ -103,7 +102,7 @@ export class MessagesService {
         // 커밋으로 파고들 수 있다**(10-3b 설계 §1).
         repoEventId: repoEvents.get(message.id) ?? null,
       })),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
+      nextCursor,
     };
   }
 
@@ -446,17 +445,15 @@ export class MessagesService {
       throw new BadRequestException('답글에는 스레드가 없습니다');
     }
 
-    const limit = query.limit ?? 30;
+    const { limit, args } = cursorArgs(query);
     const rows = await this.prisma.message.findMany({
       where: { parentId, spaceId: member.spaceId },
       orderBy: { createdAt: 'desc' },
-      take: limit + 1,
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      ...args,
       include: { author: AUTHOR_SELECT },
     });
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
+    const { page, nextCursor } = pageOf(rows, limit);
 
     const ids = [...page.map((m) => m.id), parent.id];
     const [reactions, quoted, mentions, attachments] = await Promise.all([
@@ -481,7 +478,7 @@ export class MessagesService {
     return {
       parent: decorate(parent),
       items: page.map(decorate),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
+      nextCursor,
     };
   }
 

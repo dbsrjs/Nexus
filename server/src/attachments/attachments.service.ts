@@ -14,6 +14,7 @@ import { ChannelsService } from '../channels/channels.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { buildStorageKey, StorageDriver } from '../storage/storage.driver';
+import { cursorArgs, pageOf } from '../common/pagination';
 
 /** 한 파일의 최대 크기. 라우트의 multer 한도와 같은 값이어야 한다. */
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
@@ -268,7 +269,7 @@ export class AttachmentsService {
       return { items: [], nextCursor: null };
     }
 
-    const limit = query.limit ?? 30;
+    const { limit, args } = cursorArgs(query);
     const rows = await this.prisma.attachment.findMany({
       where: {
         spaceId: member.spaceId,
@@ -276,17 +277,15 @@ export class AttachmentsService {
         messageId: { not: null },
       },
       orderBy: { createdAt: 'desc' },
-      take: limit + 1,
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      ...args,
       select: { ...SUMMARY_SELECT, channelId: true, messageId: true },
     });
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
+    const { page, nextCursor } = pageOf(rows, limit);
 
     return {
       items: page,
-      nextCursor: hasMore ? page[page.length - 1].id : null,
+      nextCursor,
     };
   }
 

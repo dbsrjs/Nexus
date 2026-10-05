@@ -13,6 +13,7 @@ import {
   pickNotificationType,
 } from './notification-type';
 import { UpdateNotificationSettingsDto } from './dto/update-notification-settings.dto';
+import { cursorArgs, pageOf } from '../common/pagination';
 
 /** 메시지 하나로 만들 알림 한 건 — 트랜잭션 전에 계산해 둔다. */
 export interface PlannedNotification {
@@ -205,25 +206,23 @@ export class NotificationsService {
    * 보이면 안 된다. 행은 지우지 않는다 — 다시 들어오면 다시 보인다.
    */
   async list(member: SpaceMember, query: PaginationDto) {
-    const limit = query.limit ?? 30;
+    const { limit, args } = cursorArgs(query);
     const where = await this.visibleWhere(member);
 
     const rows = await this.prisma.notification.findMany({
       where,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: limit + 1,
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      ...args,
       include: { message: MESSAGE_SELECT, channel: CHANNEL_SELECT },
     });
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
+    const { page, nextCursor } = pageOf(rows, limit);
 
     return {
       items: page.flatMap((row) =>
         row.message && row.channel ? [toItem(row, row.message, row.channel)] : [],
       ),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
+      nextCursor,
     };
   }
 
