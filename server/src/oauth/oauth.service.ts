@@ -62,6 +62,28 @@ export class OauthService {
   }
 
   /**
+   * GET 콜백 — **토큰을 교환하지 않고** 확인 화면에 보일 계정만 찾는다(callback-page.ts 의
+   * `confirmPage` 참고). 교환은 사람이 [연결] 을 누른 POST 에서 한다. `code` 는 GitHub 이
+   * 한 번만 받아 주므로 여기서 써 버리면 POST 가 실패한다.
+   *
+   * 설정이 없거나 · state 가 틀리거나 · code 가 없거나 · 사용자가 없으면 null.
+   */
+  async previewGithub(
+    code: string | undefined,
+    state: string | undefined,
+  ): Promise<{ name: string; email: string } | null> {
+    if (!resolveGithubOauth(this.config) || !this.tokenKeyOrNull() || !code) return null;
+
+    const userId = verifyState(state, this.stateSecret);
+    if (!userId) return null;
+
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true },
+    });
+  }
+
+  /**
    * 콜백을 끝낸다. **성공 여부만 돌려준다** — 실패 종류를 브라우저에
    * 알려 줄 이유가 없다(공격자에게 힌트가 된다).
    */

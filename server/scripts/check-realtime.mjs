@@ -109,6 +109,19 @@ async function main() {
     `-> ${expired?.message}`,
   );
 
+  // 리프레시 토큰은 별도 시크릿을 쓰는 게 기본이지만, 비우면 액세스 시크릿을 재사용한다
+  // (jwt.config.ts). 그때 소켓이 type 을 보지 않으면 7일짜리 리프레시 토큰으로 붙는다.
+  // 같은 시크릿 · 같은 유효기간에 type 만 바꿔, 거부 이유가 type 임을 대조군으로 세운다.
+  const refreshTyped = await connect(
+    signAccess({ sub: ownerAccount.userId, type: 'refresh', iat: nowSec, exp: nowSec + 600 }),
+  );
+  check(
+    '★ 액세스가 아닌 토큰(type=refresh)이면 unauthorized 로 거부한다',
+    refreshTyped instanceof Error && refreshTyped.message === 'unauthorized',
+    `-> ${refreshTyped?.message ?? '연결됨'}`,
+  );
+  if (!(refreshTyped instanceof Error)) track(refreshTyped);
+
   const refreshed = await api('POST', '/auth/refresh', {
     body: { refreshToken: ownerAccount.refreshToken, client: 'native' },
   });
@@ -263,6 +276,21 @@ async function main() {
   await api('DELETE', `/spaces/${spaceId}/messages/${sent.json.id}`, { token: ownerToken });
   const deleted = await deletedEvent;
   check('message:deleted 도착', deleted?.messageId === sent.json.id, JSON.stringify(deleted));
+
+  // 수정 이력은 고치기 전 본문이다. 삭제한 뒤에도 주면 소프트 삭제가 가린 본문이
+  // 여기서 다시 읽힌다. **이력이 있었다는 것부터** 확인해야 빈 배열이 공허하지 않다 —
+  // 위 PATCH 가 실패했다면 처음부터 비어 있다.
+  check('수정 이력 확인의 전제: 위 수정이 실제로 일어났다', edited?.message?.body === '수정된 본문');
+  const editsAfterDelete = await api('GET', `/spaces/${spaceId}/messages/${sent.json.id}/edits`, {
+    token: ownerToken,
+  });
+  check(
+    '★ 삭제된 메시지의 수정 이력은 비어 있다 — 고치기 전 본문이 새지 않는다',
+    editsAfterDelete.status === 200 &&
+      Array.isArray(editsAfterDelete.json) &&
+      editsAfterDelete.json.length === 0,
+    JSON.stringify(editsAfterDelete.json),
+  );
 
   console.log('\n── 읽음 ──');
 

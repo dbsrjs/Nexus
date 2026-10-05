@@ -21,6 +21,8 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   app.setGlobalPrefix('api');
+  // 프레임워크 이름을 알려 줄 이유가 없다 — 알려진 취약점을 고르는 첫 단서가 된다.
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -58,6 +60,20 @@ async function bootstrap() {
   // HTTP 캐시되어 새 데이터가 생겨도 화면이 옛 응답을 그대로 보여준다.)
   app.use((_req: Request, res: Response, next: NextFunction) => {
     res.setHeader('Cache-Control', 'no-store');
+    // **이 서버가 내보내는 것은 JSON · 첨부 바이트 · OAuth 콜백 화면 둘뿐이다.** 어느
+    // 것도 스크립트를 돌리거나 남의 페이지에 끼워질 이유가 없다. 특히 첨부는
+    // `Content-Type` 이 올린 사람이 적어 보낸 값이라(text/html · image/svg+xml 도 온다)
+    // 브라우저가 이 오리진에서 문서로 열면 그대로 스크립트가 돈다 — 리프레시 쿠키
+    // (`path: /api/auth`)가 같은 오리진에 있다. 패키지(helmet)를 들이지 않고 넷만 건다.
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader(
+      'Content-Security-Policy',
+      // 콜백 화면이 인라인 <style> 하나를 쓴다. sandbox 는 문서로 열려도 고유 오리진을
+      // 주지 않아 쿠키 · 저장소에 닿지 못하게 한다.
+      "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; sandbox",
+    );
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
     next();
   });
 

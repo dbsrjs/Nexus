@@ -261,6 +261,48 @@ const newLogin = await api('POST', '/auth/login', {
 });
 check('새 비밀번호로 로그인된다', newLogin.status === 200, `status=${newLogin.status}`);
 
+// ── 가입 · 로그인 보강 ─────────────────────────
+console.log('\n[가입 · 로그인 보강]');
+
+// 웹훅 봇이 이 도메인을 쓴다. 사람이 먼저 가입하면 봇 자리를 차지한다.
+const reserved = await api('POST', '/auth/signup', {
+  body: { email: `github-${stamp}@bot.nexus.invalid`, password: PASSWORD, name: 'GitHub' },
+});
+check('★ 예약 도메인(.invalid)으로는 가입되지 않는다', reserved.status === 400, `status=${reserved.status}`);
+
+// 한도는 15분에 10번(auth.service.ts). 막힌 뒤에는 **맞는 비밀번호도** 429 여야
+// 한도가 판정보다 앞선다는 것이 선다 — 틀린 비밀번호로 확인하면 401 과 구분되지 않는다.
+const throttled = await signup('settings', 'throttle');
+check('준비 — 한도 확인용 계정', typeof throttled.token === 'string');
+const throttleEmail = `settings-throttle-${stamp}@example.com`;
+const wrongs = [];
+for (let i = 0; i < 10; i++) {
+  wrongs.push(
+    (await api('POST', '/auth/login', { body: { email: throttleEmail, password: 'wrong-pass-000' } }))
+      .status,
+  );
+}
+check('한도 전까지는 401 이다', wrongs.every((code) => code === 401), JSON.stringify(wrongs));
+const blocked = await api('POST', '/auth/login', {
+  body: { email: throttleEmail, password: PASSWORD },
+});
+check(
+  '★ 10번 틀린 뒤에는 맞는 비밀번호도 429 이고 Retry-After 를 준다',
+  blocked.status === 429 && Number(blocked.headers.get('retry-after')) > 0,
+  `status=${blocked.status} retry-after=${blocked.headers.get('retry-after')}`,
+);
+
+// 응답 헤더 — 첨부는 올린 사람이 적은 Content-Type 으로 나간다. 문서로 열려도 스크립트가 돌지 않아야 한다.
+const me = await api('GET', '/me', { token: alice.token });
+const csp = me.headers.get('content-security-policy') ?? '';
+check(
+  '보안 헤더 — nosniff · CSP sandbox · frame-ancestors',
+  me.headers.get('x-content-type-options') === 'nosniff' &&
+    csp.includes('sandbox') &&
+    csp.includes("frame-ancestors 'none'"),
+  `nosniff=${me.headers.get('x-content-type-options')} csp=${csp}`,
+);
+
 // ── 채널 음소거 ─────────────────────────────────
 console.log('\n[채널 음소거]');
 

@@ -83,10 +83,14 @@ export class RealtimeGateway
       }
 
       try {
-        const payload = await this.jwt.verifyAsync<{ sub?: string }>(token, {
+        const payload = await this.jwt.verifyAsync<{ sub?: string; type?: string }>(token, {
           secret: this.accessSecret,
         });
-        if (!payload?.sub) {
+        // **액세스 토큰만 받는다** — REST 의 JwtStrategy 와 같은 조건이다.
+        // JWT_REFRESH_SECRET 을 비우면 리프레시 토큰도 같은 시크릿으로 서명되어,
+        // 이 검사가 없으면 7일짜리 리프레시 토큰으로 소켓이 붙는다. 그 토큰은
+        // 로그아웃 · 비밀번호 변경으로 DB 에서 끊겨도 서명은 여전히 맞다.
+        if (!payload?.sub || payload.type !== 'access') {
           next(new Error('unauthorized'));
           return;
         }

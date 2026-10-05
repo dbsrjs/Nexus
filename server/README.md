@@ -139,8 +139,9 @@ GitHub 이 필요한 것은 가짜 GitHub(4599)을 스스로 띄운다. 목록�
 - **JWT 시크릿**: `src/config/jwt.config.ts` 의 `resolveJwtSecrets()` 한 곳에서만
   읽는다. 하드코딩 폴백은 없다 — 미설정이면 부팅이 중단된다.
 - **에러 응답**: 전역 `HttpExceptionFilter` 가 일관된 envelope 를 반환한다.
-  `HttpException` 이 아닌 `Error` 의 message 는 **그대로 실리므로**, 공개 경로(OAuth
-  콜백 · 웹훅)의 throw 는 감싸서 접는다. 커스텀 필드는 버려지니 `Retry-After` 같은 헤더로 보낸다.
+  `HttpException` 이 아닌 `Error` 의 message 는 **응답에 싣지 않고 로그로만 남긴다**
+  (2026-10-05 보안 점검) — 사람에게 보일 문구는 `HttpException` 으로 던진다. 공개 경로(OAuth
+  콜백 · 웹훅)는 그래도 감싸서 접는다. 커스텀 필드는 버려지니 `Retry-After` 같은 헤더로 보낸다.
 - **인증 사용자**: `@CurrentUser()`. 담기는 값은 `{ id, email }` 뿐이다.
 - **raw SQL 의 시각**: 시각 컬럼은 `timestamp without time zone` 에 UTC 로 저장된다.
   `now()` 대신 `(now() at time zone 'utc')` — `npm run check:sql-time` 이 잡는다.

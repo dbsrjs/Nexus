@@ -60,3 +60,19 @@ export async function signup(prefix, tag, name = `${prefix}검증${tag}`) {
     userId: res.json.user.id,
   };
 }
+
+/**
+ * GitHub 연결 콜백의 [연결] 을 누른다. **GET 콜백은 확인 화면만 그리고 연결하지 않는다**
+ * (2026-10-05 보안 점검) — 토큰 교환은 이 POST 가 한다. 브라우저의 폼과 같은 모양으로 보낸다.
+ * `null` 인 값은 싣지 않는다(빠진 값 케이스).
+ */
+export function submitGithubCallback(code, state) {
+  const form = new URLSearchParams();
+  if (code !== null && code !== undefined) form.set('code', code);
+  if (state !== null && state !== undefined) form.set('state', state);
+  return fetch(`${BASE}/auth/github/callback`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: form.toString(),
+  });
+}

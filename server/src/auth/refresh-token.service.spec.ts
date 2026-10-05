@@ -119,4 +119,56 @@ describe('RefreshTokenService', () => {
 
     expect(a.familyId).not.toBe(b.familyId);
   });
+
+  describe('commitRotation', () => {
+    /** 트랜잭션 안의 조건부 revoke 가 몇 행을 바꿨는지(0 이면 다른 요청이 먼저 회전했다). */
+    function txWith(revoked: number) {
+      const tx = {
+        refreshToken: {
+          updateMany: jest.fn().mockResolvedValue({ count: revoked }),
+          create: jest.fn().mockResolvedValue({}),
+        },
+      };
+      const familyRevoke = jest.fn().mockResolvedValue({ count: 1 });
+      const prisma = {
+        refreshToken: { updateMany: familyRevoke },
+        $transaction: jest.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)),
+      } as unknown as PrismaService;
+      return { prisma, tx, familyRevoke };
+    }
+
+    it('정상 회전은 이전 행을 「아직 revoke 되지 않았으면」 조건으로 끊고 새 행을 만든다', async () => {
+      const { prisma, tx, familyRevoke } = txWith(1);
+      const service = new RefreshTokenService(prisma);
+      const previous = rowOf();
+      const next = service.rotate(previous, 60_000);
+
+      await service.commitRotation(previous, next, 'next-token');
+
+      expect(tx.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { id: 'token-1', revokedAt: null },
+        data: { revokedAt: expect.any(Date), replacedById: next.id },
+      });
+      expect(tx.refreshToken.create).toHaveBeenCalledTimes(1);
+      expect(familyRevoke).not.toHaveBeenCalled();
+    });
+
+    it('★ 같은 토큰으로 동시에 온 두 번째 회전은 새 토큰을 만들지 않고 family 를 끊는다', async () => {
+      const { prisma, tx, familyRevoke } = txWith(0);
+      const service = new RefreshTokenService(prisma);
+      const previous = rowOf();
+      const next = service.rotate(previous, 60_000);
+
+      await expect(
+        service.commitRotation(previous, next, 'next-token'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+
+      // 살아 있는 토큰이 둘이 되면 안 된다.
+      expect(tx.refreshToken.create).not.toHaveBeenCalled();
+      expect(familyRevoke).toHaveBeenCalledWith({
+        where: { familyId: 'family-1', revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+    });
+  });
 });

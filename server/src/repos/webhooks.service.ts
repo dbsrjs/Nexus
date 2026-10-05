@@ -21,6 +21,9 @@ const BOT_EMAIL: Record<RepoProvider, string> = {
   gitlab: 'gitlab@bot.nexus.invalid',
 };
 
+/** argon2 형식이 아니라 어떤 입력과도 맞지 않는다. 봇 행인지 가르는 표식이기도 하다. */
+const BOT_PASSWORD_HASH = 'bot:no-login';
+
 const BOT_NAME: Record<RepoProvider, string> = {
   github: 'GitHub',
   gitlab: 'GitLab',
@@ -195,18 +198,30 @@ export class WebhooksService {
    * 어떤 입력과도 맞지 않게 한다. 봇이 사람처럼 로그인되면 그 계정으로
    * 아무 데나 들어갈 수 있다.
    */
-  private async botUser(provider: RepoProvider): Promise<User> {
+  private async botUser(provider: RepoProvider): Promise<User | null> {
     const email = BOT_EMAIL[provider];
 
     const existing = await this.prisma.user.findUnique({ where: { email } });
-    if (existing) return existing;
+    if (existing) {
+      // **봇이 만든 행인지 확인한다.** 가입이 `.invalid` 를 막기 전에는(2026-10-05)
+      // 사람이 이 이메일로 먼저 가입할 수 있었다 — 그 계정을 봇으로 쓰면 모든
+      // 스페이스의 GitHub 메시지가 그 사람 이름으로 나가고, 그 사람이 고칠 수 있다.
+      // 게시만 멈추고(이벤트 적재는 계속) 운영자가 행을 정리하게 한다.
+      if (existing.passwordHash !== BOT_PASSWORD_HASH) {
+        this.logger.error(
+          `${email} 이 봇이 아닌 계정입니다 — 채널 게시를 건너뜁니다. 사용자 ${existing.id} 를 확인하십시오`,
+        );
+        return null;
+      }
+      return existing;
+    }
 
     this.logger.log(`${BOT_NAME[provider]} 봇 계정을 만듭니다`);
     return this.prisma.user.create({
       data: {
         email,
         name: BOT_NAME[provider],
-        passwordHash: 'bot:no-login',
+        passwordHash: BOT_PASSWORD_HASH,
       },
     });
   }
