@@ -105,8 +105,9 @@ class DmHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final nx = NxTheme.of(context);
     final c = nx.colors;
-    final peer = ref.watch(memberProfilesProvider)[channel.dmUserId];
-    final name = peer?.displayName ?? '나간 사람';
+    final members = ref.watch(memberProfilesProvider);
+    final peer = members[channel.dmUserId];
+    final name = dmPeerName(members, channel);
     return Container(
       height: SelectionAppBar.height,
       padding: const EdgeInsets.only(left: NxSpacing.sp6, right: NxSpacing.sp4),

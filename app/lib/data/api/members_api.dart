@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 
 import '../../domain/models/space.dart';
 import '../../domain/models/space_member.dart';
@@ -15,7 +14,7 @@ class MembersApi {
   /// 멘션 자동완성이 이 목록을 쓴다. 서버가 본문에 `<@userId>` 형식을 요구하므로
   /// **앱이 이름 → id 를 이어 주는 다리**가 필요하다.
   Future<List<SpaceMemberProfile>> list(String spaceId) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<List<dynamic>>(
         '/spaces/$spaceId/members',
       );
@@ -23,29 +22,23 @@ class MembersApi {
           .cast<Map<String, dynamic>>()
           .map(SpaceMemberProfile.fromJson)
           .toList(growable: false);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// PATCH /api/spaces/:spaceId/members/:userId (admin+, 나보다 낮은 사람만)
   Future<void> updateRole(String spaceId, String userId, SpaceRole role) async {
-    try {
+    return guardApi(() async {
       await _client.dio.patch<void>(
         '/spaces/$spaceId/members/$userId',
         data: {'role': role.wire},
       );
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// DELETE /api/spaces/:spaceId/members/:userId (admin+, 나보다 낮은 사람만)
   Future<void> remove(String spaceId, String userId) async {
-    try {
+    return guardApi(() async {
       await _client.dio.delete<void>('/spaces/$spaceId/members/$userId');
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 }

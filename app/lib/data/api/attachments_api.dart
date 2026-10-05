@@ -31,7 +31,7 @@ class AttachmentsApi {
     void Function(double progress)? onProgress,
     CancelToken? cancelToken,
   }) async {
-    try {
+    return guardApi(() async {
       final form = FormData.fromMap({
         'file': MultipartFile.fromBytes(bytes, filename: filename),
       });
@@ -46,9 +46,7 @@ class AttachmentsApi {
         },
       );
       return MessageAttachment.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// GET /api/spaces/:spaceId/attachments — 스페이스의 파일 목록.
@@ -61,7 +59,7 @@ class AttachmentsApi {
     String? cursor,
     int limit = 50,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/attachments',
         queryParameters: {
@@ -74,9 +72,7 @@ class AttachmentsApi {
           .cast<Map<String, dynamic>>()
           .map(AttachmentItem.fromJson)
           .toList(growable: false);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// 첨부 바이트를 받는 주소.

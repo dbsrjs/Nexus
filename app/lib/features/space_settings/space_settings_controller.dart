@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/api/api_failure.dart';
 import '../../domain/models/invite.dart';
 import '../../domain/models/space.dart';
 import '../space/members_controller.dart';
@@ -30,16 +29,10 @@ enum SpaceSettingsSection {
 
 String spaceSettingsLocation(String spaceId, SpaceSettingsSection? section) =>
     section == null
-        ? '/s/$spaceId/settings'
-        : '/s/$spaceId/settings/${section.slug}';
+    ? '/s/$spaceId/settings'
+    : '/s/$spaceId/settings/${section.slug}';
 
 /// 쓸 수 있는 초대(admin+). 캐시하지 않는다 — 설정 창을 열 때만 본다.
 final invitesProvider = FutureProvider.family<List<Invite>, String>(
   (ref, spaceId) => ref.watch(invitesApiProvider).list(spaceId),
 );
-
-/// provider 의 실패를 화면 문구로. `ApiException` 이 아니면 서버 오류로 친다 —
-/// 서버 문구를 화면에 쓰지 않는다(CLAUDE.md §3 앱 규칙).
-String errorMessageOf(Object? error) => messageFor(
-      error is ApiException ? error.failure : ApiFailure.server,
-    );

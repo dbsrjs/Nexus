@@ -15,6 +15,7 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { buildStorageKey, StorageDriver } from '../storage/storage.driver';
 import { cursorArgs, pageOf } from '../common/pagination';
+import { groupBy } from '../common/group-by';
 
 /** 한 파일의 최대 크기. 라우트의 multer 한도와 같은 값이어야 한다. */
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
@@ -184,7 +185,10 @@ export class AttachmentsService {
 
     try {
       const thumb = await sharp(buffer)
-        .resize(THUMB_MAX_EDGE, THUMB_MAX_EDGE, { fit: 'inside', withoutEnlargement: true })
+        .resize(THUMB_MAX_EDGE, THUMB_MAX_EDGE, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
         .webp({ quality: 75 })
         .toBuffer();
       await this.storage.put(thumbKeyFor(key), thumb, 'image/webp');
@@ -256,10 +260,7 @@ export class AttachmentsService {
    * 아직 메시지에 연결되지 않은 것은 빼고 준다 — 남에게는 존재하지 않는
    * 파일이고, 24시간 뒤 사라질 수도 있다.
    */
-  async listForSpace(
-    member: SpaceMember,
-    query: PaginationDto & { channelId?: string },
-  ) {
+  async listForSpace(member: SpaceMember, query: PaginationDto & { channelId?: string }) {
     const viewable = await this.channels.viewableChannelIds(member);
     const channelIds = query.channelId
       ? viewable.filter((id) => id === query.channelId)
@@ -345,14 +346,11 @@ export class AttachmentsService {
       select: { ...SUMMARY_SELECT, messageId: true },
     });
 
-    const grouped = new Map<string, AttachmentSummary[]>();
-    for (const { messageId, ...summary } of rows) {
-      if (!messageId) continue;
-      const list = grouped.get(messageId);
-      if (list) list.push(summary);
-      else grouped.set(messageId, [summary]);
-    }
-    return grouped;
+    return groupBy(
+      rows.filter((r): r is typeof r & { messageId: string } => r.messageId !== null),
+      (r) => r.messageId,
+      ({ messageId: _messageId, ...summary }): AttachmentSummary => summary,
+    );
   }
 
   /**

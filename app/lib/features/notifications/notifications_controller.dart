@@ -10,8 +10,9 @@ import '../space/space_controller.dart';
 
 export '../../domain/models/notification_item.dart';
 
-final notificationsApiProvider =
-    Provider<NotificationsApi>((ref) => NotificationsApi(ref.watch(apiClientProvider)));
+final notificationsApiProvider = Provider<NotificationsApi>(
+  (ref) => NotificationsApi(ref.watch(apiClientProvider)),
+);
 
 /// 지금 스페이스의 안 읽은 알림 수(18단계 N19). **REST 처음 값 + 소켓.**
 ///
@@ -24,11 +25,16 @@ final notificationsApiProvider =
 class UnreadNotificationsNotifier extends Notifier<int> {
   @override
   int build() {
-    ref.listen<String?>(currentSpaceIdProvider, (_, id) => _load(id), fireImmediately: true);
+    ref.listen<String?>(
+      currentSpaceIdProvider,
+      (_, id) => _load(id),
+      fireImmediately: true,
+    );
     ref.listen<AsyncValue<SocketEvent>>(socketEventsProvider, (_, next) {
       final spaceId = ref.read(currentSpaceIdProvider);
       final reload = switch (next.value) {
-        NotificationNew(spaceId: final s) || NotificationRead(spaceId: final s) => s == spaceId,
+        NotificationNew(spaceId: final s) ||
+        NotificationRead(spaceId: final s) => s == spaceId,
         SocketConnected() || RoomsInvalidated() => true,
         _ => false,
       };
@@ -43,7 +49,9 @@ class UnreadNotificationsNotifier extends Notifier<int> {
       return;
     }
     try {
-      final count = await ref.read(notificationsApiProvider).unreadCount(spaceId);
+      final count = await ref
+          .read(notificationsApiProvider)
+          .unreadCount(spaceId);
       // 다른 스페이스로 옮겨 갔으면 늦게 온 값을 버린다.
       if (ref.read(currentSpaceIdProvider) == spaceId) state = count;
     } catch (_) {
@@ -53,7 +61,9 @@ class UnreadNotificationsNotifier extends Notifier<int> {
 }
 
 final unreadNotificationsProvider =
-    NotifierProvider<UnreadNotificationsNotifier, int>(UnreadNotificationsNotifier.new);
+    NotifierProvider<UnreadNotificationsNotifier, int>(
+      UnreadNotificationsNotifier.new,
+    );
 
 /// 알림함 화면의 상태.
 class NotificationsState {
@@ -75,8 +85,6 @@ class NotificationsState {
   /// 첫 쪽을 못 받았다. 다음 쪽 실패는 여기 싣지 않는다 — 받은 줄을 지우지 않는다.
   final ApiFailure? failure;
 
-  bool get hasMore => nextCursor != null;
-
   NotificationsState copyWith({
     List<NotificationItem>? items,
     String? nextCursor,
@@ -85,14 +93,13 @@ class NotificationsState {
     bool? loadingMore,
     ApiFailure? failure,
     bool clearFailure = false,
-  }) =>
-      NotificationsState(
-        items: items ?? this.items,
-        nextCursor: clearCursor ? null : (nextCursor ?? this.nextCursor),
-        loading: loading ?? this.loading,
-        loadingMore: loadingMore ?? this.loadingMore,
-        failure: clearFailure ? null : (failure ?? this.failure),
-      );
+  }) => NotificationsState(
+    items: items ?? this.items,
+    nextCursor: clearCursor ? null : (nextCursor ?? this.nextCursor),
+    loading: loading ?? this.loading,
+    loadingMore: loadingMore ?? this.loadingMore,
+    failure: clearFailure ? null : (failure ?? this.failure),
+  );
 }
 
 /// 지금 스페이스의 알림 목록(18단계 N20). **캐시하지 않는다** — 파일 목록과 같은 판단이다.
@@ -132,7 +139,11 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
     try {
       final page = await ref.read(notificationsApiProvider).list(spaceId);
       if (!ref.mounted || _spaceId != spaceId) return;
-      state = NotificationsState(items: page.items, nextCursor: page.nextCursor, loading: false);
+      state = NotificationsState(
+        items: page.items,
+        nextCursor: page.nextCursor,
+        loading: false,
+      );
     } on ApiException catch (e) {
       if (!ref.mounted) return;
       // 이미 받은 줄이 있으면 지우지 않는다 — 다시 받기 실패가 목록을 비우면 안 된다.
@@ -148,11 +159,16 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
     if (spaceId == null || cursor == null || state.loadingMore) return;
     state = state.copyWith(loadingMore: true);
     try {
-      final page = await ref.read(notificationsApiProvider).list(spaceId, cursor: cursor);
+      final page = await ref
+          .read(notificationsApiProvider)
+          .list(spaceId, cursor: cursor);
       if (!ref.mounted) return;
       final known = state.items.map((n) => n.id).toSet();
       state = state.copyWith(
-        items: [...state.items, ...page.items.where((n) => !known.contains(n.id))],
+        items: [
+          ...state.items,
+          ...page.items.where((n) => !known.contains(n.id)),
+        ],
         nextCursor: page.nextCursor,
         clearCursor: page.nextCursor == null,
         loadingMore: false,
@@ -196,8 +212,8 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
 
 final notificationsProvider =
     NotifierProvider.autoDispose<NotificationsNotifier, NotificationsState>(
-  NotificationsNotifier.new,
-);
+      NotificationsNotifier.new,
+    );
 
 /// 한 줄의 머리 문구(N22) — 「가나 님이 #개발 에서 멘션했습니다」. DM 은 채널 이름이 뜻이 없다.
 String notificationHeadline(NotificationItem n) {

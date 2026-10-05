@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { resolveGithubOauth, type GithubOauthConfig } from '../config/oauth.config';
 import { OauthService } from '../oauth/oauth.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -55,4 +56,19 @@ export async function requireLinkableChannel(
 /** 웹훅 서명 시크릿. 등록 · 재발급 · 자동 등록이 같은 모양을 쓴다. */
 export function newWebhookSecret(): string {
   return `whsec_${randomBytes(24).toString('hex')}`;
+}
+
+/**
+ * 이 스페이스의 저장소. 없거나 다른 스페이스 것이면 404 — **403 이 아니다.** 403 은
+ * 「그 저장소가 존재한다」를 알려 준다. 필요한 필드만 `select` 로 받는다.
+ */
+export async function requireRepoInSpace<S extends Prisma.RepoSelect>(
+  prisma: PrismaService,
+  spaceId: string,
+  repoId: string,
+  select: S,
+): Promise<Prisma.RepoGetPayload<{ select: S }>> {
+  const repo = await prisma.repo.findFirst({ where: { id: repoId, spaceId }, select });
+  if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
+  return repo as Prisma.RepoGetPayload<{ select: S }>;
 }

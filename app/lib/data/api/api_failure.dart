@@ -39,6 +39,18 @@ class ApiException implements Exception {
   String toString() => 'ApiException($failure)';
 }
 
+/// 요청 하나를 감싸 Dio 의 실패를 [ApiException] 으로 바꾼다.
+///
+/// API 파일마다 `try { … } on DioException catch (e) { throw ApiException(…); }` 를
+/// 59번 되풀이하고 있었다(넷은 같은 `_guard` 를 따로). 바꾸는 규칙이 하나여야 한다.
+Future<T> guardApi<T>(Future<T> Function() call) async {
+  try {
+    return await call();
+  } on DioException catch (e) {
+    throw ApiException(classifyDioException(e));
+  }
+}
+
 /// DioException 을 실패 종류로 옮긴다.
 ApiFailure classifyDioException(DioException e) {
   switch (e.response?.statusCode) {
@@ -66,12 +78,18 @@ ApiFailure classifyDioException(DioException e) {
 
 /// 실패 종류를 사람이 읽을 문구로. 화면마다 다시 쓰지 않도록 한곳에 둔다.
 String messageFor(ApiFailure failure) => switch (failure) {
-      ApiFailure.unauthorized => '다시 로그인해 주세요.',
-      ApiFailure.notFound => '찾을 수 없습니다.',
-      ApiFailure.network => '서버에 연결할 수 없습니다.',
-      ApiFailure.tooLarge => '파일이 너무 큽니다.',
-      // 무엇을 먼저 해야 하는지는 부르는 화면이 안다. 여기서는 일반적인
-      // 문구만 두고, 화면이 필요하면 자기 문구로 덮는다.
-      ApiFailure.badRequest => '요청을 처리할 수 없습니다.',
-      ApiFailure.server => '문제가 생겼습니다. 잠시 후 다시 시도해 주세요.',
-    };
+  ApiFailure.unauthorized => '다시 로그인해 주세요.',
+  ApiFailure.notFound => '찾을 수 없습니다.',
+  ApiFailure.network => '서버에 연결할 수 없습니다.',
+  ApiFailure.tooLarge => '파일이 너무 큽니다.',
+  // 무엇을 먼저 해야 하는지는 부르는 화면이 안다. 여기서는 일반적인
+  // 문구만 두고, 화면이 필요하면 자기 문구로 덮는다.
+  ApiFailure.badRequest => '요청을 처리할 수 없습니다.',
+  ApiFailure.server => '문제가 생겼습니다. 잠시 후 다시 시도해 주세요.',
+};
+
+/// 아무 실패(provider 의 `error` 등)를 화면 문구로. [ApiException] 이 아니면 서버 오류로
+/// 친다 — 서버 문구를 화면에 쓰지 않는다(CLAUDE.md §3 앱 규칙). 스페이스 설정 컨트롤러에
+/// 있던 `errorMessageOf` 를 다른 화면들이 그것만 쓰려고 import 하고 있어 여기로 옮겼다.
+String messageForError(Object? error) =>
+    messageFor(error is ApiException ? error.failure : ApiFailure.server);

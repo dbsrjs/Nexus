@@ -1,8 +1,12 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, Repo, RepoProvider } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRepoDto } from './dto/repo.dto';
-import { newWebhookSecret, requireLinkableChannel } from './repo-guards';
+import {
+  newWebhookSecret,
+  requireLinkableChannel,
+  requireRepoInSpace,
+} from './repo-guards';
 
 /**
  * 저장소 등록. **10-1 은 수동 등록만 한다** — GitHub 저장소 설정에서 웹훅
@@ -87,11 +91,11 @@ export class ReposService {
 
   /** 훅을 떼기 위해 필요한 것만. 없으면 404 다. */
   async findForDetach(spaceId: string, repoId: string) {
-    const repo = await this.prisma.repo.findFirst({
-      where: { id: repoId, spaceId },
-      select: { fullPath: true, provider: true, webhookExternalId: true },
+    const repo = await requireRepoInSpace(this.prisma, spaceId, repoId, {
+      fullPath: true,
+      provider: true,
+      webhookExternalId: true,
     });
-    if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
     return repo;
   }
 
@@ -100,14 +104,8 @@ export class ReposService {
     return this.prisma.repo.findFirst({ where: { id: repoId, provider } });
   }
 
-  private async requireRepo(spaceId: string, repoId: string) {
-    const repo = await this.prisma.repo.findFirst({
-      where: { id: repoId, spaceId },
-      select: { id: true },
-    });
-    // 403 이 아니라 404 다 — 403 은 "그 저장소가 존재한다"를 알려 준다.
-    if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
-    return repo;
+  private requireRepo(spaceId: string, repoId: string) {
+    return requireRepoInSpace(this.prisma, spaceId, repoId, { id: true });
   }
 }
 

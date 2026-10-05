@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import 'input_mode.dart';
 import 'pressable.dart';
 import 'theme.dart';
 
@@ -204,9 +204,7 @@ class NxMenuPanel extends StatelessWidget {
   }
 }
 
-bool get _isTouch =>
-    defaultTargetPlatform == TargetPlatform.android ||
-    defaultTargetPlatform == TargetPlatform.iOS;
+bool get _isTouch => nxTouchFirst;
 
 /// 누르면 메뉴가 붙어 열리는 것(15단계 설계 D8). PopupMenuButton 의 자리.
 ///

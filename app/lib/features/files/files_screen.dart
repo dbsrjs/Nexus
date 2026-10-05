@@ -138,9 +138,7 @@ class _FilesError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 서버 문구를 그대로 쓰지 않는다 — 실패 종류만 받아 앱이 자기 문구를 쓴다.
-    final message = error is ApiException
-        ? messageFor((error as ApiException).failure)
-        : messageFor(ApiFailure.server);
+    final message = messageForError(error);
 
     return Center(
       child: Column(

@@ -4,18 +4,14 @@ import '../../domain/models/issue.dart';
 import '../../domain/models/issue_comment.dart';
 import '../space/space_controller.dart';
 import 'board_controller.dart';
+import '../../core/settable.dart';
 
 /// 지금 열려 있는 이슈의 키(`NEXUS-12`). 라우트가 진실의 원천이고
 /// 상세 화면이 이 값을 실어 준다.
-class CurrentIssueKey extends Notifier<String?> {
-  @override
-  String? build() => null;
-
-  void set(String? key) => state = key;
-}
-
 final currentIssueKeyProvider =
-    NotifierProvider<CurrentIssueKey, String?>(CurrentIssueKey.new);
+    NotifierProvider<SettableNotifier<String?>, String?>(
+      () => SettableNotifier(null),
+    );
 
 /// **본문은 캐시에서 그린다.** 보드를 거쳐 들어왔으면 이미 캐시에 있어
 /// 상세를 열자마자 보인다(오프라인에서도).
@@ -35,13 +31,14 @@ final currentIssueProvider = FutureProvider.autoDispose<Issue?>((ref) async {
 });
 
 /// 댓글은 캐시하지 않는다 — 들어올 때마다 받는다(설계 §6-1).
-final issueCommentsProvider =
-    FutureProvider.autoDispose<List<IssueComment>>((ref) async {
-      final spaceId = ref.watch(currentSpaceIdProvider);
-      final issue = await ref.watch(currentIssueProvider.future);
-      if (spaceId == null || issue == null) return const [];
-      return ref.watch(issueRepositoryProvider).listComments(spaceId, issue.id);
-    });
+final issueCommentsProvider = FutureProvider.autoDispose<List<IssueComment>>((
+  ref,
+) async {
+  final spaceId = ref.watch(currentSpaceIdProvider);
+  final issue = await ref.watch(currentIssueProvider.future);
+  if (spaceId == null || issue == null) return const [];
+  return ref.watch(issueRepositoryProvider).listComments(spaceId, issue.id);
+});
 
 /// 상세 화면이 부르는 동작들. 실패를 값으로 돌려주고 화면이 문구를 정한다.
 class IssueDetailActions {

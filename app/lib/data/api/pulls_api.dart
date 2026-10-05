@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 
 import '../../domain/models/pull.dart';
 import 'api_client.dart';
@@ -16,7 +15,7 @@ class PullsApi {
     String state = 'open',
     int page = 1,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/repos/$repoId/pulls',
         queryParameters: {'state': state, 'page': page},
@@ -27,20 +26,16 @@ class PullsApi {
         pulls: raw.map(PullSummary.fromJson).toList(growable: false),
         nextPage: res.data?['nextPage'] as int?,
       );
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   Future<PullDetail> detail(String spaceId, String repoId, int number) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/repos/$repoId/pulls/$number',
       );
       return PullDetail.fromJson(res.data ?? const {});
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   Future<({List<PullChangedFile> files, bool truncated})> files(
@@ -48,7 +43,7 @@ class PullsApi {
     String repoId,
     int number,
   ) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/repos/$repoId/pulls/$number/files',
       );
@@ -58,8 +53,6 @@ class PullsApi {
         files: raw.map(PullChangedFile.fromJson).toList(growable: false),
         truncated: res.data?['truncated'] as bool? ?? false,
       );
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 }

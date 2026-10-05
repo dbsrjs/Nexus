@@ -188,13 +188,8 @@ class _AiPanelState extends ConsumerState<AiPanel> {
       };
     }
 
-    return Padding(
-      padding: EdgeInsets.only(
-        // 키보드가 올라와도 입력창이 가리지 않게 한다.
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: body,
-    );
+    // 키보드가 올라오면 감싼 NxDialog.panel 이 비킨다 — 여기서 또 비키면 두 배가 된다.
+    return body;
   }
 
   /// 문답 목록 (13-3 설계 §5). 지난 문답은 상태와 상관없이 그대로 보이고,

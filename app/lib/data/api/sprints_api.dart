@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 
 import '../../domain/models/sprint.dart';
 import 'api_client.dart';
@@ -11,7 +10,7 @@ class SprintsApi {
 
   /// GET /api/spaces/:spaceId/sprints — 도는 것이 먼저, 닫힌 것은 뒤로.
   Future<List<Sprint>> list(String spaceId) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<List<dynamic>>(
         '/spaces/$spaceId/sprints',
       );
@@ -19,9 +18,7 @@ class SprintsApi {
           .cast<Map<String, dynamic>>()
           .map(Sprint.fromJson)
           .toList(growable: false);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// POST /api/spaces/:spaceId/sprints — 만들면 `planned` 다.
@@ -32,7 +29,7 @@ class SprintsApi {
     DateTime? startsAt,
     DateTime? endsAt,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/sprints',
         data: {
@@ -43,9 +40,7 @@ class SprintsApi {
         },
       );
       return Sprint.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// PATCH /api/spaces/:spaceId/sprints/:sprintId
@@ -60,7 +55,7 @@ class SprintsApi {
     DateTime? startsAt,
     DateTime? endsAt,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.patch<Map<String, dynamic>>(
         '/spaces/$spaceId/sprints/$sprintId',
         data: {
@@ -71,29 +66,23 @@ class SprintsApi {
         },
       );
       return Sprint.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// DELETE — 지우면 그 안의 이슈는 **백로그로 돌아간다**(사라지지 않는다).
   Future<void> remove(String spaceId, String sprintId) async {
-    try {
+    return guardApi(() async {
       await _client.dio.delete<void>('/spaces/$spaceId/sprints/$sprintId');
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// GET .../burndown — 기간이 없으면 서버가 400 이다.
   Future<Burndown> burndown(String spaceId, String sprintId) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/sprints/$sprintId/burndown',
       );
       return Burndown.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 }

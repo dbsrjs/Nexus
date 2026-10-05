@@ -25,9 +25,6 @@ enum Layout {
 
   static Layout ofContext(BuildContext context) =>
       Layout.of(MediaQuery.sizeOf(context).width);
-
-  bool get isMobile => this == Layout.mobile;
-  bool get isDesktop => this == Layout.desktop;
 }
 
 /// 고정 폭. 앱 설계 §4 의 수치를 그대로 쓴다.
@@ -39,7 +36,4 @@ class NexusPaneWidth {
 
   /// 카테고리 · 채널 목록
   static const double channels = 240;
-
-  /// 스레드 · 이슈 · AI 패널 (토글) — 슬라이스 2 범위 밖
-  static const double sidePanel = 320;
 }

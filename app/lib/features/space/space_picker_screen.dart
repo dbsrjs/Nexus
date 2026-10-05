@@ -156,9 +156,7 @@ class _ErrorBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 서버 문구를 그대로 쓰지 않는다. 종류만 보고 앱이 자기 문구를 쓴다.
-    final text = error is ApiException
-        ? messageFor((error as ApiException).failure)
-        : messageFor(ApiFailure.server);
+    final text = messageForError(error);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: NxSpacing.sp9),

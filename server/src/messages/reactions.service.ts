@@ -3,6 +3,7 @@ import { Reaction, SpaceMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChannelsService } from '../channels/channels.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
+import { groupBy } from '../common/group-by';
 
 /**
  * 화면이 그리기 좋은 모양으로 접은 리액션.
@@ -77,12 +78,7 @@ export class ReactionsService {
       orderBy: { createdAt: 'asc' },
     });
 
-    const byMessage = new Map<string, Reaction[]>();
-    for (const row of rows) {
-      const list = byMessage.get(row.messageId);
-      if (list) list.push(row);
-      else byMessage.set(row.messageId, [row]);
-    }
+    const byMessage = groupBy(rows, (row) => row.messageId);
 
     const result = new Map<string, ReactionSummary[]>();
     for (const [id, list] of byMessage) {
@@ -92,11 +88,7 @@ export class ReactionsService {
   }
 
   /** 바뀐 리액션을 채널에 알리고, 요청자에게도 돌려준다. */
-  private async publish(
-    messageId: string,
-    channelId: string,
-    member: SpaceMember,
-  ) {
+  private async publish(messageId: string, channelId: string, member: SpaceMember) {
     const rows = await this.prisma.reaction.findMany({
       where: { messageId, spaceId: member.spaceId },
       orderBy: { createdAt: 'asc' },

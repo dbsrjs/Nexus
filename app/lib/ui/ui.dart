@@ -7,6 +7,7 @@ export 'controls.dart';
 export 'dialog.dart';
 export 'field.dart';
 export 'icons.dart' show NxIcon, NxIcons;
+export 'input_mode.dart';
 export 'layout.dart';
 export 'loading.dart';
 export 'overlay.dart';

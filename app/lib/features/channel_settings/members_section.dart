@@ -11,8 +11,8 @@ import '../auth/auth_controller.dart';
 import '../settings/settings_widgets.dart';
 import '../space/members_controller.dart';
 import '../space/space_controller.dart';
-import '../space_settings/space_settings_controller.dart';
 import 'channel_settings_controller.dart';
+import '../../shared/api_feedback.dart';
 
 /// 채널 설정 「멤버」 — 비공개 채널의 명단(16단계 D17~D20).
 ///
@@ -37,15 +37,11 @@ class ChannelMembersSection extends ConsumerWidget {
     WidgetRef ref,
     Future<void> Function() call,
   ) async {
-    try {
+    await runOrToast(context, () async {
       await call();
       if (!context.mounted) return;
       ref.invalidate(channelMembersProvider(_key));
-    } on ApiException catch (e) {
-      if (context.mounted) {
-        NxToast.show(context, messageFor(e.failure), kind: NxToastKind.error);
-      }
-    }
+    });
   }
 
   Future<void> _leave(BuildContext context, WidgetRef ref, String myId) async {
@@ -60,15 +56,11 @@ class ChannelMembersSection extends ConsumerWidget {
     // await 사이에 화면이 내려갈 수 있다(나간 채널이 목록에서 빠지면 셸이 옮긴다) — 미리 잡는다.
     final api = ref.read(channelsApiProvider);
     final repository = ref.read(workspaceRepositoryProvider);
-    try {
+    await runOrToast(context, () async {
       await api.removeMember(spaceId, channelId, myId);
       await repository.refreshChannels(spaceId);
       if (context.mounted) context.go('/s/$spaceId');
-    } on ApiException catch (e) {
-      if (context.mounted) {
-        NxToast.show(context, messageFor(e.failure), kind: NxToastKind.error);
-      }
-    }
+    });
   }
 
   Future<void> _remove(
@@ -128,7 +120,7 @@ class ChannelMembersSection extends ConsumerWidget {
       title: '멤버',
       children: [
         if (members.hasError)
-          SettingsError(errorMessageOf(members.error))
+          SettingsError(messageForError(members.error))
         else if (!members.hasValue)
           const NxSkeleton(lines: 3, lineHeight: 48)
         else ...[
@@ -257,7 +249,7 @@ class _AddMembersPickerState extends ConsumerState<_AddMembersPicker> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (all.hasError)
-            SettingsError(errorMessageOf(all.error))
+            SettingsError(messageForError(all.error))
           else if (!all.hasValue)
             const NxSkeleton(lines: 3, lineHeight: 40)
           else if (candidates.isEmpty)

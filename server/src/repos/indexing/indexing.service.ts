@@ -1,10 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmbeddingHttpError } from '../../embedding/gemini-embedding.provider';
 import { GithubOauthClient, GithubTreeEntry } from '../../oauth/github-oauth.client';
@@ -24,6 +18,7 @@ import { IndexQueueService, LeasedJob } from './index-queue.service';
 import { chunkText } from './chunker';
 import { isGenerated, isTooLarge, langOf } from './index-filter';
 import { fullReindexBeforeCompare, planFromCompare, ReindexPlan } from './changed-files';
+import { requireRepoInSpace } from '../repo-guards';
 
 /**
  * 전체 재인덱싱으로 떨어진 이유. `planFor()` 가 `null` 을 돌려주는 네
@@ -81,12 +76,11 @@ export class IndexingService {
    * 「없음」과 「모름」을 헷갈리게 하지 않는다(10-3b · 11 의 규칙).
    */
   async status(spaceId: string, repoId: string) {
-    const repo = await this.prisma.repo.findFirst({
-      where: { id: repoId, spaceId },
-      select: { indexedAt: true, indexedCommitSha: true, indexedEmbeddingModel: true },
+    const repo = await requireRepoInSpace(this.prisma, spaceId, repoId, {
+      indexedAt: true,
+      indexedCommitSha: true,
+      indexedEmbeddingModel: true,
     });
-    // 403 이 아니라 404 다 — 403 은 그 저장소가 존재한다를 알려 준다.
-    if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
 
     const job = await this.prisma.repoIndexJob.findUnique({ where: { repoId } });
     const chunkCount = await this.chunks.countFor(spaceId, repoId);
@@ -106,23 +100,24 @@ export class IndexingService {
 
   /** 사람이 다시 태운다. **전체 재인덱싱**이다 — `baseSha` 를 비운다. */
   async requeue(spaceId: string, repoId: string) {
-    const repo = await this.prisma.repo.findFirst({
-      where: { id: repoId, spaceId },
-      select: { id: true },
-    });
-    if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
+    await requireRepoInSpace(this.prisma, spaceId, repoId, { id: true });
 
-    await this.queue.enqueue({
+    await this.enqueueFull(spaceId, repoId);
+    // 깨우지 않는다. 서비스가 워커를 부르면 둘이 서로를 참조해 순환 의존이
+    // 된다(IndexingWorker 가 이미 IndexingService 를 쓴다). 깨우는 것은
+    // 컨트롤러의 일이다.
+    return { state: 'queued' as const };
+  }
+
+  /** 전체 재인덱싱을 적재한다 — `baseSha` 가 없으면 전체다. 사람이 다시 태울 때 · 막힌 인덱스를 고칠 때. */
+  private enqueueFull(spaceId: string, repoId: string) {
+    return this.queue.enqueue({
       spaceId,
       repoId,
       reason: RepoIndexReason.manual,
       headSha: null,
       baseSha: null,
     });
-    // 깨우지 않는다. 서비스가 워커를 부르면 둘이 서로를 참조해 순환 의존이
-    // 된다(IndexingWorker 가 이미 IndexingService 를 쓴다). 깨우는 것은
-    // 컨트롤러의 일이다.
-    return { state: 'queued' as const };
   }
 
   /**
@@ -133,16 +128,13 @@ export class IndexingService {
    * 임베딩한 벡터끼리는 거리가 뜻을 갖지 않는다.
    */
   async search(spaceId: string, repoId: string, query: string, topK: number) {
-    const repo = await this.prisma.repo.findFirst({
-      where: { id: repoId, spaceId },
-      select: { id: true, indexedEmbeddingModel: true },
+    const repo = await requireRepoInSpace(this.prisma, spaceId, repoId, {
+      id: true,
+      indexedEmbeddingModel: true,
     });
-    if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
 
     if (!this.embedder) {
-      throw new ServiceUnavailableException(
-        '임베딩이 설정되지 않아 검색할 수 없습니다.',
-      );
+      throw new ServiceUnavailableException('임베딩이 설정되지 않아 검색할 수 없습니다.');
     }
 
     // 기록된 모델이 지금 모델과 다르면(또는 없으면) 거절한다 — search-guard.ts.
@@ -190,13 +182,7 @@ export class IndexingService {
     const chunkCount = await this.chunks.countFor(spaceId, repoId);
     if (!shouldHealIndex(job?.state ?? null, chunkCount)) return false;
 
-    await this.queue.enqueue({
-      spaceId,
-      repoId,
-      reason: RepoIndexReason.manual,
-      headSha: null,
-      baseSha: null,
-    });
+    await this.enqueueFull(spaceId, repoId);
     this.logger.log(`검색이 막힌 인덱스를 다시 인덱싱: repo=${repoId}`);
     return true;
   }
@@ -233,7 +219,9 @@ export class IndexingService {
       }
       // 우리 코드의 버그다. 시도 횟수로 세고 세 번이면 포기한다.
       this.logger.error(`인덱싱 중 예기치 못한 오류: repo=${job.repoId}`, err as Error);
-      await this.queue.fail(job.repoId, (err as Error).message, { countsAsAttempt: true });
+      await this.queue.fail(job.repoId, (err as Error).message, {
+        countsAsAttempt: true,
+      });
     }
   }
 
@@ -248,20 +236,7 @@ export class IndexingService {
 
     const { repo, cfg, token } = await this.ready(job);
 
-    // 목표 커밋. 연결로 깨어난 작업은 모르므로 여기서 정한다 (설계 §2).
-    let headSha = job.headSha;
-    if (!headSha) {
-      if (!repo.defaultBranch) {
-        throw new IndexingAbort('저장소의 default 브랜치를 알 수 없습니다.', true);
-      }
-      const res = await this.github.branchHead(cfg, token, repo.fullPath, repo.defaultBranch);
-      if (!res.ok) throw this.abortFor(res.status, res.retryAfter, 'default 브랜치 조회');
-      headSha = res.value;
-      await this.prisma.repoIndexJob.update({
-        where: { repoId: job.repoId },
-        data: { headSha },
-      });
-    }
+    const headSha = await this.resolveHead(job, repo, cfg, token);
 
     // **증분으로 갈 수 있나.** baseSha 가 있고 compare 가 성공하고 잘리지
     // 않았을 때만이다. 하나라도 어긋나면 전체다 (설계 §4).
@@ -274,6 +249,69 @@ export class IndexingService {
       repo.indexedEmbeddingModel,
     );
 
+    await this.clearForPlan(job, repo, planned);
+
+    const tree = await this.github.getTree(cfg, token, repo.fullPath, headSha);
+    if (!tree.ok) throw this.abortFor(tree.status, tree.retryAfter, '트리 조회');
+
+    // 증분이면 바뀐 것만 남긴다. **트리는 여전히 한 번 받는다** — sha 와 size 가
+    // 거기 있고, 그것 없이는 blob 을 부를 수 없다.
+    const wanted = planned.plan === null ? null : new Set(planned.plan.reindex);
+    const targets = tree.value.entries.filter(
+      (e) => !isTooLarge(e.size) && (wanted === null || wanted.has(e.path)),
+    );
+
+    if (planned.plan !== null) {
+      await this.dropSkipped(job, planned.plan.reindex, targets);
+    }
+
+    this.logger.log(
+      `인덱싱 시작: ${repo.fullPath}@${headSha.slice(0, 7)} ` +
+        `대상 ${targets.length}/${tree.value.entries.length}`,
+    );
+
+    await this.indexTargets(job, cfg, token, repo.fullPath, targets, headSha);
+
+    await this.queue.succeed(
+      job.repoId,
+      headSha,
+      tree.value.truncated,
+      (this.embedder as EmbeddingProvider).modelId,
+    );
+  }
+
+  /** 목표 커밋. 연결로 깨어난 작업은 모르므로 여기서 정해 작업에 적는다 (설계 §2). */
+  private async resolveHead(
+    job: LeasedJob,
+    repo: { fullPath: string; defaultBranch: string | null },
+    cfg: GithubOauthConfig,
+    token: string,
+  ): Promise<string> {
+    if (job.headSha) return job.headSha;
+    if (!repo.defaultBranch) {
+      throw new IndexingAbort('저장소의 default 브랜치를 알 수 없습니다.', true);
+    }
+    const res = await this.github.branchHead(
+      cfg,
+      token,
+      repo.fullPath,
+      repo.defaultBranch,
+    );
+    if (!res.ok) throw this.abortFor(res.status, res.retryAfter, 'default 브랜치 조회');
+    const headSha = res.value;
+    await this.prisma.repoIndexJob.update({
+      where: { repoId: job.repoId },
+      data: { headSha },
+    });
+    return headSha;
+  }
+
+  /** 다시 쌓기 전에 지울 것을 지운다 — 전체면 저장소 전부, 증분이면 사라진 파일만. */
+  private async clearForPlan(
+    job: LeasedJob,
+    repo: { fullPath: string; indexedEmbeddingModel: string | null },
+    planned: Awaited<ReturnType<IndexingService['planFor']>>,
+  ): Promise<void> {
     if (planned.plan === null) {
       // 전체 재인덱싱. **조용히 하지 않는다** — 왜 갑자기 500 요청을 썼는지,
       // 그리고 셋 중 어느 이유였는지 나중에 설명할 수 있어야 한다.
@@ -298,36 +336,37 @@ export class IndexingService {
         await this.chunks.deleteFile(job.spaceId, job.repoId, path);
       }
     }
+  }
 
-    const tree = await this.github.getTree(cfg, token, repo.fullPath, headSha);
-    if (!tree.ok) throw this.abortFor(tree.status, tree.retryAfter, '트리 조회');
-
-    // 증분이면 바뀐 것만 남긴다. **트리는 여전히 한 번 받는다** — sha 와 size 가
-    // 거기 있고, 그것 없이는 blob 을 부를 수 없다.
-    const wanted = planned.plan === null ? null : new Set(planned.plan.reindex);
-    const targets = tree.value.entries.filter(
-      (e) => !isTooLarge(e.size) && (wanted === null || wanted.has(e.path)),
-    );
-
-    // **범위(plan.reindex)에는 들어왔지만 크기 상한에 걸려 targets 에서
-    // 빠진 파일의 옛 청크를 지운다.** compare 는 이 파일을 `modified` 로
-    // 보고할 뿐 새로 넘긴 크기까지는 모른다 — 지우지 않으면 낡은 내용이
-    // 옛 commitSha 를 단 채 검색 결과에 계속 나오고, 전체 재인덱싱 전까지
-    // 스스로 낫지 않는다.
-    if (planned.plan !== null) {
-      const targetPaths = new Set(targets.map((e) => e.path));
-      for (const path of planned.plan.reindex) {
-        if (!targetPaths.has(path)) {
-          await this.chunks.deleteFile(job.spaceId, job.repoId, path);
-        }
+  /**
+   * **범위(plan.reindex)에는 들어왔지만 크기 상한에 걸려 targets 에서
+   * 빠진 파일의 옛 청크를 지운다.** compare 는 이 파일을 `modified` 로
+   * 보고할 뿐 새로 넘긴 크기까지는 모른다 — 지우지 않으면 낡은 내용이
+   * 옛 commitSha 를 단 채 검색 결과에 계속 나오고, 전체 재인덱싱 전까지
+   * 스스로 낫지 않는다.
+   */
+  private async dropSkipped(
+    job: LeasedJob,
+    reindex: string[],
+    targets: { path: string }[],
+  ): Promise<void> {
+    const targetPaths = new Set(targets.map((e) => e.path));
+    for (const path of reindex) {
+      if (!targetPaths.has(path)) {
+        await this.chunks.deleteFile(job.spaceId, job.repoId, path);
       }
     }
+  }
 
-    this.logger.log(
-      `인덱싱 시작: ${repo.fullPath}@${headSha.slice(0, 7)} ` +
-        `대상 ${targets.length}/${tree.value.entries.length}`,
-    );
-
+  /** 대상 파일을 `FETCH_CONCURRENCY` 개씩 인덱싱하고, 중간중간 리스를 늘린다. */
+  private async indexTargets(
+    job: LeasedJob,
+    cfg: GithubOauthConfig,
+    token: string,
+    fullPath: string,
+    targets: Parameters<IndexingService['indexOneFile']>[4][],
+    headSha: string,
+  ): Promise<void> {
     let done = 0;
     for (const batch of chunked(targets, FETCH_CONCURRENCY)) {
       // **`index()` 가 반환할 때 떠 있는 요청이 없어야 한다.** `Promise.all` 은
@@ -336,7 +375,7 @@ export class IndexingService {
       // `allSettled` 로 배치 전체가 정착하기를 기다린 뒤에야 실패를 판단한다.
       const results = await Promise.allSettled(
         batch.map((entry) =>
-          this.indexOneFile(job, cfg, token, repo.fullPath, entry, headSha as string),
+          this.indexOneFile(job, cfg, token, fullPath, entry, headSha),
         ),
       );
       const rejections = results.filter(
@@ -353,13 +392,6 @@ export class IndexingService {
       done += batch.length;
       if (done % RENEW_EVERY < FETCH_CONCURRENCY) await this.queue.renew(job.repoId);
     }
-
-    await this.queue.succeed(
-      job.repoId,
-      headSha,
-      tree.value.truncated,
-      (this.embedder as EmbeddingProvider).modelId,
-    );
   }
 
   /**
@@ -485,17 +517,22 @@ export class IndexingService {
 
     // **시도 횟수로 세지 않는다.** 아무도 연결하지 않은 것은 우리 잘못이
     // 아니고, 누군가 연결하면 그대로 풀린다.
-    throw new IndexingAbort(
-      '이 스페이스에 GitHub 을 연결한 사람이 없습니다.',
-      false,
-    );
+    throw new IndexingAbort('이 스페이스에 GitHub 을 연결한 사람이 없습니다.', false);
   }
 
-  private abortFor(status: number, retryAfter: number | undefined, what: string): IndexingAbort {
+  private abortFor(
+    status: number,
+    retryAfter: number | undefined,
+    what: string,
+  ): IndexingAbort {
     // 0 은 네트워크 자체가 실패한 것이다(클라이언트 규약).
     if (status === 0) return new IndexingAbort(`${what} 중 네트워크 실패`, false);
     if (status === 429) {
-      return new IndexingAbort(`GitHub 요청 한도를 넘었습니다 (${what})`, false, retryAfter);
+      return new IndexingAbort(
+        `GitHub 요청 한도를 넘었습니다 (${what})`,
+        false,
+        retryAfter,
+      );
     }
     // 다시 걸어도 같다. 세 번 기다리지 않고 즉시 포기한다.
     if (status === 401) {

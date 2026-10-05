@@ -7,7 +7,6 @@ import '../../ui/ui.dart';
 import '../settings/settings_widgets.dart';
 import '../space/members_controller.dart';
 import '../space/space_controller.dart';
-import '../space_settings/space_settings_controller.dart';
 import 'channel_settings_controller.dart';
 
 /// 채널 설정 「권한」 — 공개 채널의 역할별 예외(16단계 D21 · D24). admin+ 에게만 보인다.
@@ -15,7 +14,11 @@ import 'channel_settings_controller.dart';
 /// 손님 · 멤버 두 줄만 있다 — 관리자 · 소유자는 늘 보고 보낸다(관리자가 스스로 잠기는 길을
 /// 없앤다). 「보기」를 끄면 「보내기」도 뜻을 잃어 함께 꺼진다.
 class PermissionsSection extends ConsumerStatefulWidget {
-  const PermissionsSection({super.key, required this.spaceId, required this.channelId});
+  const PermissionsSection({
+    super.key,
+    required this.spaceId,
+    required this.channelId,
+  });
 
   final String spaceId;
   final String channelId;
@@ -35,16 +38,23 @@ class _PermissionsSectionState extends ConsumerState<PermissionsSection> {
       await call();
       ref.invalidate(channelPermissionsProvider(_key));
       // 내 채널 목록의 canSend 는 서버가 rooms:invalidate 로 다시 받게 한다. 그래도 바로 맞춘다.
-      await ref.read(workspaceRepositoryProvider).refreshChannels(widget.spaceId);
+      await ref
+          .read(workspaceRepositoryProvider)
+          .refreshChannels(widget.spaceId);
     } on ApiException catch (e) {
-      if (mounted) NxToast.show(context, messageFor(e.failure), kind: NxToastKind.error);
+      if (mounted) {
+        NxToast.show(context, messageFor(e.failure), kind: NxToastKind.error);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  void _set(RolePermission p, {required bool canView, required bool canSend}) => _run(
-        () => ref.read(channelsApiProvider).setPermission(
+  void _set(RolePermission p, {required bool canView, required bool canSend}) =>
+      _run(
+        () => ref
+            .read(channelsApiProvider)
+            .setPermission(
               widget.spaceId,
               widget.channelId,
               p.role,
@@ -55,8 +65,10 @@ class _PermissionsSectionState extends ConsumerState<PermissionsSection> {
       );
 
   void _reset(RolePermission p) => _run(
-        () => ref.read(channelsApiProvider).resetPermission(widget.spaceId, widget.channelId, p.role),
-      );
+    () => ref
+        .read(channelsApiProvider)
+        .resetPermission(widget.spaceId, widget.channelId, p.role),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +85,7 @@ class _PermissionsSectionState extends ConsumerState<PermissionsSection> {
         ),
         const SizedBox(height: NxSpacing.sp7),
         if (perms.hasError)
-          SettingsError(errorMessageOf(perms.error))
+          SettingsError(messageForError(perms.error))
         else if (!perms.hasValue)
           const NxSkeleton(lines: 2, lineHeight: 56)
         else
@@ -113,7 +125,8 @@ class PermissionRow extends StatelessWidget {
     final p = permission;
     final role = roleLabel(p.role);
 
-    Widget toggle(String label, bool value, ValueChanged<bool>? onChanged) => Row(
+    Widget toggle(String label, bool value, ValueChanged<bool>? onChanged) =>
+        Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(label, style: nx.text.secondary),

@@ -17,7 +17,9 @@ import { BASE, stamp, api, signup, submitGithubCallback } from './lib/api.mjs';
 import { check, summary } from './lib/checks.mjs';
 import { withDb, closeDb, fromNow } from './lib/db.mjs';
 await requireServer(BASE);
-const FAKE_PORT = 4599;
+// Windows 는 부팅 때 포트 범위를 예약해(Hyper-V · WSL) 4599 가 막히는 날이 있다 — 그때는
+// FAKE_GITHUB_PORT 와 서버의 GITHUB_*_BASE 를 같은 다른 포트로 맞춘다(CLAUDE.md §2).
+const FAKE_PORT = Number(process.env.FAKE_GITHUB_PORT || 4599);
 
 // ── 가짜 GitHub ────────────────────────────────────────
 const REPO = {

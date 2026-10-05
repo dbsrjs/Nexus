@@ -7,6 +7,7 @@ import '../../domain/models/sprint.dart';
 import '../auth/auth_controller.dart';
 import '../space/space_controller.dart';
 import 'board_controller.dart';
+import '../../core/settable.dart';
 
 final sprintsApiProvider = Provider<SprintsApi>(
   (ref) => SprintsApi(ref.watch(apiClientProvider)),
@@ -57,16 +58,10 @@ final sprintsEnabledProvider = Provider<bool>(
   (ref) => ref.watch(currentSpaceProvider)?.sprintsEnabled ?? false,
 );
 
-class BoardScopeNotifier extends Notifier<BoardScope> {
-  @override
-  BoardScope build() => BoardScope.all;
-
-  void set(BoardScope scope) => state = scope;
-}
-
-final boardScopeProvider = NotifierProvider<BoardScopeNotifier, BoardScope>(
-  BoardScopeNotifier.new,
-);
+final boardScopeProvider =
+    NotifierProvider<SettableNotifier<BoardScope>, BoardScope>(
+      () => SettableNotifier(BoardScope.all),
+    );
 
 /// 필터를 적용한 보드. 캐시를 다시 받지 않고 **화면에서 거른다** —
 /// 이슈는 이미 전부 캐시에 있고, 서버를 한 번 더 부르면 오프라인에서 필터가
@@ -75,7 +70,8 @@ final scopedBoardProvider = Provider<Map<IssueStatus, List<Issue>>>((ref) {
   final board = ref.watch(boardProvider);
   final scope = ref.watch(boardScopeProvider);
   // 스프린트를 끄면 보기 줄도 감춰진다 — 전에 골라 둔 보기가 남아 보드를 거르면 안 된다.
-  if (scope == BoardScope.all || !ref.watch(sprintsEnabledProvider)) return board;
+  if (scope == BoardScope.all || !ref.watch(sprintsEnabledProvider))
+    return board;
 
   final activeId = ref.watch(activeSprintProvider)?.id;
 
@@ -84,8 +80,7 @@ final scopedBoardProvider = Provider<Map<IssueStatus, List<Issue>>>((ref) {
     BoardScope.backlog => issue.sprintId == null,
     // 도는 스프린트가 없으면 걸러 낼 기준이 없다. 빈 보드를 보여 주는 것이
     // 맞다 — "지금 스프린트의 일"이 없다는 뜻이기 때문이다.
-    BoardScope.activeSprint =>
-      activeId != null && issue.sprintId == activeId,
+    BoardScope.activeSprint => activeId != null && issue.sprintId == activeId,
   };
 
   return {
@@ -157,9 +152,11 @@ class SprintActions {
 final sprintActionsProvider = Provider<SprintActions>(SprintActions.new);
 
 /// 번다운은 캐시하지 않는다 — 열 때마다 받는다.
-final burndownProvider = FutureProvider.autoDispose
-    .family<Burndown?, String>((ref, sprintId) async {
-      final spaceId = ref.watch(currentSpaceIdProvider);
-      if (spaceId == null) return null;
-      return ref.watch(sprintRepositoryProvider).burndown(spaceId, sprintId);
-    });
+final burndownProvider = FutureProvider.autoDispose.family<Burndown?, String>((
+  ref,
+  sprintId,
+) async {
+  final spaceId = ref.watch(currentSpaceIdProvider);
+  if (spaceId == null) return null;
+  return ref.watch(sprintRepositoryProvider).burndown(spaceId, sprintId);
+});
