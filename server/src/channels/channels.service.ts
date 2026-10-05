@@ -17,6 +17,7 @@ import { CreateChannelDto } from './dto/create-channel.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
 import { MentionsService } from '../messages/mentions.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { channelAccess } from './channel-access';
 import { dmKey, dmPeerOf } from './dm-key';
 
@@ -51,6 +52,10 @@ export class ChannelsService {
     // 채널 목록의 일부라 여기서 붙이는 편이 자연스럽다.
     @Inject(forwardRef(() => MentionsService))
     private readonly mentions: MentionsService,
+    // 읽음 위치가 움직이면 그 채널의 알림이 따라 읽힌다(18단계 N12). 알림은 가시성을 이쪽에
+    // 묻으므로 서로를 참조한다.
+    @Inject(forwardRef(() => NotificationsService))
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ──────────────────────────────────────────────
@@ -139,6 +144,48 @@ export class ChannelsService {
   // ──────────────────────────────────────────────
   // 조회
   // ──────────────────────────────────────────────
+
+  /**
+   * 이 채널을 **지금 볼 수 있는** 스페이스 멤버 id(18단계 설계 N3) — 알림을 받을 수 있는 사람.
+   * 사람마다 `canView` 를 묻지 않고 쿼리 셋으로 낸다. 판정은 `channelAccess()` 한 곳이다.
+   */
+  async viewerIds(channelId: string, spaceId: string): Promise<Set<string>> {
+    const channel = await this.prisma.channel.findFirst({
+      where: { id: channelId, spaceId },
+      select: { isPrivate: true },
+    });
+    if (!channel) return new Set();
+
+    const [members, roster, perms] = await Promise.all([
+      this.prisma.spaceMember.findMany({
+        where: { spaceId },
+        select: { userId: true, role: true },
+      }),
+      this.prisma.channelMember.findMany({
+        where: { channelId },
+        select: { userId: true },
+      }),
+      this.prisma.channelPermission.findMany({
+        where: { channelId },
+        select: { role: true, canView: true, canSend: true },
+      }),
+    ]);
+    const joined = new Set(roster.map((r) => r.userId));
+    const permByRole = new Map(perms.map((p) => [p.role, p]));
+
+    return new Set(
+      members
+        .filter(
+          (m) =>
+            channelAccess({
+              isPrivate: channel.isPrivate,
+              isMember: joined.has(m.userId),
+              perm: permByRole.get(m.role) ?? null,
+            }).view,
+        )
+        .map((m) => m.userId),
+    );
+  }
 
   /** 내가 볼 수 있는 채널 id 집합. 목록과 (4단계의) 소켓 룸 조인이 함께 쓴다. */
   async viewableChannelIds(member: SpaceMember): Promise<string[]> {
@@ -433,6 +480,12 @@ export class ChannelsService {
         lastReadMessageId: message.id,
       },
     });
+
+    // 그 채널의 알림도 따라 읽힌다(18단계 N12) — DM 을 다 읽었는데 알림함에 「안 읽음」이
+    // 남으면 거짓말이다. REST · 소켓이 모두 이 메서드를 지나므로 여기 한 곳에 둔다.
+    if (saved.lastReadAt) {
+      await this.notifications.markChannelReadThrough(member, channelId, saved.lastReadAt);
+    }
 
     // 개인 룸으로 쏜다. 같은 사용자의 다른 기기가 읽음 위치를 따라온다.
     // REST 와 소켓이 이 메서드를 함께 쓰므로 두 경로의 동작이 갈릴 수 없다.

@@ -5,6 +5,7 @@ import { DmsController } from './dms.controller';
 import { MessagesModule } from '../messages/messages.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 /**
  * 채널 · 가시성 검사 · 읽음 마커.
@@ -13,7 +14,12 @@ import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
  * 쓰인다. 그래서 export 한다.
  */
 @Module({
-  imports: [forwardRef(() => MessagesModule), SpacesModule, RealtimeEmitterModule],
+  imports: [
+    forwardRef(() => MessagesModule),
+    forwardRef(() => NotificationsModule),
+    SpacesModule,
+    RealtimeEmitterModule,
+  ],
   controllers: [ChannelsController, DmsController],
   providers: [ChannelsService],
   exports: [ChannelsService],

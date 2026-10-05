@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/breakpoints.dart';
 import '../../ui/ui.dart';
 import '../channel/channel_list.dart';
+import '../notifications/notifications_controller.dart';
 import '../space/space_controller.dart';
 import '../space/space_menu.dart';
 
@@ -91,11 +92,11 @@ class ChannelPane extends ConsumerWidget {
   }
 }
 
-/// 셸 안에서 갈 수 있는 곳 — 이슈 보드 · 스프린트 · 파일 · 저장소.
+/// 셸 안에서 갈 수 있는 곳 — 알림 · 이슈 보드 · 스프린트 · 파일 · 저장소.
 ///
 /// **글자만 둔다**(15단계 D5 — 목록 줄 앞 장식 아이콘을 두지 않는다). 이 판에는 이미
 /// 채널이 카테고리로 묶여 있다. 구조를 새로 만드는 것이 아니라 있던 것을 끝까지 쓴다.
-class _WorkSection extends StatelessWidget {
+class _WorkSection extends ConsumerWidget {
   const _WorkSection({
     required this.spaceId,
     required this.sprintsEnabled,
@@ -111,13 +112,14 @@ class _WorkSection extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final nx = NxTheme.of(context);
     final c = nx.colors;
     // 지금 어디에 있는지는 라우트가 안다. 셸이 따로 상태를 들지 않는다.
     final location = GoRouterState.of(context).uri.path;
+    final unread = ref.watch(unreadNotificationsProvider);
 
-    Widget item(String label, String suffix) {
+    Widget item(String label, String suffix, {Widget? trailing}) {
       final path = '/s/$spaceId$suffix';
       final selected = location == path || location.startsWith('$path/');
       return Padding(
@@ -126,6 +128,7 @@ class _WorkSection extends StatelessWidget {
           title: label,
           dense: true,
           selected: selected,
+          trailing: trailing,
           titleStyle: nx.text.sm.copyWith(
             color: selected ? c.textPrimary : c.textSecondary,
             fontWeight: selected ? FontWeight.w600 : null,
@@ -142,6 +145,12 @@ class _WorkSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const PaneSectionTitle('작업', first: true),
+        // 맨 위 — 놓친 것이 여기 모인다(18단계 N19). 0 이면 뱃지를 감춘다.
+        item(
+          '알림',
+          '/notifications',
+          trailing: unread > 0 ? NxBadge(count: unread) : null,
+        ),
         item('이슈 보드', '/issues'),
         if (sprintsEnabled) item('스프린트', '/sprints'),
         item('파일', '/files'),

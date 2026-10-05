@@ -8,6 +8,7 @@ import '../../domain/models/channel.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import '../../ui/ui.dart';
 import '../channel/channel_controller.dart';
+import '../notifications/notifications_controller.dart';
 import '../settings/settings_widgets.dart';
 import '../space/space_actions.dart';
 import '../space/space_controller.dart';
@@ -95,6 +96,8 @@ class _AppShellState extends ConsumerState<AppShell> {
         context.go('$base/repos');
       case 3:
         context.go('$base/files');
+      case 4:
+        context.go('$base/notifications');
     }
   }
 
@@ -254,7 +257,7 @@ class ShellHeader extends StatelessWidget {
   }
 }
 
-/// 셸 안의 경로가 어느 탭에 속하는지(대화 0 · 이슈 1 · 저장소 2 · 파일 3).
+/// 셸 안의 경로가 어느 탭에 속하는지(대화 0 · 이슈 1 · 저장소 2 · 파일 3 · 알림 4).
 ///
 /// **스프린트는 이슈 탭이다** — 보드 머리 줄에서 들어가는 갈래라, 빠뜨렸더니 스프린트
 /// 화면에서 「대화」 탭이 켜져 있었다(Android 에서 발견).
@@ -262,11 +265,12 @@ int shellTabFor(String path) => switch (path) {
   final p when p.contains('/issues') || p.contains('/sprints') => 1,
   final p when p.contains('/repos') => 2,
   final p when p.contains('/files') => 3,
+  final p when p.contains('/notifications') => 4,
   _ => 0,
 };
 
 /// 태블릿 · 모바일 공용. 레일 + 채널 패널은 왼쪽에서 밀려 나온다.
-class _CompactShell extends StatefulWidget {
+class _CompactShell extends ConsumerStatefulWidget {
   const _CompactShell({
     required this.showTabs,
     required this.child,
@@ -278,10 +282,10 @@ class _CompactShell extends StatefulWidget {
   final ValueChanged<int>? onTab;
 
   @override
-  State<_CompactShell> createState() => _CompactShellState();
+  ConsumerState<_CompactShell> createState() => _CompactShellState();
 }
 
-class _CompactShellState extends State<_CompactShell> {
+class _CompactShellState extends ConsumerState<_CompactShell> {
   bool _open = false;
 
   void _setOpen(bool open) {
@@ -296,6 +300,7 @@ class _CompactShellState extends State<_CompactShell> {
     // 직접 이동해도 탭이 따라온다.
     final location = GoRouterState.of(context).uri.path;
     final selectedTab = shellTabFor(location);
+    final unread = ref.watch(unreadNotificationsProvider);
     const paneWidth = NexusPaneWidth.rail + NexusPaneWidth.channels;
 
     return CallbackShortcuts(
@@ -312,11 +317,13 @@ class _CompactShellState extends State<_CompactShell> {
                 // 데스크톱 두 번째 판의 「작업」 갈래와 같은 곳을 담는다.
                 bottom: widget.showTabs
                     ? NxTabBar(
-                        tabs: const [
-                          NxTab('대화'),
-                          NxTab('이슈'),
-                          NxTab('저장소'),
-                          NxTab('파일'),
+                        tabs: [
+                          const NxTab('대화'),
+                          const NxTab('이슈'),
+                          const NxTab('저장소'),
+                          const NxTab('파일'),
+                          // 안 읽은 수(18단계 N19). 판 안에만 두면 모바일에서 수가 안 보인다.
+                          NxTab('알림', count: unread > 0 ? unread : null),
                         ],
                         index: selectedTab,
                         onChanged: widget.onTab ?? (_) {},

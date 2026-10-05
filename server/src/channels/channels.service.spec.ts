@@ -3,6 +3,7 @@ import { SpaceMember, SpaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { MentionsService } from '../messages/mentions.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ChannelsService } from './channels.service';
 
 /**
@@ -49,7 +50,10 @@ function serviceWith(options: {
     unreadCounts: jest.fn().mockResolvedValue(new Map<string, number>()),
   } as unknown as MentionsService;
 
-  return new ChannelsService(prisma, realtime, mentions);
+  // 알림은 읽음 위치를 따라 읽힐 때만 쓰인다(18단계 N12) — 이 스펙은 그 길을 타지 않는다.
+  const notifications = {} as unknown as NotificationsService;
+
+  return new ChannelsService(prisma, realtime, mentions, notifications);
 }
 
 const member: SpaceMember = {

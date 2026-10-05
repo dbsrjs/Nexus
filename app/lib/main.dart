@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router.dart';
 import 'data/settings_storage.dart';
+import 'features/notifications/notifications_controller.dart';
 import 'features/presence/presence_controller.dart';
 import 'features/presence/typing_controller.dart';
 import 'features/realtime/socket_controller.dart';
@@ -48,6 +49,8 @@ class NexusApp extends ConsumerWidget {
     ref.listen(presenceProvider, (_, _) {});
     ref.listen(typingProvider, (_, _) {});
     ref.listen(presenceReporterProvider, (_, _) {});
+    // 안 읽은 알림 수(18단계) — 셸 밖(설정 창)에 다녀오는 동안 멈추지 않게 뿌리에서 붙든다.
+    ref.listen(unreadNotificationsProvider, (_, _) {});
 
     final preference = ref.watch(themeModeProvider);
 

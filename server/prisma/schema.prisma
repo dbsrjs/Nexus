@@ -147,6 +147,11 @@ model User {
   /// 저장소 키 `avatars/<id>/<uuid>.webp`. 응답에 싣지 않는다.
   avatarKey    String?    @map("avatar_key")
   globalStatus UserStatus @default(offline) @map("global_status")
+  /// 알림 종류별 스위치(18단계 설계 N9). 사용자 단위 — 스페이스마다 다르게 고르지 않는다.
+  notifyMentions  Boolean @default(true) @map("notify_mentions")
+  notifyBroadcast Boolean @default(true) @map("notify_broadcast")
+  notifyDms       Boolean @default(true) @map("notify_dms")
+  notifyReplies   Boolean @default(true) @map("notify_replies")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
@@ -163,7 +168,9 @@ model User {
   assignedIssues     Issue[]         @relation("IssueAssignee")
   reportedIssues     Issue[]         @relation("IssueReporter")
   issueComments      IssueComment[]
-  notifications      Notification[]
+  notifications      Notification[] @relation("NotificationRecipient")
+  /// 내가 일으킨 알림(작성자). 받은 알림은 위의 notifications 다.
+  actedNotifications Notification[] @relation("NotificationActor")
   aiRuns             AiRun[]
 
   @@map("users")
@@ -340,6 +347,7 @@ model Channel {
   messages    Message[]
   attachments Attachment[]
   linkedRepos Repo[]
+  notifications Notification[]
 
   @@unique([spaceId, key])
   @@index([spaceId, position])
@@ -411,6 +419,7 @@ model Message {
   attachments Attachment[]
   originatedIssues Issue[]  @relation("IssueOriginMessage")
   repoEvents  RepoEvent[]
+  notifications Notification[]
 
   @@index([channelId, createdAt])
   @@index([parentId])
@@ -777,16 +786,29 @@ model RepoIndexChunk {
 model Notification {
   id        String   @id @default(uuid())
   spaceId   String   @map("space_id")
+  /// 받는 사람.
   userId    String   @map("user_id")
+  /// `mention` · `broadcast` · `dm` · `reply`(18단계 설계 N1). 늘어날 수 있어 enum 이 아니다.
   type      String
+  /// 18단계에서는 쓰지 않는다 — 본문은 읽을 때 메시지에서 꺼낸다(N16).
   payload   Json?
   read      Boolean  @default(false)
+  /// 볼 수 있는 채널로 거르고(N15) 채널을 읽을 때 따라 읽히려면(N12) 컬럼이어야 한다(N17).
+  channelId String?  @map("channel_id")
+  messageId String?  @map("message_id")
+  /// 일으킨 사람(메시지 작성자).
+  actorId   String?  @map("actor_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  space   Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user    User     @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  actor   User?    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([userId, read])
+  @@index([userId, spaceId, createdAt])
+  @@index([channelId])
   @@map("notifications")
 }
 

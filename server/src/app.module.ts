@@ -22,17 +22,14 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { EmbeddingModule } from './embedding/embedding.module';
 import { LlmModule } from './llm/llm.module';
 import { AiModule } from './ai/ai.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 /**
  * 전환 3단계 시점의 모듈 구성 (docs/전환-계획.md §6).
  *
- * 아직 spaceId 기준으로 이관하지 않은 모듈들 — notifications · gitlab —
- * 은 여기서 등록을 뺐고,
- * tsconfig 의 exclude 로 컴파일 대상에서도 제외했다.
- * 되살리는 절차: tsconfig(.build).json 의 exclude 에서 해당 경로를 지우고
- * 여기 imports 에 다시 넣는다.
- * (issues 는 9-1 에서, ai 는 13-1 에서, permissions 는 16-2 에서 각각 다시 써 편입했다.
- *  files 는 8-1 에서 attachments 로 다시 쓰고 옛 소스를 지웠다.)
+ * 단일 테넌트 시절 모듈은 전부 spaceId 기준으로 다시 쓰거나 지웠다
+ * (issues 9-1 · ai 13-1 · permissions 16-2 · notifications 18 은 다시 써 편입,
+ *  files 는 8-1 에서 attachments 로 다시 썼다). gitlab 은 20단계가 새로 쓴다.
  */
 @Module({
   imports: [
@@ -57,6 +54,7 @@ import { AiModule } from './ai/ai.module';
     EmbeddingModule,
     LlmModule,
     AiModule,
+    NotificationsModule,
   ],
   providers: [
     {

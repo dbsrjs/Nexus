@@ -7,6 +7,7 @@ import { ChannelsModule } from '../channels/channels.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { AttachmentsModule } from '../attachments/attachments.module';
 import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 /**
  * ChannelsModule 과 서로를 참조한다 — 채널 컨트롤러가 메시지 목록·전송 라우트를
@@ -22,6 +23,7 @@ import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
     SpacesModule,
     AttachmentsModule,
     RealtimeEmitterModule,
+    NotificationsModule,
   ],
   controllers: [MessagesController],
   providers: [MessagesService, ReactionsService, MentionsService],
