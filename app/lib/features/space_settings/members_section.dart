@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/space.dart';
 import '../../domain/models/space_member.dart';
-import '../../shared/widgets/user_avatar.dart';
+import '../presence/presence_widgets.dart';
 import '../../ui/ui.dart';
 import '../auth/auth_controller.dart';
 import '../channel/dm.dart';
@@ -111,7 +111,7 @@ class _MemberRow extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 2),
       child: NxRow(
         // 사람을 가리키는 내용이라 장식 아이콘 규칙(15단계 D5)에 걸리지 않는다.
-        leading: UserAvatar(
+        leading: PresenceAvatar(
           userId: member.userId,
           name: member.displayName,
           avatarUrl: member.avatarUrl,

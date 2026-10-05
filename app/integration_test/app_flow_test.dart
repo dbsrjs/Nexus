@@ -41,7 +41,7 @@ import 'package:nexus_app/ui/ui.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('로그인 → 스페이스 → 채널 → 전송 · 실시간 → 스레드 → 이슈 · 파일 · 저장소 → 설정', (
+  testWidgets('로그인 → 스페이스 → 채널 → 전송 · 실시간 → 스레드 → 이슈 · 파일 · 저장소 → 설정 → DM', (
     tester,
   ) async {
     final fx = await _Fixture.create();
@@ -276,6 +276,25 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpUntil(find.widgetWithText(NxRow, '스프린트'));
 
+    // ── 17-1: 「다이렉트 메시지」 「+」 → 사람 고르기 → DM 에 보내기 → 상대에게 닿는다 ──
+    await tester.tap(
+      find.byWidgetPredicate((w) => w is NxIconButton && w.label == '다이렉트 메시지 열기'),
+    );
+    await tester.pumpUntil(find.widgetWithText(NxRow, 'AppFlow C'));
+    await tester.tap(find.widgetWithText(NxRow, 'AppFlow C'));
+    // DM 의 입력창은 상대 이름으로 안내한다(D12).
+    await tester.pumpUntil(find.text('AppFlow C 님에게 메시지 보내기'));
+    final dmText = 'dm from app ${fx.stamp}';
+    await tester.enterText(find.byType(NxField).last, dmText);
+    await tester.pump();
+    await tester.tap(
+      find.byWidgetPredicate((w) => w is NxIconButton && w.label == '보내기'),
+    );
+    await tester.pumpUntil(_body(dmText));
+    await tester.pumpUntilTrue(() => fx.carolHasDm(), '상대 목록에 DM 이 없다');
+    // 채널 설정 버튼이 없다(D7).
+    expect(find.byWidgetPredicate((w) => w is NxIconButton && w.label == '채널 설정'), findsNothing);
+
     expect(tester.takeException(), isNull);
   });
 }
@@ -305,6 +324,7 @@ class _Fixture {
   late String _channelId;
   late String _aliceToken;
   late String _bobToken;
+  late String _carolToken;
 
   static Future<_Fixture> create() async {
     final stamp = DateTime.now().millisecondsSinceEpoch.toString();
@@ -329,6 +349,13 @@ class _Fixture {
       'role': 'member',
     });
     await _post('/invites/${invite['code']}/accept', _bobToken, {});
+
+    // DM 상대(17-1) — bob 은 16-1 갈래에서 내보내진다.
+    _carolToken = await _signup('appflow-c-$stamp@example.com', 'AppFlow C');
+    final carolInvite = await _post('/spaces/$_spaceId/invites', _aliceToken, {
+      'role': 'member',
+    });
+    await _post('/invites/${carolInvite['code']}/accept', _carolToken, {});
 
     // 기본 채널 `dev`(개발)를 쓴다. `general` 은 이름이 카테고리 「일반」과 같아
     // 채널 목록에서 글자로 찾으면 카테고리 머리를 누르게 된다.
@@ -362,6 +389,12 @@ class _Fixture {
   Future<bool> bobIsMember() async {
     final spaces = await _get('/spaces', _bobToken) as List;
     return spaces.cast<Map>().any((s) => s['id'] == _spaceId);
+  }
+
+  /// carol 의 채널 목록에 메시지가 있는 DM 이 있는가(17-1).
+  Future<bool> carolHasDm() async {
+    final channels = await _get('/spaces/$_spaceId/channels', _carolToken) as List;
+    return channels.cast<Map>().any((c) => c['kind'] == 'dm' && c['lastMessageAt'] != null);
   }
 
   /// 그 이름의 비공개 채널이 픽스처 스페이스에 있는가(16-2).

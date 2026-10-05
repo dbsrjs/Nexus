@@ -9,6 +9,10 @@ import 'package:nexus_app/features/channel/channel_controller.dart';
 import 'package:nexus_app/features/chat/thread_controller.dart';
 import 'package:nexus_app/features/chat/thread_screen.dart';
 import 'package:nexus_app/features/space/space_controller.dart';
+import 'package:nexus_app/data/socket/socket_event.dart';
+import 'package:nexus_app/domain/models/space_member.dart';
+import 'package:nexus_app/features/space/members_controller.dart';
+import 'package:nexus_app/features/realtime/socket_controller.dart';
 
 import 'support/nx_host.dart';
 
@@ -37,6 +41,10 @@ void main() {
         threadRepliesProvider.overrideWith(
           (ref) => Stream<List<Message>>.value(const []),
         ),
+        // 「입력 중」 줄(17단계)이 소켓 이벤트를 듣는다 — 진짜 소켓을 열지 않게 비운다.
+        socketEventsProvider.overrideWith((ref) => const Stream<SocketEvent>.empty()),
+        // 그 줄이 이름을 찾는 멤버 목록도 서버를 부르지 않게.
+        spaceMembersProvider.overrideWith((ref) async => const <SpaceMemberProfile>[]),
       ],
     );
     addTearDown(container.dispose);

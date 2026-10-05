@@ -1,5 +1,6 @@
 import '../../domain/models/issue.dart';
 import '../../domain/models/message.dart';
+import '../../domain/models/presence.dart';
 import '../../domain/models/space.dart';
 
 /// 서버 → 클라이언트 소켓 이벤트.
@@ -250,4 +251,28 @@ class SpaceRemoved extends SocketEvent {
   const SpaceRemoved(this.spaceId);
 
   final String spaceId;
+}
+
+/// 사람의 상태가 바뀌었다(17단계 D18). 그 사람과 함께 쓰는 스페이스 룸으로 온다 — 모두에게 같은 값.
+class PresenceChanged extends SocketEvent {
+  const PresenceChanged({required this.userId, required this.status});
+
+  final String userId;
+  final Presence status;
+}
+
+/// 누가 입력 중이다(17단계 D22). 채널 룸으로 오고 보낸 소켓은 받지 않는다 — 내 다른 기기는
+/// 받으므로 앱이 자기 id 를 거른다. 스레드면 `parentId`.
+class Typing extends SocketEvent {
+  const Typing({
+    required this.spaceId,
+    required this.channelId,
+    required this.userId,
+    this.parentId,
+  });
+
+  final String spaceId;
+  final String channelId;
+  final String userId;
+  final String? parentId;
 }

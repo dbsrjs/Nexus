@@ -12,6 +12,7 @@ import '../../ui/ui.dart';
 import '../../domain/models/channel.dart';
 import '../channel/channel_controller.dart';
 import '../channel/dm.dart';
+import '../presence/presence_widgets.dart';
 import '../realtime/socket_controller.dart';
 import '../repo/browse_controller.dart';
 import '../space/space_controller.dart';
@@ -104,6 +105,7 @@ class ChatScreen extends ConsumerWidget {
                   : MessageList(items: items),
             ),
           ),
+          if (channel != null) TypingLine(channelId: channel.id),
           // 보낼 수 없는 채널은 입력창 대신 이유를 말한다(16단계 D27).
           if (channel != null && !channel.canSend)
             channel.isDm

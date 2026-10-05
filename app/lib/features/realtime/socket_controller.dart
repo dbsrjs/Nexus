@@ -163,6 +163,8 @@ final realtimeChannelSyncProvider = Provider<void>((ref) {
       case SocketDisconnected():
       case OauthConnected():
       case AiRunDone():
+      case PresenceChanged():
+      case Typing():
         // 채널 목록·뱃지에 영향이 없다. 리액션과 스레드 답글은 열려 있는
         // 채널·스레드의 컨트롤러가 받는다. 계정 연결은 저장소 화면이 받는다.
         // **AI 실행은 drift 에 들어가지 않는다** — 이 컨트롤러는 drift 캐시만

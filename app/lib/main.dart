@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router.dart';
 import 'data/settings_storage.dart';
+import 'features/presence/presence_controller.dart';
+import 'features/presence/typing_controller.dart';
 import 'features/realtime/socket_controller.dart';
 import 'features/space/members_controller.dart';
 import 'features/settings/theme_controller.dart';
@@ -40,6 +42,12 @@ class NexusApp extends ConsumerWidget {
     // 있던 결함이다(16단계 app:flow 에서 잡았다). 셸은 설정 창이 열리면 내려가므로
     // 셸이 아니라 여기서 붙든다.
     ref.listen(memberNamesProvider, (_, _) {});
+
+    // 프레즌스 · 입력 중(17단계)도 같은 이유로 뿌리에서 붙든다 — 채널을 열기 전에 온 이벤트를
+    // 놓치지 않고, 이 기기의 상태(자리비움)를 앱이 사는 동안 내내 알린다.
+    ref.listen(presenceProvider, (_, _) {});
+    ref.listen(typingProvider, (_, _) {});
+    ref.listen(presenceReporterProvider, (_, _) {});
 
     final preference = ref.watch(themeModeProvider);
 

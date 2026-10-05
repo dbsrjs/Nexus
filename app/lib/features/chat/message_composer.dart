@@ -10,6 +10,8 @@ import '../../ui/ui.dart';
 import '../auth/auth_controller.dart';
 import '../channel/channel_controller.dart';
 import '../channel/dm.dart';
+import '../presence/typing_controller.dart';
+import '../realtime/socket_controller.dart';
 import '../space/members_controller.dart';
 import '../space/space_controller.dart';
 import 'attachment_draft.dart';
@@ -32,13 +34,19 @@ bool get _hardwareKeyboard =>
 
 /// 입력창. 채널과 스레드가 함께 쓴다 — Enter 전송 · IME 처리가 한 벌이어야 한다.
 class MessageComposer extends ConsumerStatefulWidget {
-  const MessageComposer({super.key, this.onSend, this.hint});
+  const MessageComposer({super.key, this.onSend, this.hint, this.channelId, this.parentId});
 
   /// 비우면 채널 전송. 스레드는 답글 전송을 넘긴다.
   final void Function(String body, List<MessageAttachment> attachments)? onSend;
 
   /// 비우면 현재 채널 이름으로 만든다.
   final String? hint;
+
+  /// 「입력 중」을 알릴 채널(17단계 D21). 비우면 현재 채널. 스레드는 셸 밖이라 넘긴다.
+  final String? channelId;
+
+  /// 스레드면 그 부모 메시지 — 스레드의 「입력 중」은 스레드에만 뜬다(D24).
+  final String? parentId;
 
   @override
   ConsumerState<MessageComposer> createState() => MessageComposerState();
@@ -102,7 +110,33 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
     _focus.requestFocus();
   }
 
+  /// 마지막으로 「입력 중」을 보낸 시각(D21 — 3초에 한 번).
+  DateTime? _typingSentAt;
+
+  void _announceTyping() {
+    if (_controller.text.trim().isEmpty) return;
+    final now = DateTime.now();
+    final last = _typingSentAt;
+    if (last != null && now.difference(last) < typingSendEvery) return;
+    final spaceId = ref.read(currentSpaceIdProvider);
+    final channelId = widget.channelId ?? ref.read(currentChannelIdProvider);
+    if (spaceId == null || channelId == null) return;
+    _typingSentAt = now;
+    ref.read(socketClientProvider).sendTyping(
+          spaceId: spaceId,
+          channelId: channelId,
+          parentId: widget.parentId,
+        );
+  }
+
+  /// 글자가 바뀌었을 때만 알린다 — 커서만 옮긴 것은 입력이 아니다.
+  String _lastText = '';
+
   void _onTextChanged() {
+    if (_controller.text != _lastText) {
+      _lastText = _controller.text;
+      _announceTyping();
+    }
     final selection = _controller.selection;
     // 범위를 잡고 있으면(드래그) 멘션을 치는 중이 아니다.
     final query = selection.isValid && selection.isCollapsed

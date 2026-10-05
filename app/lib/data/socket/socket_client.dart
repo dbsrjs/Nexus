@@ -1,3 +1,4 @@
+import '../../domain/models/presence.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -70,7 +71,9 @@ class SocketClient {
       ..on('member:left', (d) => _onMember(d, MemberChange.left))
       ..on('space:removed', _onSpaceRemoved)
       ..on('space:updated', _onSpaceUpdated)
-      ..on('rooms:invalidate', _onRoomsInvalidate);
+      ..on('rooms:invalidate', _onRoomsInvalidate)
+      ..on('presence:changed', _onPresenceChanged)
+      ..on('typing', _onTyping);
 
     _socket = socket;
     socket.connect();
@@ -89,6 +92,18 @@ class SocketClient {
       'spaceId': spaceId,
       'channelId': channelId,
       'lastReadMessageId': lastReadMessageId,
+    });
+  }
+
+  /// 이 기기의 상태(17단계 D16) — `online` · `away`.
+  void setPresence(String status) => _socket?.emit('presence:set', {'status': status});
+
+  /// 입력 중(17단계 D21). 부르는 쪽이 3초에 한 번으로 줄인다.
+  void sendTyping({required String spaceId, required String channelId, String? parentId}) {
+    _socket?.emit('typing', {
+      'spaceId': spaceId,
+      'channelId': channelId,
+      'parentId': ?parentId,
     });
   }
 
@@ -333,6 +348,28 @@ class SocketClient {
     final spaceId = _asMap(data)?['spaceId'];
     if (spaceId is! String) return;
     _emit(SpaceRemoved(spaceId));
+  }
+
+  void _onPresenceChanged(dynamic data) {
+    final map = _asMap(data);
+    final userId = map?['userId'];
+    if (userId is! String) return;
+    _emit(PresenceChanged(userId: userId, status: presenceFromWire(map?['status'])));
+  }
+
+  void _onTyping(dynamic data) {
+    final map = _asMap(data);
+    final spaceId = map?['spaceId'];
+    final channelId = map?['channelId'];
+    final userId = map?['userId'];
+    if (spaceId is! String || channelId is! String || userId is! String) return;
+    final parentId = map?['parentId'];
+    _emit(Typing(
+      spaceId: spaceId,
+      channelId: channelId,
+      userId: userId,
+      parentId: parentId is String ? parentId : null,
+    ));
   }
 
   static Map<String, dynamic>? _asMap(dynamic data) =>

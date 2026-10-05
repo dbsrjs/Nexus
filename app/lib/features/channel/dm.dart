@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/channel.dart';
 import '../../domain/models/space_member.dart';
-import '../../shared/widgets/user_avatar.dart';
+import '../presence/presence_widgets.dart';
 import '../../ui/ui.dart';
 import '../auth/auth_controller.dart';
 import '../space/members_controller.dart';
@@ -141,8 +141,7 @@ class _DmPickerState extends ConsumerState<_DmPicker> {
   }
 }
 
-/// DM 자리의 사람 아바타. 17-2 에서 프레즌스 점이 여기에 붙는다 — 사람을 가리키는 자리는
-/// 이것 하나를 쓴다(D20).
+/// DM 자리의 사람 아바타 — 프레즌스 점이 붙는다(D20).
 class DmAvatar extends StatelessWidget {
   const DmAvatar({
     super.key,
@@ -159,5 +158,5 @@ class DmAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      UserAvatar(userId: userId, name: name, avatarUrl: avatarUrl, size: size);
+      PresenceAvatar(userId: userId, name: name, avatarUrl: avatarUrl, size: size);
 }
