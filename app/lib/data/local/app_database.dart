@@ -556,11 +556,7 @@ class AppDatabase extends _$AppDatabase {
     final match = channelId ?? key!;
     return customSelect(
       '''
-      SELECT id, channel_id, body, created_at, edited_at, deleted_at,
-             author_id, author_name, author_avatar_url, reactions, quoted, mentions,
-             pinned, attachments, repo_event_id,
-             parent_id, reply_count, last_reply_at,
-             0 AS queued, 0 AS failed, 0 AS seq
+      SELECT $_cachedMessageColumns
         FROM cached_messages
        WHERE ${channelId != null ? 'channel_id = ?1' : cachedWhere}
          ${channelId != null ? 'AND $cachedWhere' : ''}
@@ -599,22 +595,11 @@ class AppDatabase extends _$AppDatabase {
   Future<void> upsertMessage(String spaceId, Message message) =>
       upsertMessages(spaceId, [message]);
 
-  /// 리액션만 갈아 끼운다.
-  ///
-  /// 메시지 행 전체를 다시 쓰지 않는 이유: 소켓으로 오는 리액션 이벤트에는
-  /// 본문·작성자가 없다. 통째로 upsert 하면 그 값들을 잃는다.
-  ///
-  /// 캐시에 없는 메시지면 아무 일도 하지 않는다 — 아직 받지 못한 메시지의
-  /// 리액션은 다음 새로고침 때 함께 온다.
   /// 메시지 하나를 구독한다. 스레드 화면이 부모를 그릴 때 쓴다 —
   /// 답글이 달리면 `replyCount` 가 바뀌므로 한 번 읽고 마는 대신 구독한다.
   Stream<Message?> watchMessage(String id) => customSelect(
         '''
-        SELECT id, channel_id, body, created_at, edited_at, deleted_at,
-               author_id, author_name, author_avatar_url, reactions, quoted, mentions,
-             pinned, attachments, repo_event_id,
-               parent_id, reply_count, last_reply_at,
-               0 AS queued, 0 AS failed, 0 AS seq
+        SELECT $_cachedMessageColumns
           FROM cached_messages
          WHERE id = ?1
         ''',
@@ -648,6 +633,13 @@ class AppDatabase extends _$AppDatabase {
     return row?.reactions ?? const [];
   }
 
+  /// 리액션만 갈아 끼운다.
+  ///
+  /// 메시지 행 전체를 다시 쓰지 않는 이유: 소켓으로 오는 리액션 이벤트에는
+  /// 본문·작성자가 없다. 통째로 upsert 하면 그 값들을 잃는다.
+  ///
+  /// 캐시에 없는 메시지면 아무 일도 하지 않는다 — 아직 받지 못한 메시지의
+  /// 리액션은 다음 새로고침 때 함께 온다.
   Future<void> setReactions(String messageId, List<MessageReaction> reactions) =>
       (update(cachedMessages)..where((m) => m.id.equals(messageId)))
           .write(CachedMessagesCompanion(reactions: Value(reactions)));
@@ -884,13 +876,11 @@ class AppDatabase extends _$AppDatabase {
   /// 남겨 두면 다음에 로그인한 사람의 이름으로 나갈 수 있다.
   Future<void> clearAll() async {
     await transaction(() async {
-      await delete(cachedMessages).go();
-      await delete(cachedChannels).go();
-      await delete(cachedCategories).go();
-      await delete(cachedSpaces).go();
-      await delete(cachedIssues).go();
-      await delete(cachedSprints).go();
-      await delete(outboxMessages).go();
+      // 캐시 전부 + 전송 큐. 캐시 목록은 스키마 재생성과 같은 것을 쓴다 — 테이블을 더할 때
+      // 한 곳만 고치면 되게.
+      for (final table in [..._rebuildableCaches, outboxMessages]) {
+        await delete(table).go();
+      }
     });
   }
 
@@ -1064,3 +1054,13 @@ CachedMessagesCompanion _toRow(String spaceId, Message message) =>
       pinned: Value(message.pinned),
       repoEventId: Value(message.repoEventId),
     );
+
+/// 캐시 메시지를 [_rowToMessage] 가 읽는 모양으로 꺼내는 열 목록. 목록 구독(전송 큐와
+/// `UNION`)과 메시지 하나 구독이 **같은 열을 같은 순서로** 써야 한다 — 따로 적어 두었다가
+/// 한쪽에만 열을 더하면 `_rowToMessage` 가 없는 열을 읽는다(§2 「양쪽 SELECT 에 모두」).
+const _cachedMessageColumns = '''
+id, channel_id, body, created_at, edited_at, deleted_at,
+author_id, author_name, author_avatar_url, reactions, quoted, mentions,
+pinned, attachments, repo_event_id,
+parent_id, reply_count, last_reply_at,
+0 AS queued, 0 AS failed, 0 AS seq''';

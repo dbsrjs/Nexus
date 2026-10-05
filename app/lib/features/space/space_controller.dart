@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/api/channels_api.dart';
 import '../../data/api/spaces_api.dart';
 import '../../data/local/app_database.dart';
 import '../../data/repositories/workspace_repository.dart';
 import '../../domain/models/space.dart';
 import '../auth/auth_controller.dart';
+import '../channel/channel_controller.dart';
 
 /// 로컬 DB. 앱 전체에 하나뿐이다.
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -17,7 +17,9 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 final workspaceRepositoryProvider = Provider<WorkspaceRepository>((ref) {
   return WorkspaceRepository(
     spacesApi: ref.watch(spacesApiProvider),
-    channelsApi: ChannelsApi(ref.watch(apiClientProvider)),
+    // 채널 API 는 channelsApiProvider 하나를 쓴다 — 여기서 따로 만들면 테스트가 그 provider 를
+    // 덮어도 저장소에는 닿지 않는다.
+    channelsApi: ref.watch(channelsApiProvider),
     db: ref.watch(appDatabaseProvider),
   );
 });

@@ -284,8 +284,9 @@ class _DmTile extends ConsumerWidget {
     final c = nx.colors;
     final selected = ref.watch(currentChannelIdProvider) == channel.id;
     final spaceId = ref.watch(currentSpaceIdProvider);
-    final peer = ref.watch(memberProfilesProvider)[channel.dmUserId];
-    final name = peer?.displayName ?? '나간 사람';
+    final members = ref.watch(memberProfilesProvider);
+    final peer = members[channel.dmUserId];
+    final name = dmPeerName(members, channel);
     final unread = channel.muted ? 0 : channel.unreadCount;
     final bold = selected || unread > 0;
 
