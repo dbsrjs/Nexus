@@ -521,7 +521,11 @@ export class MessagesService {
 
   /** GET /api/spaces/:spaceId/messages/:id/edits — 수정 이력, 최신순. */
   async listEdits(messageId: string, member: SpaceMember) {
-    await this.requireVisibleMessage(messageId, member);
+    const message = await this.requireVisibleMessage(messageId, member);
+    // **삭제된 메시지의 이력은 비운다.** 이력은 고치기 전 본문이라, 그대로 주면
+    // 삭제가 가린 본문이 여기서 다시 읽힌다 — 소켓 페이로드에서 본문을 빼는 것과
+    // 같은 이유다. 행은 지우지 않는다(무기한 보관).
+    if (message.deletedAt) return [];
 
     return this.prisma.messageEdit.findMany({
       where: { messageId },
