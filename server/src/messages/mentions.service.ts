@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { MentionType, Prisma, SpaceMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { groupBy } from '../common/group-by';
 
 /**
  * 본문에 저장하는 멘션 표기.
@@ -134,17 +135,15 @@ export class MentionsService {
       },
     });
 
-    const result = new Map<string, MentionSummary[]>();
-    for (const row of rows) {
-      const list = result.get(row.messageId) ?? [];
-      list.push({
+    return groupBy(
+      rows,
+      (row) => row.messageId,
+      (row): MentionSummary => ({
         type: row.type,
         userId: row.userId,
         name: row.user?.name ?? null,
-      });
-      result.set(row.messageId, list);
-    }
-    return result;
+      }),
+    );
   }
 
   /**
@@ -166,9 +165,7 @@ export class MentionsService {
     // 통째로 빠진다(같은 이유로 `channels.service.ts` 의 안 읽은 수도 LEFT 다).
     //
     // id 컬럼은 uuid 가 아니라 **text** 다 — `::uuid` 캐스팅 금지.
-    const rows = await this.prisma.$queryRaw<
-      { channel_id: string; count: bigint }[]
-    >`
+    const rows = await this.prisma.$queryRaw<{ channel_id: string; count: bigint }[]>`
       SELECT m.channel_id, COUNT(*) AS count
         FROM mentions mt
         JOIN messages m ON m.id = mt.message_id

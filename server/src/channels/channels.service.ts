@@ -338,9 +338,7 @@ export class ChannelsService {
     // id 컬럼은 uuid 타입이 아니라 **text** 다. Prisma 가 `String @id @default(uuid())`
     // 를 text 로 만들기 때문이다. 파라미터를 ::uuid 로 캐스팅하면
     // `operator does not exist: text = uuid` 로 실패한다.
-    const rows = await this.prisma.$queryRaw<
-      { channel_id: string; unread: bigint }[]
-    >`
+    const rows = await this.prisma.$queryRaw<{ channel_id: string; unread: bigint }[]>`
       SELECT m.channel_id, COUNT(*) AS unread
       FROM messages m
       LEFT JOIN channel_members cm
@@ -451,17 +449,24 @@ export class ChannelsService {
 
     if (updated.isPrivate !== before.isPrivate) {
       if (updated.isPrivate) {
-        // 공개 → 비공개 — 명단에 없는 스페이스 멤버를 그 채널 룸에서 **서버가 직접** 뺀다(D13a).
-        const [members, roster] = await Promise.all([
-          this.prisma.spaceMember.findMany({ where: { spaceId }, select: { userId: true } }),
-          this.prisma.channelMember.findMany({ where: { channelId }, select: { userId: true } }),
+        // 공개 → 비공개 — 이제 볼 수 없는 스페이스 멤버를 그 채널 룸에서 **서버가 직접** 뺀다(D13a).
+        // 「볼 수 있는가」는 `viewerIds()`(→ `channelAccess()`)에게 묻는다. 예전에는 「명단에 있나」를
+        // 여기서 따로 계산했다 — 같은 답이지만 규칙을 한 번 더 적어 두면 새 규칙이 한쪽에만 걸린다(§2).
+        const [members, viewers] = await Promise.all([
+          this.prisma.spaceMember.findMany({
+            where: { spaceId },
+            select: { userId: true },
+          }),
+          this.viewerIds(channelId, spaceId),
         ]);
-        const kept = new Set(roster.map((r) => r.userId));
         for (const m of members) {
-          if (!kept.has(m.userId)) this.realtime.evict(m.userId, [room.channel(channelId)]);
+          if (!viewers.has(m.userId))
+            this.realtime.evict(m.userId, [room.channel(channelId)]);
         }
       }
-      this.realtime.toSpace(spaceId, 'rooms:invalidate', { reason: 'channel.visibility' });
+      this.realtime.toSpace(spaceId, 'rooms:invalidate', {
+        reason: 'channel.visibility',
+      });
     }
     return updated;
   }
@@ -511,7 +516,11 @@ export class ChannelsService {
     // 그 채널의 알림도 따라 읽힌다(18단계 N12) — DM 을 다 읽었는데 알림함에 「안 읽음」이
     // 남으면 거짓말이다. REST · 소켓이 모두 이 메서드를 지나므로 여기 한 곳에 둔다.
     if (saved.lastReadAt) {
-      await this.notifications.markChannelReadThrough(member, channelId, saved.lastReadAt);
+      await this.notifications.markChannelReadThrough(
+        member,
+        channelId,
+        saved.lastReadAt,
+      );
     }
 
     // 개인 룸으로 쏜다. 같은 사용자의 다른 기기가 읽음 위치를 따라온다.
@@ -584,7 +593,9 @@ export class ChannelsService {
     });
     if (!peer) throw new NotFoundException('멤버를 찾을 수 없습니다');
 
-    const where = { spaceId_key: { spaceId: member.spaceId, key: dmKey(member.userId, peerId) } };
+    const where = {
+      spaceId_key: { spaceId: member.spaceId, key: dmKey(member.userId, peerId) },
+    };
     let channel = await this.prisma.channel.findUnique({ where });
     if (!channel) {
       try {
@@ -598,7 +609,10 @@ export class ChannelsService {
           },
         });
       } catch (err) {
-        if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') {
+        if (
+          !(err instanceof Prisma.PrismaClientKnownRequestError) ||
+          err.code !== 'P2002'
+        ) {
           throw err;
         }
         channel = await this.prisma.channel.findUniqueOrThrow({ where });
