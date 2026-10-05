@@ -168,12 +168,4 @@ export class RefreshTokenService {
       data: { revokedAt: new Date() },
     });
   }
-
-  /** 사용자의 모든 세션 종료 (비밀번호 변경 등에서 쓴다). */
-  async revokeAllForUser(userId: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-  }
 }

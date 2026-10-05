@@ -19,7 +19,8 @@ import { StorageDriver } from './storage.driver';
     {
       provide: StorageDriver,
       useFactory: (config: ConfigService): StorageDriver => {
-        const kind = config.get<string>('STORAGE_DRIVER') ?? 'local';
+        // `??` 는 `STORAGE_DRIVER=` 처럼 자리만 잡은 빈 값을 통과시켜 부팅이 멈췄다(CLAUDE.md §2) — `||`.
+        const kind = config.get<string>('STORAGE_DRIVER')?.trim() || 'local';
         if (kind !== 'local') {
           // 조용히 로컬로 떨어지면 배포에서 파일이 서버 디스크에 쌓인다.
           throw new Error(
