@@ -25,13 +25,8 @@
 
 프레즌스는 **서버 메모리**에 있다(저장하지 않는다) — 인스턴스가 하나라는 전제다.
 
-**미이관 모듈은 컴파일 대상에서 빠져 있다.** `src/notifications`
-`src/gitlab` 은 옛 스키마를 참조해 `tsconfig.json` · `tsconfig.build.json` 의 `exclude` 에
-들어 있다. 소스는 참고용이다. `src/realtime/redis-io.adapter.ts` 도 다중 인스턴스가 될
-때까지 개별 제외돼 있다.
-
-되살리는 절차: 두 tsconfig 의 `exclude` 에서 해당 경로를 지우고 →
-`spaceId` 기준으로 코드를 고친 뒤 → `app.module.ts` 의 `imports` 에 넣는다.
+옛 단일 테넌트 모듈은 남아 있지 않다(`notifications` · `gitlab` 은 18 · 20 단계가 새로 쓴다).
+`src/realtime/redis-io.adapter.ts` 만 다중 인스턴스가 될 때까지 두 tsconfig 의 `exclude` 로 빠져 있다.
 
 ## 실행 방법
 
