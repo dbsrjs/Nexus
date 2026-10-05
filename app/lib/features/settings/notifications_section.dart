@@ -127,7 +127,11 @@ class _ChannelSwitches extends ConsumerWidget {
                 SizedBox(
                   width: 20,
                   child: channel.isPrivate
-                      ? NxIcon(NxIcons.lock, size: 13, color: c.textSecondary)
+                      ? NxIcon(
+                          NxIcons.lock,
+                          size: NxIconSize.sm,
+                          color: c.textSecondary,
+                        )
                       : Text(
                           '#',
                           style: nx.text.mono.copyWith(

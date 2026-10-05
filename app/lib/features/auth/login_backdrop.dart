@@ -326,7 +326,7 @@ class _FragmentCard extends StatelessWidget {
     children: [
       Row(
         children: [
-          NxIcon(NxIcons.ai, size: 14, color: nx.colors.accent),
+          NxIcon(NxIcons.ai, size: NxIconSize.sm, color: nx.colors.accent),
           const SizedBox(width: NxSpacing.sp4),
           Text(
             'AI · 채널 요약',

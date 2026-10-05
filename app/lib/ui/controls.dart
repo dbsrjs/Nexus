@@ -111,7 +111,7 @@ class NxCheck extends StatelessWidget {
                     ),
             ),
             child: value
-                ? NxIcon(NxIcons.check, size: 12, color: c.onAccent)
+                ? NxIcon(NxIcons.check, size: NxIconSize.xs, color: c.onAccent)
                 : null,
           ),
           if (showLabel) ...[
@@ -177,7 +177,7 @@ class NxSegmented<T> extends StatelessWidget {
                 color: selected
                     ? c.bgElevated
                     : (s.hovered
-                          ? c.bgElevated.withValues(alpha: .5)
+                          ? c.bgElevated.withValues(alpha: NxAlpha.hover)
                           : NxColors.transparent),
                 borderRadius: BorderRadius.circular(NxRadius.inner),
               ),
@@ -294,7 +294,11 @@ class NxSelect<T> extends StatelessWidget {
                   ),
                 ),
               ),
-              NxIcon(NxIcons.chevronDown, size: 14, color: c.textSecondary),
+              NxIcon(
+                NxIcons.chevronDown,
+                size: NxIconSize.sm,
+                color: c.textSecondary,
+              ),
             ],
           ),
         ),

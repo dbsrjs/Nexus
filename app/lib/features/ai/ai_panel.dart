@@ -440,7 +440,7 @@ class _Waiting extends StatelessWidget {
         ],
         Row(
           children: [
-            const NxSpinner(size: 14),
+            const NxSpinner(size: NxIconSize.sm),
             const SizedBox(width: NxSpacing.sp4),
             Expanded(
               child: Semantics(
@@ -574,7 +574,7 @@ class _TurnView extends StatelessWidget {
           // 나중에 같은 질문을 하면 주 모델이 다시 답한다.
           Row(
             children: [
-              NxIcon(NxIcons.info, size: 14, color: c.textSecondary),
+              NxIcon(NxIcons.info, size: NxIconSize.sm, color: c.textSecondary),
               const SizedBox(width: NxSpacing.sp3),
               Expanded(
                 child: Text('사용량이 많아 가벼운 모델이 답했습니다', style: nx.text.secondary),

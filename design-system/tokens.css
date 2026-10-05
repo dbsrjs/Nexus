@@ -32,6 +32,7 @@
   --warning: #D3B069;
   --danger: #D47D7D;
   --merged: #A18ECC;
+  --on-danger: #121314;  /* danger 를 칠한 자리의 글자 */
 
   /* ── 아바타 ─────────────────────────────────
    * 8색 전부 채도 28% · 명도 66% 고정. 색상만 균등 분배한다.
@@ -104,6 +105,16 @@
   --motion-micro: 120ms;
   --motion-panel: 180ms;
   --ease: cubic-bezier(0, 0, .2, 1);
+
+  /* ── 투명도 — 색을 옅게 덧칠하는 비율 (NxAlpha) ── */
+  --alpha-wash: .06;       /* 드롭 영역 */
+  --alpha-tint: .12;       /* 색 바탕 */
+  --alpha-selection: .35;  /* 글자 선택 */
+  --alpha-edge: .45;       /* 색 테두리 */
+  --alpha-hover: .6;       /* 한 단 위 표면을 반쯤 */
+
+  /* ── 아이콘 크기 (NxIconSize) ── */
+  --icon-xs: 12px;  --icon-sm: 14px;  --icon-md: 16px;
 }
 
 /* ── 라이트 모드 — 같은 팔레트를 뒤집는다 ─────────── */
@@ -118,6 +129,12 @@
   --accent: #326C8F;
   --accent-subtle: rgba(50, 108, 143, .09);
   --accent-press: #285571;
+  /* 의미색 — 색상 · 채도는 그대로, 명도만 낮춰 라이트 바탕에서 4.5:1 이상 */
+  --success: #407758;
+  --warning: #866727;
+  --danger: #BE3F3F;
+  --merged: #775BB5;
+  --on-danger: #FFFFFF;
   --decor-dot: rgba(39, 55, 77, .10);
   --decor-wire: rgba(50, 108, 143, .38);
 }

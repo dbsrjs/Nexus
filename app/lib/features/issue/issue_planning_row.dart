@@ -185,7 +185,11 @@ class _Field extends StatelessWidget {
             const SizedBox(width: NxSpacing.sp3),
             Text(value, style: nx.text.sm),
             const SizedBox(width: NxSpacing.sp3),
-            NxIcon(NxIcons.chevronDown, size: 12, color: c.textSecondary),
+            NxIcon(
+              NxIcons.chevronDown,
+              size: NxIconSize.xs,
+              color: c.textSecondary,
+            ),
           ],
         ),
       ),

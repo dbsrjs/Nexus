@@ -374,7 +374,7 @@ class NxScrollBehavior extends ScrollBehavior {
           radius: const Radius.circular(NxRadius.full),
           thumbColor: NxTheme.of(
             context,
-          ).colors.borderStrong.withValues(alpha: .6),
+          ).colors.borderStrong.withValues(alpha: NxAlpha.hover),
           child: child,
         );
       case TargetPlatform.android:

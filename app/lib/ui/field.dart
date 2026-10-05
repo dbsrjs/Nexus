@@ -175,7 +175,7 @@ class _NxFieldState extends State<NxField>
       cursorWidth: 2,
       cursorRadius: const Radius.circular(1), // 토큰 밖: 커서 두께(2)의 반원
       backgroundCursorColor: c.borderStrong,
-      selectionColor: c.accent.withValues(alpha: .35),
+      selectionColor: c.accent.withValues(alpha: NxAlpha.selection),
       selectionControls: NxTextSelectionControls(c.accent),
       contextMenuBuilder: (context, state) => NxTextContextMenu(
         anchors: state.contextMenuAnchors,

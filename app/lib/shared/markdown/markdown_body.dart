@@ -288,6 +288,7 @@ class _SpoilerState extends State<_Spoiler> {
       onTap: () => setState(() => _revealed = true),
       child: Container(
         decoration: BoxDecoration(
+          // 토큰 밖: 스포일러 가림막 — 글자가 비치지 않을 만큼 진하되 «가린 것» 으로 읽히게 85%.
           color: NxTheme.of(context).colors.textPrimary.withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(NxRadius.sm),
         ),

@@ -64,7 +64,7 @@ class SpaceMenu extends ConsumerWidget {
             const SizedBox(width: NxSpacing.sp2),
             NxIcon(
               NxIcons.chevronDown,
-              size: 14,
+              size: NxIconSize.sm,
               color: s.hovered ? c.textPrimary : c.textSecondary,
             ),
           ],

@@ -31,6 +31,8 @@ class NxRoot extends StatelessWidget {
       MediaQuery.platformBrightnessOf(context),
     );
     final dark = brightness == Brightness.dark;
+    // 애니메이션 줄이기 — 전환 시간 토큰(NxMotion)이 이 값을 보고 0 이 된다(디자인 시스템 §4).
+    NxMotion.reduced = MediaQuery.disableAnimationsOf(context);
     // 시스템 바의 아이콘 밝기 — Material 의 AppBar 가 대신 해 주던 일이다. 없으면 라이트
     // 테마에서 상태 표시줄 아이콘이 흰색으로 남아 보이지 않았다(Android 에뮬레이터에서 발견).
     return AnnotatedRegion<SystemUiOverlayStyle>(

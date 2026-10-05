@@ -101,6 +101,7 @@ class NxSkeleton extends StatelessWidget {
     // 라이트의 elevated 는 흰색이라 표면(#F7F8F8) 위에서 거의 안 보인다 — 선 색을 옅게 쓴다.
     final bar = theme.isDark
         ? theme.colors.bgElevated
+        // 토큰 밖: 라이트 뼈대 막대 — 흰 표면 위에서 겨우 보이는 정도(다크의 elevated 와 같은 대비).
         : theme.colors.borderStrong.withValues(alpha: .28);
     return Semantics(
       label: semanticLabel,

@@ -136,7 +136,7 @@ class _ToastView extends StatelessWidget {
           borderRadius: BorderRadius.circular(NxRadius.md),
           border: Border.all(
             color: toast.kind == NxToastKind.error
-                ? c.danger.withValues(alpha: .35)
+                ? c.danger.withValues(alpha: NxAlpha.edge)
                 : c.divider,
           ),
         ),

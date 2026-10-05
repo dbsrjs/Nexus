@@ -424,7 +424,7 @@ class _BoardColumn extends StatelessWidget {
           padding: const EdgeInsets.all(NxSpacing.sp3),
           decoration: BoxDecoration(
             color: hovering
-                ? c.accent.withValues(alpha: .06)
+                ? c.accent.withValues(alpha: NxAlpha.wash)
                 : NxColors.transparent,
             borderRadius: BorderRadius.circular(NxRadius.lg),
           ),
@@ -552,7 +552,7 @@ class _Placeholder extends StatelessWidget {
         child: Container(
           height: 64,
           decoration: BoxDecoration(
-            color: c.accent.withValues(alpha: .10),
+            color: c.accent.withValues(alpha: NxAlpha.tint),
             borderRadius: BorderRadius.circular(NxRadius.md),
           ),
         ),

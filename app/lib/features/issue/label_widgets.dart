@@ -38,9 +38,9 @@ class LabelChip extends StatelessWidget {
       decoration: BoxDecoration(
         // 배경은 옅게, 테두리와 글자는 진하게. 색이 열 개 넘게 섞여도
         // 카드가 알록달록해지지 않는다.
-        color: color.withValues(alpha: 0.15),
+        color: color.withValues(alpha: NxAlpha.tint),
         borderRadius: BorderRadius.circular(NxRadius.sm),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+        border: Border.all(color: color.withValues(alpha: NxAlpha.edge)),
       ),
       child: Text(
         label.name,

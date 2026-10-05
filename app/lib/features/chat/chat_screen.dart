@@ -1078,7 +1078,7 @@ class _FailedActions extends ConsumerWidget {
       padding: const EdgeInsets.only(top: NxSpacing.sp2),
       child: Row(
         children: [
-          NxIcon(NxIcons.warning, size: 14, color: nx.colors.danger),
+          NxIcon(NxIcons.warning, size: NxIconSize.sm, color: nx.colors.danger),
           const SizedBox(width: NxSpacing.sp2),
           Text(
             '보내지 못했습니다',
@@ -1115,7 +1115,11 @@ class _PinnedMark extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          NxIcon(NxIcons.pin, size: 12, color: nx.colors.textSecondary),
+          NxIcon(
+            NxIcons.pin,
+            size: NxIconSize.xs,
+            color: nx.colors.textSecondary,
+          ),
           const SizedBox(width: NxSpacing.sp2),
           Text('고정됨', style: nx.text.meta),
         ],

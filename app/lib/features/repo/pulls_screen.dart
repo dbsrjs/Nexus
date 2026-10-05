@@ -95,7 +95,7 @@ class PullList extends StatelessWidget {
             height: 44,
             child: Center(
               child: loadingMore
-                  ? const NxSpinner(size: 16)
+                  ? const NxSpinner(size: NxIconSize.md)
                   : NxButton(
                       label: '더 불러오기',
                       kind: NxButtonKind.ghost,

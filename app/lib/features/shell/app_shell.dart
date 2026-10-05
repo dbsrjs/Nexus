@@ -217,7 +217,11 @@ class ShellPaneTrigger extends ConsumerWidget {
             ],
             Flexible(child: child),
             const SizedBox(width: NxSpacing.sp3),
-            NxIcon(NxIcons.chevronDown, size: 12, color: c.textSecondary),
+            NxIcon(
+              NxIcons.chevronDown,
+              size: NxIconSize.xs,
+              color: c.textSecondary,
+            ),
           ],
         ),
       ),
@@ -536,7 +540,7 @@ class _CloseEsc extends StatelessWidget {
             ),
             child: NxIcon(
               NxIcons.close,
-              size: 14,
+              size: NxIconSize.sm,
               color: s.hovered ? c.textPrimary : c.textSecondary,
             ),
           ),

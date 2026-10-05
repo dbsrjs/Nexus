@@ -172,11 +172,11 @@ class _ChannelTile extends ConsumerWidget {
 
     // 채널 앞 표시는 **뜻이 있는 것**만 — `#` 는 글자, 비공개는 자물쇠, 음소거는 종.
     final Widget mark = channel.muted
-        ? NxIcon(NxIcons.mutedBell, size: 13, color: c.borderStrong)
+        ? NxIcon(NxIcons.mutedBell, size: NxIconSize.sm, color: c.borderStrong)
         : channel.isPrivate
         ? NxIcon(
             NxIcons.lock,
-            size: 13,
+            size: NxIconSize.sm,
             color: selected ? c.accent : c.borderStrong,
           )
         : Text(

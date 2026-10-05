@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import 'gallery_tokens.dart';
 import 'ui.dart';
 
 /// 컴포넌트 갤러리(디버그 빌드에서만 `/dev/ui`). 디자인 캔버스의 「컴포넌트 세트」와 같은
@@ -59,6 +60,8 @@ class _NxGalleryState extends State<NxGallery> {
                 body: ListView(
                   padding: const EdgeInsets.all(NxSpacing.sp8),
                   children: [
+                    const NxTokenSheet(),
+                    const SizedBox(height: NxSpacing.sp6),
                     Wrap(
                       spacing: NxSpacing.sp6,
                       runSpacing: NxSpacing.sp6,

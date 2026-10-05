@@ -57,7 +57,7 @@ class NxChip extends StatelessWidget {
             if (icon != null) ...[
               NxIcon(
                 icon!,
-                size: 12,
+                size: NxIconSize.xs,
                 color: selected ? c.accent : c.textSecondary,
               ),
               const SizedBox(width: NxSpacing.sp3),
@@ -89,7 +89,7 @@ class NxChip extends StatelessWidget {
                     child: Center(
                       child: NxIcon(
                         NxIcons.close,
-                        size: 12,
+                        size: NxIconSize.xs,
                         color: c.textSecondary,
                       ),
                     ),
@@ -135,7 +135,7 @@ class NxBadge extends StatelessWidget {
         child: Text(
           text,
           style: theme.text.xs2.copyWith(
-            color: mention ? c.onBright : c.onAccent,
+            color: mention ? c.onDanger : c.onAccent,
             fontWeight: FontWeight.w700,
             height: 1,
           ),

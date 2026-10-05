@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// **화면은 디자인 토큰만 쓴다**(디자인 시스템 §8).
 ///
-/// 색 · 글자 크기 · 모서리 반경 · 여백은 `lib/ui/theme.dart` 의 토큰(`NxColors` ·
-/// `NxBrand` · `NxFontSize` · `NxRadius` · `NxSpacing`)에서만 꺼낸다. 화면에 숫자를
+/// 색 · 투명도 · 글자 크기 · 아이콘 크기 · 모서리 반경 · 여백은 `lib/ui/theme.dart` 의 토큰(`NxColors` ·
+/// `NxBrand` · `NxAlpha` · `NxFontSize` · `NxIconSize` · `NxRadius` · `NxSpacing`)에서만 꺼낸다. 화면에 숫자를
 /// 박으면 다크 · 라이트 한쪽이 깨지거나, 같은 역할의 값이 화면마다 1~2px 씩 갈라진다
 /// — 2026-10-06 점검에서 머리 줄 제목 굵기가 600 과 700 으로, 패널 안 항목 반경이
 /// 6 과 8 로 갈라져 있었다.
@@ -26,6 +26,10 @@ final _rules = <String, RegExp>{
   ),
   '간격 숫자(SizedBox(width|height: N))': RegExp(
     r'SizedBox\((?:width|height):\s*\d[\d.]*\)',
+  ),
+  '투명도 숫자(withValues(alpha: N))': RegExp(r'withValues\(alpha:\s*\.?\d'),
+  '아이콘 크기 숫자(NxIcon · NxSpinner size: N)': RegExp(
+    r'(?:NxIcon\([^()]*|NxSpinner\()size:\s*\d',
   ),
 };
 
@@ -85,6 +89,9 @@ void main() {
       '여백 숫자(EdgeInsets…(N))':
           'padding: const EdgeInsets.symmetric(horizontal: 10),',
       '간격 숫자(SizedBox(width|height: N))': 'const SizedBox(width: 6),',
+      '투명도 숫자(withValues(alpha: N))': 'c.accent.withValues(alpha: .12)',
+      '아이콘 크기 숫자(NxIcon · NxSpinner size: N)':
+          'NxIcon(NxIcons.lock, size: 13, color: c.textSecondary)',
     };
     samples.forEach((rule, sample) {
       expect(_rules[rule]!.hasMatch(sample), isTrue, reason: rule);

@@ -72,7 +72,8 @@ void main() {
 
     for (final c in [NxColors.dark, NxColors.light]) {
       expect(ratio(c.accent, c.onAccent), greaterThanOrEqualTo(4.5));
-      expect(ratio(c.danger, c.onBright), greaterThanOrEqualTo(4.5));
+      // 멘션 뱃지(danger 바탕) — 라이트의 danger 는 어두워져 흰 글자(onDanger)를 얹는다.
+      expect(ratio(c.danger, c.onDanger), greaterThanOrEqualTo(4.5));
     }
   });
 }

@@ -56,7 +56,19 @@ class _NexusSplashState extends State<NexusSplash>
   late final _breath = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
-  )..repeat(reverse: true);
+  );
+
+  /// 숨 쉬기는 장식이다 — 애니메이션 줄이기면 멈춘 마크만 보인다.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _breath.stop();
+      _breath.value = 0;
+    } else if (!_breath.isAnimating) {
+      _breath.repeat(reverse: true);
+    }
+  }
 
   @override
   void dispose() {

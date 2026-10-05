@@ -153,10 +153,10 @@ class _DraftChip extends StatelessWidget {
                   '${(draft.progress * 100).round()}%',
                   style: nx.text.mono.copyWith(color: c.accent),
                 )
-              : const NxSpinner(size: 12))
+              : const NxSpinner(size: NxIconSize.xs))
         : draft.isFailed
-        ? NxIcon(NxIcons.warning, size: 14, color: c.danger)
-        : NxIcon(NxIcons.check, size: 14, color: c.success);
+        ? NxIcon(NxIcons.warning, size: NxIconSize.sm, color: c.danger)
+        : NxIcon(NxIcons.check, size: NxIconSize.sm, color: c.success);
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 260),
