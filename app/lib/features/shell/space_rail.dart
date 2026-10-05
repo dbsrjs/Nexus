@@ -31,7 +31,8 @@ class SpaceRail extends ConsumerWidget {
             child: ListView.separated(
               padding: EdgeInsets.zero,
               itemCount: spaces.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) =>
+                  const SizedBox(height: NxSpacing.inset),
               itemBuilder: (_, i) {
                 final space = spaces[i];
                 return Center(
@@ -81,14 +82,15 @@ class _SpaceButton extends StatelessWidget {
         focusRingRadius: 17,
         builder: (context, s) => AnimatedContainer(
           duration: NxMotion.micro,
+          // 토큰 밖: 선택 고리 — 안쪽 타일 반경 lg(12) + 여백 3 + 테두리 2 = 17 이 동심원이 된다.
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(17),
+            borderRadius: BorderRadius.circular(17), // 토큰 밖: 위 주석의 동심 반경
             border: Border.all(
               width: 2,
               color: selected
                   ? c.textPrimary
-                  : (s.hovered ? c.borderStrong : const Color(0x00000000)),
+                  : (s.hovered ? c.borderStrong : NxColors.transparent),
             ),
           ),
           child: NexusAvatar(seed: id, label: name, size: 38, squircle: true),
@@ -163,8 +165,14 @@ class _AddSpaceButton extends ConsumerWidget {
     return NxMenu(
       openUp: true,
       entries: [
-        NxMenuItem('스페이스 만들기', onSelected: () => showCreateSpaceDialog(context, ref)),
-        NxMenuItem('초대 코드로 참여', onSelected: () => showJoinSpaceDialog(context, ref)),
+        NxMenuItem(
+          '스페이스 만들기',
+          onSelected: () => showCreateSpaceDialog(context, ref),
+        ),
+        NxMenuItem(
+          '초대 코드로 참여',
+          onSelected: () => showJoinSpaceDialog(context, ref),
+        ),
       ],
       anchorBuilder: (context, toggle) => NxIconButton(
         icon: NxIcons.plus,

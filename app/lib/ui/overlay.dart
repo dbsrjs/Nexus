@@ -114,7 +114,12 @@ class NxMenuPanel extends StatelessWidget {
                         color: c.divider,
                       ),
                       NxMenuHeader(:final title, :final subtitle) => Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                        padding: const EdgeInsets.fromLTRB(
+                          NxSpacing.inset,
+                          NxSpacing.sp4,
+                          NxSpacing.inset,
+                          NxSpacing.inset,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -163,12 +168,12 @@ class NxMenuPanel extends StatelessWidget {
       builder: (context, s) => AnimatedContainer(
         duration: NxMotion.micro,
         height: touch ? 44 : 32,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: NxSpacing.inset),
         decoration: BoxDecoration(
           color: s.hovered || s.pressed || s.focused || item.selected
               ? c.accentSubtle
-              : const Color(0x00000000),
-          borderRadius: BorderRadius.circular(6),
+              : NxColors.transparent,
+          borderRadius: BorderRadius.circular(NxRadius.inner),
         ),
         child: Row(
           children: [
@@ -475,7 +480,7 @@ class _NxTooltipState extends State<NxTooltip> {
               child: IgnorePointer(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
+                    horizontal: NxSpacing.sp4,
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(

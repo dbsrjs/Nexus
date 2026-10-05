@@ -23,7 +23,9 @@ class MembersSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final myId = ref.watch(
-      authControllerProvider.select((a) => a is AuthSignedIn ? a.user.id : null),
+      authControllerProvider.select(
+        (a) => a is AuthSignedIn ? a.user.id : null,
+      ),
     );
     final members = ref.watch(spaceMembersOfProvider(spaceId));
 
@@ -71,7 +73,11 @@ class _MemberRow extends ConsumerWidget {
   final bool self;
   final bool manageable;
 
-  Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() call) async {
+  Future<void> _run(
+    BuildContext context,
+    WidgetRef ref,
+    Future<void> Function() call,
+  ) async {
     try {
       await call();
       // 소켓 member:left 로 목록이 먼저 바뀌면 이 줄은 이미 내려가 있다 — 그때 ref 는 못 쓴다.
@@ -108,7 +114,7 @@ class _MemberRow extends ConsumerWidget {
         .toList(growable: false);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: NxSpacing.sp1),
       child: NxRow(
         // 사람을 가리키는 내용이라 장식 아이콘 규칙(15단계 D5)에 걸리지 않는다.
         leading: PresenceAvatar(
@@ -140,12 +146,12 @@ class _MemberRow extends ConsumerWidget {
                       onSelected: role == member.role
                           ? null
                           : () => _run(
-                                context,
-                                ref,
-                                () => ref
-                                    .read(membersApiProvider)
-                                    .updateRole(spaceId, member.userId, role),
-                              ),
+                              context,
+                              ref,
+                              () => ref
+                                  .read(membersApiProvider)
+                                  .updateRole(spaceId, member.userId, role),
+                            ),
                     ),
                   const NxMenuDivider(),
                   NxMenuItem(

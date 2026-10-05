@@ -46,12 +46,18 @@ class SettingsInsets extends InheritedWidget {
   const SettingsInsets({super.key, required this.insets, required super.child});
 
   /// 넓은 화면의 기본값(캔버스 「설정」 40 · 48).
-  static const wide = EdgeInsets.fromLTRB(48, 40, 48, 48);
+  static const wide = EdgeInsets.fromLTRB(
+    NxSpacing.sp10,
+    NxSpacing.sp9 + NxSpacing.sp4,
+    NxSpacing.sp10,
+    NxSpacing.sp10,
+  );
 
   final EdgeInsets insets;
 
   static EdgeInsets of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<SettingsInsets>()?.insets ?? wide;
+      context.dependOnInheritedWidgetOfExactType<SettingsInsets>()?.insets ??
+      wide;
 
   @override
   bool updateShouldNotify(SettingsInsets old) => old.insets != insets;
@@ -68,7 +74,9 @@ class SettingsLabel extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: NxSpacing.sp5),
     child: Text(
       text,
-      style: NxTheme.of(context).text.meta.copyWith(fontWeight: FontWeight.w600),
+      style: NxTheme.of(
+        context,
+      ).text.meta.copyWith(fontWeight: FontWeight.w600),
     ),
   );
 }
@@ -136,12 +144,21 @@ class SettingsNav extends StatelessWidget {
       ),
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-          child: Text(title, style: nx.text.label, overflow: TextOverflow.ellipsis),
+          padding: const EdgeInsets.fromLTRB(
+            NxSpacing.inset,
+            0,
+            NxSpacing.inset,
+            NxSpacing.sp4,
+          ),
+          child: Text(
+            title,
+            style: nx.text.label,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         for (final item in items)
           Padding(
-            padding: const EdgeInsets.only(bottom: 2),
+            padding: const EdgeInsets.only(bottom: NxSpacing.sp1),
             child: NxRow(
               title: item.label,
               dense: true,
@@ -154,7 +171,10 @@ class SettingsNav extends StatelessWidget {
           ),
         if (footer.isNotEmpty) ...[
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            padding: EdgeInsets.symmetric(
+              horizontal: NxSpacing.inset,
+              vertical: NxSpacing.inset,
+            ),
             child: NxDivider(),
           ),
           ...footer,

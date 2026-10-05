@@ -30,9 +30,15 @@ class SpaceMenu extends ConsumerWidget {
       entries: [
         NxMenuItem('멤버', onSelected: () => open(SpaceSettingsSection.members)),
         if (admin)
-          NxMenuItem('초대하기', onSelected: () => open(SpaceSettingsSection.invites)),
+          NxMenuItem(
+            '초대하기',
+            onSelected: () => open(SpaceSettingsSection.invites),
+          ),
         if (admin)
-          NxMenuItem('스페이스 설정', onSelected: () => open(SpaceSettingsSection.general)),
+          NxMenuItem(
+            '스페이스 설정',
+            onSelected: () => open(SpaceSettingsSection.general),
+          ),
         if (space.role != SpaceRole.owner) ...[
           const NxMenuDivider(),
           NxMenuItem(
@@ -51,14 +57,14 @@ class SpaceMenu extends ConsumerWidget {
             Flexible(
               child: Text(
                 space.name,
-                style: nx.text.title.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+                style: nx.text.header,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: NxSpacing.sp2),
             NxIcon(
               NxIcons.chevronDown,
-              size: 14,
+              size: NxIconSize.sm,
               color: s.hovered ? c.textPrimary : c.textSecondary,
             ),
           ],

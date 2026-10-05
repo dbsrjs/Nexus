@@ -125,7 +125,10 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     final spot = _spot;
     if (moving == null || spot == null) return;
     final statuses = IssueStatus.values;
-    final col = (statuses.indexOf(spot.status) + dx).clamp(0, statuses.length - 1);
+    final col = (statuses.indexOf(spot.status) + dx).clamp(
+      0,
+      statuses.length - 1,
+    );
     final status = statuses[col];
     final size = _column(status).where((i) => i.id != moving.id).length;
     setState(() {
@@ -402,7 +405,9 @@ class _BoardColumn extends StatelessWidget {
     var k = 0;
     for (final issue in issues) {
       final isMoving = issue.id == moving?.id;
-      if (!isMoving && spotIndex == k) children.add(const _Placeholder(key: ValueKey('spot')));
+      if (!isMoving && spotIndex == k) {
+        children.add(const _Placeholder(key: ValueKey('spot')));
+      }
       children.add(_card(issue, isMoving));
       if (!isMoving) k++;
     }
@@ -416,12 +421,12 @@ class _BoardColumn extends StatelessWidget {
         builder: (context, candidates, _) => AnimatedContainer(
           duration: NxMotion.micro,
           // 끌어 온 카드가 들어갈 컬럼은 옅은 액센트 바탕 + 점선 테두리(캔버스 「보드」).
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(NxSpacing.sp3),
           decoration: BoxDecoration(
             color: hovering
-                ? c.accent.withValues(alpha: .06)
-                : const Color(0x00000000),
-            borderRadius: BorderRadius.circular(10),
+                ? c.accent.withValues(alpha: NxAlpha.wash)
+                : NxColors.transparent,
+            borderRadius: BorderRadius.circular(NxRadius.lg),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -430,7 +435,7 @@ class _BoardColumn extends StatelessWidget {
                 height: 28,
                 child: Row(
                   children: [
-                    const SizedBox(width: 4),
+                    const SizedBox(width: NxSpacing.sp2),
                     Container(
                       width: 8,
                       height: 8,
@@ -455,7 +460,7 @@ class _BoardColumn extends StatelessWidget {
                       // 상한에 걸려 잘렸으면 그렇다고 말한다. 조용히 자르면
                       // 다 봤다고 오해한다.
                       truncated ? '${issues.length}+' : '${issues.length}',
-                      style: nx.text.mono.copyWith(fontSize: 12),
+                      style: nx.text.mono.copyWith(fontSize: NxFontSize.xs),
                     ),
                   ],
                 ),
@@ -547,7 +552,7 @@ class _Placeholder extends StatelessWidget {
         child: Container(
           height: 64,
           decoration: BoxDecoration(
-            color: c.accent.withValues(alpha: .10),
+            color: c.accent.withValues(alpha: NxAlpha.tint),
             borderRadius: BorderRadius.circular(NxRadius.md),
           ),
         ),

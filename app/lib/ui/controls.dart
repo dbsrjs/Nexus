@@ -36,11 +36,12 @@ class NxSwitch extends StatelessWidget {
         curve: NxMotion.ease,
         width: 36,
         height: 20,
-        padding: EdgeInsets.all(value ? 2 : 1),
+        // 토큰 밖: 꺼짐일 때 1 — 테두리 두께가 1 늘어난 만큼 덜어 손잡이 위치를 맞춘다.
+        padding: EdgeInsets.all(value ? NxSpacing.sp1 : 1),
         decoration: BoxDecoration(
           color: value
               ? (enabled ? c.accent : c.borderStrong)
-              : const Color(0x00000000),
+              : NxColors.transparent,
           borderRadius: BorderRadius.circular(NxRadius.full),
           border: value ? null : Border.all(color: c.borderStrong),
         ),
@@ -101,7 +102,7 @@ class NxCheck extends StatelessWidget {
             height: 16,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: value ? c.accent : const Color(0x00000000),
+              color: value ? c.accent : NxColors.transparent,
               borderRadius: BorderRadius.circular(NxRadius.sm),
               border: value
                   ? null
@@ -110,7 +111,7 @@ class NxCheck extends StatelessWidget {
                     ),
             ),
             child: value
-                ? NxIcon(NxIcons.check, size: 12, color: c.onAccent)
+                ? NxIcon(NxIcons.check, size: NxIconSize.xs, color: c.onAccent)
                 : null,
           ),
           if (showLabel) ...[
@@ -176,9 +177,9 @@ class NxSegmented<T> extends StatelessWidget {
                 color: selected
                     ? c.bgElevated
                     : (s.hovered
-                          ? c.bgElevated.withValues(alpha: .5)
-                          : const Color(0x00000000)),
-                borderRadius: BorderRadius.circular(6),
+                          ? c.bgElevated.withValues(alpha: NxAlpha.hover)
+                          : NxColors.transparent),
+                borderRadius: BorderRadius.circular(NxRadius.inner),
               ),
               child: Text(
                 text,
@@ -211,7 +212,7 @@ class NxSegmented<T> extends StatelessWidget {
             ),
           },
           child: Container(
-            padding: const EdgeInsets.all(2),
+            padding: const EdgeInsets.all(NxSpacing.sp1),
             decoration: BoxDecoration(
               color: c.bgBase,
               borderRadius: BorderRadius.circular(NxRadius.md),
@@ -293,7 +294,11 @@ class NxSelect<T> extends StatelessWidget {
                   ),
                 ),
               ),
-              NxIcon(NxIcons.chevronDown, size: 14, color: c.textSecondary),
+              NxIcon(
+                NxIcons.chevronDown,
+                size: NxIconSize.sm,
+                color: c.textSecondary,
+              ),
             ],
           ),
         ),

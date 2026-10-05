@@ -10,6 +10,7 @@ import 'features/realtime/socket_controller.dart';
 import 'features/space/members_controller.dart';
 import 'features/settings/theme_controller.dart';
 import 'ui/root.dart';
+import 'ui/theme.dart';
 
 Future<void> main() async {
   // 저장소를 읽으려면 바인딩이 서 있어야 한다.
@@ -63,7 +64,7 @@ class NexusApp extends ConsumerWidget {
     return WidgetsApp.router(
       title: 'Nexus',
       // 작업 전환기 · 웹 탭의 색. 다크 액센트.
-      color: const Color(0xFF77AECF),
+      color: NxBrand.node,
       debugShowCheckedModeBanner: false,
       routerConfig: ref.watch(routerProvider),
       builder: (context, child) =>

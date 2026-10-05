@@ -48,7 +48,10 @@ class CommitList extends StatelessWidget {
             ),
           );
         }
-        return _CommitRow(commit: commits[i], onPressed: () => onTap(commits[i]));
+        return _CommitRow(
+          commit: commits[i],
+          onPressed: () => onTap(commits[i]),
+        );
       },
     );
   }
@@ -76,11 +79,12 @@ class _CommitRow extends StatelessWidget {
       onPressed: onPressed,
       builder: (context, s) => AnimatedContainer(
         duration: NxMotion.micro,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: NxSpacing.inset,
+          vertical: NxSpacing.sp4,
+        ),
         decoration: BoxDecoration(
-          color: s.hovered || s.pressed
-              ? c.bgElevated
-              : const Color(0x00000000),
+          color: s.hovered || s.pressed ? c.bgElevated : NxColors.transparent,
           borderRadius: BorderRadius.circular(NxRadius.md),
         ),
         child: Column(
@@ -93,7 +97,7 @@ class _CommitRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: nx.text.base,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: NxSpacing.sp1),
             Row(
               children: [
                 Text(commit.shortSha, style: nx.text.mono),

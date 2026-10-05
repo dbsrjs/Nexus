@@ -67,7 +67,7 @@ class NxButton extends StatelessWidget {
           // 꺼진 버튼은 옅은 중립 바탕. bgElevated 로 칠하면 같은 색인 패널 · 다이얼로그
           // 위에서 사라진다(AI 패널의 「보내기」가 글자만 떠 있었다).
           _ when !enabled => (
-            c.textSecondary.withValues(alpha: .12),
+            c.textSecondary.withValues(alpha: NxAlpha.tint),
             c.borderStrong,
             null,
           ),
@@ -80,22 +80,22 @@ class NxButton extends StatelessWidget {
             s.pressed
                 ? c.bgElevated
                 : (s.hovered
-                      ? c.bgElevated.withValues(alpha: .6)
-                      : const Color(0x00000000)),
+                      ? c.bgElevated.withValues(alpha: NxAlpha.hover)
+                      : NxColors.transparent),
             c.textPrimary,
             c.borderStrong,
           ),
           NxButtonKind.ghost => (
-            s.pressed || s.hovered ? c.accentSubtle : const Color(0x00000000),
+            s.pressed || s.hovered ? c.accentSubtle : NxColors.transparent,
             c.accent,
             null,
           ),
           NxButtonKind.danger => (
             s.pressed || s.hovered
-                ? c.danger.withValues(alpha: .12)
-                : const Color(0x00000000),
+                ? c.danger.withValues(alpha: NxAlpha.tint)
+                : NxColors.transparent,
             c.danger,
-            c.danger.withValues(alpha: .45),
+            c.danger.withValues(alpha: NxAlpha.edge),
           ),
         };
 
@@ -105,7 +105,9 @@ class NxButton extends StatelessWidget {
           height: height,
           width: expand ? double.infinity : null,
           padding: EdgeInsets.symmetric(
-            horizontal: kind == NxButtonKind.ghost ? padding - 4 : padding,
+            horizontal: kind == NxButtonKind.ghost
+                ? padding - NxSpacing.sp2
+                : padding,
           ),
           decoration: BoxDecoration(
             color: bg,
@@ -185,15 +187,13 @@ class NxIconButton extends StatelessWidget {
         final Color fg;
         if (filled) {
           bg = !enabled
-              ? c.textSecondary.withValues(alpha: .12)
+              ? c.textSecondary.withValues(alpha: NxAlpha.tint)
               : (s.pressed || s.hovered ? c.accentPress : c.accent);
           fg = enabled ? c.onAccent : c.borderStrong;
         } else {
           bg = selected
               ? c.accentSubtle
-              : (s.pressed || s.hovered
-                    ? c.bgElevated
-                    : const Color(0x00000000));
+              : (s.pressed || s.hovered ? c.bgElevated : NxColors.transparent);
           fg = !enabled
               ? c.borderStrong
               : (color ??

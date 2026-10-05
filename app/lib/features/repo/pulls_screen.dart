@@ -95,7 +95,7 @@ class PullList extends StatelessWidget {
             height: 44,
             child: Center(
               child: loadingMore
-                  ? const NxSpinner(size: 16)
+                  ? const NxSpinner(size: NxIconSize.md)
                   : NxButton(
                       label: '더 불러오기',
                       kind: NxButtonKind.ghost,
@@ -124,11 +124,12 @@ class _PullRow extends StatelessWidget {
       onPressed: onPressed,
       builder: (context, s) => AnimatedContainer(
         duration: NxMotion.micro,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: NxSpacing.inset,
+          vertical: NxSpacing.sp4,
+        ),
         decoration: BoxDecoration(
-          color: s.hovered || s.pressed
-              ? c.bgElevated
-              : const Color(0x00000000),
+          color: s.hovered || s.pressed ? c.bgElevated : NxColors.transparent,
           borderRadius: BorderRadius.circular(NxRadius.md),
         ),
         child: Row(
@@ -142,7 +143,7 @@ class _PullRow extends StatelessWidget {
                       children: [
                         TextSpan(
                           text: '#${pull.number}',
-                          style: nx.text.mono.copyWith(fontSize: 13),
+                          style: nx.text.mono.copyWith(fontSize: NxFontSize.sm),
                         ),
                         const TextSpan(text: ' · '),
                         TextSpan(text: pull.title),
@@ -152,7 +153,7 @@ class _PullRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: nx.text.base,
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: NxSpacing.sp1),
                   Text(
                     '${pull.sourceBranch ?? '?'} → ${pull.targetBranch ?? '?'}',
                     overflow: TextOverflow.ellipsis,
@@ -252,7 +253,7 @@ class _PullsScreenState extends ConsumerState<PullsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: NxSpacing.inset),
               child: NxSegmented<String>(
                 label: 'PR 상태',
                 expand: false,
@@ -294,7 +295,7 @@ class _PullsScreenState extends ConsumerState<PullsScreen> {
         );
       }(),
       _ => const Padding(
-        padding: EdgeInsets.all(10),
+        padding: EdgeInsets.all(NxSpacing.inset),
         child: NxSkeleton(lines: 5, lineHeight: 36),
       ),
     };

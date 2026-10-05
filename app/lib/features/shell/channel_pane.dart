@@ -47,13 +47,7 @@ class ChannelPane extends ConsumerWidget {
                     header: true,
                     // 이름을 누르면 스페이스 메뉴(16단계 설계 D6).
                     child: space == null
-                        ? Text(
-                            '…',
-                            style: nx.text.title.copyWith(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          )
+                        ? Text('…', style: nx.text.header)
                         : Align(
                             alignment: Alignment.centerLeft,
                             child: SpaceMenu(space: space),
@@ -123,7 +117,7 @@ class _WorkSection extends ConsumerWidget {
       final path = '/s/$spaceId$suffix';
       final selected = location == path || location.startsWith('$path/');
       return Padding(
-        padding: const EdgeInsets.only(bottom: 2),
+        padding: const EdgeInsets.only(bottom: NxSpacing.sp1),
         child: NxRow(
           title: label,
           dense: true,

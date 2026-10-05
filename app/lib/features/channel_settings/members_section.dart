@@ -32,7 +32,11 @@ class ChannelMembersSection extends ConsumerWidget {
 
   ChannelKey get _key => (spaceId: spaceId, channelId: channelId);
 
-  Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() call) async {
+  Future<void> _run(
+    BuildContext context,
+    WidgetRef ref,
+    Future<void> Function() call,
+  ) async {
     try {
       await call();
       if (!context.mounted) return;
@@ -67,7 +71,11 @@ class ChannelMembersSection extends ConsumerWidget {
     }
   }
 
-  Future<void> _remove(BuildContext context, WidgetRef ref, ChannelMemberView m) async {
+  Future<void> _remove(
+    BuildContext context,
+    WidgetRef ref,
+    ChannelMemberView m,
+  ) async {
     final ok = await NxDialog.confirm(
       context,
       title: '${m.name} 님을 이 채널에서 뺄까요?',
@@ -79,11 +87,17 @@ class ChannelMembersSection extends ConsumerWidget {
     await _run(
       context,
       ref,
-      () => ref.read(channelsApiProvider).removeMember(spaceId, channelId, m.userId),
+      () => ref
+          .read(channelsApiProvider)
+          .removeMember(spaceId, channelId, m.userId),
     );
   }
 
-  Future<void> _add(BuildContext context, WidgetRef ref, List<ChannelMemberView> current) async {
+  Future<void> _add(
+    BuildContext context,
+    WidgetRef ref,
+    List<ChannelMemberView> current,
+  ) async {
     final picked = await NxDialog.panel<List<String>>(
       context,
       title: '멤버 추가',
@@ -96,14 +110,17 @@ class ChannelMembersSection extends ConsumerWidget {
     await _run(
       context,
       ref,
-      () => ref.read(channelsApiProvider).addMembers(spaceId, channelId, picked),
+      () =>
+          ref.read(channelsApiProvider).addMembers(spaceId, channelId, picked),
     );
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final myId = ref.watch(
-      authControllerProvider.select((a) => a is AuthSignedIn ? a.user.id : null),
+      authControllerProvider.select(
+        (a) => a is AuthSignedIn ? a.user.id : null,
+      ),
     );
     final members = ref.watch(channelMembersProvider(_key));
 
@@ -122,7 +139,9 @@ class ChannelMembersSection extends ConsumerWidget {
               Expanded(
                 child: Text(
                   '명단 ${members.value!.length}명',
-                  style: NxTheme.of(context).text.meta.copyWith(fontWeight: FontWeight.w600),
+                  style: NxTheme.of(
+                    context,
+                  ).text.meta.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               // 손님은 들일 수 없다(D17) — 버튼을 두지 않는다.
@@ -170,15 +189,25 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Widget? trailing = switch (action) {
-      MemberRowAction.leave => last
-          ? Text('마지막 멤버는 나갈 수 없습니다', style: NxTheme.of(context).text.meta)
-          : NxButton(label: '나가기', kind: NxButtonKind.ghost, size: NxSize.sm, onPressed: onLeave),
-      MemberRowAction.remove =>
-        NxButton(label: '빼기', kind: NxButtonKind.ghost, size: NxSize.sm, onPressed: onRemove),
+      MemberRowAction.leave =>
+        last
+            ? Text('마지막 멤버는 나갈 수 없습니다', style: NxTheme.of(context).text.meta)
+            : NxButton(
+                label: '나가기',
+                kind: NxButtonKind.ghost,
+                size: NxSize.sm,
+                onPressed: onLeave,
+              ),
+      MemberRowAction.remove => NxButton(
+        label: '빼기',
+        kind: NxButtonKind.ghost,
+        size: NxSize.sm,
+        onPressed: onRemove,
+      ),
       MemberRowAction.none => null,
     };
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: NxSpacing.sp1),
       child: NxRow(
         leading: UserAvatar(
           userId: member.userId,
@@ -217,7 +246,12 @@ class _AddMembersPickerState extends ConsumerState<_AddMembersPicker> {
         .toList(growable: false);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(NxSpacing.sp7, 0, NxSpacing.sp7, NxSpacing.sp7),
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        0,
+        NxSpacing.sp7,
+        NxSpacing.sp7,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -227,7 +261,10 @@ class _AddMembersPickerState extends ConsumerState<_AddMembersPicker> {
           else if (!all.hasValue)
             const NxSkeleton(lines: 3, lineHeight: 40)
           else if (candidates.isEmpty)
-            Text('들일 수 있는 사람이 없습니다 — 스페이스 멤버가 모두 들어와 있습니다.', style: nx.text.secondary)
+            Text(
+              '들일 수 있는 사람이 없습니다 — 스페이스 멤버가 모두 들어와 있습니다.',
+              style: nx.text.secondary,
+            )
           else
             Flexible(
               child: ListView(
@@ -264,7 +301,9 @@ class _AddMembersPickerState extends ConsumerState<_AddMembersPicker> {
               label: _picked.isEmpty ? '들이기' : '${_picked.length}명 들이기',
               onPressed: _picked.isEmpty
                   ? null
-                  : () => Navigator.of(context).pop(_picked.toList(growable: false)),
+                  : () => Navigator.of(
+                      context,
+                    ).pop(_picked.toList(growable: false)),
             ),
           ),
         ],

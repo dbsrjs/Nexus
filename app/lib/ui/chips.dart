@@ -40,11 +40,14 @@ class NxChip extends StatelessWidget {
       builder: (context, s) => AnimatedContainer(
         duration: NxMotion.micro,
         height: 28,
-        padding: EdgeInsets.only(left: 10, right: onRemove == null ? 10 : 4),
+        padding: EdgeInsets.only(
+          left: NxSpacing.inset,
+          right: onRemove == null ? NxSpacing.inset : NxSpacing.sp2,
+        ),
         decoration: BoxDecoration(
           color: selected
               ? c.accentSubtle
-              : (s.hovered ? c.bgElevated : const Color(0x00000000)),
+              : (s.hovered ? c.bgElevated : NxColors.transparent),
           borderRadius: BorderRadius.circular(NxRadius.full),
           border: Border.all(color: selected ? c.accent : c.borderStrong),
         ),
@@ -54,10 +57,10 @@ class NxChip extends StatelessWidget {
             if (icon != null) ...[
               NxIcon(
                 icon!,
-                size: 12,
+                size: NxIconSize.xs,
                 color: selected ? c.accent : c.textSecondary,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: NxSpacing.sp3),
             ],
             Text(
               label,
@@ -66,11 +69,15 @@ class NxChip extends StatelessWidget {
               ),
             ),
             if (trailing != null) ...[
+              // 토큰 밖: 라벨과 개수 사이 — 4 는 붙고 6 은 떨어져 보인다(광학 보정).
               const SizedBox(width: 5),
-              Text(trailing!, style: theme.text.mono.copyWith(fontSize: 12)),
+              Text(
+                trailing!,
+                style: theme.text.mono.copyWith(fontSize: NxFontSize.xs),
+              ),
             ],
             if (onRemove != null) ...[
-              const SizedBox(width: 2),
+              const SizedBox(width: NxSpacing.sp1),
               GestureDetector(
                 onTap: onRemove,
                 child: Semantics(
@@ -82,7 +89,7 @@ class NxChip extends StatelessWidget {
                     child: Center(
                       child: NxIcon(
                         NxIcons.close,
-                        size: 12,
+                        size: NxIconSize.xs,
                         color: c.textSecondary,
                       ),
                     ),
@@ -118,7 +125,7 @@ class NxBadge extends StatelessWidget {
     return Container(
       height: 18,
       constraints: const BoxConstraints(minWidth: 18),
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: NxSpacing.sp3),
       decoration: BoxDecoration(
         color: mention ? c.danger : c.accent,
         borderRadius: BorderRadius.circular(NxRadius.full),
@@ -128,7 +135,7 @@ class NxBadge extends StatelessWidget {
         child: Text(
           text,
           style: theme.text.xs2.copyWith(
-            color: mention ? c.onBright : c.onAccent,
+            color: mention ? c.onDanger : c.onAccent,
             fontWeight: FontWeight.w700,
             height: 1,
           ),
@@ -168,7 +175,7 @@ class NxTag extends StatelessWidget {
     );
     return Container(
       height: 20,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: NxSpacing.sp3),
       decoration: mono
           ? BoxDecoration(
               borderRadius: BorderRadius.circular(NxRadius.sm),
@@ -184,7 +191,7 @@ class NxTag extends StatelessWidget {
               height: 6,
               decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: NxSpacing.sp2),
           ],
           Text(text, style: style),
         ],

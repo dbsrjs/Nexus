@@ -113,11 +113,18 @@ class _SpaceTile extends StatelessWidget {
                 children: [
                   Text(space.name, style: nx.text.strong),
                   const SizedBox(height: NxSpacing.sp1),
-                  Text('/${space.slug} · ${space.role.wire}', style: nx.text.meta),
+                  Text(
+                    '/${space.slug} · ${space.role.wire}',
+                    style: nx.text.meta,
+                  ),
                 ],
               ),
             ),
-            NxIcon(NxIcons.chevronRight, size: 14, color: c.textSecondary),
+            NxIcon(
+              NxIcons.chevronRight,
+              size: NxIconSize.sm,
+              color: c.textSecondary,
+            ),
           ],
         ),
       ),

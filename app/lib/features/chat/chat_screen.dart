@@ -75,7 +75,10 @@ class ChatScreen extends ConsumerWidget {
                 ref,
                 (channelId) => ChannelContext(
                   channelId: channelId,
-                  channelName: dmPeerName(ref.read(memberProfilesProvider), channel),
+                  channelName: dmPeerName(
+                    ref.read(memberProfilesProvider),
+                    channel,
+                  ),
                 ),
               ),
             )
@@ -86,8 +89,10 @@ class ChatScreen extends ConsumerWidget {
               onAsk: () => _openAi(
                 context,
                 ref,
-                (channelId) =>
-                    ChannelContext(channelId: channelId, channelName: channel.name),
+                (channelId) => ChannelContext(
+                  channelId: channelId,
+                  channelName: channel.name,
+                ),
               ),
             ),
           Expanded(
@@ -188,7 +193,10 @@ class _ChannelHeader extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('#', style: nx.text.mono.copyWith(fontSize: 15)),
+                  Text(
+                    '#',
+                    style: nx.text.mono.copyWith(fontSize: NxFontSize.body),
+                  ),
                   const SizedBox(width: NxSpacing.sp3),
                   Flexible(
                     child: Semantics(
@@ -196,10 +204,7 @@ class _ChannelHeader extends StatelessWidget {
                       child: Text(
                         name,
                         overflow: TextOverflow.ellipsis,
-                        style: nx.text.title.copyWith(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: nx.text.header,
                       ),
                     ),
                   ),
@@ -271,7 +276,7 @@ class _DmHeader extends ConsumerWidget {
                       child: Text(
                         name,
                         overflow: TextOverflow.ellipsis,
-                        style: nx.text.title.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+                        style: nx.text.header,
                       ),
                     ),
                   ),
@@ -304,7 +309,8 @@ class _ChannelSettingsButton extends ConsumerWidget {
     return NxIconButton(
       icon: NxIcons.settings,
       label: '채널 설정',
-      onPressed: () => context.go(channelSettingsLocation(spaceId, channelId, null)),
+      onPressed: () =>
+          context.go(channelSettingsLocation(spaceId, channelId, null)),
     );
   }
 }
@@ -469,7 +475,7 @@ class _MessageTileState extends ConsumerState<MessageTile> {
 
     // 선택 모드의 체크 — 탭과 같은 toggle 을 부른다. 곁의 메시지가 이름이라 글자는 숨긴다.
     Widget check() => Padding(
-      padding: const EdgeInsets.only(right: NxSpacing.sp4, top: 6),
+      padding: const EdgeInsets.only(right: NxSpacing.sp4, top: NxSpacing.sp3),
       child: NxCheck(
         value: selected,
         label: '메시지 선택',
@@ -550,7 +556,7 @@ class _MessageTileState extends ConsumerState<MessageTile> {
               children: [
                 if (!widget.grouped)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
+                    padding: const EdgeInsets.only(bottom: NxSpacing.sp1),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
@@ -611,12 +617,12 @@ class _MessageTileState extends ConsumerState<MessageTile> {
               duration: NxMotion.micro,
               color: selected
                   ? c.accentSubtle
-                  : (showToolbar ? c.bgSurface : const Color(0x00000000)),
+                  : (showToolbar ? c.bgSurface : NxColors.transparent),
               padding: EdgeInsets.fromLTRB(
                 NxSpacing.sp7,
-                widget.grouped ? 2 : NxSpacing.sp4,
+                widget.grouped ? NxSpacing.sp1 : NxSpacing.sp4,
                 NxSpacing.sp7,
-                2,
+                NxSpacing.sp1,
               ),
               // 아직 서버에 닿지 않은 메시지는 흐리게 — 보냈는지 아닌지가 보여야 한다.
               child: Opacity(opacity: message.pending ? 0.5 : 1, child: body),
@@ -656,7 +662,7 @@ class _HoverToolbar extends ConsumerWidget {
     // 읽기 전용 채널에서는 답장 · 스레드를 감춘다 — 리액션은 남는다(16단계 D27).
     final canSend = ref.watch(channelCanSendProvider(message.channelId));
     return Container(
-      padding: const EdgeInsets.all(2),
+      padding: const EdgeInsets.all(NxSpacing.sp1),
       decoration: BoxDecoration(
         color: c.bgElevated,
         borderRadius: BorderRadius.circular(NxRadius.md),
@@ -676,7 +682,8 @@ class _HoverToolbar extends ConsumerWidget {
               icon: NxIcons.reply,
               label: '답장',
               size: NxSize.sm,
-              onPressed: () => ref.read(replyTargetProvider.notifier).set(message),
+              onPressed: () =>
+                  ref.read(replyTargetProvider.notifier).set(message),
             ),
             NxIconButton(
               icon: NxIcons.thread,
@@ -708,7 +715,12 @@ class _MessagePreview extends ConsumerWidget {
     final nx = NxTheme.of(context);
     final c = nx.colors;
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp5,
+        NxSpacing.inset,
+        NxSpacing.sp5,
+        NxSpacing.inset,
+      ),
       decoration: BoxDecoration(
         color: c.bgSurface,
         borderRadius: BorderRadius.circular(NxRadius.lg),
@@ -723,13 +735,13 @@ class _MessagePreview extends ConsumerWidget {
             avatarUrl: message.author.avatarUrl,
             size: 32,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: NxSpacing.inset),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(message.author.name, style: nx.text.strong),
-                const SizedBox(height: 4),
+                const SizedBox(height: NxSpacing.sp2),
                 Text(
                   mentionPlainText(
                     message.body,
@@ -843,10 +855,13 @@ class _ThreadSummary extends ConsumerWidget {
         onPressed: () => _openThread(context, ref, message),
         builder: (context, s) => AnimatedContainer(
           duration: NxMotion.micro,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(
+            horizontal: NxSpacing.sp4,
+            vertical: NxSpacing.sp2,
+          ),
           decoration: BoxDecoration(
-            color: s.hovered ? c.bgElevated : const Color(0x00000000),
-            borderRadius: BorderRadius.circular(6),
+            color: s.hovered ? c.bgElevated : NxColors.transparent,
+            borderRadius: BorderRadius.circular(NxRadius.inner),
           ),
           child: Text(
             '답글 ${message.replyCount}개',
@@ -978,7 +993,7 @@ class _EmojiRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = NxTheme.of(context).colors;
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(NxSpacing.sp2),
       decoration: BoxDecoration(
         color: c.bgElevated,
         borderRadius: BorderRadius.circular(NxRadius.full),
@@ -1001,12 +1016,15 @@ class _EmojiRow extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: s.hovered ? c.bgSurface : const Color(0x00000000),
+                  color: s.hovered ? c.bgSurface : NxColors.transparent,
                   border: mine.contains(emoji)
                       ? Border.all(color: c.accent)
                       : null,
                 ),
-                child: Text(emoji, style: const TextStyle(fontSize: 20)),
+                child: Text(
+                  emoji,
+                  style: const TextStyle(fontSize: NxFontSize.lg),
+                ),
               ),
             ),
         ],
@@ -1060,7 +1078,7 @@ class _FailedActions extends ConsumerWidget {
       padding: const EdgeInsets.only(top: NxSpacing.sp2),
       child: Row(
         children: [
-          NxIcon(NxIcons.warning, size: 14, color: nx.colors.danger),
+          NxIcon(NxIcons.warning, size: NxIconSize.sm, color: nx.colors.danger),
           const SizedBox(width: NxSpacing.sp2),
           Text(
             '보내지 못했습니다',
@@ -1097,8 +1115,12 @@ class _PinnedMark extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          NxIcon(NxIcons.pin, size: 12, color: nx.colors.textSecondary),
-          const SizedBox(width: 4),
+          NxIcon(
+            NxIcons.pin,
+            size: NxIconSize.xs,
+            color: nx.colors.textSecondary,
+          ),
+          const SizedBox(width: NxSpacing.sp2),
           Text('고정됨', style: nx.text.meta),
         ],
       ),

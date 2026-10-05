@@ -151,9 +151,7 @@ class _BurndownState extends ConsumerState<_Burndown> {
     final burndown = ref.watch(burndownProvider(widget.sprint.id));
     final failed = SizedBox(
       height: 180,
-      child: Center(
-        child: Text('번다운을 불러오지 못했습니다.', style: nx.text.secondary),
-      ),
+      child: Center(child: Text('번다운을 불러오지 못했습니다.', style: nx.text.secondary)),
     );
 
     return burndown.when(
@@ -398,12 +396,16 @@ class _NewSprintSheetState extends ConsumerState<_NewSprintSheet> {
               controller: _start,
               error: _startError,
               keyboardType: TextInputType.datetime,
-              style: nx.text.code.copyWith(fontSize: 14, height: 1.3),
+              style: nx.text.codeLine.copyWith(fontSize: NxFontSize.base),
             ),
           const SizedBox(height: NxSpacing.sp7),
           Align(
             alignment: Alignment.centerRight,
-            child: NxButton(label: '만들기', loading: _sending, onPressed: _submit),
+            child: NxButton(
+              label: '만들기',
+              loading: _sending,
+              onPressed: _submit,
+            ),
           ),
         ],
       ),

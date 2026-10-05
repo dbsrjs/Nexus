@@ -127,8 +127,8 @@ class NxTextContextMenu extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: s.hovered || s.pressed
                         ? c.accentSubtle
-                        : const Color(0x00000000),
-                    borderRadius: BorderRadius.circular(6),
+                        : NxColors.transparent,
+                    borderRadius: BorderRadius.circular(NxRadius.inner),
                   ),
                   child: Text(labelFor(item), style: theme.text.sm),
                 ),

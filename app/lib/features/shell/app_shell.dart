@@ -198,11 +198,9 @@ class ShellPaneTrigger extends ConsumerWidget {
       builder: (context, s) => AnimatedContainer(
         duration: NxMotion.micro,
         height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.symmetric(horizontal: NxSpacing.sp3),
         decoration: BoxDecoration(
-          color: s.hovered || s.pressed
-              ? c.bgElevated
-              : const Color(0x00000000),
+          color: s.hovered || s.pressed ? c.bgElevated : NxColors.transparent,
           borderRadius: BorderRadius.circular(NxRadius.md),
         ),
         child: Row(
@@ -218,8 +216,12 @@ class ShellPaneTrigger extends ConsumerWidget {
               const SizedBox(width: NxSpacing.sp4),
             ],
             Flexible(child: child),
-            const SizedBox(width: 6),
-            NxIcon(NxIcons.chevronDown, size: 12, color: c.textSecondary),
+            const SizedBox(width: NxSpacing.sp3),
+            NxIcon(
+              NxIcons.chevronDown,
+              size: NxIconSize.xs,
+              color: c.textSecondary,
+            ),
           ],
         ),
       ),
@@ -247,7 +249,7 @@ class ShellHeader extends StatelessWidget {
             child: Text(
               title,
               overflow: TextOverflow.ellipsis,
-              style: nx.text.title.copyWith(fontSize: 15),
+              style: nx.text.header,
             ),
           ),
         ),
@@ -458,11 +460,24 @@ class SettingsFrame extends StatelessWidget {
         header: NxHeader(
           title: title,
           leading: body == null
-              ? NxIconButton(icon: NxIcons.close, label: '설정 닫기', onPressed: onClose)
-              : NxIconButton(icon: NxIcons.back, label: '뒤로', onPressed: onBack),
+              ? NxIconButton(
+                  icon: NxIcons.close,
+                  label: '설정 닫기',
+                  onPressed: onClose,
+                )
+              : NxIconButton(
+                  icon: NxIcons.back,
+                  label: '뒤로',
+                  onPressed: onBack,
+                ),
         ),
         body: SettingsInsets(
-          insets: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          insets: const EdgeInsets.fromLTRB(
+            NxSpacing.sp7,
+            NxSpacing.sp8,
+            NxSpacing.sp7,
+            NxSpacing.sp9,
+          ),
           child: body ?? nav,
         ),
       );
@@ -518,19 +533,24 @@ class _CloseEsc extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: s.hovered ? c.bgElevated : const Color(0x00000000),
-              border: Border.all(color: s.hovered ? c.textSecondary : c.borderStrong),
+              color: s.hovered ? c.bgElevated : NxColors.transparent,
+              border: Border.all(
+                color: s.hovered ? c.textSecondary : c.borderStrong,
+              ),
             ),
             child: NxIcon(
               NxIcons.close,
-              size: 14,
+              size: NxIconSize.sm,
               color: s.hovered ? c.textPrimary : c.textSecondary,
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: NxSpacing.sp3),
         ExcludeSemantics(
-          child: Text('ESC', style: nx.text.mono.copyWith(color: c.borderStrong)),
+          child: Text(
+            'ESC',
+            style: nx.text.mono.copyWith(color: c.borderStrong),
+          ),
         ),
       ],
     );

@@ -68,12 +68,18 @@ class PresenceAvatar extends ConsumerWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          UserAvatar(userId: userId, name: name, avatarUrl: avatarUrl, size: size),
+          UserAvatar(
+            userId: userId,
+            name: name,
+            avatarUrl: avatarUrl,
+            size: size,
+          ),
           Positioned(
             right: -2,
             bottom: -2,
             // 바탕색 테두리로 아바타에서 떼어 낸다.
             child: Container(
+              // 토큰 밖: 상태 점을 아바타에서 떼는 테두리 두께(광학 보정).
               padding: const EdgeInsets.all(1.5),
               decoration: BoxDecoration(
                 color: NxTheme.of(context).colors.bgSurface,

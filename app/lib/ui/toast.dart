@@ -125,13 +125,18 @@ class _ToastView extends StatelessWidget {
       child: Container(
         constraints: const BoxConstraints(maxWidth: 480),
         margin: const EdgeInsets.symmetric(horizontal: NxSpacing.sp6),
-        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+        padding: const EdgeInsets.fromLTRB(
+          NxSpacing.sp5,
+          NxSpacing.inset,
+          NxSpacing.sp4,
+          NxSpacing.inset,
+        ),
         decoration: BoxDecoration(
           color: c.bgElevated,
           borderRadius: BorderRadius.circular(NxRadius.md),
           border: Border.all(
             color: toast.kind == NxToastKind.error
-                ? c.danger.withValues(alpha: .35)
+                ? c.danger.withValues(alpha: NxAlpha.edge)
                 : c.divider,
           ),
         ),
@@ -139,7 +144,7 @@ class _ToastView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             NxIcon(icon, color: color),
-            const SizedBox(width: 10),
+            const SizedBox(width: NxSpacing.inset),
             Flexible(child: Text(toast.message, style: theme.text.sm)),
             if (toast.actionLabel != null) ...[
               const SizedBox(width: NxSpacing.sp4),
@@ -152,11 +157,13 @@ class _ToastView extends StatelessWidget {
                 builder: (context, s) => AnimatedContainer(
                   duration: NxMotion.micro,
                   height: 28,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: NxSpacing.sp4,
+                  ),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: s.hovered ? c.accentSubtle : const Color(0x00000000),
-                    borderRadius: BorderRadius.circular(6),
+                    color: s.hovered ? c.accentSubtle : NxColors.transparent,
+                    borderRadius: BorderRadius.circular(NxRadius.inner),
                   ),
                   child: Text(
                     toast.actionLabel!,

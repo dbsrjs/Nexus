@@ -1,6 +1,8 @@
 /* Nexus 디자인 시스템 — 토큰
  * 출처: docs/디자인-시스템.md
- * Flutter core/theme.dart 는 이 파일의 토큰 이름을 그대로 따른다.
+ * Flutter app/lib/ui/theme.dart 는 이 파일의 토큰 이름을 그대로 따른다
+ * (--bg-surface → bgSurface, --r-inner → NxRadius.inner).
+ * 값을 바꿀 때는 docs/디자인-시스템.md → 이 파일 → theme.dart 순서로 고친다.
  */
 
 :root {
@@ -30,6 +32,7 @@
   --warning: #D3B069;
   --danger: #D47D7D;
   --merged: #A18ECC;
+  --on-danger: #121314;  /* danger 를 칠한 자리의 글자 */
 
   /* ── 아바타 ─────────────────────────────────
    * 8색 전부 채도 28% · 명도 66% 고정. 색상만 균등 분배한다.
@@ -68,18 +71,50 @@
   --sp-1: 2px;   --sp-2: 4px;   --sp-3: 6px;   --sp-4: 8px;
   --sp-5: 12px;  --sp-6: 16px;  --sp-7: 20px;  --sp-8: 24px;
   --sp-9: 32px;  --sp-10: 48px;
+  /* 목록 줄 · 메뉴 항목의 좌우 안쪽, 줄 머리 아이콘 ↔ 글자. 격자 밖의 유일한 간격. */
+  --sp-inset: 10px;
 
   /* ── 형태 ───────────────────────────────── */
   --r-sm: 4px;   /* 인라인 코드 · 작은 배지 */
   /* 카드 · 입력창 · 버튼. 6은 딱딱하고 Material 기본값 12는 코드와 표가
      들어가면 패딩이 이중으로 겹친다. */
   --r-md: 8px;
+  /* 패널 안의 항목(메뉴 항목 · 토스트 버튼). 바깥 판(md)보다 한 단 작게. */
+  --r-inner: 6px;
+  /* 화면 위에 뜨는 것(동작 카드 · 모바일 메뉴 · 로그인 카드). */
+  --r-lg: 12px;
   --r-full: 9999px;
+
+  /* ── 브랜드 마크 — 테마를 따르지 않는다 ──────────
+   * 마크는 OS 런처 · 브라우저 탭과 같은 물건이라 다크 · 라이트에서 같은 색이다.
+   * 원본은 design-system/logo/build_logo.py.                       */
+  --brand-plate: #000000;
+  --brand-mark: #FFFFFF;
+  --brand-node: #77AECF;
+  --brand-plate-radius: 22.5%;
+
+  /* ── 장식 — 빈 화면의 배경(로그인) ──────────────
+   * 점 격자 · 조각을 잇는 점선. 폼보다 먼저 눈에 들어오면 안 된다.   */
+  --decor-dot: rgba(221, 230, 237, .10);   /* text-primary 10% */
+  --decor-wire: rgba(119, 174, 207, .38);  /* accent 38% */
+
+  /* 다이얼로그 · 동작 카드 뒤의 막(오버레이만). */
+  --scrim: rgba(18, 19, 20, .72);
 
   /* ── 모션 ───────────────────────────────── */
   --motion-micro: 120ms;
   --motion-panel: 180ms;
   --ease: cubic-bezier(0, 0, .2, 1);
+
+  /* ── 투명도 — 색을 옅게 덧칠하는 비율 (NxAlpha) ── */
+  --alpha-wash: .06;       /* 드롭 영역 */
+  --alpha-tint: .12;       /* 색 바탕 */
+  --alpha-selection: .35;  /* 글자 선택 */
+  --alpha-edge: .45;       /* 색 테두리 */
+  --alpha-hover: .6;       /* 한 단 위 표면을 반쯤 */
+
+  /* ── 아이콘 크기 (NxIconSize) ── */
+  --icon-xs: 12px;  --icon-sm: 14px;  --icon-md: 16px;
 }
 
 /* ── 라이트 모드 — 같은 팔레트를 뒤집는다 ─────────── */
@@ -94,6 +129,14 @@
   --accent: #326C8F;
   --accent-subtle: rgba(50, 108, 143, .09);
   --accent-press: #285571;
+  /* 의미색 — 색상 · 채도는 그대로, 명도만 낮춰 라이트 바탕에서 4.5:1 이상 */
+  --success: #407758;
+  --warning: #866727;
+  --danger: #BE3F3F;
+  --merged: #775BB5;
+  --on-danger: #FFFFFF;
+  --decor-dot: rgba(39, 55, 77, .10);
+  --decor-wire: rgba(50, 108, 143, .38);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -46,13 +46,16 @@ class IssueCard extends ConsumerWidget {
       actions: actions,
       builder: (context, s) => AnimatedContainer(
         duration: NxMotion.micro,
-        padding: const EdgeInsets.fromLTRB(12, 12, 6, 10),
+        padding: const EdgeInsets.fromLTRB(
+          NxSpacing.sp5,
+          NxSpacing.sp5,
+          NxSpacing.sp3,
+          NxSpacing.inset,
+        ),
         decoration: BoxDecoration(
           color: dragging || s.hovered ? c.bgElevated : c.bgSurface,
           borderRadius: BorderRadius.circular(NxRadius.md),
-          border: Border.all(
-            color: dragging ? c.accent : const Color(0x00000000),
-          ),
+          border: Border.all(color: dragging ? c.accent : NxColors.transparent),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,7 +65,7 @@ class IssueCard extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.only(top: NxSpacing.sp1),
                     child: Text(
                       issue.title,
                       style: nx.text.base.copyWith(height: 1.45),
@@ -85,7 +88,7 @@ class IssueCard extends ConsumerWidget {
             ],
             const SizedBox(height: NxSpacing.sp5),
             Padding(
-              padding: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.only(right: NxSpacing.sp3),
               child: Row(
                 children: [
                   Text(issue.key, style: nx.text.mono),
@@ -151,11 +154,7 @@ class _MoveMenu extends ConsumerWidget {
       final ok = await ref.read(boardActionsProvider).moveTo(issue, status);
       if (ok || !context.mounted) return;
       // 카드는 이미 제자리로 돌아가 있다(리포지토리가 되돌린다).
-      NxToast.show(
-        context,
-        '옮기지 못했습니다. 연결을 확인해 주세요.',
-        kind: NxToastKind.error,
-      );
+      NxToast.show(context, '옮기지 못했습니다. 연결을 확인해 주세요.', kind: NxToastKind.error);
     }
 
     return NxMenu(

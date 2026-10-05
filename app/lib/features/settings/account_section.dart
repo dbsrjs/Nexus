@@ -65,7 +65,9 @@ class _AccountSectionState extends ConsumerState<AccountSection> {
     if (file == null) return;
     final bytes = await file.readAsBytes();
     await _run(
-      () => ref.read(settingsApiProvider).uploadAvatar(bytes: bytes, filename: file.name),
+      () => ref
+          .read(settingsApiProvider)
+          .uploadAvatar(bytes: bytes, filename: file.name),
       error: (e) => _photoError = e,
       done: '사진을 바꿨습니다',
       avatar: true,
@@ -73,17 +75,17 @@ class _AccountSectionState extends ConsumerState<AccountSection> {
   }
 
   Future<void> _removePhoto() => _run(
-        () => ref.read(settingsApiProvider).removeAvatar(),
-        error: (e) => _photoError = e,
-        done: '사진을 지웠습니다',
-        avatar: true,
-      );
+    () => ref.read(settingsApiProvider).removeAvatar(),
+    error: (e) => _photoError = e,
+    done: '사진을 지웠습니다',
+    avatar: true,
+  );
 
   Future<void> _saveName() => _run(
-        () => ref.read(settingsApiProvider).updateName(_name.text.trim()),
-        error: (e) => _nameError = e,
-        done: '이름을 바꿨습니다',
-      );
+    () => ref.read(settingsApiProvider).updateName(_name.text.trim()),
+    error: (e) => _nameError = e,
+    done: '이름을 바꿨습니다',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +132,7 @@ class _AccountSectionState extends ConsumerState<AccountSection> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: NxSpacing.inset),
                   Text(
                     'PNG · JPEG · WebP · GIF, 5MB 이하 · 가운데를 정사각형으로 잘라 씁니다',
                     style: nx.text.meta,
@@ -159,8 +161,12 @@ class _AccountSectionState extends ConsumerState<AccountSection> {
             const SizedBox(width: NxSpacing.sp4),
             // 라벨 줄만큼 내려 입력 칸과 높이를 맞춘다.
             Padding(
+              // 토큰 밖: NxField 의 라벨 줄 높이(글자 + 간격)만큼 — 라벨 높이가 바뀌면 같이 바꾼다.
               padding: const EdgeInsets.only(top: 22),
-              child: NxButton(label: '저장', onPressed: canSave ? _saveName : null),
+              child: NxButton(
+                label: '저장',
+                onPressed: canSave ? _saveName : null,
+              ),
             ),
           ],
         ),

@@ -34,7 +34,7 @@ class FileKindBadge extends StatelessWidget {
       child: Text(
         extensionOf(name),
         style: nx.text.mono.copyWith(
-          fontSize: 10,
+          fontSize: 10, // 토큰 밖: 파일 아이콘 안의 확장자 — 아이콘 크기에 묶인 축소 글자
           fontWeight: FontWeight.w600,
           color: c.textSecondary,
         ),

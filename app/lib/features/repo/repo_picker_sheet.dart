@@ -14,7 +14,11 @@ import 'repo_controller.dart';
 /// `/user/repos` 에는 검색 파라미터가 없고 `/search/repositories` 는 rate
 /// limit 도 응답 모양도 다르다. 저장소가 100개를 넘겨 답답해지면 그때 붙인다.
 class RepoPickerSheet extends ConsumerStatefulWidget {
-  const RepoPickerSheet({super.key, required this.spaceId, required this.login});
+  const RepoPickerSheet({
+    super.key,
+    required this.spaceId,
+    required this.login,
+  });
 
   final String spaceId;
   final String login;
@@ -105,7 +109,11 @@ class _RepoPickerSheetState extends ConsumerState<RepoPickerSheet> {
             hint: '이름으로 거르기',
             dense: true,
             autofocus: true,
-            leading: NxIcon(NxIcons.search, size: 14, color: c.textSecondary),
+            leading: NxIcon(
+              NxIcons.search,
+              size: NxIconSize.sm,
+              color: c.textSecondary,
+            ),
             onChanged: (v) => setState(() => _filter = v),
           ),
           const SizedBox(height: NxSpacing.sp6),
@@ -171,7 +179,9 @@ class _RepoPickerSheetState extends ConsumerState<RepoPickerSheet> {
                         titleStyle: repo.canWebhook
                             ? null
                             : nx.text.base.copyWith(color: c.borderStrong),
-                        onPressed: repo.canWebhook ? () => _connect(repo) : null,
+                        onPressed: repo.canWebhook
+                            ? () => _connect(repo)
+                            : null,
                       );
                     },
                   ),

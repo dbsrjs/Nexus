@@ -39,7 +39,11 @@ class _SprintPicker extends ConsumerWidget {
 
   final Issue issue;
 
-  Future<void> _set(BuildContext context, WidgetRef ref, String? sprintId) async {
+  Future<void> _set(
+    BuildContext context,
+    WidgetRef ref,
+    String? sprintId,
+  ) async {
     final spaceId = ref.read(currentSpaceIdProvider);
     if (spaceId == null) return;
     final ok = await ref
@@ -168,9 +172,9 @@ class _Field extends StatelessWidget {
       builder: (context, s) => AnimatedContainer(
         duration: NxMotion.micro,
         height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: NxSpacing.inset),
         decoration: BoxDecoration(
-          color: s.hovered ? c.bgElevated : const Color(0x00000000),
+          color: s.hovered ? c.bgElevated : NxColors.transparent,
           borderRadius: BorderRadius.circular(NxRadius.md),
           border: Border.all(color: s.hovered ? c.borderStrong : c.divider),
         ),
@@ -181,7 +185,11 @@ class _Field extends StatelessWidget {
             const SizedBox(width: NxSpacing.sp3),
             Text(value, style: nx.text.sm),
             const SizedBox(width: NxSpacing.sp3),
-            NxIcon(NxIcons.chevronDown, size: 12, color: c.textSecondary),
+            NxIcon(
+              NxIcons.chevronDown,
+              size: NxIconSize.xs,
+              color: c.textSecondary,
+            ),
           ],
         ),
       ),
