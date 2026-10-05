@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// 6 과 8 로 갈라져 있었다.
 ///
 /// **토큰으로 표현할 수 없는 값**(축소 미리보기 · 테두리 두께 보정 같은 광학 보정)은
-/// 같은 줄이나 바로 윗줄에 `// 토큰 밖:` 과 이유를 적는다. 예외가 말없이 늘지 않게
+/// 걸린 범위의 바로 윗줄이나 그 안에 `// 토큰 밖:` 과 이유를 적는다. 예외가 말없이 늘지 않게
 /// 하는 장치다 — 이유를 못 적겠으면 토큰을 쓸 자리다.
 const _tokenFiles = {'lib/ui/theme.dart', 'lib/ui/gallery.dart'};
 
@@ -43,6 +43,36 @@ class _Hit {
   String toString() => '$path:$line  [$rule]  ${text.trim()}';
 }
 
+/// 주석을 같은 길이의 공백으로 지운다 — 위치를 그대로 두어야 걸린 줄을 짚을 수 있다.
+String _stripComments(String source) => source.replaceAllMapped(
+  RegExp(r'//[^\n]*'),
+  (m) => ' ' * m.group(0)!.length,
+);
+
+int _lineOf(String text, int offset) =>
+    '\n'.allMatches(text.substring(0, offset)).length;
+
+/// **파일 전체에** 정규식을 맞춘다. 줄 단위로 보면 dart format 이 여러 줄로 쪼갠 호출
+/// (`EdgeInsets.symmetric(` 다음 줄의 `vertical: 5,`) 안의 숫자를 놓친다 — 2026-10-06
+/// 검토에서 실제로 그렇게 빠져나간 줄이 있었다.
+List<_Hit> _scanSource(String path, String source) {
+  final hits = <_Hit>[];
+  final lines = source.split('\n');
+  final code = _stripComments(source);
+  _rules.forEach((rule, re) {
+    for (final m in re.allMatches(code)) {
+      final first = _lineOf(code, m.start);
+      final last = _lineOf(code, m.end);
+      // 걸린 범위의 바로 윗줄부터 끝 줄까지 어디에든 이유가 적혀 있으면 예외.
+      final excused = [
+        for (var i = first > 0 ? first - 1 : 0; i <= last; i++) lines[i],
+      ].any((l) => l.contains(_marker));
+      if (!excused) hits.add(_Hit(rule, path, last + 1, lines[last]));
+    }
+  });
+  return hits;
+}
+
 List<_Hit> _scan() {
   final hits = <_Hit>[];
   for (final entity in Directory('lib').listSync(recursive: true)) {
@@ -53,17 +83,7 @@ List<_Hit> _scan() {
         path.endsWith('.freezed.dart')) {
       continue;
     }
-    final lines = entity.readAsLinesSync();
-    for (var i = 0; i < lines.length; i++) {
-      final line = lines[i];
-      final code = line.split('//').first;
-      final excused =
-          line.contains(_marker) || (i > 0 && lines[i - 1].contains(_marker));
-      if (excused) continue;
-      _rules.forEach((rule, re) {
-        if (re.hasMatch(code)) hits.add(_Hit(rule, path, i + 1, line));
-      });
-    }
+    hits.addAll(_scanSource(path, entity.readAsStringSync()));
   }
   return hits;
 }
@@ -103,5 +123,44 @@ void main() {
       ),
       isFalse,
     );
+  });
+
+  test('★ 여러 줄로 쪼갠 호출 안의 숫자도 잡는다 — 줄 단위 검사가 놓쳤던 모양', () {
+    expect(
+      _scanSource(
+        'x.dart',
+        'padding: const EdgeInsets.symmetric(\n'
+            '  horizontal: NxSpacing.sp4,\n'
+            '  vertical: 5,\n'
+            '),',
+      ),
+      hasLength(1),
+    );
+    expect(
+      _scanSource('x.dart', 'NxIcon(\n  NxIcons.lock,\n  size: 13,\n)'),
+      hasLength(1),
+    );
+  });
+
+  test('윗줄 · 범위 안의 이유는 예외로 친다', () {
+    expect(
+      _scanSource(
+        'x.dart',
+        '// 토큰 밖: 광학 보정\npadding: const EdgeInsets.all(1.5),',
+      ),
+      isEmpty,
+    );
+    expect(
+      _scanSource(
+        'x.dart',
+        'padding: const EdgeInsets.symmetric(\n'
+            '  // 토큰 밖: 광학 보정\n'
+            '  vertical: 5,\n'
+            '),',
+      ),
+      isEmpty,
+    );
+    // 주석 안의 숫자는 코드가 아니다.
+    expect(_scanSource('x.dart', '// fontSize: 15 는 옛 값'), isEmpty);
   });
 }
