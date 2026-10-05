@@ -9,6 +9,7 @@ import '../../shared/widgets/user_avatar.dart';
 import '../../ui/ui.dart';
 import '../auth/auth_controller.dart';
 import '../channel/channel_controller.dart';
+import '../channel/dm.dart';
 import '../space/members_controller.dart';
 import '../space/space_controller.dart';
 import 'attachment_draft.dart';
@@ -250,6 +251,8 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
                               widget.hint ??
                               (channel == null
                                   ? '채널을 선택하세요'
+                                  : channel.isDm
+                                  ? '${dmPeerName(ref.watch(memberProfilesProvider), channel)} 님에게 메시지 보내기'
                                   : '#${channel.name} 에 메시지 보내기'),
                         ),
                       ),

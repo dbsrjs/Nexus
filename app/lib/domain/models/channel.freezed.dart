@@ -19,7 +19,10 @@ mixin _$Channel {
 /// 무게가 다르고 화면에서도 다른 색으로 그린다.
  int get mentionCount; String? get lastReadMessageId; bool get muted;/// 내가 이 채널에 보낼 수 있는가(16단계 D26). 거짓이면 입력창 대신 「읽기 전용」을 보이고
 /// 답장 · 스레드 · 고정을 감춘다 — 리액션은 남는다. 서버가 안 주면(옛 응답) 보낼 수 있다고 본다.
- bool get canSend;
+ bool get canSend;/// `text` · `dm`(17단계). 모르는 값은 일반 채널로 본다.
+ String get kind;/// DM 의 상대(17단계 D6). 일반 채널은 null. 상대가 스페이스를 떠나도 남는다.
+ String? get dmUserId;/// 마지막 최상위 메시지 시각 — DM 묶음을 최근순으로 줄 세우고 빈 DM 을 가린다(D10).
+ DateTime? get lastMessageAt;
 /// Create a copy of Channel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,16 +35,16 @@ $ChannelCopyWith<Channel> get copyWith => _$ChannelCopyWithImpl<Channel>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Channel&&(identical(other.id, id) || other.id == id)&&(identical(other.key, key) || other.key == key)&&(identical(other.name, name) || other.name == name)&&(identical(other.topic, topic) || other.topic == topic)&&(identical(other.categoryId, categoryId) || other.categoryId == categoryId)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate)&&(identical(other.position, position) || other.position == position)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.mentionCount, mentionCount) || other.mentionCount == mentionCount)&&(identical(other.lastReadMessageId, lastReadMessageId) || other.lastReadMessageId == lastReadMessageId)&&(identical(other.muted, muted) || other.muted == muted)&&(identical(other.canSend, canSend) || other.canSend == canSend));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Channel&&(identical(other.id, id) || other.id == id)&&(identical(other.key, key) || other.key == key)&&(identical(other.name, name) || other.name == name)&&(identical(other.topic, topic) || other.topic == topic)&&(identical(other.categoryId, categoryId) || other.categoryId == categoryId)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate)&&(identical(other.position, position) || other.position == position)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.mentionCount, mentionCount) || other.mentionCount == mentionCount)&&(identical(other.lastReadMessageId, lastReadMessageId) || other.lastReadMessageId == lastReadMessageId)&&(identical(other.muted, muted) || other.muted == muted)&&(identical(other.canSend, canSend) || other.canSend == canSend)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.dmUserId, dmUserId) || other.dmUserId == dmUserId)&&(identical(other.lastMessageAt, lastMessageAt) || other.lastMessageAt == lastMessageAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,key,name,topic,categoryId,isPrivate,position,unreadCount,mentionCount,lastReadMessageId,muted,canSend);
+int get hashCode => Object.hash(runtimeType,id,key,name,topic,categoryId,isPrivate,position,unreadCount,mentionCount,lastReadMessageId,muted,canSend,kind,dmUserId,lastMessageAt);
 
 @override
 String toString() {
-  return 'Channel(id: $id, key: $key, name: $name, topic: $topic, categoryId: $categoryId, isPrivate: $isPrivate, position: $position, unreadCount: $unreadCount, mentionCount: $mentionCount, lastReadMessageId: $lastReadMessageId, muted: $muted, canSend: $canSend)';
+  return 'Channel(id: $id, key: $key, name: $name, topic: $topic, categoryId: $categoryId, isPrivate: $isPrivate, position: $position, unreadCount: $unreadCount, mentionCount: $mentionCount, lastReadMessageId: $lastReadMessageId, muted: $muted, canSend: $canSend, kind: $kind, dmUserId: $dmUserId, lastMessageAt: $lastMessageAt)';
 }
 
 
@@ -52,7 +55,7 @@ abstract mixin class $ChannelCopyWith<$Res>  {
   factory $ChannelCopyWith(Channel value, $Res Function(Channel) _then) = _$ChannelCopyWithImpl;
 @useResult
 $Res call({
- String id, String key, String name, String? topic, String? categoryId, bool isPrivate, int position, int unreadCount, int mentionCount, String? lastReadMessageId, bool muted, bool canSend
+ String id, String key, String name, String? topic, String? categoryId, bool isPrivate, int position, int unreadCount, int mentionCount, String? lastReadMessageId, bool muted, bool canSend, String kind, String? dmUserId, DateTime? lastMessageAt
 });
 
 
@@ -69,7 +72,7 @@ class _$ChannelCopyWithImpl<$Res>
 
 /// Create a copy of Channel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? key = null,Object? name = null,Object? topic = freezed,Object? categoryId = freezed,Object? isPrivate = null,Object? position = null,Object? unreadCount = null,Object? mentionCount = null,Object? lastReadMessageId = freezed,Object? muted = null,Object? canSend = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? key = null,Object? name = null,Object? topic = freezed,Object? categoryId = freezed,Object? isPrivate = null,Object? position = null,Object? unreadCount = null,Object? mentionCount = null,Object? lastReadMessageId = freezed,Object? muted = null,Object? canSend = null,Object? kind = null,Object? dmUserId = freezed,Object? lastMessageAt = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,key: null == key ? _self.key : key // ignore: cast_nullable_to_non_nullable
@@ -83,7 +86,10 @@ as int,mentionCount: null == mentionCount ? _self.mentionCount : mentionCount //
 as int,lastReadMessageId: freezed == lastReadMessageId ? _self.lastReadMessageId : lastReadMessageId // ignore: cast_nullable_to_non_nullable
 as String?,muted: null == muted ? _self.muted : muted // ignore: cast_nullable_to_non_nullable
 as bool,canSend: null == canSend ? _self.canSend : canSend // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as String,dmUserId: freezed == dmUserId ? _self.dmUserId : dmUserId // ignore: cast_nullable_to_non_nullable
+as String?,lastMessageAt: freezed == lastMessageAt ? _self.lastMessageAt : lastMessageAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 
@@ -168,10 +174,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String key,  String name,  String? topic,  String? categoryId,  bool isPrivate,  int position,  int unreadCount,  int mentionCount,  String? lastReadMessageId,  bool muted,  bool canSend)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String key,  String name,  String? topic,  String? categoryId,  bool isPrivate,  int position,  int unreadCount,  int mentionCount,  String? lastReadMessageId,  bool muted,  bool canSend,  String kind,  String? dmUserId,  DateTime? lastMessageAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Channel() when $default != null:
-return $default(_that.id,_that.key,_that.name,_that.topic,_that.categoryId,_that.isPrivate,_that.position,_that.unreadCount,_that.mentionCount,_that.lastReadMessageId,_that.muted,_that.canSend);case _:
+return $default(_that.id,_that.key,_that.name,_that.topic,_that.categoryId,_that.isPrivate,_that.position,_that.unreadCount,_that.mentionCount,_that.lastReadMessageId,_that.muted,_that.canSend,_that.kind,_that.dmUserId,_that.lastMessageAt);case _:
   return orElse();
 
 }
@@ -189,10 +195,10 @@ return $default(_that.id,_that.key,_that.name,_that.topic,_that.categoryId,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String key,  String name,  String? topic,  String? categoryId,  bool isPrivate,  int position,  int unreadCount,  int mentionCount,  String? lastReadMessageId,  bool muted,  bool canSend)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String key,  String name,  String? topic,  String? categoryId,  bool isPrivate,  int position,  int unreadCount,  int mentionCount,  String? lastReadMessageId,  bool muted,  bool canSend,  String kind,  String? dmUserId,  DateTime? lastMessageAt)  $default,) {final _that = this;
 switch (_that) {
 case _Channel():
-return $default(_that.id,_that.key,_that.name,_that.topic,_that.categoryId,_that.isPrivate,_that.position,_that.unreadCount,_that.mentionCount,_that.lastReadMessageId,_that.muted,_that.canSend);case _:
+return $default(_that.id,_that.key,_that.name,_that.topic,_that.categoryId,_that.isPrivate,_that.position,_that.unreadCount,_that.mentionCount,_that.lastReadMessageId,_that.muted,_that.canSend,_that.kind,_that.dmUserId,_that.lastMessageAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -209,10 +215,10 @@ return $default(_that.id,_that.key,_that.name,_that.topic,_that.categoryId,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String key,  String name,  String? topic,  String? categoryId,  bool isPrivate,  int position,  int unreadCount,  int mentionCount,  String? lastReadMessageId,  bool muted,  bool canSend)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String key,  String name,  String? topic,  String? categoryId,  bool isPrivate,  int position,  int unreadCount,  int mentionCount,  String? lastReadMessageId,  bool muted,  bool canSend,  String kind,  String? dmUserId,  DateTime? lastMessageAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Channel() when $default != null:
-return $default(_that.id,_that.key,_that.name,_that.topic,_that.categoryId,_that.isPrivate,_that.position,_that.unreadCount,_that.mentionCount,_that.lastReadMessageId,_that.muted,_that.canSend);case _:
+return $default(_that.id,_that.key,_that.name,_that.topic,_that.categoryId,_that.isPrivate,_that.position,_that.unreadCount,_that.mentionCount,_that.lastReadMessageId,_that.muted,_that.canSend,_that.kind,_that.dmUserId,_that.lastMessageAt);case _:
   return null;
 
 }
@@ -223,8 +229,8 @@ return $default(_that.id,_that.key,_that.name,_that.topic,_that.categoryId,_that
 /// @nodoc
 @JsonSerializable()
 
-class _Channel implements Channel {
-  const _Channel({required this.id, required this.key, required this.name, this.topic, this.categoryId, this.isPrivate = false, this.position = 0, this.unreadCount = 0, this.mentionCount = 0, this.lastReadMessageId, this.muted = false, this.canSend = true});
+class _Channel extends Channel {
+  const _Channel({required this.id, required this.key, required this.name, this.topic, this.categoryId, this.isPrivate = false, this.position = 0, this.unreadCount = 0, this.mentionCount = 0, this.lastReadMessageId, this.muted = false, this.canSend = true, this.kind = 'text', this.dmUserId, this.lastMessageAt}): super._();
   factory _Channel.fromJson(Map<String, dynamic> json) => _$ChannelFromJson(json);
 
 @override final  String id;
@@ -243,6 +249,12 @@ class _Channel implements Channel {
 /// 내가 이 채널에 보낼 수 있는가(16단계 D26). 거짓이면 입력창 대신 「읽기 전용」을 보이고
 /// 답장 · 스레드 · 고정을 감춘다 — 리액션은 남는다. 서버가 안 주면(옛 응답) 보낼 수 있다고 본다.
 @override@JsonKey() final  bool canSend;
+/// `text` · `dm`(17단계). 모르는 값은 일반 채널로 본다.
+@override@JsonKey() final  String kind;
+/// DM 의 상대(17단계 D6). 일반 채널은 null. 상대가 스페이스를 떠나도 남는다.
+@override final  String? dmUserId;
+/// 마지막 최상위 메시지 시각 — DM 묶음을 최근순으로 줄 세우고 빈 DM 을 가린다(D10).
+@override final  DateTime? lastMessageAt;
 
 /// Create a copy of Channel
 /// with the given fields replaced by the non-null parameter values.
@@ -257,16 +269,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Channel&&(identical(other.id, id) || other.id == id)&&(identical(other.key, key) || other.key == key)&&(identical(other.name, name) || other.name == name)&&(identical(other.topic, topic) || other.topic == topic)&&(identical(other.categoryId, categoryId) || other.categoryId == categoryId)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate)&&(identical(other.position, position) || other.position == position)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.mentionCount, mentionCount) || other.mentionCount == mentionCount)&&(identical(other.lastReadMessageId, lastReadMessageId) || other.lastReadMessageId == lastReadMessageId)&&(identical(other.muted, muted) || other.muted == muted)&&(identical(other.canSend, canSend) || other.canSend == canSend));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Channel&&(identical(other.id, id) || other.id == id)&&(identical(other.key, key) || other.key == key)&&(identical(other.name, name) || other.name == name)&&(identical(other.topic, topic) || other.topic == topic)&&(identical(other.categoryId, categoryId) || other.categoryId == categoryId)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate)&&(identical(other.position, position) || other.position == position)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.mentionCount, mentionCount) || other.mentionCount == mentionCount)&&(identical(other.lastReadMessageId, lastReadMessageId) || other.lastReadMessageId == lastReadMessageId)&&(identical(other.muted, muted) || other.muted == muted)&&(identical(other.canSend, canSend) || other.canSend == canSend)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.dmUserId, dmUserId) || other.dmUserId == dmUserId)&&(identical(other.lastMessageAt, lastMessageAt) || other.lastMessageAt == lastMessageAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,key,name,topic,categoryId,isPrivate,position,unreadCount,mentionCount,lastReadMessageId,muted,canSend);
+int get hashCode => Object.hash(runtimeType,id,key,name,topic,categoryId,isPrivate,position,unreadCount,mentionCount,lastReadMessageId,muted,canSend,kind,dmUserId,lastMessageAt);
 
 @override
 String toString() {
-  return 'Channel(id: $id, key: $key, name: $name, topic: $topic, categoryId: $categoryId, isPrivate: $isPrivate, position: $position, unreadCount: $unreadCount, mentionCount: $mentionCount, lastReadMessageId: $lastReadMessageId, muted: $muted, canSend: $canSend)';
+  return 'Channel(id: $id, key: $key, name: $name, topic: $topic, categoryId: $categoryId, isPrivate: $isPrivate, position: $position, unreadCount: $unreadCount, mentionCount: $mentionCount, lastReadMessageId: $lastReadMessageId, muted: $muted, canSend: $canSend, kind: $kind, dmUserId: $dmUserId, lastMessageAt: $lastMessageAt)';
 }
 
 
@@ -277,7 +289,7 @@ abstract mixin class _$ChannelCopyWith<$Res> implements $ChannelCopyWith<$Res> {
   factory _$ChannelCopyWith(_Channel value, $Res Function(_Channel) _then) = __$ChannelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String key, String name, String? topic, String? categoryId, bool isPrivate, int position, int unreadCount, int mentionCount, String? lastReadMessageId, bool muted, bool canSend
+ String id, String key, String name, String? topic, String? categoryId, bool isPrivate, int position, int unreadCount, int mentionCount, String? lastReadMessageId, bool muted, bool canSend, String kind, String? dmUserId, DateTime? lastMessageAt
 });
 
 
@@ -294,7 +306,7 @@ class __$ChannelCopyWithImpl<$Res>
 
 /// Create a copy of Channel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? key = null,Object? name = null,Object? topic = freezed,Object? categoryId = freezed,Object? isPrivate = null,Object? position = null,Object? unreadCount = null,Object? mentionCount = null,Object? lastReadMessageId = freezed,Object? muted = null,Object? canSend = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? key = null,Object? name = null,Object? topic = freezed,Object? categoryId = freezed,Object? isPrivate = null,Object? position = null,Object? unreadCount = null,Object? mentionCount = null,Object? lastReadMessageId = freezed,Object? muted = null,Object? canSend = null,Object? kind = null,Object? dmUserId = freezed,Object? lastMessageAt = freezed,}) {
   return _then(_Channel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,key: null == key ? _self.key : key // ignore: cast_nullable_to_non_nullable
@@ -308,7 +320,10 @@ as int,mentionCount: null == mentionCount ? _self.mentionCount : mentionCount //
 as int,lastReadMessageId: freezed == lastReadMessageId ? _self.lastReadMessageId : lastReadMessageId // ignore: cast_nullable_to_non_nullable
 as String?,muted: null == muted ? _self.muted : muted // ignore: cast_nullable_to_non_nullable
 as bool,canSend: null == canSend ? _self.canSend : canSend // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as String,dmUserId: freezed == dmUserId ? _self.dmUserId : dmUserId // ignore: cast_nullable_to_non_nullable
+as String?,lastMessageAt: freezed == lastMessageAt ? _self.lastMessageAt : lastMessageAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 

@@ -7,6 +7,7 @@ import '../../domain/models/space_member.dart';
 import '../../shared/widgets/user_avatar.dart';
 import '../../ui/ui.dart';
 import '../auth/auth_controller.dart';
+import '../channel/dm.dart';
 import '../settings/settings_widgets.dart';
 import '../space/members_controller.dart';
 import 'space_settings_controller.dart';
@@ -42,6 +43,7 @@ class MembersSection extends ConsumerWidget {
               spaceId: spaceId,
               member: member,
               me: me,
+              self: member.userId == myId,
               manageable: canManageMember(
                 me: me,
                 target: member.role,
@@ -59,12 +61,14 @@ class _MemberRow extends ConsumerWidget {
     required this.spaceId,
     required this.member,
     required this.me,
+    required this.self,
     required this.manageable,
   });
 
   final String spaceId;
   final SpaceMemberProfile member;
   final SpaceRole me;
+  final bool self;
   final bool manageable;
 
   Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() call) async {
@@ -115,9 +119,19 @@ class _MemberRow extends ConsumerWidget {
         ),
         title: member.displayName,
         subtitle: roleLabel(member.role),
-        trailing: !manageable
-            ? null
-            : NxMenu(
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 사람을 보는 자리에서 바로 말을 건다(17단계 D11).
+            if (!self)
+              NxButton(
+                label: '메시지',
+                kind: NxButtonKind.ghost,
+                size: NxSize.sm,
+                onPressed: () => openDmIn(context, ref, spaceId, member.userId),
+              ),
+            if (manageable)
+              NxMenu(
                 entries: [
                   for (final role in assignable)
                     NxMenuItem(
@@ -146,6 +160,8 @@ class _MemberRow extends ConsumerWidget {
                   onPressed: toggle,
                 ),
               ),
+          ],
+        ),
       ),
     );
   }

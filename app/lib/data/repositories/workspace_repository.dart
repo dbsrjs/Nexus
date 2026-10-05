@@ -80,6 +80,9 @@ class WorkspaceRepository {
                       mentionCount: r.mentionCount,
                       muted: r.muted,
                       canSend: r.canSend,
+                      kind: r.kind,
+                      dmUserId: r.dmUserId,
+                      lastMessageAt: r.lastMessageAt,
                     ))
                 .toList(growable: false),
           );
@@ -103,6 +106,9 @@ class WorkspaceRepository {
             mentionCount: Value(c.mentionCount),
             muted: Value(c.muted),
             canSend: Value(c.canSend),
+            kind: Value(c.kind),
+            dmUserId: Value(c.dmUserId),
+            lastMessageAt: Value(c.lastMessageAt),
           ),
       ]);
       return true;
