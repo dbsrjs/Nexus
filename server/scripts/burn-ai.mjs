@@ -15,7 +15,7 @@
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { requireServer } from './lib/preflight.mjs';
-import { BASE, stamp, api, signup } from './lib/api.mjs';
+import { BASE, stamp, api, signup, submitGithubCallback } from './lib/api.mjs';
 
 await requireServer(BASE);
 const FAKE_PORT = 4599;
@@ -181,7 +181,7 @@ try {
   // 저장소 연결 → 인덱싱(진짜 임베딩)
   const started = await api('POST', '/me/connections/github/start', { token: a.token });
   const state = new URL(started.json.authorizeUrl).searchParams.get('state');
-  await fetch(`${BASE}/auth/github/callback?${new URLSearchParams({ code: `burn-${stamp}`, state })}`);
+  await submitGithubCallback(`burn-${stamp}`, state);
   const linked = await api('POST', `/spaces/${spaceId}/repos/connect`, {
     token: a.token,
     body: { githubRepoId: REPO.id, linkedChannelId: channel.id },

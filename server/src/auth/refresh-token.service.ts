@@ -113,19 +113,30 @@ export class RefreshTokenService {
     };
   }
 
-  /** 이전 행을 revoke 하고 새 행을 가리키게 한다. 한 트랜잭션에서 처리한다. */
+  /**
+   * 이전 행을 revoke 하고 새 행을 가리키게 한다. 한 트랜잭션에서 처리한다.
+   *
+   * **revoke 를 「아직 revoke 되지 않았으면」 조건으로 건다.** `verifyUsable` 과 여기
+   * 사이에는 틈이 있어, 같은 토큰으로 두 요청이 동시에 오면 둘 다 검증을 통과한다 —
+   * 무조건 update 하면 둘 다 새 토큰을 받아 한 family 에 살아 있는 토큰이 둘이 된다.
+   * 탈취한 토큰을 사용자와 같은 순간에 내밀면 재사용 탐지를 비켜 가는 경로다. 진 쪽은
+   * 재사용으로 보고 family 를 끊는다 — 순서대로 왔을 때와 같은 결론이다.
+   * (앱은 리프레시를 한 번에 하나만 보낸다 — api_client.dart 의 `_refreshing`.)
+   */
   async commitRotation(
     previous: RefreshToken,
     next: IssuedRefreshToken,
     token: string,
     client: ClientFingerprint = {},
   ): Promise<void> {
-    await this.prisma.$transaction([
-      this.prisma.refreshToken.update({
-        where: { id: previous.id },
+    const won = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.refreshToken.updateMany({
+        where: { id: previous.id, revokedAt: null },
         data: { revokedAt: new Date(), replacedById: next.id },
-      }),
-      this.prisma.refreshToken.create({
+      });
+      if (count === 0) return false;
+
+      await tx.refreshToken.create({
         data: {
           id: next.id,
           userId: previous.userId,
@@ -135,8 +146,19 @@ export class RefreshTokenService {
           userAgent: client.userAgent?.slice(0, 255),
           ip: client.ip,
         },
-      }),
-    ]);
+      });
+      return true;
+    });
+
+    if (!won) {
+      await this.revokeFamily(previous.familyId);
+      this.logger.warn(
+        `리프레시 토큰 동시 사용 감지 — family ${previous.familyId} 전체를 무효화했습니다 (user ${previous.userId})`,
+      );
+      throw new UnauthorizedException(
+        '리프레시 토큰이 재사용되었습니다. 다시 로그인하십시오',
+      );
+    }
   }
 
   /** family 전체 무효화 — 로그아웃, 그리고 재사용 탐지 시. */

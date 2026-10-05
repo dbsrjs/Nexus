@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -16,6 +18,24 @@ import {
   IssuedRefreshToken,
   RefreshTokenService,
 } from './refresh-token.service';
+import { FailureThrottle } from './failure-throttle';
+
+/**
+ * 비밀번호 대조 실패 한도 — 15분에 10번. argon2 가 느려도 무제한이면 사전 공격이
+ * 시간 문제다. 사람이 오타로 닿을 수는 없는 수로 잡았다.
+ */
+const PASSWORD_MAX_FAILURES = 10;
+const PASSWORD_WINDOW_MS = 15 * 60 * 1000;
+
+/**
+ * 사람이 가입할 수 없는 이메일인가. **`.invalid` 는 RFC 2606 · 6761 이 예약한 최상위
+ * 도메인**이라 실제 메일함이 없다 — 서버가 만드는 봇 계정(`github@bot.nexus.invalid`)이
+ * 여기 있다. 막지 않으면 웹훅이 봇보다 먼저 가입한 사람의 계정을 봇으로 쓴다.
+ */
+export function isReservedEmail(email: string): boolean {
+  const domain = email.trim().toLowerCase().split('@').pop() ?? '';
+  return domain === 'invalid' || domain.endsWith('.invalid');
+}
 
 export interface AuthTokens {
   accessToken: string;
@@ -36,6 +56,10 @@ export interface PublicUser {
 @Injectable()
 export class AuthService {
   private readonly secrets: JwtSecrets;
+  private readonly passwordFailures = new FailureThrottle(
+    PASSWORD_MAX_FAILURES,
+    PASSWORD_WINDOW_MS,
+  );
 
   constructor(
     private readonly prisma: PrismaService,
@@ -57,6 +81,9 @@ export class AuthService {
     client: ClientFingerprint = {},
   ): Promise<AuthTokens & { user: PublicUser }> {
     const normalizedEmail = email.trim().toLowerCase();
+    if (isReservedEmail(normalizedEmail)) {
+      throw new BadRequestException('사용할 수 없는 이메일입니다');
+    }
 
     const existing = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -111,7 +138,20 @@ export class AuthService {
     password: string,
     client: ClientFingerprint = {},
   ): Promise<AuthTokens & { user: PublicUser }> {
-    const user = await this.validateUser(email, password);
+    // **주소 + 이메일**로 센다. 이메일만으로 세면 남의 이메일을 열 번 틀려 그 사람을
+    // 잠글 수 있고, 주소만으로 세면 공용 NAT 뒤의 사람들이 함께 잠긴다.
+    const key = `login:${client.ip ?? '-'}:${email.trim().toLowerCase()}`;
+    this.assertNotThrottled(key);
+
+    let user: User;
+    try {
+      user = await this.validateUser(email, password);
+    } catch (err) {
+      // DB 장애까지 실패로 세면 장애 중에 멀쩡한 사람이 잠긴다.
+      if (err instanceof UnauthorizedException) this.passwordFailures.fail(key);
+      throw err;
+    }
+    this.passwordFailures.succeed(key);
     const tokens = await this.issueNewSession(user, client);
     return { ...tokens, user: this.toPublicUser(user) };
   }
@@ -160,12 +200,18 @@ export class AuthService {
     newPassword: string,
     client: ClientFingerprint = {},
   ): Promise<AuthTokens> {
+    // 액세스 토큰만 훔친 사람이 현재 비밀번호를 맞혀 보는 경로다 — 로그인과 같은 한도를 건다.
+    const key = `password:${userId}`;
+    this.assertNotThrottled(key);
+
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const ok =
       !!user?.passwordHash && (await argon2.verify(user.passwordHash, currentPassword));
     if (!user || !ok) {
+      this.passwordFailures.fail(key);
       throw new BadRequestException('현재 비밀번호가 맞지 않습니다');
     }
+    this.passwordFailures.succeed(key);
     if (currentPassword === newPassword) {
       throw new BadRequestException('새 비밀번호가 지금과 같습니다');
     }
@@ -198,6 +244,24 @@ export class AuthService {
     } catch {
       // 위조·만료된 토큰으로 로그아웃을 시도해도 그냥 성공으로 둔다.
     }
+  }
+
+  /**
+   * 한도에 닿았으면 429 + `Retry-After`. 본문 객체의 `retryAfter` 를 전역 예외 필터가
+   * 헤더로 옮긴다(github-error.ts 와 같은 모양).
+   */
+  private assertNotThrottled(key: string): void {
+    const retryAfter = this.passwordFailures.blockedFor(key);
+    if (retryAfter === null) return;
+    throw new HttpException(
+      {
+        statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        error: 'TooManyRequests',
+        message: '시도가 너무 많습니다. 잠시 뒤 다시 시도해 주세요.',
+        retryAfter,
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
   }
 
   private async verifyRefreshJwt(token: string): Promise<JwtPayload> {

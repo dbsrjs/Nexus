@@ -50,7 +50,7 @@ description: Use when running or debugging Nexus's check:* contract verification
 
 | 명령 | 덮는 것 |
 |---|---|
-| `npm run check:realtime` | 실서버 · 실DB · 실소켓으로 소켓 계약 검증(53개) (`db:up` · `server:dev` 실행 중이어야 함). **2026-09-17 부터 시드 비밀번호가 필요 없다** — 자체 계정 · 스페이스를 쓴다. 만료 토큰 거부 · 갱신 토큰 재연결은 서버와 같은 `JWT_SECRET` 으로 스크립트가 직접 서명해 본다 |
+| `npm run check:realtime` | 실서버 · 실DB · 실소켓으로 소켓 계약 검증(56개) (`db:up` · `server:dev` 실행 중이어야 함). **2026-09-17 부터 시드 비밀번호가 필요 없다** — 자체 계정 · 스페이스를 쓴다. 만료 토큰 거부 · 갱신 토큰 재연결은 서버와 같은 `JWT_SECRET` 으로 스크립트가 직접 서명해 본다 |
 | `npm run check:reactions` | 리액션 계약 검증(24개). **자체 계정·스페이스를 만들어 쓰므로 비밀번호가 필요 없다** |
 | `npm run check:threads` | 스레드 계약 검증(25개). 위와 같이 자체 계정을 쓴다 |
 | `npm run check:quotes` | 답장(인용) 계약 검증(17개) |
@@ -58,7 +58,7 @@ description: Use when running or debugging Nexus's check:* contract verification
 | `npm run check:pins` | 핀 계약 검증(20개) |
 | `npm run check:attachments` | 첨부 계약 검증(43개). **드라이버와 무관하게 돈다** — 지금 드라이버는 `local` 하나다. 배포 때 `S3Driver` 를 붙이면 `STORAGE_DRIVER=s3` 로 한 번 더 돌린다 |
 | `npm run check:repos` | 저장소 웹훅 계약 검증(30개). **GitHub 없이 돈다** — 서명을 직접 만들어 보낸다 |
-| `npm run check:oauth` | GitHub **연동 전체** 계약 검증(설정된 서버에서 76개) — 계정 연결(10-2a)과 저장소 목록 · 자동 등록 · 승격 · 훅 재등록/삭제(10-2b). **가짜 GitHub(4599)을 스스로 띄운다** — `.env` 에 `GITHUB_*_BASE` · `OAUTH_TOKEN_KEY` · `PUBLIC_BASE_URL` 을 넣고 서버를 재시작해야 한다. 미설정 503 분기는 그 값들을 비운 채로 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
+| `npm run check:oauth` | GitHub **연동 전체** 계약 검증(설정된 서버에서 81개) — 계정 연결(10-2a · 콜백 확인 화면은 2026-10-05)과 저장소 목록 · 자동 등록 · 승격 · 훅 재등록/삭제(10-2b). **가짜 GitHub(4599)을 스스로 띄운다** — `.env` 에 `GITHUB_*_BASE` · `OAUTH_TOKEN_KEY` · `PUBLIC_BASE_URL` 을 넣고 서버를 재시작해야 한다. 미설정 503 분기는 그 값들을 비운 채로 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
 | `npm run check:browse` | 저장소 열람 계약 검증(56개) — 브랜치 · 트리 · 파일(10-3a)과 커밋(10-3b). **가짜 GitHub(4599)을 스스로 띄운다** — `check:oauth` 와 같은 `.env` 를 쓴다. 연결 · 등록이 주제인 그쪽과 섞지 않았다 |
 | `npm run check:pulls` | PR 열람 계약 검증(35개) — 목록 · 상세 · 바뀐 파일(11단계). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 를 쓴다 |
 | `npm run check:indexing` | 저장소 인덱싱 계약 검증(54개) — 연결 시 적재 · 거르기(바이너리 · 대용량 · 생성 파일) · 벡터 검색 순위 · 증분 재인덱싱(push 웹훅 → compare, 이름 변경(renamed) 갈래 포함) · force-push(compare 404 로 실제로 응답한 횟수까지 확인) · **임베딩 모델 변경 시 compare 없이 전체**(기록된 모델을 DB 에서 직접 바꿔 흉내 낸다 — DB 를 만지는 자리는 `scripts/lib/db.mjs` 머리에 모았다) · 기능 브랜치 무시(12단계) · **AI 코드 질문 · 인용 경로 · 모델 불일치 시 검색과 AI 503**(13-2) · 이어 묻기의 인용이 첫 답과 같음(13-3) · 큐 실패 갈래(429 `Retry-After: 0` · 리스 유효/만료, 2026-09-27). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 에 **`EMBEDDING_PROVIDER=fake` 가 더 필요하고**, AI 케이스는 `LLM_PROVIDER=fake` 일 때만 돈다(아니면 건너뛴다고 찍는다) |
@@ -70,5 +70,5 @@ description: Use when running or debugging Nexus's check:* contract verification
 | `npm run check:dm` | DM 계약 검증(40개, 17-1) — 열기 멱등 · 같은 두 사람 동시 열기에도 하나(key 유일성) · 자기 자신 400 · 비멤버 404 · **셋째 사람(관리자 포함)이 목록 · 메시지 · 소켓으로 못 봄** · 구조 API(이름 · 공개 전환 · 참여 · 명단 · 권한 · 저장소 연결) 404 · 상대가 나간 DM 은 읽기 전용 403 · 돌아오면 같은 DM 이 살아남. 자체 계정을 쓴다 |
 | `npm run check:presence` | 프레즌스 · 타이핑 계약 검증(30개, 17-2) — 함께 쓰는 사람만 받음 · 소켓 둘 중 하나만 away 면 온라인 · 끊기면 **5초 유예 뒤** 오프라인 · 유예 안 재연결은 조용히 · 처음 값 REST · typing 은 보낸 소켓 제외 · 명단 밖 · 스페이스 밖 · **읽기 전용 채널 거부** · 1초 상한. **유예를 실제로 기다려 30초쯤 걸린다** |
 | `npm run check:notifications` | 인앱 알림 계약 검증(67개, 18) — 멘션 · `@channel` · DM · 내 글의 답글이 각각 알림이 됨 · 자기 글은 없음 · 겹치면 하나(우선순위) · 스위치를 끄면 다음 종류로 내려감 · **비공개 채널 밖 사람은 알림도 소켓도 없고 나중에 명단에 들어와도 없음** · 음소거면 직접 멘션만 · 목록 · 수 · 커서 · 읽음 멱등 · 남의 것 404 · 채널 읽음이 최상위 메시지 알림만 따라 읽음 · 명단에서 빠지면 목록 · 수에서 빠짐 · 삭제된 메시지는 본문 없음 · 모두 읽음. 자체 계정을 쓴다 |
-| `npm run check:settings` | 사용자 설정 계약 검증(48개) — 이름 변경과 `user:updated` 범위 · 아바타 올리기 · 256×256 WebP · 열람 권한(본인 · 함께 쓰는 스페이스만, 그 밖 404) · 비밀번호 변경과 다른 세션 폐기 · 채널 음소거(멱등 · 읽음 위치 보존). 자체 계정을 쓴다 |
+| `npm run check:settings` | 사용자 설정 계약 검증(53개) — 이름 변경과 `user:updated` 범위 · 아바타 올리기 · 256×256 WebP · 열람 권한(본인 · 함께 쓰는 스페이스만, 그 밖 404) · 비밀번호 변경과 다른 세션 폐기 · 예약 도메인 가입 거부 · 로그인 실패 한도(429 · `Retry-After`) · 보안 헤더 · 채널 음소거(멱등 · 읽음 위치 보존). 자체 계정을 쓴다 |
 

@@ -14,7 +14,7 @@ import { createServer } from 'node:http';
 import { createHmac } from 'node:crypto';
 
 import { requireServer, abortUnless, PreflightAbort } from './lib/preflight.mjs';
-import { BASE, stamp, api, signup } from './lib/api.mjs';
+import { BASE, stamp, api, signup, submitGithubCallback } from './lib/api.mjs';
 import { check, summary } from './lib/checks.mjs';
 import { settleIndexing } from './lib/indexing.mjs';
 await requireServer(BASE);
@@ -234,8 +234,7 @@ async function connectGithub(token, seed) {
   const started = await api('POST', '/me/connections/github/start', { token });
   if (started.status === 503) return false;
   const state = new URL(started.json.authorizeUrl).searchParams.get('state');
-  const query = new URLSearchParams({ code: `code-${stamp}-${seed}`, state });
-  await fetch(`${BASE}/auth/github/callback?${query}`);
+  await submitGithubCallback(`code-${stamp}-${seed}`, state);
   return true;
 }
 

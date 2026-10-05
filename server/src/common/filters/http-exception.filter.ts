@@ -48,8 +48,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
         }
       }
     } else if (exception instanceof Error) {
-      message = exception.message;
+      // **원문을 응답에 싣지 않는다.** HttpException 이 아닌 Error 는 의도하지 않은
+      // 실패다 — Prisma 오류는 테이블 · 컬럼 · DB 호스트를, 설정 오류는 키 길이를
+      // 담고 있다. 공개 경로(OAuth 콜백 · 웹훅)마다 감싸 막아 왔는데(10-2a), 새
+      // 경로가 그것을 잊으면 곧바로 샌다. 여기서 한 번에 접고 원인은 로그로만 남긴다.
       this.logger.error(exception.message, exception.stack);
+    } else {
+      this.logger.error(`Error 가 아닌 예외: ${String(exception)}`);
     }
 
     response.status(status).json({
