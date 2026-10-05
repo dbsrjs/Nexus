@@ -135,27 +135,8 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run server:dev` · `server:build` | 개발 서버 · 빌드 |
 | `npm --prefix server run typecheck` | 타입 검사만 |
 | `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint |
-| `npm run check:realtime` | 실서버 · 실DB · 실소켓으로 소켓 계약 검증(53개) (`db:up` · `server:dev` 실행 중이어야 함). **2026-09-17 부터 시드 비밀번호가 필요 없다** — 자체 계정 · 스페이스를 쓴다. 만료 토큰 거부 · 갱신 토큰 재연결은 서버와 같은 `JWT_SECRET` 으로 스크립트가 직접 서명해 본다 |
-| `npm run check:reactions` | 리액션 계약 검증(24개). **자체 계정·스페이스를 만들어 쓰므로 비밀번호가 필요 없다** |
-| `npm run check:threads` | 스레드 계약 검증(25개). 위와 같이 자체 계정을 쓴다 |
-| `npm run check:quotes` | 답장(인용) 계약 검증(17개) |
-| `npm run check:mentions` | 멘션 계약 검증(18개) |
-| `npm run check:pins` | 핀 계약 검증(20개) |
-| `npm run check:attachments` | 첨부 계약 검증(43개). **드라이버와 무관하게 돈다** — 지금 드라이버는 `local` 하나다. 배포 때 `S3Driver` 를 붙이면 `STORAGE_DRIVER=s3` 로 한 번 더 돌린다 |
-| `npm run check:repos` | 저장소 웹훅 계약 검증(30개). **GitHub 없이 돈다** — 서명을 직접 만들어 보낸다 |
-| `npm run check:oauth` | GitHub **연동 전체** 계약 검증(설정된 서버에서 76개) — 계정 연결(10-2a)과 저장소 목록 · 자동 등록 · 승격 · 훅 재등록/삭제(10-2b). **가짜 GitHub(4599)을 스스로 띄운다** — `.env` 에 `GITHUB_*_BASE` · `OAUTH_TOKEN_KEY` · `PUBLIC_BASE_URL` 을 넣고 서버를 재시작해야 한다. 미설정 503 분기는 그 값들을 비운 채로 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
-| `npm run check:browse` | 저장소 열람 계약 검증(56개) — 브랜치 · 트리 · 파일(10-3a)과 커밋(10-3b). **가짜 GitHub(4599)을 스스로 띄운다** — `check:oauth` 와 같은 `.env` 를 쓴다. 연결 · 등록이 주제인 그쪽과 섞지 않았다 |
-| `npm run check:pulls` | PR 열람 계약 검증(35개) — 목록 · 상세 · 바뀐 파일(11단계). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 를 쓴다 |
-| `npm run check:indexing` | 저장소 인덱싱 계약 검증(54개) — 연결 시 적재 · 거르기(바이너리 · 대용량 · 생성 파일) · 벡터 검색 순위 · 증분 재인덱싱(push 웹훅 → compare, 이름 변경(renamed) 갈래 포함) · force-push(compare 404 로 실제로 응답한 횟수까지 확인) · **임베딩 모델 변경 시 compare 없이 전체**(기록된 모델을 DB 에서 직접 바꿔 흉내 낸다 — DB 를 만지는 자리는 `scripts/lib/db.mjs` 머리에 모았다) · 기능 브랜치 무시(12단계) · **AI 코드 질문 · 인용 경로 · 모델 불일치 시 검색과 AI 503**(13-2) · 이어 묻기의 인용이 첫 답과 같음(13-3) · 큐 실패 갈래(429 `Retry-After: 0` · 리스 유효/만료, 2026-09-27). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 에 **`EMBEDDING_PROVIDER=fake` 가 더 필요하고**, AI 케이스는 `LLM_PROVIDER=fake` 일 때만 돈다(아니면 건너뛴다고 찍는다) |
-| `npm run check:migrations` | 마이그레이션에 **수동 관리 객체를 지우는 구문**이 섞였는지 검사. DB 도 서버도 필요 없다 — CI 서버 잡이 매번 돈다 |
-| `npm run check:sql-time` | raw SQL 이 **DB 의 시계**(`now()` · `CURRENT_TIMESTAMP`)를 쓰는지 검사. 이 스키마의 시각 컬럼은 `timestamp without time zone` 이고 **Prisma 는 거기에 UTC 를 쓰는데 `now()` 는 DB 로컬을 준다** — 개발 PC 가 `Asia/Seoul` 이라 아홉 시간이 어긋나 인덱싱 리스가 한 번도 동작하지 않았다(진행 기록 «12 실제 태우기»). **CI 가 UTC 면 로컬에서만 틀리고 CI 는 초록이라** 값이 아니라 코드를 본다. DB 도 서버도 필요 없다 |
-| `npm run check:issues` | 이슈 · 스프린트 계약 검증(89개). 자체 계정을 쓴다. **컬럼 상한(200)과 재채번까지 태우므로 다른 스크립트보다 오래 걸린다** |
-| `npm run check:ai` | AI 계약 검증(설정된 서버에서 89개) — LLM 캐시 · 큐 · 소켓 알림 · 멘션 치환 실증(13-1) · `/ai/ask` 의 자유 지시문 · 채널 최근 대화 · 이슈 초안 · 입력 조합 검증(13-2) · 이어 묻기 · 사슬 상한 · 캐시 분리(13-3) · **큐 실패 갈래**(5xx 재시도 · 소진 · 429 · 4xx · 빈 답 · 잘린 답 · 리스 — `FakeLlmProvider` 의 실패 주입 지시문으로, 2026-09-27). **소진 케이스가 재시도 대기만 50초라 스크립트가 약 1분 걸린다.** 저장소 컨텍스트는 `check:indexing` 이 본다. **`LLM_PROVIDER=gemini` 로 뜬 서버에서는 무료 티어 쿼터를 쓴다** — `fake` 로 돌리는 쪽이 기본이다. 미설정 503 분기는 `check:oauth` 와 같은 패턴으로 `LLM_PROVIDER` 를 비운 채 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
-| `npm run check:members` | 멤버 · 권한 계약 검증(97개) — 16-1: 스페이스 만들기(같은 이름 둘) · 초대 목록 · 취소 · 한도 · 수락 이벤트 · 역할 · 내보내기 · 나가기. 16-2: 채널 만들기(같은 이름 둘) · 비공개 채널 명단 · 역할별 권한(읽기 전용 · 가림 — **읽어 본 공개 채널도 가리면 404**) · 스프린트 스위치 · **가린 채널을 AI · 대화→이슈로 우회하지 못함** · 강등 · 비공개 전환. **내보내지거나 빠지거나 가려진 소켓이 `rooms:sync` 없이도 이벤트를 받지 않는지**를 매번 본다. 자체 계정을 쓴다 |
-| `npm run check:dm` | DM 계약 검증(40개, 17-1) — 열기 멱등 · 같은 두 사람 동시 열기에도 하나(key 유일성) · 자기 자신 400 · 비멤버 404 · **셋째 사람(관리자 포함)이 목록 · 메시지 · 소켓으로 못 봄** · 구조 API(이름 · 공개 전환 · 참여 · 명단 · 권한 · 저장소 연결) 404 · 상대가 나간 DM 은 읽기 전용 403 · 돌아오면 같은 DM 이 살아남. 자체 계정을 쓴다 |
-| `npm run check:presence` | 프레즌스 · 타이핑 계약 검증(30개, 17-2) — 함께 쓰는 사람만 받음 · 소켓 둘 중 하나만 away 면 온라인 · 끊기면 **5초 유예 뒤** 오프라인 · 유예 안 재연결은 조용히 · 처음 값 REST · typing 은 보낸 소켓 제외 · 명단 밖 · 스페이스 밖 · **읽기 전용 채널 거부** · 1초 상한. **유예를 실제로 기다려 30초쯤 걸린다** |
+| `npm run check:<이름>` | **실서버 · 실DB · 실소켓 계약 검증 19종(844개)** — CI 가 push 마다 돈다. 목록 · 개수 · 전제(`.env` 값 · 가짜 GitHub · `LLM_PROVIDER=fake`) · 실패할 때 볼 것은 **`nexus-verify` 스킬**이 원본이다. 정적 검사 둘(`check:migrations` · `check:sql-time`)은 DB · 서버 없이 돈다 |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
-| `npm run check:settings` | 사용자 설정 계약 검증(48개) — 이름 변경과 `user:updated` 범위 · 아바타 올리기 · 256×256 WebP · 열람 권한(본인 · 함께 쓰는 스페이스만, 그 밖 404) · 비밀번호 변경과 다른 세션 폐기 · 채널 음소거(멱등 · 읽음 위치 보존). 자체 계정을 쓴다 |
 | `npm run app:flow` | **앱 통합 테스트** — Windows 데스크톱 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 스레드 · 셸 안 화면 · 설정 창(이름 · 사진 · 테마 · 음소거)까지 끝까지 돈다(약 30초, `db:up` · `server:dev` 필요). 보안 저장소 · drift 는 메모리로 바꿔 개발용 앱의 세션을 건드리지 않는다. **CI 에서는 돌지 않는다**(§5 빚) — 화면을 건드린 변경마다 사람이 돌린다 |
 | `cd app && dart run build_runner build` | freezed · json_serializable 재생성 |
 
@@ -432,19 +413,12 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 - **모델을 고치면 `dart run build_runner build`** 를 돌린다. `.freezed.dart` · `.g.dart` 는 커밋한다 — 체크아웃 직후 코드젠 없이 빌드되게 하기 위함이다.
 - **애노테이션과 클래스 사이에 아무것도 끼우지 않는다.** `@DriftDatabase(...)` 와 `class AppDatabase` 사이에 상수 하나를 넣었더니 애노테이션이 그 상수에 붙어 **drift 가 `.g.dart` 를 아예 만들지 않았다.** 로컬에는 옛 생성물이 남아 있어 `analyze` · `test` 가 전부 통과했고, **깨끗한 체크아웃으로 도는 CI 만 실패했다.** 코드 생성이 걸린 변경은 `.dart_tool/build` 를 지우고 한 번 돌려 볼 것 — 캐시가 있으면 "생성되지 않음"이 "변경 없음"처럼 보인다.
 
-### 아직 이관하지 않은 모듈 — 빌드에서 빠져 있다
+### 옛 모듈 — 남은 것이 없다
 
-`src/notifications` `src/gitlab` 둘은 **옛 스키마를 참조해 컴파일되지
-않는다.** 소스는 참고용으로 남겨 두고 `tsconfig.json` · `tsconfig.build.json` 의 `exclude` 로
-빌드에서만 뺐다. `src/realtime/redis-io.adapter.ts` 도 다중 인스턴스가 될 때까지 개별 제외돼
-있다. (`issues`(9-1) · `ai`(13-1) · `permissions`(16-2)는 `spaceId` 기준으로 다시 써 이관을 마쳤다.)
-
-**`src/files` 는 8-1 에서 `attachments` 로 다시 쓰고 옛 소스를 지웠다.** 참고용으로도
-남기지 않은 이유는 그 코드가 **서명 URL 을 발급**하기 때문이다 — 되살리는 사람이
-그 구멍을 함께 되살린다. 필요하면 git 이력에 있다.
-
-되살리는 절차: ① 두 tsconfig 의 `exclude` 에서 경로 삭제 → ② `spaceId` 기준으로 코드 수정
-→ ③ `app.module.ts` 의 `imports` 에 등록.
+단일 테넌트 시절 모듈은 전부 `spaceId` 기준으로 다시 쓰거나 지웠다 — `files`(8-1, 서명 URL 을 발급하던
+코드라 참고용으로도 남기지 않았다) · `issues`(9-1) · `ai`(13-1) · `permissions`(16-2). **`notifications` ·
+`gitlab` 은 2026-10-05 정리에서 지웠다** — 18 · 20 단계가 새로 쓴다(살릴 줄이 없었다, git 이력에 있다).
+`src/realtime/redis-io.adapter.ts` 만 다중 인스턴스가 될 때까지 두 tsconfig 의 `exclude` 로 빠져 있다.
 
 ---
 
@@ -456,7 +430,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 
 **아직 없는 것** — 전부 §5 의 어느 단계가 맡는다(2026-09-27 편입): 인앱 알림(18) · 지난 AI 대화
 다시 열기(19) · GitLab(20) · 푸시 · **S3 스토리지 드라이버**(지금은 `local` 하나) · 배포(마지막).
-`notifications` 모듈은 미이관이다(§3 끝). 그룹 DM · 직접 고르는 상태(방해 금지) · 마지막 접속 시각은
+그룹 DM · 직접 고르는 상태(방해 금지) · 마지막 접속 시각은
 17단계 범위에서 뺐다([17단계 설계 §5](docs/superpowers/specs/2026-10-05-17-DM-프레즌스-타이핑-design.md)).
 
 ---
@@ -553,8 +527,8 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 그 뒤로는 단계마다 스펙이 하나씩 있다(이슈 보드 · 저장소 연동 · GitHub OAuth · 열람 · 커밋 · 마크다운 ·
 UI 리디자인 · PR · 인덱싱 · AI · AI 패널). **범위에서 뺀 것과 그 이유**가 거기 있다.
 
-계획 문서 `docs/superpowers/plans/` 도 있지만 **실행이 끝난 기록**이다. 현재 상태는
-계획이 아니라 이 문서와 스펙을 봐야 한다.
+계획 문서(`docs/superpowers/plans/`)는 **그 단계를 main 에 병합하면 지운다**(2026-10-05 정리에서 1~16단계분을
+지웠다 — git 이력에 있다). 실행이 끝난 계획은 다시 읽히지 않고, 결정은 스펙과 진행 기록에 남는다.
 
 작업을 끝내면 `docs/전환-계획.md` 의 체크박스, **`docs/진행-기록.md` 에 그 단계의 절**,
 이 문서의 §5 표를 갱신한다.
@@ -572,6 +546,7 @@ README 가 「1~13단계 완료」에 두 단계 동안 머물렀다. 아래를 
 | `docs/앱-설계.md` · `docs/백엔드-설계.md` | 스택 · 구조 · 화면 · 테스트 수 · 구현 순서 |
 | `docs/코드-둘러보기.md` · `docs/기술-스택-가이드.md` · `docs/디자인-시스템.md` | 구조 목록 · 안내 |
 | 그 단계의 설계 스펙 | 머리에 완료 표시 |
+| `.claude/skills/nexus-verify/SKILL.md` | 계약 검증 목록 · 개수(새 `check:*` 를 더했으면) |
 
 **이 문서에는 경과를 쓰지 않는다** — 새 단계에서 나온 판단이
 앞으로도 유효하면 §3 «반복해서 쓰는 판단» 에, 코드에서 겪은 함정이면 §2 에 한 줄로 올린다.
