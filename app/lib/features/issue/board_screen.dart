@@ -405,8 +405,9 @@ class _BoardColumn extends StatelessWidget {
     var k = 0;
     for (final issue in issues) {
       final isMoving = issue.id == moving?.id;
-      if (!isMoving && spotIndex == k)
+      if (!isMoving && spotIndex == k) {
         children.add(const _Placeholder(key: ValueKey('spot')));
+      }
       children.add(_card(issue, isMoving));
       if (!isMoving) k++;
     }
