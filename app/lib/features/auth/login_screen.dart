@@ -83,7 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // **워드마크가 그림 안에 있어 'Nexus' 글자를 따로 두지
+                  // **워드마크가 로고 안에 있어 'Nexus' 글자를 따로 두지
                   // 않는다.** 둘 다 두면 같은 이름이 두 번 나온다.
                   const Center(child: NexusLogo()),
                   const SizedBox(height: NxSpacing.sp5),
