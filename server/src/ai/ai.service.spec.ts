@@ -26,11 +26,8 @@ function service(
     .fn()
     .mockResolvedValue({ spaceId: 's-1', userId: 'u-1', role: 'member' });
   const channels = {
-    assertCanView: jest.fn(async () => {
-      const visible = await db.channel?.findFirst?.();
-      if (!visible) throw new NotFoundException('채널을 찾을 수 없습니다');
-      return visible;
-    }),
+    // 멤버 행 조회도 ChannelsService 안으로 들어갔다(canViewAs) — 판정만 흉내 낸다.
+    canViewAs: jest.fn(async () => Boolean(await db.channel?.findFirst?.())),
   };
   return new AiService(
     prisma as never,

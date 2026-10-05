@@ -309,10 +309,10 @@ export class IssuesService {
       where: { id: messageId, spaceId },
       select: { channelId: true },
     });
-    const member = await this.prisma.spaceMember.findUnique({
-      where: { spaceId_userId: { spaceId, userId } },
-    });
-    if (!message || !member || !(await this.channels.canView(message.channelId, member))) {
+    if (
+      !message ||
+      !(await this.channels.canViewAs(spaceId, userId, message.channelId))
+    ) {
       throw new NotFoundException('메시지를 찾을 수 없습니다');
     }
   }
