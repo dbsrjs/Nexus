@@ -21,9 +21,29 @@ class LoginBackdrop extends StatelessWidget {
   /// 가운데 놓일 로그인 카드.
   final Widget child;
 
-  /// 조각을 펼칠 수 있는 최소 크기. 조각 바깥 끝이 가운데에서 좌우 640 · 위아래 320 까지
-  /// 나가므로, 그 안에 여백을 조금 더해 잘리지 않을 때만 그린다.
-  static const _minWide = Size(1100, 760);
+  /// 조각을 펼칠 수 있는 최소 크기 — **조각 배치에서 계산한다.** 숫자로 따로 적었다가
+  /// 조각이 좌우 640 까지 나가는데 기준은 1100 이라, 창 폭 1100~1330 에서 조각이 잘렸다
+  /// (2026-10-06 검토).
+  static final Size _minWide = () {
+    var reachX = 0.0, reachY = 0.0;
+    for (final f in _fragments) {
+      final x = f.anchor.dx < 0 ? -f.left : f.left + f.width;
+      if (x > reachX) reachX = x;
+      if (f.anchor.dy.abs() > reachY) reachY = f.anchor.dy.abs();
+    }
+    return Size(
+      2 * (reachX + _margin),
+      2 * (reachY + _halfHeightAllowance + _margin),
+    );
+  }();
+
+  /// 조각 바깥 끝과 화면 가장자리 사이에 남길 여백.
+  static const _margin = NxSpacing.sp8;
+
+  /// 조각 높이의 절반으로 넉넉히 잡는 값. 가장 높은 조각(AI 요약 두 줄)이 OS 글자 배율
+  /// 150% 에서 대략 130 이다.
+  static const _halfHeightAllowance =
+      NxSpacing.sp10 + NxSpacing.sp9 - NxSpacing.sp2;
 
   @override
   Widget build(BuildContext context) {
@@ -71,54 +91,30 @@ class LoginBackdrop extends StatelessWidget {
 class _Fragment {
   const _Fragment({
     required this.kind,
-    required this.offset,
-    required this.width,
     required this.anchor,
+    required this.width,
   });
 
   final _Kind kind;
 
-  /// 카드의 왼쪽 위.
-  final Offset offset;
+  /// 점선이 출발하는 점 — **조각에서 카드를 향한 쪽 가장자리의 세로 가운데.** 조각은 이
+  /// 점에 세로 가운데를 맞춰 놓인다. 위쪽 모서리 기준으로 놓고 점을 따로 적었더니, OS 글자
+  /// 배율을 키워 조각이 높아지면 점선이 조각 가장자리에서 떨어졌다(2026-10-06 검토).
+  final Offset anchor;
   final double width;
 
-  /// 점선이 출발하는 점 — 조각에서 카드를 향한 쪽 가장자리.
-  final Offset anchor;
+  /// 조각 왼쪽 끝의 x. 카드 왼쪽에 있으면 점이 오른쪽 가장자리, 오른쪽에 있으면 왼쪽 가장자리다.
+  double get left => anchor.dx < 0 ? anchor.dx - width : anchor.dx;
 }
 
 enum _Kind { chat, ai, issue, commit, file }
 
 const _fragments = <_Fragment>[
-  _Fragment(
-    kind: _Kind.chat,
-    offset: Offset(-580, -320),
-    width: 290,
-    anchor: Offset(-290, -268),
-  ),
-  _Fragment(
-    kind: _Kind.ai,
-    offset: Offset(-640, -46),
-    width: 300,
-    anchor: Offset(-340, 2),
-  ),
-  _Fragment(
-    kind: _Kind.issue,
-    offset: Offset(-560, 200),
-    width: 270,
-    anchor: Offset(-290, 242),
-  ),
-  _Fragment(
-    kind: _Kind.commit,
-    offset: Offset(300, -300),
-    width: 310,
-    anchor: Offset(300, -253),
-  ),
-  _Fragment(
-    kind: _Kind.file,
-    offset: Offset(360, 110),
-    width: 250,
-    anchor: Offset(360, 142),
-  ),
+  _Fragment(kind: _Kind.chat, anchor: Offset(-290, -268), width: 290),
+  _Fragment(kind: _Kind.ai, anchor: Offset(-340, 2), width: 300),
+  _Fragment(kind: _Kind.issue, anchor: Offset(-290, 242), width: 270),
+  _Fragment(kind: _Kind.commit, anchor: Offset(300, -253), width: 310),
+  _Fragment(kind: _Kind.file, anchor: Offset(360, 142), width: 250),
 ];
 
 class _Placed extends StatelessWidget {
@@ -132,14 +128,17 @@ class _Placed extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, box) {
         final center = box.biggest.center(Offset.zero);
-        final at = center + fragment.offset;
         return Stack(
           children: [
             Positioned(
-              left: at.dx,
-              top: at.dy,
+              left: center.dx + fragment.left,
+              top: center.dy + fragment.anchor.dy,
               width: fragment.width,
-              child: child,
+              // 세로 가운데를 점선 출발점에 맞춘다 — 높이가 얼마든 점이 가장자리에 붙는다.
+              child: FractionalTranslation(
+                translation: const Offset(0, -.5),
+                child: child,
+              ),
             ),
           ],
         );

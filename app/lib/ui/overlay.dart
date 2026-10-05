@@ -481,7 +481,7 @@ class _NxTooltipState extends State<NxTooltip> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: NxSpacing.sp4,
-                    vertical: 5,
+                    vertical: NxSpacing.sp3,
                   ),
                   decoration: BoxDecoration(
                     color: theme.colors.textPrimary,
