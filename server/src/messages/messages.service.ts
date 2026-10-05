@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, SpaceMember } from '@prisma/client';
+import { Channel, Prisma, SpaceMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChannelsService } from '../channels/channels.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
@@ -15,6 +15,7 @@ import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { ReactionsService } from './reactions.service';
 import { MentionsService } from './mentions.service';
 import { AttachmentsService } from '../attachments/attachments.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /** 메시지에 함께 실어 보내는 작성자 정보. 이메일은 내보내지 않는다. */
 const AUTHOR_SELECT = {
@@ -43,6 +44,7 @@ export class MessagesService {
     private readonly reactions: ReactionsService,
     private readonly mentions: MentionsService,
     private readonly attachments: AttachmentsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -181,7 +183,7 @@ export class MessagesService {
    * 부모의 `replyCount` · `lastReplyAt` 을 올린다.
    */
   async create(channelId: string, member: SpaceMember, dto: CreateMessageDto) {
-    await this.channels.assertCanSend(channelId, member);
+    const channel = await this.channels.assertCanSend(channelId, member);
 
     const body = dto.body ?? '';
     const attachmentIds = dto.attachmentIds ?? [];
@@ -199,7 +201,7 @@ export class MessagesService {
 
     if (dto.parentId) {
       return this.createReply(
-        channelId,
+        channel,
         member,
         dto.parentId,
         body,
@@ -208,9 +210,18 @@ export class MessagesService {
       );
     }
 
-    // 메시지 · 멘션 · 첨부 연결은 **한 트랜잭션**이다. 사이에서 끊기면 멘션 없는
-    // 메시지가 남아 상대의 뱃지가 영영 안 뜨고, 첨부가 빠진 채로 전송된다.
-    const created = await this.prisma.$transaction(async (tx) => {
+    // 누구에게 알릴지는 트랜잭션 전에 정한다 — 읽기만 하므로 트랜잭션을 길게 잡지 않는다.
+    const planned = await this.notifications.plan({
+      spaceId: member.spaceId,
+      channel,
+      authorId: member.userId,
+      body,
+      parentAuthorId: null,
+    });
+
+    // 메시지 · 멘션 · 첨부 연결 · 알림은 **한 트랜잭션**이다. 사이에서 끊기면 멘션 없는
+    // 메시지가 남아 상대의 뱃지가 영영 안 뜨고, 첨부가 빠진 채로 전송된다(알림도 같다, 18단계 N6).
+    const { created, notified } = await this.prisma.$transaction(async (tx) => {
       const row = await tx.message.create({
         data: {
           spaceId: member.spaceId,
@@ -236,7 +247,14 @@ export class MessagesService {
         attachmentIds,
       });
 
-      return row;
+      const rows = await this.notifications.createFor(tx, planned, {
+        spaceId: member.spaceId,
+        channelId,
+        messageId: row.id,
+        actorId: member.userId,
+      });
+
+      return { created: row, notified: rows };
     });
 
     const message = await this.withExtras(created, member);
@@ -246,6 +264,7 @@ export class MessagesService {
       channelId,
       message,
     });
+    this.notifications.emitCreated(notified, created, channel);
 
     return message;
   }
@@ -308,16 +327,17 @@ export class MessagesService {
    * 사이에서 끊기면 답글은 있는데 개수가 0인 상태가 남는다.
    */
   private async createReply(
-    channelId: string,
+    channel: Channel,
     member: SpaceMember,
     parentId: string,
     body: string,
     quotedMessageId: string | null,
     attachmentIds: string[],
   ) {
+    const channelId = channel.id;
     const parent = await this.prisma.message.findFirst({
       where: { id: parentId, spaceId: member.spaceId },
-      select: { id: true, channelId: true, parentId: true, deletedAt: true },
+      select: { id: true, channelId: true, parentId: true, deletedAt: true, authorId: true },
     });
 
     // 다른 스페이스의 id 는 여기서 404 가 된다.
@@ -335,8 +355,17 @@ export class MessagesService {
       throw new BadRequestException('삭제된 메시지에는 답글을 달 수 없습니다');
     }
 
+    // 내 글에 답글이 달리면 부모 작성자가 알림을 받는다(18단계 N4).
+    const planned = await this.notifications.plan({
+      spaceId: member.spaceId,
+      channel,
+      authorId: member.userId,
+      body,
+      parentAuthorId: parent.authorId,
+    });
+
     const now = new Date();
-    const { created, updatedParent } = await this.prisma.$transaction(
+    const { created, updatedParent, notified } = await this.prisma.$transaction(
       async (tx) => {
         const row = await tx.message.create({
           data: {
@@ -372,7 +401,14 @@ export class MessagesService {
           attachmentIds,
         });
 
-        return { created: row, updatedParent: parentRow };
+        const rows = await this.notifications.createFor(tx, planned, {
+          spaceId: member.spaceId,
+          channelId,
+          messageId: row.id,
+          actorId: member.userId,
+        });
+
+        return { created: row, updatedParent: parentRow, notified: rows };
       },
     );
 
@@ -389,6 +425,7 @@ export class MessagesService {
       replyCount: updatedParent.replyCount,
       lastReplyAt: updatedParent.lastReplyAt,
     });
+    this.notifications.emitCreated(notified, created, channel);
 
     return reply;
   }
