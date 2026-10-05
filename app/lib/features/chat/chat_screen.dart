@@ -251,7 +251,9 @@ class _DmHeader extends ConsumerWidget {
       ),
       child: Row(
         children: [
+          // flex 0 — 뒤의 Spacer 와 자리를 반씩 나누면 넓은 화면에서도 이름이 잘린다(Android 에서 보였다).
           Flexible(
+            flex: 0,
             child: ShellPaneTrigger(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
