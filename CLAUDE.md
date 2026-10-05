@@ -137,7 +137,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint |
 | `npm run check:<이름>` | **실서버 · 실DB · 실소켓 계약 검증 20종(924개)** — CI 가 push 마다 돈다. 목록 · 개수 · 전제(`.env` 값 · 가짜 GitHub · `LLM_PROVIDER=fake`) · 실패할 때 볼 것은 **`nexus-verify` 스킬**이 원본이다. 정적 검사 둘(`check:migrations` · `check:sql-time`)은 DB · 서버 없이 돈다 |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
-| `npm run app:flow` | **앱 통합 테스트** — Windows 데스크톱 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 스레드 · 셸 안 화면 · 설정 창(이름 · 사진 · 테마 · 음소거)까지 끝까지 돈다(약 30초, `db:up` · `server:dev` 필요). 보안 저장소 · drift 는 메모리로 바꿔 개발용 앱의 세션을 건드리지 않는다. **CI 에서는 돌지 않는다**(§5 빚) — 화면을 건드린 변경마다 사람이 돌린다 |
+| `npm run app:flow` | **앱 통합 테스트** — Windows 데스크톱 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 스레드 · 셸 안 화면 · 설정 창(이름 · 사진 · 테마 · 음소거) · 멤버 · DM · 알림함까지 끝까지 돈다(약 30초, `db:up` · `server:dev` 필요). 보안 저장소 · drift 는 메모리로 바꿔 개발용 앱의 세션을 건드리지 않는다. **CI 에서는 돌지 않는다**(§5 빚) — 화면을 건드린 변경마다 사람이 돌린다 |
 | `cd app && dart run build_runner build` | freezed · json_serializable 재생성 |
 
 ### 인덱싱 실사용 · 실제 GitHub 웹훅

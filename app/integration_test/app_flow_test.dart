@@ -41,7 +41,7 @@ import 'package:nexus_app/ui/ui.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('로그인 → 스페이스 → 채널 → 전송 · 실시간 → 스레드 → 이슈 · 파일 · 저장소 → 설정 → DM', (
+  testWidgets('로그인 → 스페이스 → 채널 → 전송 · 실시간 → 스레드 → 이슈 · 파일 · 저장소 → 설정 → DM → 알림', (
     tester,
   ) async {
     final fx = await _Fixture.create();
@@ -295,6 +295,29 @@ void main() {
     // 채널 설정 버튼이 없다(D7).
     expect(find.byWidgetPredicate((w) => w is NxIconButton && w.label == '채널 설정'), findsNothing);
 
+    // ── 18단계: 남이 나를 멘션 → 알림함 → 누르면 그 채널로 가고 읽음이 된다 ──
+    // 그 채널은 위 14단계에서 음소거했다 — 직접 멘션은 음소거해도 알린다(N7).
+    // 읽음은 두 길로 온다 — 누른 알림(N21)과 채널을 읽으면 따라 읽힘(N12). 어느 한쪽만 고장 나면
+    // 이 단계는 초록이다(누르는 쪽을 빼 보고 확인했다). 각각은 위젯 테스트 · check:notifications 가 본다.
+    // 처음 수가 0 은 아니다 — 픽스처의 bob 답글이 alice 의 글에 달려 답글 알림이 있다.
+    final unreadBefore = await fx.aliceUnreadNotifications();
+    final mentionText = 'ping from carol ${fx.stamp}';
+    await fx.carolMentionsAlice(mentionText);
+    await tester.pumpUntilTrue(
+      () async => await fx.aliceUnreadNotifications() == unreadBefore + 1,
+      '멘션 알림이 서버에 없다',
+    );
+    await tester.tap(find.widgetWithText(NxRow, '알림'));
+    final headline = find.text('AppFlow C 님이 #${fx.channelName} 에서 나를 멘션했습니다');
+    await tester.pumpUntil(headline);
+    await tester.tap(headline);
+    // 멘션은 이름 조각으로 그려진다 — 본문의 나머지 글자로 찾는다.
+    await tester.pumpUntil(find.textContaining(mentionText, findRichText: true));
+    await tester.pumpUntilTrue(
+      () async => await fx.aliceUnreadNotifications() == unreadBefore,
+      '누른 알림이 읽음이 되지 않았다',
+    );
+
     expect(tester.takeException(), isNull);
   });
 }
@@ -395,6 +418,18 @@ class _Fixture {
   Future<bool> carolHasDm() async {
     final channels = await _get('/spaces/$_spaceId/channels', _carolToken) as List;
     return channels.cast<Map>().any((c) => c['kind'] == 'dm' && c['lastMessageAt'] != null);
+  }
+
+  /// carol 이 픽스처 채널에서 alice 를 멘션한다(18). 본문의 멘션은 `<@id>` 로 저장된다(§3-12).
+  Future<void> carolMentionsAlice(String text) async {
+    final me = await _get('/me', _aliceToken) as Map;
+    await _post(_messagesPath, _carolToken, {'body': '<@${me['id']}> $text'});
+  }
+
+  /// alice 의 픽스처 스페이스 안 읽은 알림 수(18).
+  Future<int> aliceUnreadNotifications() async {
+    final res = await _get('/spaces/$_spaceId/notifications/unread-count', _aliceToken) as Map;
+    return res['count'] as int;
   }
 
   /// 그 이름의 비공개 채널이 픽스처 스페이스에 있는가(16-2).
