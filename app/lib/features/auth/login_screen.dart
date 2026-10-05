@@ -6,6 +6,7 @@ import '../../data/api/auth_api.dart';
 import '../../shared/widgets/nexus_logo.dart';
 import '../../ui/ui.dart';
 import 'auth_controller.dart';
+import 'login_backdrop.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -34,10 +35,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   /// 서버 문구를 그대로 쓰지 않는다. 서버가 메시지를 바꿔도 앱 UX 는 그대로다.
   String _messageFor(AuthFailure failure) => switch (failure) {
-        AuthFailure.invalidCredentials => '이메일 또는 비밀번호가 올바르지 않습니다.',
-        AuthFailure.network => '서버에 연결할 수 없습니다. 주소와 서버 상태를 확인하십시오.',
-        AuthFailure.server => '로그인에 실패했습니다. 잠시 후 다시 시도하십시오.',
-      };
+    AuthFailure.invalidCredentials => '이메일 또는 비밀번호가 올바르지 않습니다.',
+    AuthFailure.network => '서버에 연결할 수 없습니다. 주소와 서버 상태를 확인하십시오.',
+    AuthFailure.server => '로그인에 실패했습니다. 잠시 후 다시 시도하십시오.',
+  };
 
   Future<void> _submit() async {
     final emailError = _email.text.contains('@') ? null : '이메일을 입력하십시오.';
@@ -55,10 +56,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
 
-    final failure = await ref.read(authControllerProvider.notifier).signIn(
-          email: _email.text.trim(),
-          password: _password.text,
-        );
+    final failure = await ref
+        .read(authControllerProvider.notifier)
+        .signIn(email: _email.text.trim(), password: _password.text);
 
     if (!mounted) return;
     setState(() {
@@ -73,75 +73,88 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final nx = NxTheme.of(context);
 
     return NxPage(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(NxSpacing.sp8),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: AutofillGroup(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // **워드마크가 로고 안에 있어 'Nexus' 글자를 따로 두지
-                  // 않는다.** 둘 다 두면 같은 이름이 두 번 나온다.
-                  const Center(child: NexusLogo()),
-                  const SizedBox(height: NxSpacing.sp5),
-                  Text(
-                    '대화 · 파일 · 이슈 · 저장소를 한곳에',
-                    style: nx.text.secondary,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: NxSpacing.sp9),
-                  NxField(
-                    label: '이메일',
-                    controller: _email,
-                    error: _emailError,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.username],
-                    textInputAction: TextInputAction.next,
-                    onChanged: (_) {
-                      if (_emailError != null) {
-                        setState(() => _emailError = null);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: NxSpacing.sp5),
-                  NxField(
-                    label: '비밀번호',
-                    controller: _password,
-                    error: _passwordError,
-                    obscure: true,
-                    autofillHints: const [AutofillHints.password],
-                    textInputAction: TextInputAction.done,
-                    onChanged: (_) {
-                      if (_passwordError != null) {
-                        setState(() => _passwordError = null);
-                      }
-                    },
-                    onSubmitted: (_) => _busy ? null : _submit(),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: NxSpacing.sp5),
-                    Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        _error!,
-                        style: nx.text.secondary.copyWith(
-                          color: nx.colors.danger,
+      body: LoginBackdrop(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(NxSpacing.sp6),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              // 카드는 점 격자 위에 뜨는 판이다. 그림자 없이 표면 한 단(bgSurface)과
+              // 구분선으로만 떼어 낸다(디자인 시스템 §4).
+              child: Container(
+                padding: const EdgeInsets.all(NxSpacing.sp9),
+                decoration: BoxDecoration(
+                  color: nx.colors.bgSurface,
+                  borderRadius: BorderRadius.circular(NxRadius.lg),
+                  border: Border.all(color: nx.colors.divider),
+                ),
+                child: AutofillGroup(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Center(child: NexusMarkTile(size: 56)),
+                      const SizedBox(height: NxSpacing.sp5),
+                      Semantics(
+                        header: true,
+                        child: Text(
+                          'Nexus에 로그인',
+                          style: nx.text.heading,
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: NxSpacing.sp7),
-                  NxButton(
-                    label: '로그인',
-                    size: NxSize.lg,
-                    expand: true,
-                    loading: _busy,
-                    onPressed: _submit,
+                      const SizedBox(height: NxSpacing.sp8),
+                      NxField(
+                        label: '이메일',
+                        controller: _email,
+                        error: _emailError,
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.username],
+                        textInputAction: TextInputAction.next,
+                        onChanged: (_) {
+                          if (_emailError != null) {
+                            setState(() => _emailError = null);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: NxSpacing.sp5),
+                      NxField(
+                        label: '비밀번호',
+                        controller: _password,
+                        error: _passwordError,
+                        obscure: true,
+                        autofillHints: const [AutofillHints.password],
+                        textInputAction: TextInputAction.done,
+                        onChanged: (_) {
+                          if (_passwordError != null) {
+                            setState(() => _passwordError = null);
+                          }
+                        },
+                        onSubmitted: (_) => _busy ? null : _submit(),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: NxSpacing.sp5),
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            _error!,
+                            style: nx.text.secondary.copyWith(
+                              color: nx.colors.danger,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: NxSpacing.sp7),
+                      NxButton(
+                        label: '로그인',
+                        size: NxSize.lg,
+                        expand: true,
+                        loading: _busy,
+                        onPressed: _submit,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
