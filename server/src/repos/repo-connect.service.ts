@@ -319,7 +319,8 @@ export class RepoConnectService {
     if (!channelId) return;
 
     const channel = await this.prisma.channel.findFirst({
-      where: { id: channelId, spaceId },
+      // DM 에는 저장소를 잇지 않는다 — 웹훅이 DM 에 게시될 이유가 없다(17단계 D7 · D13).
+      where: { id: channelId, spaceId, kind: 'text' },
       select: { id: true },
     });
     if (!channel) throw new NotFoundException('채널을 찾을 수 없습니다');

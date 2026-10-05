@@ -123,7 +123,7 @@ export class ChannelMembersService {
   }
 
   private async requirePrivate(channelId: string, member: SpaceMember) {
-    const channel = await this.channels.assertCanView(channelId, member);
+    const channel = await this.channels.assertStructural(channelId, member);
     if (!channel.isPrivate) {
       throw new BadRequestException('공개 채널에는 명단이 없습니다');
     }
