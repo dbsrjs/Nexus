@@ -78,7 +78,11 @@ class NxDialog {
 }
 
 class _Panel extends StatelessWidget {
-  const _Panel({required this.title, required this.width, required this.builder});
+  const _Panel({
+    required this.title,
+    required this.width,
+    required this.builder,
+  });
 
   final String title;
   final double width;
@@ -116,7 +120,8 @@ class _Panel extends StatelessWidget {
               child: Container(
                 width: width,
                 constraints: BoxConstraints(
-                  maxHeight: (media.size.height - media.viewInsets.bottom) * .85,
+                  maxHeight:
+                      (media.size.height - media.viewInsets.bottom) * .85,
                 ),
                 margin: const EdgeInsets.all(NxSpacing.sp6),
                 decoration: BoxDecoration(
@@ -153,7 +158,16 @@ class _Panel extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Flexible(child: Builder(builder: builder)),
+                      // 키보드 높이는 위의 Padding 이 이미 비켰다 — 안쪽에서 지운다. 남겨 두면
+                      // 안의 화면이 같은 높이를 한 번 더 비켜 입력창이 두 배로 밀려 올라간다
+                      // (AI 패널이 그랬다, 2026-10-06). 셸의 NxPage 와 같은 규칙이다(§2).
+                      Flexible(
+                        child: MediaQuery.removeViewInsets(
+                          context: context,
+                          removeBottom: true,
+                          child: Builder(builder: builder),
+                        ),
+                      ),
                     ],
                   ),
                 ),

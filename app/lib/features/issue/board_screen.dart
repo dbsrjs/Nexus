@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -355,9 +354,7 @@ Color? _statusColor(NxColors c, IssueStatus status) => switch (status) {
 
 /// 터치 화면은 길게 눌러 끈다 — 바로 끌면 가로 스크롤과 겹친다. 폭이 아니라 입력 방식의
 /// 차이라 셸의 폭 분기와 무관하다.
-bool get _touchFirst =>
-    defaultTargetPlatform == TargetPlatform.android ||
-    defaultTargetPlatform == TargetPlatform.iOS;
+bool get _touchFirst => nxTouchFirst;
 
 class _BoardColumn extends StatelessWidget {
   const _BoardColumn({

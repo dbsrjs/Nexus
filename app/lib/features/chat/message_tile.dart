@@ -2,7 +2,6 @@
 /// `chat_screen.dart` 에서 2026-10-06 에 떼어 냈다.
 library;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,9 +23,7 @@ import 'selection_controller.dart';
 
 /// 마우스가 주인 플랫폼 — 메시지에 올리면 동작 줄이 뜬다. 터치는 길게 눌러 동작 카드를
 /// 연다(바텀시트가 아니다, 15단계 D8). 폭이 아니라 입력 방식의 차이다.
-bool get _pointerFirst =>
-    defaultTargetPlatform != TargetPlatform.android &&
-    defaultTargetPlatform != TargetPlatform.iOS;
+bool get _pointerFirst => !nxTouchFirst;
 
 class MessageTile extends ConsumerStatefulWidget {
   const MessageTile({

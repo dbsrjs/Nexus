@@ -11,27 +11,35 @@ import 'package:nexus_app/ui/toast.dart';
 
 /// Material 없이 — 15-3 의 앱과 같은 짜임(WidgetsApp + NxTheme + NxToastHost).
 Widget app(Widget home) => WidgetsApp(
-      color: const Color(0xFF77AECF),
-      pageRouteBuilder: <T>(RouteSettings settings, WidgetBuilder builder) =>
-          PageRouteBuilder<T>(settings: settings, pageBuilder: (c, _, _) => builder(c)),
-      builder: (context, child) => NxTheme(
-        data: NxThemeData.of(Brightness.dark),
-        child: NxToastHost(child: child!),
+  color: const Color(0xFF77AECF),
+  pageRouteBuilder: <T>(RouteSettings settings, WidgetBuilder builder) =>
+      PageRouteBuilder<T>(
+        settings: settings,
+        pageBuilder: (c, _, _) => builder(c),
       ),
-      home: Center(child: home),
-    );
+  builder: (context, child) => NxTheme(
+    data: NxThemeData.of(Brightness.dark),
+    child: NxToastHost(child: child!),
+  ),
+  home: Center(child: home),
+);
 
 void main() {
   group('NxMenu', () {
     Widget menu(List<String> picked) => NxMenu(
-          entries: [
-            const NxMenuHeader('이윤경', subtitle: 'yun@nexus.dev'),
-            const NxMenuDivider(),
-            NxMenuItem('설정', onSelected: () => picked.add('설정'), shortcut: 'Ctrl ,'),
-            NxMenuItem('로그아웃', danger: true, onSelected: () => picked.add('로그아웃')),
-          ],
-          anchorBuilder: (context, toggle) => NxButton(label: '계정', onPressed: toggle),
-        );
+      entries: [
+        const NxMenuHeader('이윤경', subtitle: 'yun@nexus.dev'),
+        const NxMenuDivider(),
+        NxMenuItem(
+          '설정',
+          onSelected: () => picked.add('설정'),
+          shortcut: 'Ctrl ,',
+        ),
+        NxMenuItem('로그아웃', danger: true, onSelected: () => picked.add('로그아웃')),
+      ],
+      anchorBuilder: (context, toggle) =>
+          NxButton(label: '계정', onPressed: toggle),
+    );
 
     testWidgets('누르면 열리고 항목을 고르면 닫힌다', (tester) async {
       final picked = <String>[];
@@ -78,18 +86,22 @@ void main() {
   group('NxDialog.confirm', () {
     Future<bool?> open(WidgetTester tester) async {
       bool? result;
-      await tester.pumpWidget(app(Builder(
-        builder: (context) => NxButton(
-          label: '삭제',
-          onPressed: () async => result = await NxDialog.confirm(
-            context,
-            title: '메시지를 삭제할까요?',
-            body: '본문은 가려지고 스레드와 첨부는 남습니다.',
-            confirmLabel: '삭제',
-            danger: true,
+      await tester.pumpWidget(
+        app(
+          Builder(
+            builder: (context) => NxButton(
+              label: '삭제',
+              onPressed: () async => result = await NxDialog.confirm(
+                context,
+                title: '메시지를 삭제할까요?',
+                body: '본문은 가려지고 스레드와 첨부는 남습니다.',
+                confirmLabel: '삭제',
+                danger: true,
+              ),
+            ),
           ),
         ),
-      )));
+      );
       await tester.tap(find.text('삭제'));
       await tester.pumpAndSettle();
       expect(find.text('메시지를 삭제할까요?'), findsOneWidget);
@@ -98,12 +110,20 @@ void main() {
 
     testWidgets('확인은 true', (tester) async {
       bool? result;
-      await tester.pumpWidget(app(Builder(
-        builder: (context) => NxButton(
-          label: '열기',
-          onPressed: () async => result = await NxDialog.confirm(context, title: '제목', confirmLabel: '예'),
+      await tester.pumpWidget(
+        app(
+          Builder(
+            builder: (context) => NxButton(
+              label: '열기',
+              onPressed: () async => result = await NxDialog.confirm(
+                context,
+                title: '제목',
+                confirmLabel: '예',
+              ),
+            ),
+          ),
         ),
-      )));
+      );
       await tester.tap(find.text('열기'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('예'));
@@ -128,15 +148,19 @@ void main() {
 
   group('NxToast', () {
     testWidgets('★ 둘이면 차례로 — 앞의 것이 사라진 뒤 다음이 뜬다', (tester) async {
-      await tester.pumpWidget(app(Builder(
-        builder: (context) => NxButton(
-          label: '알리기',
-          onPressed: () {
-            NxToast.show(context, '첫째');
-            NxToast.show(context, '둘째', kind: NxToastKind.error);
-          },
+      await tester.pumpWidget(
+        app(
+          Builder(
+            builder: (context) => NxButton(
+              label: '알리기',
+              onPressed: () {
+                NxToast.show(context, '첫째');
+                NxToast.show(context, '둘째', kind: NxToastKind.error);
+              },
+            ),
+          ),
         ),
-      )));
+      );
       await tester.tap(find.text('알리기'));
       await tester.pump();
       expect(find.text('첫째'), findsOneWidget);
@@ -150,12 +174,21 @@ void main() {
 
     testWidgets('동작을 누르면 부르고 바로 닫힌다', (tester) async {
       var undone = 0;
-      await tester.pumpWidget(app(Builder(
-        builder: (context) => NxButton(
-          label: '고정',
-          onPressed: () => NxToast.show(context, '고정했습니다', actionLabel: '되돌리기', onAction: () => undone++),
+      await tester.pumpWidget(
+        app(
+          Builder(
+            builder: (context) => NxButton(
+              label: '고정',
+              onPressed: () => NxToast.show(
+                context,
+                '고정했습니다',
+                actionLabel: '되돌리기',
+                onAction: () => undone++,
+              ),
+            ),
+          ),
         ),
-      )));
+      );
       await tester.tap(find.text('고정'));
       await tester.pump();
       await tester.tap(find.text('되돌리기'));
@@ -166,7 +199,14 @@ void main() {
   });
 
   testWidgets('NxTooltip 은 호버 뒤 잠시 있다 뜬다', (tester) async {
-    await tester.pumpWidget(app(const NxTooltip(message: '고정된 메시지', child: SizedBox(width: 32, height: 32))));
+    await tester.pumpWidget(
+      app(
+        const NxTooltip(
+          message: '고정된 메시지',
+          child: SizedBox(width: 32, height: 32),
+        ),
+      ),
+    );
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
     await gesture.moveTo(tester.getCenter(find.byType(NxTooltip)));
@@ -179,16 +219,22 @@ void main() {
 
   testWidgets('★ 동작 카드는 누른 것 곁에 뜨고 바깥을 누르면 닫힌다', (tester) async {
     final picked = <String>[];
-    await tester.pumpWidget(app(Builder(
-      builder: (context) => NxButton(
-        label: '길게',
-        onPressed: () => NxActionCard.show(
-          context,
-          anchor: const Rect.fromLTWH(20, 100, 300, 40),
-          entries: [NxMenuItem('스레드로 답글', onSelected: () => picked.add('스레드'))],
+    await tester.pumpWidget(
+      app(
+        Builder(
+          builder: (context) => NxButton(
+            label: '길게',
+            onPressed: () => NxActionCard.show(
+              context,
+              anchor: const Rect.fromLTWH(20, 100, 300, 40),
+              entries: [
+                NxMenuItem('스레드로 답글', onSelected: () => picked.add('스레드')),
+              ],
+            ),
+          ),
         ),
       ),
-    )));
+    );
     await tester.tap(find.text('길게'));
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(find.text('스레드로 답글')).dy, greaterThan(140));
@@ -201,19 +247,23 @@ void main() {
   group('NxDialog.panel', () {
     testWidgets('제목과 본문을 띄우고, 본문이 pop 한 값을 돌려준다', (tester) async {
       String? result = 'none';
-      await tester.pumpWidget(app(Builder(
-        builder: (context) => NxButton(
-          label: '열기',
-          onPressed: () async => result = await NxDialog.panel<String>(
-            context,
-            title: '저장소 추가',
+      await tester.pumpWidget(
+        app(
+          Builder(
             builder: (context) => NxButton(
-              label: '고르기',
-              onPressed: () => Navigator.of(context).pop('repo-1'),
+              label: '열기',
+              onPressed: () async => result = await NxDialog.panel<String>(
+                context,
+                title: '저장소 추가',
+                builder: (context) => NxButton(
+                  label: '고르기',
+                  onPressed: () => Navigator.of(context).pop('repo-1'),
+                ),
+              ),
             ),
           ),
         ),
-      )));
+      );
       await tester.tap(find.text('열기'));
       await tester.pumpAndSettle();
       expect(find.text('저장소 추가'), findsOneWidget);
@@ -224,16 +274,20 @@ void main() {
 
     testWidgets('Esc 로 닫으면 null', (tester) async {
       String? result = 'none';
-      await tester.pumpWidget(app(Builder(
-        builder: (context) => NxButton(
-          label: '열기',
-          onPressed: () async => result = await NxDialog.panel<String>(
-            context,
-            title: '패널',
-            builder: (_) => const Text('본문'),
+      await tester.pumpWidget(
+        app(
+          Builder(
+            builder: (context) => NxButton(
+              label: '열기',
+              onPressed: () async => result = await NxDialog.panel<String>(
+                context,
+                title: '패널',
+                builder: (_) => const Text('본문'),
+              ),
+            ),
           ),
         ),
-      )));
+      );
       await tester.tap(find.text('열기'));
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -241,40 +295,87 @@ void main() {
       expect(find.text('본문'), findsNothing);
       expect(result, isNull);
     });
-  });
-
-  testWidgets('★ 동작 카드는 안쪽 내비게이터 속에서 열어도 화면 전체를 덮는다 - 셸 안에서 탭 줄이 안 덮였다', (tester) async {
-    tester.view.physicalSize = const Size(400, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(app(SizedBox(
-      width: 400,
-      height: 800,
-      child: Column(children: [
-        // 셸 본문처럼 안쪽 내비게이터 — 아래 50px 는 탭 줄 자리.
-        Expanded(
-          child: Navigator(
-            onGenerateRoute: (_) => PageRouteBuilder<void>(
-              pageBuilder: (context, _, _) => Center(
-                child: NxButton(
-                  label: '길게',
-                  onPressed: () => NxActionCard.show(
-                    context,
-                    anchor: const Rect.fromLTWH(20, 600, 300, 40),
-                    above: (_) => const Text('리액션 줄'),
-                    entries: [NxMenuItem('답장', onSelected: () {})],
-                  ),
-                ),
+    testWidgets('★ 키보드 높이는 패널이 한 번만 비킨다 — 안의 화면에는 0 으로 보인다(AI 패널이 두 번 비켰다)', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.reset);
+      late double seen;
+      await tester.pumpWidget(
+        app(
+          Builder(
+            builder: (context) => NxButton(
+              label: '열기',
+              onPressed: () => NxDialog.panel<void>(
+                context,
+                title: '패널',
+                builder: (context) {
+                  seen = MediaQuery.viewInsetsOf(context).bottom;
+                  return const Text('본문');
+                },
               ),
             ),
           ),
         ),
-        const SizedBox(height: 50, child: Text('탭 줄')),
-      ]),
-    )));
+      );
+      await tester.tap(find.text('열기'));
+      await tester.pumpAndSettle();
+      expect(find.text('본문'), findsOneWidget);
+      expect(seen, 0);
+      // 패널 자체는 키보드 위에 있다 — 화면 아래 300 안으로 들어가지 않는다.
+      expect(tester.getBottomLeft(find.text('본문')).dy, lessThanOrEqualTo(500));
+    });
+  });
+
+  testWidgets('★ 동작 카드는 안쪽 내비게이터 속에서 열어도 화면 전체를 덮는다 - 셸 안에서 탭 줄이 안 덮였다', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      app(
+        SizedBox(
+          width: 400,
+          height: 800,
+          child: Column(
+            children: [
+              // 셸 본문처럼 안쪽 내비게이터 — 아래 50px 는 탭 줄 자리.
+              Expanded(
+                child: Navigator(
+                  onGenerateRoute: (_) => PageRouteBuilder<void>(
+                    pageBuilder: (context, _, _) => Center(
+                      child: NxButton(
+                        label: '길게',
+                        onPressed: () => NxActionCard.show(
+                          context,
+                          anchor: const Rect.fromLTWH(20, 600, 300, 40),
+                          above: (_) => const Text('리액션 줄'),
+                          entries: [NxMenuItem('답장', onSelected: () {})],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 50, child: Text('탭 줄')),
+            ],
+          ),
+        ),
+      ),
+    );
     await tester.tap(find.text('길게'));
     await tester.pumpAndSettle();
-    final scrim = tester.getSize(find.ancestor(of: find.byType(ColoredBox).last, matching: find.byType(GestureDetector)).last);
+    final scrim = tester.getSize(
+      find
+          .ancestor(
+            of: find.byType(ColoredBox).last,
+            matching: find.byType(GestureDetector),
+          )
+          .last,
+    );
     expect(scrim.height, 800, reason: '막이 탭 줄까지 덮어야 한다');
     expect(tester.getTopLeft(find.text('리액션 줄')).dy, greaterThanOrEqualTo(0));
   });
@@ -283,17 +384,22 @@ void main() {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(app(Align(
-      alignment: Alignment.bottomLeft,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: NxMenu(
-          openUp: true,
-          entries: [NxMenuItem('설정', onSelected: () {})],
-          anchorBuilder: (context, toggle) => NxButton(label: '계정', onPressed: toggle),
+    await tester.pumpWidget(
+      app(
+        Align(
+          alignment: Alignment.bottomLeft,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: NxMenu(
+              openUp: true,
+              entries: [NxMenuItem('설정', onSelected: () {})],
+              anchorBuilder: (context, toggle) =>
+                  NxButton(label: '계정', onPressed: toggle),
+            ),
+          ),
         ),
       ),
-    )));
+    );
     await tester.tap(find.text('계정'));
     await tester.pumpAndSettle();
     final anchorTop = tester.getTopLeft(find.text('계정')).dy;
@@ -306,32 +412,45 @@ void main() {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(app(Align(
-      alignment: Alignment.topRight,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: NxMenu(
-          entries: [NxMenuItem('완료로', onSelected: () {})],
-          anchorBuilder: (context, toggle) => NxButton(label: '더', onPressed: toggle),
+    await tester.pumpWidget(
+      app(
+        Align(
+          alignment: Alignment.topRight,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: NxMenu(
+              entries: [NxMenuItem('완료로', onSelected: () {})],
+              anchorBuilder: (context, toggle) =>
+                  NxButton(label: '더', onPressed: toggle),
+            ),
+          ),
         ),
       ),
-    )));
+    );
     await tester.tap(find.text('더'));
     await tester.pumpAndSettle();
     final panel = find.byType(NxMenuPanel);
     expect(tester.getTopRight(panel).dx, lessThanOrEqualTo(400));
-    expect(tester.getTopRight(panel).dx, tester.getTopRight(find.byType(NxButton)).dx);
+    expect(
+      tester.getTopRight(panel).dx,
+      tester.getTopRight(find.byType(NxButton)).dx,
+    );
   });
 
   testWidgets('★ 터치 기기의 메뉴 항목은 44 높이다 - 32 라 손가락으로 누르기 어려웠다', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    await tester.pumpWidget(app(Center(
-      child: NxMenu(
-        entries: [NxMenuItem('설정', onSelected: () {})],
-        anchorBuilder: (context, toggle) => NxButton(label: '계정', onPressed: toggle),
+    await tester.pumpWidget(
+      app(
+        Center(
+          child: NxMenu(
+            entries: [NxMenuItem('설정', onSelected: () {})],
+            anchorBuilder: (context, toggle) =>
+                NxButton(label: '계정', onPressed: toggle),
+          ),
+        ),
       ),
-    )));
+    );
     await tester.tap(find.text('계정'));
     await tester.pumpAndSettle();
     final row = find
@@ -341,4 +460,3 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 }
-

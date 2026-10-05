@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,9 +27,7 @@ class _SendIntent extends Intent {
 
 /// 물리 키보드가 주인 플랫폼 — Enter 전송 안내를 보인다. 모바일 소프트 키보드는 Enter 를
 /// IME 가 줄바꿈으로 쓴다(CLAUDE.md 앱 규칙). 폭이 아니라 입력 방식의 차이다.
-bool get _hardwareKeyboard =>
-    defaultTargetPlatform != TargetPlatform.android &&
-    defaultTargetPlatform != TargetPlatform.iOS;
+bool get _hardwareKeyboard => !nxTouchFirst;
 
 /// 채널(또는 스레드)마다 쓰다 만 글. 채널을 옮겨도 입력창 State 는 그대로라, 이것이 없으면
 /// **쓰던 글이 다른 대화의 입력창에 남았다** — 엉뚱한 곳으로 보내기 쉽다(17단계 Android 확인에서 봤다).
