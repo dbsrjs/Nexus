@@ -27,7 +27,7 @@
 import { createServer } from 'node:http';
 
 import { requireServer, abortUnless, PreflightAbort } from './lib/preflight.mjs';
-import { BASE, stamp, api, signup } from './lib/api.mjs';
+import { BASE, stamp, api, signup, submitGithubCallback } from './lib/api.mjs';
 import { check, summary } from './lib/checks.mjs';
 import { settleIndexingForSpace } from './lib/indexing.mjs';
 await requireServer(BASE);
@@ -189,11 +189,9 @@ function stateOf(authorizeUrl) {
   return new URL(authorizeUrl).searchParams.get('state');
 }
 
+/** [연결] 을 누른 POST — 토큰 교환은 여기서 일어난다. */
 async function callback(code, state) {
-  const query = new URLSearchParams();
-  if (code !== null) query.set('code', code);
-  if (state !== null) query.set('state', state);
-  const res = await fetch(`${BASE}/auth/github/callback?${query.toString()}`);
+  const res = await submitGithubCallback(code, state);
   return {
     status: res.status,
     contentType: res.headers.get('content-type') ?? '',
@@ -301,6 +299,46 @@ async function main() {
   })();
   await expectFailure('서명 한 글자를 고친 state', 'c3', tampered);
   await expectFailure('code 없이', null, stateOf(second.json.authorizeUrl));
+
+  // ── 2-1. 확인 화면 ───────────────────────────────────
+  // GitHub 이 돌려보낸 GET 은 **연결하지 않는다.** state 는 이 브라우저가 아니라 연결을
+  // 시작한 계정에 묶여 있어, 남이 시작한 주소를 열면 내 GitHub 토큰이 남의 계정에 붙었다
+  // (2026-10-05 보안 점검). 어느 계정에 붙는지 보이고 [연결] 을 눌러야 끝난다.
+  const confirmQuery = new URLSearchParams({ code: `code-${stamp}`, state: stateOf(authorizeUrl) });
+  const confirmRes = await fetch(`${BASE}/auth/github/callback?${confirmQuery}`);
+  const confirmHtml = await confirmRes.text();
+  check(
+    '★ GET 콜백은 확인 화면을 그린다 — 연결할 계정과 [연결] 폼',
+    confirmRes.status === 200 &&
+      confirmHtml.includes('GitHub 연결 확인') &&
+      confirmHtml.includes('oa***@example.com') &&
+      confirmHtml.includes('<form method="post" action="callback">'),
+    confirmHtml.slice(0, 200),
+  );
+  const confirmCsp = confirmRes.headers.get('content-security-policy') ?? '';
+  check(
+    '확인 화면은 폼 전송만 연다 — 스크립트는 여전히 막힌다',
+    confirmCsp.includes("form-action 'self'") &&
+      confirmCsp.includes("default-src 'none'") &&
+      !confirmCsp.includes('script-src'),
+    confirmCsp,
+  );
+  check('확인 화면에도 내부 정보가 없다', leaksOf(confirmHtml).length === 0);
+  const beforeConfirm = await api('GET', '/me/connections', { token: alice.token });
+  // **목록이 실제로 비어 있는지**를 본다. 200 이 아니면 빈 배열과 구분되지 않는다.
+  check(
+    '★ 확인 화면을 연 것만으로는 연결되지 않는다',
+    beforeConfirm.status === 200 && Array.isArray(beforeConfirm.json) && beforeConfirm.json.length === 0,
+    JSON.stringify(beforeConfirm.json),
+  );
+  const forgedConfirm = await fetch(
+    `${BASE}/auth/github/callback?${new URLSearchParams({ code: 'c', state: 'forged.signature' })}`,
+  );
+  const forgedHtml = await forgedConfirm.text();
+  check(
+    '위조 state 의 GET 은 확인 화면 대신 실패 화면이다',
+    forgedConfirm.status === 200 && !forgedHtml.includes('<form') && !forgedHtml.includes(SUCCESS),
+  );
 
   // ── 3. 연결 ──────────────────────────────────────────
   const done = await callback(`code-${stamp}`, stateOf(authorizeUrl));
