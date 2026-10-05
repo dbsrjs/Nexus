@@ -60,11 +60,7 @@ export class MessagesService {
    * 삭제된 메시지는 목록에서 빼지 않고 **본문만 비워서** 내려보낸다. 빼 버리면
    * 클라이언트가 이미 렌더한 메시지를 지울 근거가 없어 화면에 남는다.
    */
-  async listForChannel(
-    channelId: string,
-    member: SpaceMember,
-    query: PaginationDto,
-  ) {
+  async listForChannel(channelId: string, member: SpaceMember, query: PaginationDto) {
     await this.channels.assertCanView(channelId, member);
 
     const { limit, args } = cursorArgs(query);
@@ -78,26 +74,19 @@ export class MessagesService {
     const { page, nextCursor } = pageOf(rows, limit);
 
     // 리액션 · 인용 · 멘션 · 첨부는 한 번에 모아 붙인다. 메시지마다 조회하면 N+1 이 된다.
-    const ids = page.map((m) => m.id);
-    const [reactions, quoted, mentions, attachments, repoEvents] = await Promise.all([
-      this.reactions.summarizeMany(ids, member),
-      this.loadQuoted(page, member),
-      this.mentions.summarizeMany(ids, member),
-      this.attachments.summarizeMany(ids, member),
-      this.loadRepoEvents(ids, member.spaceId),
+    // **소프트 삭제된 메시지의 첨부도 그대로 간다.** 본문만 가려지고 파일은 남는 것이
+    // 보관 정책이다(설계 §3).
+    const [decorate, repoEvents] = await Promise.all([
+      this.decorator(page, member),
+      this.loadRepoEvents(
+        page.map((m) => m.id),
+        member.spaceId,
+      ),
     ]);
 
     return {
       items: page.map((message) => ({
-        ...redactIfDeleted(message),
-        reactions: reactions.get(message.id) ?? [],
-        quoted: message.quotedMessageId
-          ? (quoted.get(message.quotedMessageId) ?? null)
-          : null,
-        mentions: mentions.get(message.id) ?? [],
-        // **소프트 삭제된 메시지의 첨부도 그대로 간다.** 본문만 가려지고 파일은
-        // 남는 것이 보관 정책이다(설계 §3).
-        attachments: attachments.get(message.id) ?? [],
+        ...decorate(redactIfDeleted(message)),
         // 저장소 이벤트가 만든 메시지면 그 이벤트 id. **앱은 이것이 있을 때만
         // 커밋으로 파고들 수 있다**(10-3b 설계 §1).
         repoEventId: repoEvents.get(message.id) ?? null,
@@ -144,9 +133,7 @@ export class MessagesService {
   ): Promise<Map<string, QuotedMessage>> {
     const ids = [
       ...new Set(
-        messages
-          .map((m) => m.quotedMessageId)
-          .filter((id): id is string => id !== null),
+        messages.map((m) => m.quotedMessageId).filter((id): id is string => id !== null),
       ),
     ];
     if (ids.length === 0) return new Map();
@@ -232,25 +219,12 @@ export class MessagesService {
         include: { author: AUTHOR_SELECT },
       });
 
-      await this.mentions.createFor(tx, {
-        messageId: row.id,
-        spaceId: member.spaceId,
-        body,
-        authorId: member.userId,
-      });
-
-      await this.attachments.linkToMessage(tx, {
-        messageId: row.id,
-        channelId,
+      const rows = await this.writeAttached(tx, row.id, {
         member,
-        attachmentIds,
-      });
-
-      const rows = await this.notifications.createFor(tx, planned, {
-        spaceId: member.spaceId,
         channelId,
-        messageId: row.id,
-        actorId: member.userId,
+        body,
+        attachmentIds,
+        planned,
       });
 
       return { created: row, notified: rows };
@@ -266,6 +240,43 @@ export class MessagesService {
     this.notifications.emitCreated(notified, created, channel);
 
     return message;
+  }
+
+  /**
+   * 메시지 행과 **같은 트랜잭션에서** 써야 하는 셋 — 멘션 · 첨부 연결 · 알림. 만든 알림
+   * 행을 돌려준다(커밋 뒤 소켓으로 알린다).
+   *
+   * 채널 메시지와 스레드 답글이 같은 세 호출을 같은 순서로 따로 들고 있었다.
+   */
+  private async writeAttached(
+    tx: Prisma.TransactionClient,
+    messageId: string,
+    w: {
+      member: SpaceMember;
+      channelId: string;
+      body: string;
+      attachmentIds: string[];
+      planned: Awaited<ReturnType<NotificationsService['plan']>>;
+    },
+  ) {
+    await this.mentions.createFor(tx, {
+      messageId,
+      spaceId: w.member.spaceId,
+      body: w.body,
+      authorId: w.member.userId,
+    });
+    await this.attachments.linkToMessage(tx, {
+      messageId,
+      channelId: w.channelId,
+      member: w.member,
+      attachmentIds: w.attachmentIds,
+    });
+    return this.notifications.createFor(tx, w.planned, {
+      spaceId: w.member.spaceId,
+      channelId: w.channelId,
+      messageId,
+      actorId: w.member.userId,
+    });
   }
 
   /**
@@ -304,21 +315,43 @@ export class MessagesService {
     message: T,
     member: SpaceMember,
   ) {
-    const [quoted, mentions, attachments] = await Promise.all([
-      this.loadQuoted([message], member),
-      this.mentions.summarizeMany([message.id], member),
-      this.attachments.summarizeMany([message.id], member),
+    // 방금 만든 메시지에는 리액션이 있을 수 없다 — 조회하지 않고 빈 목록을 단다.
+    const decorate = await this.decorator([message], member, { reactions: false });
+    return decorate(message);
+  }
+
+  /**
+   * 메시지들에 **리액션 · 인용 · 멘션 · 첨부 요약**을 붙이는 함수를 만든다. 넷을 한 번에
+   * 모아 조회한다(메시지마다 조회하면 N+1).
+   *
+   * 채널 목록 · 스레드 · 고정 목록 · 전송 응답이 같은 넷을 각자 조회해 붙이고 있었다 —
+   * 응답 모양이 갈라지면 앱이 어디서 온 메시지인지에 따라 다르게 그린다. 삭제된 본문
+   * 가리기(`redactIfDeleted`)는 부르는 쪽이 정한다(고정 목록은 삭제된 것을 애초에 거른다).
+   */
+  private async decorator(
+    messages: { id: string; quotedMessageId: string | null }[],
+    member: SpaceMember,
+    opts: { reactions: boolean } = { reactions: true },
+  ) {
+    const ids = messages.map((m) => m.id);
+    const [reactions, quoted, mentions, attachments] = await Promise.all([
+      opts.reactions
+        ? this.reactions.summarizeMany(ids, member)
+        : Promise.resolve(new Map<string, never[]>()),
+      this.loadQuoted(messages, member),
+      this.mentions.summarizeMany(ids, member),
+      this.attachments.summarizeMany(ids, member),
     ]);
 
-    return {
+    return <T extends { id: string; quotedMessageId: string | null }>(message: T) => ({
       ...message,
-      reactions: [],
+      reactions: reactions.get(message.id) ?? [],
       quoted: message.quotedMessageId
         ? (quoted.get(message.quotedMessageId) ?? null)
         : null,
       mentions: mentions.get(message.id) ?? [],
       attachments: attachments.get(message.id) ?? [],
-    };
+    });
   }
 
   /**
@@ -336,7 +369,13 @@ export class MessagesService {
     const channelId = channel.id;
     const parent = await this.prisma.message.findFirst({
       where: { id: parentId, spaceId: member.spaceId },
-      select: { id: true, channelId: true, parentId: true, deletedAt: true, authorId: true },
+      select: {
+        id: true,
+        channelId: true,
+        parentId: true,
+        deletedAt: true,
+        authorId: true,
+      },
     });
 
     // 다른 스페이스의 id 는 여기서 404 가 된다.
@@ -384,27 +423,14 @@ export class MessagesService {
           select: { id: true, replyCount: true, lastReplyAt: true },
         });
 
-        // 답글에서 멘션당해도 알아야 한다. 채널 메시지와 같은 처리를 탄다.
-        await this.mentions.createFor(tx, {
-          messageId: row.id,
-          spaceId: member.spaceId,
-          body,
-          authorId: member.userId,
-        });
-
-        // 첨부도 마찬가지다 — 스레드 답글에도 파일을 붙일 수 있어야 한다.
-        await this.attachments.linkToMessage(tx, {
-          messageId: row.id,
-          channelId,
+        // 답글에서 멘션당해도 알아야 하고, 답글에도 파일을 붙일 수 있어야 한다 —
+        // 채널 메시지와 같은 처리를 탄다.
+        const rows = await this.writeAttached(tx, row.id, {
           member,
-          attachmentIds,
-        });
-
-        const rows = await this.notifications.createFor(tx, planned, {
-          spaceId: member.spaceId,
           channelId,
-          messageId: row.id,
-          actorId: member.userId,
+          body,
+          attachmentIds,
+          planned,
         });
 
         return { created: row, updatedParent: parentRow, notified: rows };
@@ -435,11 +461,7 @@ export class MessagesService {
    * 채널 목록과 **같은 방향(최신순)** 이다. 화면이 `reverse: true` 로 그리는
    * 규칙과 커서 이어붙이기를 한 벌로 유지하기 위해서다.
    */
-  async listReplies(
-    parentId: string,
-    member: SpaceMember,
-    query: PaginationDto,
-  ) {
+  async listReplies(parentId: string, member: SpaceMember, query: PaginationDto) {
     const parent = await this.requireVisibleMessage(parentId, member);
     if (parent.parentId) {
       throw new BadRequestException('답글에는 스레드가 없습니다');
@@ -455,29 +477,11 @@ export class MessagesService {
 
     const { page, nextCursor } = pageOf(rows, limit);
 
-    const ids = [...page.map((m) => m.id), parent.id];
-    const [reactions, quoted, mentions, attachments] = await Promise.all([
-      this.reactions.summarizeMany(ids, member),
-      this.loadQuoted([...page, parent], member),
-      this.mentions.summarizeMany(ids, member),
-      this.attachments.summarizeMany(ids, member),
-    ]);
-
-    const decorate = <T extends { id: string; quotedMessageId: string | null }>(
-      message: T,
-    ) => ({
-      ...redactIfDeleted(message as never),
-      reactions: reactions.get(message.id) ?? [],
-      quoted: message.quotedMessageId
-        ? (quoted.get(message.quotedMessageId) ?? null)
-        : null,
-      mentions: mentions.get(message.id) ?? [],
-      attachments: attachments.get(message.id) ?? [],
-    });
+    const decorate = await this.decorator([...page, parent], member);
 
     return {
-      parent: decorate(parent),
-      items: page.map(decorate),
+      parent: decorate(redactIfDeleted(parent as never)),
+      items: page.map((m) => decorate(redactIfDeleted(m))),
       nextCursor,
     };
   }
@@ -627,23 +631,8 @@ export class MessagesService {
       include: { author: AUTHOR_SELECT },
     });
 
-    const ids = rows.map((m) => m.id);
-    const [reactions, quoted, mentions, attachments] = await Promise.all([
-      this.reactions.summarizeMany(ids, member),
-      this.loadQuoted(rows, member),
-      this.mentions.summarizeMany(ids, member),
-      this.attachments.summarizeMany(ids, member),
-    ]);
-
-    return rows.map((message) => ({
-      ...message,
-      reactions: reactions.get(message.id) ?? [],
-      quoted: message.quotedMessageId
-        ? (quoted.get(message.quotedMessageId) ?? null)
-        : null,
-      mentions: mentions.get(message.id) ?? [],
-      attachments: attachments.get(message.id) ?? [],
-    }));
+    const decorate = await this.decorator(rows, member);
+    return rows.map(decorate);
   }
 
   /**
