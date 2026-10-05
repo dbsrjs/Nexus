@@ -359,9 +359,7 @@ class _ErrorBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = error is ApiException
-        ? messageFor((error as ApiException).failure)
-        : messageFor(ApiFailure.server);
+    final text = messageForError(error);
 
     return Padding(
       padding: const EdgeInsets.all(NxSpacing.sp6),

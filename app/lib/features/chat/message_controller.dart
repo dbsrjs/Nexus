@@ -10,8 +10,9 @@ import '../channel/channel_controller.dart';
 import '../realtime/socket_controller.dart';
 import '../space/space_controller.dart';
 
-final messagesApiProvider =
-    Provider<MessagesApi>((ref) => MessagesApi(ref.watch(apiClientProvider)));
+final messagesApiProvider = Provider<MessagesApi>(
+  (ref) => MessagesApi(ref.watch(apiClientProvider)),
+);
 
 final attachmentsApiProvider = Provider<AttachmentsApi>(
   (ref) => AttachmentsApi(ref.watch(apiClientProvider)),
@@ -23,18 +24,6 @@ final messageRepositoryProvider = Provider<MessageRepository>((ref) {
     db: ref.watch(appDatabaseProvider),
   );
 });
-
-/// 새로고침이 진행 중인지. 캐시를 이미 그린 뒤라 화면을 막지 않고 표시만 한다.
-/// (Riverpod 3 에서 StateProvider 는 legacy 라 Notifier 를 쓴다.)
-class MessagesRefreshing extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void set(bool value) => state = value;
-}
-
-final messagesRefreshingProvider =
-    NotifierProvider<MessagesRefreshing, bool>(MessagesRefreshing.new);
 
 /// 현재 채널의 메시지.
 ///
@@ -67,11 +56,9 @@ void _refreshInBackground(
   String channelId,
 ) {
   Future.microtask(() async {
-    ref.read(messagesRefreshingProvider.notifier).set(true);
     await repository.refresh(spaceId: spaceId, channelId: channelId);
     if (!ref.mounted) return;
 
-    ref.read(messagesRefreshingProvider.notifier).set(false);
     // **채널에 들어올 때도 큐를 내보낸다.** 평소에는 소켓 재연결이 계기가
     // 되지만, 소켓이 늦거나 붙지 못하는 동안에도 대화를 열면 나가야 한다.
     // 계기가 하나뿐이면 그것이 막히는 순간 큐가 통째로 멈춘다.
@@ -155,11 +142,14 @@ class ReplyTarget extends Notifier<Message?> {
   void clear() => state = null;
 }
 
-final replyTargetProvider =
-    NotifierProvider<ReplyTarget, Message?>(ReplyTarget.new);
+final replyTargetProvider = NotifierProvider<ReplyTarget, Message?>(
+  ReplyTarget.new,
+);
 
 /// 전송·재시도 같은 **동작**. 목록은 messagesProvider 가 담당한다.
-final messageActionsProvider = Provider<MessageActions>((ref) => MessageActions(ref));
+final messageActionsProvider = Provider<MessageActions>(
+  (ref) => MessageActions(ref),
+);
 
 class MessageActions {
   MessageActions(this._ref);
@@ -254,8 +244,7 @@ class MessageActions {
     final spaceId = _ref.read(currentSpaceIdProvider);
     if (spaceId == null) return;
 
-    final already =
-        message.reactions.any((r) => r.emoji == emoji && r.mine);
+    final already = message.reactions.any((r) => r.emoji == emoji && r.mine);
 
     await _repository.toggleReaction(
       spaceId: spaceId,

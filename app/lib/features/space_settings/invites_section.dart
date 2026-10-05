@@ -9,6 +9,7 @@ import '../../ui/ui.dart';
 import '../settings/settings_widgets.dart';
 import '../space/members_controller.dart';
 import 'space_settings_controller.dart';
+import '../../shared/api_feedback.dart';
 
 /// 스페이스 설정 「초대」(16단계 설계 D8~D10). admin+ 에게만 보인다.
 ///
@@ -111,7 +112,7 @@ class _InvitesSectionState extends ConsumerState<InvitesSection> {
         const SettingsGap(),
         const SettingsLabel('쓸 수 있는 초대'),
         if (invites.hasError)
-          SettingsError(errorMessageOf(invites.error))
+          SettingsError(messageForError(invites.error))
         else if (!invites.hasValue)
           const NxSkeleton(lines: 2, lineHeight: 48)
         else if (invites.value!.isEmpty)
@@ -190,14 +191,10 @@ class _InviteRow extends ConsumerWidget {
       danger: true,
     );
     if (!ok || !context.mounted) return;
-    try {
+    await runOrToast(context, () async {
       await ref.read(invitesApiProvider).revoke(spaceId, invite.id);
       ref.invalidate(invitesProvider(spaceId));
-    } on ApiException catch (e) {
-      if (context.mounted) {
-        NxToast.show(context, messageFor(e.failure), kind: NxToastKind.error);
-      }
-    }
+    });
   }
 
   @override

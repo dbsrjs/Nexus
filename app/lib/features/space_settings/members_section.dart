@@ -10,7 +10,7 @@ import '../auth/auth_controller.dart';
 import '../channel/dm.dart';
 import '../settings/settings_widgets.dart';
 import '../space/members_controller.dart';
-import 'space_settings_controller.dart';
+import '../../shared/api_feedback.dart';
 
 /// 스페이스 설정 「멤버」(16단계 설계 D7). **전원이 본다** — 역할 바꾸기 · 내보내기는
 /// 내가 그 사람보다 높을 때만 보인다(눌러 봐야 실패할 동작을 두지 않는다).
@@ -35,7 +35,7 @@ class MembersSection extends ConsumerWidget {
         // `hasError` 로 가른다 — Riverpod 3 은 실패한 provider 를 재시도하며 「로딩 +
         // 오류」 상태를 낸다(CLAUDE.md §2, 15-2).
         if (members.hasError)
-          SettingsError(errorMessageOf(members.error))
+          SettingsError(messageForError(members.error))
         else if (!members.hasValue)
           const NxSkeleton(lines: 4, lineHeight: 48)
         else ...[
@@ -78,16 +78,12 @@ class _MemberRow extends ConsumerWidget {
     WidgetRef ref,
     Future<void> Function() call,
   ) async {
-    try {
+    await runOrToast(context, () async {
       await call();
       // 소켓 member:left 로 목록이 먼저 바뀌면 이 줄은 이미 내려가 있다 — 그때 ref 는 못 쓴다.
       if (!context.mounted) return;
       ref.invalidate(spaceMembersOfProvider(spaceId));
-    } on ApiException catch (e) {
-      if (context.mounted) {
-        NxToast.show(context, messageFor(e.failure), kind: NxToastKind.error);
-      }
-    }
+    });
   }
 
   Future<void> _remove(BuildContext context, WidgetRef ref) async {

@@ -9,6 +9,7 @@ import '../../ui/ui.dart';
 import '../shell/app_shell.dart';
 import '../space/members_controller.dart';
 import 'notifications_controller.dart';
+import '../../shared/api_feedback.dart';
 
 /// `/s/:spaceId/notifications` — 알림함(18단계 N19 · N22). 셸 안에 둔다 — 자주 들르는 곳이다.
 class NotificationsScreen extends ConsumerWidget {
@@ -17,13 +18,9 @@ class NotificationsScreen extends ConsumerWidget {
   final String spaceId;
 
   Future<void> _readAll(BuildContext context, WidgetRef ref) async {
-    try {
+    await runOrToast(context, () async {
       await ref.read(notificationsProvider.notifier).markAllRead();
-    } on ApiException catch (e) {
-      if (context.mounted) {
-        NxToast.show(context, messageFor(e.failure), kind: NxToastKind.error);
-      }
-    }
+    });
   }
 
   @override

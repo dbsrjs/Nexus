@@ -74,14 +74,4 @@ class SettingsApi {
     );
     return res.data?['muted'] == true;
   });
-
-  /// 사진 주소(`/users/…`)를 부를 수 있는 전체 주소로. 주소를 만드는 곳을
-  /// 늘리지 않으려고 dio 의 baseUrl(= `Env.apiRoot`)을 그대로 쓴다.
-  String avatarUrl(String path) => '${_client.dio.options.baseUrl}$path';
-
-  /// 사진을 받을 때 붙일 헤더. 첨부와 같이 서버가 권한을 본다.
-  Map<String, String> get authHeaders {
-    final token = _client.accessToken;
-    return token == null ? const {} : {'authorization': 'Bearer $token'};
-  }
 }

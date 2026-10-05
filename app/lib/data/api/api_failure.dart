@@ -87,3 +87,9 @@ String messageFor(ApiFailure failure) => switch (failure) {
   ApiFailure.badRequest => '요청을 처리할 수 없습니다.',
   ApiFailure.server => '문제가 생겼습니다. 잠시 후 다시 시도해 주세요.',
 };
+
+/// 아무 실패(provider 의 `error` 등)를 화면 문구로. [ApiException] 이 아니면 서버 오류로
+/// 친다 — 서버 문구를 화면에 쓰지 않는다(CLAUDE.md §3 앱 규칙). 스페이스 설정 컨트롤러에
+/// 있던 `errorMessageOf` 를 다른 화면들이 그것만 쓰려고 import 하고 있어 여기로 옮겼다.
+String messageForError(Object? error) =>
+    messageFor(error is ApiException ? error.failure : ApiFailure.server);

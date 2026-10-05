@@ -2,12 +2,12 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/api/api_failure.dart';
 import '../../domain/models/space.dart';
 import '../../ui/ui.dart';
 import '../space_settings/space_settings_controller.dart';
 import 'space_actions.dart';
 import 'space_controller.dart';
+import '../../shared/api_feedback.dart';
 
 /// 채널 판 머리 줄의 스페이스 이름 — 누르면 메뉴(16단계 설계 D6).
 ///
@@ -85,14 +85,10 @@ class SpaceMenu extends ConsumerWidget {
     // 소켓 `space:removed` 가 응답보다 먼저 오면 셸이 옮겨 이 위젯이 내려간다 — 미리 잡는다.
     final api = ref.read(spacesApiProvider);
     final forget = ref.read(forgetSpaceProvider);
-    try {
+    await runOrToast(context, () async {
       await api.leave(space.id);
       // 소켓 `space:removed` 로도 오지만 응답으로 먼저 정리한다 — 소켓이 끊겨 있어도 나간다.
       await forget(space.id);
-    } on ApiException catch (e) {
-      if (context.mounted) {
-        NxToast.show(context, messageFor(e.failure), kind: NxToastKind.error);
-      }
-    }
+    });
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/api/api_failure.dart';
 import '../../domain/models/channel.dart';
 import '../../domain/models/space_member.dart';
 import '../presence/presence_widgets.dart';
@@ -11,6 +10,7 @@ import '../auth/auth_controller.dart';
 import '../space/members_controller.dart';
 import '../space/space_controller.dart';
 import 'channel_controller.dart';
+import '../../shared/api_feedback.dart';
 
 /// 현재 스페이스의 DM — 최근 메시지 순(17단계 D10).
 ///
@@ -24,13 +24,16 @@ final dmChannelsProvider = Provider<List<Channel>>((ref) {
       .toList();
   // 메시지가 없는(방금 연) DM 이 맨 위 — 그 사람과 지금 말을 시작하려는 참이다.
   final far = DateTime.utc(9999);
-  dms.sort((a, b) => (b.lastMessageAt ?? far).compareTo(a.lastMessageAt ?? far));
+  dms.sort(
+    (a, b) => (b.lastMessageAt ?? far).compareTo(a.lastMessageAt ?? far),
+  );
   return dms;
 });
 
 /// `userId` → 현재 스페이스의 멤버. DM 줄 · 머리 줄이 이름과 사진을 찾는다(D9).
 final memberProfilesProvider = Provider<Map<String, SpaceMemberProfile>>((ref) {
-  final members = ref.watch(spaceMembersProvider).value ?? const <SpaceMemberProfile>[];
+  final members =
+      ref.watch(spaceMembersProvider).value ?? const <SpaceMemberProfile>[];
   return {for (final m in members) m.userId: m};
 });
 
@@ -52,19 +55,19 @@ Future<void> openDmIn(
   String spaceId,
   String userId,
 ) async {
-  try {
+  await runOrToast(context, () async {
     final dm = await ref.read(channelsApiProvider).openDm(spaceId, userId);
     await ref.read(workspaceRepositoryProvider).refreshChannels(spaceId);
     if (context.mounted) context.go('/s/$spaceId/c/${dm.id}');
-  } on ApiException catch (e) {
-    if (context.mounted) {
-      NxToast.show(context, messageFor(e.failure), kind: NxToastKind.error);
-    }
-  }
+  });
 }
 
 /// 말을 걸 사람을 고른다(D11). 고르면 그 DM 으로 간다.
-Future<void> showDmPicker(BuildContext context, WidgetRef ref, {VoidCallback? onOpened}) async {
+Future<void> showDmPicker(
+  BuildContext context,
+  WidgetRef ref, {
+  VoidCallback? onOpened,
+}) async {
   final picked = await NxDialog.panel<String>(
     context,
     title: '다이렉트 메시지',
@@ -89,7 +92,9 @@ class _DmPickerState extends ConsumerState<_DmPicker> {
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
     final myId = ref.watch(
-      authControllerProvider.select((a) => a is AuthSignedIn ? a.user.id : null),
+      authControllerProvider.select(
+        (a) => a is AuthSignedIn ? a.user.id : null,
+      ),
     );
     final all = ref.watch(spaceMembersProvider);
     final q = _query.trim().toLowerCase();
@@ -99,7 +104,12 @@ class _DmPickerState extends ConsumerState<_DmPicker> {
         .toList(growable: false);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(NxSpacing.sp7, 0, NxSpacing.sp7, NxSpacing.sp7),
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        0,
+        NxSpacing.sp7,
+        NxSpacing.sp7,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -127,7 +137,12 @@ class _DmPickerState extends ConsumerState<_DmPicker> {
                 children: [
                   for (final m in candidates)
                     NxRow(
-                      leading: DmAvatar(userId: m.userId, name: m.displayName, avatarUrl: m.avatarUrl, size: 28),
+                      leading: DmAvatar(
+                        userId: m.userId,
+                        name: m.displayName,
+                        avatarUrl: m.avatarUrl,
+                        size: 28,
+                      ),
                       title: m.displayName,
                       subtitle: roleLabel(m.role),
                       onPressed: () => Navigator.of(context).pop(m.userId),
@@ -157,6 +172,10 @@ class DmAvatar extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) =>
-      PresenceAvatar(userId: userId, name: name, avatarUrl: avatarUrl, size: size);
+  Widget build(BuildContext context) => PresenceAvatar(
+    userId: userId,
+    name: name,
+    avatarUrl: avatarUrl,
+    size: size,
+  );
 }

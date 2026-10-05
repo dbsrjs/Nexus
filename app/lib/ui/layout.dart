@@ -217,7 +217,7 @@ class NxRow extends StatelessWidget {
                   style:
                       titleStyle ??
                       theme.text.base.copyWith(
-                        color: selected ? c.textPrimary : c.textPrimary,
+                        color: c.textPrimary,
                         fontWeight: selected ? FontWeight.w600 : null,
                       ),
                 ),
