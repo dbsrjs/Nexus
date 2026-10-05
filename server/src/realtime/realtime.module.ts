@@ -5,6 +5,9 @@ import { RealtimeGateway } from './realtime.gateway';
 import { RealtimeEmitterModule } from './realtime-emitter.module';
 import { RoomsService } from './rooms.service';
 import { ChannelsModule } from '../channels/channels.module';
+import { SpacesModule } from '../spaces/spaces.module';
+import { PresenceService } from './presence.service';
+import { PresenceController } from './presence.controller';
 
 /**
  * 게이트웨이는 룸을 계산하려고 ChannelsService 를 쓴다(Task 2 에서 추가).
@@ -15,7 +18,14 @@ import { ChannelsModule } from '../channels/channels.module';
  * 시점에 박으면 resolveJwtSecrets() 가 유일한 해석 지점이라는 규칙이 깨진다.
  */
 @Module({
-  imports: [ConfigModule, JwtModule.register({}), RealtimeEmitterModule, ChannelsModule],
-  providers: [RealtimeGateway, RoomsService],
+  imports: [
+    ConfigModule,
+    JwtModule.register({}),
+    RealtimeEmitterModule,
+    ChannelsModule,
+    SpacesModule,
+  ],
+  controllers: [PresenceController],
+  providers: [RealtimeGateway, RoomsService, PresenceService],
 })
 export class RealtimeModule {}
