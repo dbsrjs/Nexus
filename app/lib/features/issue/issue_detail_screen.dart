@@ -254,34 +254,28 @@ class _OriginCard extends ConsumerWidget {
     final c = nx.colors;
     final spaceId = ref.watch(currentSpaceIdProvider);
 
-    return NxPressable(
+    return NxHoverSurface(
       onPressed: spaceId == null
           ? null
           : () => context.go('/s/$spaceId/c/${origin.channelId}'),
-      builder: (context, s) => AnimatedContainer(
-        duration: NxMotion.micro,
-        padding: const EdgeInsets.all(NxSpacing.sp5),
-        decoration: BoxDecoration(
-          color: s.hovered ? c.bgElevated : c.bgSurface,
-          borderRadius: BorderRadius.circular(NxRadius.md),
-          // 인용처럼 왼쪽 선 하나로 「다른 곳에서 온 글」임을 말한다.
-          border: Border(left: BorderSide(color: c.accent, width: 2)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('이 대화에서 만들어졌습니다', style: nx.text.meta),
-            const SizedBox(height: NxSpacing.sp2),
-            Text(
-              origin.deleted
-                  ? '${origin.authorName} · 지워진 메시지'
-                  : '${origin.authorName} · ${origin.body ?? ''}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: nx.text.sm,
-            ),
-          ],
-        ),
+      padding: const EdgeInsets.all(NxSpacing.sp5),
+      base: c.bgSurface,
+      // 인용처럼 왼쪽 선 하나로 「다른 곳에서 온 글」임을 말한다.
+      border: (_) => Border(left: BorderSide(color: c.accent, width: 2)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('이 대화에서 만들어졌습니다', style: nx.text.meta),
+          const SizedBox(height: NxSpacing.sp2),
+          Text(
+            origin.deleted
+                ? '${origin.authorName} · 지워진 메시지'
+                : '${origin.authorName} · ${origin.body ?? ''}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: nx.text.sm,
+          ),
+        ],
       ),
     );
   }

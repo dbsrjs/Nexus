@@ -6,16 +6,11 @@ import {
   LlmOptions,
   LlmProvider,
   LlmResult,
+  retryAfterOf,
 } from './llm.provider';
 
 const DEFAULT_BASE = 'http://127.0.0.1:11434';
 
-/** 헤더가 없거나 숫자가 아니면 undefined. 0 을 지어내지 않는다. */
-function retryAfterOf(res: { headers: { get(name: string): string | null } }) {
-  const raw = res.headers.get('retry-after');
-  if (!raw || !/^\d+$/.test(raw.trim())) return undefined;
-  return Number(raw.trim());
-}
 
 /**
  * Ollama 로컬 생성. **배포 대안이 아니라 개발 도구다** (설계 §0) — 무료 티어

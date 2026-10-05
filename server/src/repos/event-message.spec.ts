@@ -66,9 +66,7 @@ describe('describeGithubEvent — pull_request', () => {
     const result = describeGithubEvent('pull_request', pr);
 
     expect(result?.type).toBe(RepoEventType.pr);
-    expect(result?.body).toBe(
-      'dbsrjs 님이 PR #12 를 열었습니다 — 스프린트 · 번다운',
-    );
+    expect(result?.body).toBe('dbsrjs 님이 PR #12 를 열었습니다 — 스프린트 · 번다운');
   });
 
   it('머지는 닫힘과 다르게 말한다', () => {

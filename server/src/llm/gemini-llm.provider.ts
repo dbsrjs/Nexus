@@ -6,6 +6,7 @@ import {
   LlmOptions,
   LlmProvider,
   LlmResult,
+  retryAfterOf,
 } from './llm.provider';
 
 const DEFAULT_BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -29,12 +30,6 @@ const DEFAULT_BASE = 'https://generativelanguage.googleapis.com/v1beta';
  */
 const THINKING_LEVEL = 'low';
 
-/** 헤더가 없거나 숫자가 아니면 undefined. 0 을 지어내지 않는다. */
-function retryAfterOf(res: { headers: { get(name: string): string | null } }) {
-  const raw = res.headers.get('retry-after');
-  if (!raw || !/^\d+$/.test(raw.trim())) return undefined;
-  return Number(raw.trim());
-}
 
 /**
  * Gemini 생성. **기본 provider 다** (설계 §0) — Phase 1 배포 대상에 GPU 가 없다.

@@ -50,7 +50,8 @@ export class PullsController {
     // 조용히 실려 GitHub 에 그대로 나가던 것을 막는다.
     @Query('page') page?: string,
   ) {
-    const parsed = page === undefined || page === '' ? 1 : new ParsePositiveIntPipe().transform(page);
+    const parsed =
+      page === undefined || page === '' ? 1 : new ParsePositiveIntPipe().transform(page);
     return this.pulls.list(spaceId, userId, repoId, state, parsed);
   }
 

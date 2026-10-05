@@ -57,7 +57,7 @@ description: Use when running or debugging Nexus's check:* contract verification
 | `npm run check:mentions` | 멘션 계약 검증(18개) |
 | `npm run check:pins` | 핀 계약 검증(20개) |
 | `npm run check:attachments` | 첨부 계약 검증(43개). **드라이버와 무관하게 돈다** — 지금 드라이버는 `local` 하나다. 배포 때 `S3Driver` 를 붙이면 `STORAGE_DRIVER=s3` 로 한 번 더 돌린다 |
-| `npm run check:repos` | 저장소 웹훅 계약 검증(30개). **GitHub 없이 돈다** — 서명을 직접 만들어 보낸다 |
+| `npm run check:repos` | 저장소 웹훅 계약 검증(33개) — 게시가 소켓 `message:new` 봉투로 닿는지 포함(2026-10-06). **GitHub 없이 돈다** — 서명을 직접 만들어 보낸다 |
 | `npm run check:oauth` | GitHub **연동 전체** 계약 검증(설정된 서버에서 81개) — 계정 연결(10-2a · 콜백 확인 화면은 2026-10-05)과 저장소 목록 · 자동 등록 · 승격 · 훅 재등록/삭제(10-2b). **가짜 GitHub(4599)을 스스로 띄운다** — `.env` 에 `GITHUB_*_BASE` · `OAUTH_TOKEN_KEY` · `PUBLIC_BASE_URL` 을 넣고 서버를 재시작해야 한다. 미설정 503 분기는 그 값들을 비운 채로 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
 | `npm run check:browse` | 저장소 열람 계약 검증(56개) — 브랜치 · 트리 · 파일(10-3a)과 커밋(10-3b). **가짜 GitHub(4599)을 스스로 띄운다** — `check:oauth` 와 같은 `.env` 를 쓴다. 연결 · 등록이 주제인 그쪽과 섞지 않았다 |
 | `npm run check:pulls` | PR 열람 계약 검증(35개) — 목록 · 상세 · 바뀐 파일(11단계). **가짜 GitHub(4599)을 스스로 띄운다** — `check:browse` 와 같은 `.env` 를 쓴다 |

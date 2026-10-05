@@ -1,4 +1,4 @@
-import { slugify } from './slug';
+import { slugify, withRandomSuffix } from './slug';
 
 /**
  * 이 테스트는 **실제로 겪은 버그**에서 나왔다.
@@ -37,5 +37,13 @@ describe('slugify', () => {
   it('40자를 넘기지 않는다 — DB 컬럼과 URL 길이를 지킨다', () => {
     const long = 'a'.repeat(100);
     expect(slugify(long, 'channel').length).toBeLessThanOrEqual(40);
+  });
+});
+
+describe('withRandomSuffix', () => {
+  it('앞을 31자로 잘라 8자리 꼬리를 붙인다 — 40자를 넘지 않는다', () => {
+    const out = withRandomSuffix('a'.repeat(40));
+    expect(out).toMatch(/^a{31}-[0-9a-f]{8}$/);
+    expect(out.length).toBe(40);
   });
 });

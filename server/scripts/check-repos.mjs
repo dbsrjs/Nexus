@@ -10,6 +10,7 @@ import { createHmac } from 'node:crypto';
 import { requireServer } from './lib/preflight.mjs';
 import { BASE, stamp, api, signup } from './lib/api.mjs';
 import { check, summary } from './lib/checks.mjs';
+import { connect, waitFor } from './lib/socket.mjs';
 await requireServer(BASE);
 
 
@@ -125,6 +126,10 @@ const before = (await api(
   'GET', `/spaces/${spaceId}/channels/${channel.id}/messages`, { token: alice.token },
 )).json.items.length;
 
+// 채널을 보고 있는 사람의 소켓 — 게시가 실시간으로 닿는지 본다.
+const aliceSocket = await connect(alice.token);
+const live = waitFor(aliceSocket, 'message:new');
+
 const pushed = await deliver(repoId, {
   secret, event: 'push', deliveryId: `d-${stamp}-1`, payload: pushPayload(),
 });
@@ -142,6 +147,25 @@ check('본문이 한 줄로 요약된다',
   after[0]?.body);
 check('작성자가 GitHub 봇이다', after[0]?.author?.name === 'GitHub',
   JSON.stringify(after[0]?.author));
+
+// **다른 message:new 와 같은 봉투**({ spaceId, channelId, message })여야 앱이 받는다. 웹훅만
+// 메시지 필드를 맨 위에 펼쳐 보내 앱이 조용히 버렸다 — 새로고침해야 보였다(2026-10-06).
+const livePayload = await live;
+check('★ 게시가 소켓 message:new 로 온다', livePayload !== null, 'null');
+check('★ 소켓 페이로드가 { spaceId, channelId, message } 봉투다',
+  livePayload?.spaceId === spaceId && livePayload?.channelId === channel.id &&
+    typeof livePayload?.message?.id === 'string',
+  JSON.stringify(Object.keys(livePayload ?? {})));
+check('소켓으로 온 메시지가 목록과 같은 모양이다(본문 · 이벤트 id · 요약 필드)',
+  livePayload?.message?.body === after[0]?.body &&
+    typeof livePayload?.message?.repoEventId === 'string' &&
+    livePayload?.message?.repoEventId === after[0]?.repoEventId &&
+    Array.isArray(livePayload?.message?.reactions) &&
+    Array.isArray(livePayload?.message?.mentions) &&
+    Array.isArray(livePayload?.message?.attachments) &&
+    'quoted' in (livePayload?.message ?? {}),
+  JSON.stringify(livePayload?.message ?? null).slice(0, 300));
+aliceSocket.close();
 
 const members = await api('GET', `/spaces/${spaceId}/members`, { token: alice.token });
 check('★ 봇은 스페이스 멤버가 아니다',

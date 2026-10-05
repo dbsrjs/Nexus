@@ -22,12 +22,8 @@ module.exports = {
   collectCoverageFrom: ['**/*.(t|j)s'],
   coverageDirectory: '../coverage',
   testEnvironment: 'node',
-  // 미이관 모듈은 컴파일되지 않으므로 테스트 대상에서도 뺀다
-  // (tsconfig.build.json 의 exclude 와 같은 목록).
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/permissions/',
-    '/files/',
-    '/gitlab/',
-  ],
+  // 옛 모듈 경로(`/permissions/` · `/files/` · `/gitlab/`)를 걸러 두었다가 지웠다(2026-10-06).
+  // 모듈은 이미 다시 쓰였거나 삭제됐고, 남겨 두면 같은 이름으로 새로 만든 모듈의 테스트가
+  // **조용히 건너뛰어진다** — 18단계에서 `/notifications/` 로 실제로 겪었다.
+  testPathIgnorePatterns: ['/node_modules/'],
 };

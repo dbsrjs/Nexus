@@ -1,12 +1,8 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { randomBytes } from 'crypto';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, Repo, RepoProvider } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRepoDto } from './dto/repo.dto';
+import { newWebhookSecret, requireLinkableChannel } from './repo-guards';
 
 /**
  * 저장소 등록. **10-1 은 수동 등록만 한다** — GitHub 저장소 설정에서 웹훅
@@ -33,14 +29,14 @@ export class ReposService {
    * 새는 자리가 된다. 잃어버리면 새로 발급한다.
    */
   async create(spaceId: string, dto: CreateRepoDto) {
-    await this.requireChannel(spaceId, dto.linkedChannelId);
+    await requireLinkableChannel(this.prisma, spaceId, dto.linkedChannelId);
 
     const fullPath = dto.fullPath.trim().replace(/^\/+|\/+$/g, '');
     if (!/^[^/\s]+\/[^/\s]+$/.test(fullPath)) {
       throw new BadRequestException('저장소 경로는 소유자/이름 형식이어야 합니다');
     }
 
-    const webhookSecret = `whsec_${randomBytes(24).toString('hex')}`;
+    const webhookSecret = newWebhookSecret();
 
     const repo = await this.prisma.repo.create({
       data: {
@@ -66,7 +62,7 @@ export class ReposService {
   async rotateSecret(spaceId: string, repoId: string) {
     await this.requireRepo(spaceId, repoId);
 
-    const webhookSecret = `whsec_${randomBytes(24).toString('hex')}`;
+    const webhookSecret = newWebhookSecret();
     const repo = await this.prisma.repo.update({
       where: { id: repoId },
       data: { webhookSecret },
@@ -112,18 +108,6 @@ export class ReposService {
     // 403 이 아니라 404 다 — 403 은 "그 저장소가 존재한다"를 알려 준다.
     if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
     return repo;
-  }
-
-  /** 못 보는 채널에 저장소를 붙이면 그 채널로 이벤트가 새 나간다. */
-  private async requireChannel(spaceId: string, channelId?: string) {
-    if (!channelId) return;
-
-    const channel = await this.prisma.channel.findFirst({
-      // DM 에는 저장소를 잇지 않는다 — 웹훅이 DM 에 게시될 이유가 없다(17단계 D7 · D13).
-      where: { id: channelId, spaceId, kind: 'text' },
-      select: { id: true },
-    });
-    if (!channel) throw new NotFoundException('채널을 찾을 수 없습니다');
   }
 }
 

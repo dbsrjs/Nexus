@@ -38,13 +38,7 @@ export class RepoBrowseService {
     };
   }
 
-  async tree(
-    spaceId: string,
-    userId: string,
-    repoId: string,
-    ref: string,
-    path: string,
-  ) {
+  async tree(spaceId: string, userId: string, repoId: string, ref: string, path: string) {
     const { repo, cfg, token } = await this.access.ready(spaceId, userId, repoId);
     const useRef = ref || repo.defaultBranch || '';
 
@@ -66,13 +60,7 @@ export class RepoBrowseService {
     };
   }
 
-  async blob(
-    spaceId: string,
-    userId: string,
-    repoId: string,
-    ref: string,
-    path: string,
-  ) {
+  async blob(spaceId: string, userId: string, repoId: string, ref: string, path: string) {
     // 루트는 파일이 아니다.
     if (!path) throw new BadRequestException('path 가 필요합니다');
 

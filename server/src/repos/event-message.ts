@@ -49,8 +49,7 @@ function describePush(data: Record<string, unknown>): EventMessage | null {
   const who = str(asRecord(data.pusher)?.name) ?? '누군가';
   const first = title(str(asRecord(commits[0])?.message) ?? '');
 
-  const what =
-    commits.length === 1 ? '커밋을' : `커밋 ${commits.length}개를`;
+  const what = commits.length === 1 ? '커밋을' : `커밋 ${commits.length}개를`;
 
   return {
     type: RepoEventType.push,
@@ -58,9 +57,7 @@ function describePush(data: Record<string, unknown>): EventMessage | null {
   };
 }
 
-function describePullRequest(
-  data: Record<string, unknown>,
-): EventMessage | null {
+function describePullRequest(data: Record<string, unknown>): EventMessage | null {
   const pr = asRecord(data.pull_request);
   const number = data.number;
   if (!pr || typeof number !== 'number') return null;

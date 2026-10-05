@@ -37,83 +37,78 @@ class IssueCard extends ConsumerWidget {
     final c = nx.colors;
     final assignee = issue.assignee;
 
-    return NxPressable(
+    return NxHoverSurface(
       onPressed: () => context.push(
         '/s/${ref.read(currentSpaceIdProvider)}/issues/${issue.key}',
       ),
       semanticLabel: '${issue.key} ${issue.title}',
       shortcuts: shortcuts,
       actions: actions,
-      builder: (context, s) => AnimatedContainer(
-        duration: NxMotion.micro,
-        padding: const EdgeInsets.fromLTRB(
-          NxSpacing.sp5,
-          NxSpacing.sp5,
-          NxSpacing.sp3,
-          NxSpacing.inset,
-        ),
-        decoration: BoxDecoration(
-          color: dragging || s.hovered ? c.bgElevated : c.bgSurface,
-          borderRadius: BorderRadius.circular(NxRadius.md),
-          border: Border.all(color: dragging ? c.accent : NxColors.transparent),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: NxSpacing.sp1),
-                    child: Text(
-                      issue.title,
-                      style: nx.text.base.copyWith(height: 1.45),
-                    ),
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp5,
+        NxSpacing.sp5,
+        NxSpacing.sp3,
+        NxSpacing.inset,
+      ),
+      base: dragging ? c.bgElevated : c.bgSurface,
+      border: (_) =>
+          Border.all(color: dragging ? c.accent : NxColors.transparent),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: NxSpacing.sp1),
+                  child: Text(
+                    issue.title,
+                    style: nx.text.base.copyWith(height: 1.45),
                   ),
                 ),
-                _MoveMenu(issue: issue),
+              ),
+              _MoveMenu(issue: issue),
+            ],
+          ),
+          if (issue.labels.isNotEmpty) ...[
+            const SizedBox(height: NxSpacing.sp4),
+            Wrap(
+              spacing: NxSpacing.sp3,
+              runSpacing: NxSpacing.sp3,
+              children: [
+                for (final label in issue.labels)
+                  LabelChip(label: label, dense: true),
               ],
             ),
-            if (issue.labels.isNotEmpty) ...[
-              const SizedBox(height: NxSpacing.sp4),
-              Wrap(
-                spacing: NxSpacing.sp3,
-                runSpacing: NxSpacing.sp3,
-                children: [
-                  for (final label in issue.labels)
-                    LabelChip(label: label, dense: true),
-                ],
-              ),
-            ],
-            const SizedBox(height: NxSpacing.sp5),
-            Padding(
-              padding: const EdgeInsets.only(right: NxSpacing.sp3),
-              child: Row(
-                children: [
-                  Text(issue.key, style: nx.text.mono),
-                  const SizedBox(width: NxSpacing.sp4),
-                  _Priority(priority: issue.priority),
-                  const Spacer(),
-                  if (issue.storyPoints != null) ...[
-                    Text('${issue.storyPoints}p', style: nx.text.mono),
-                    if (assignee != null) const SizedBox(width: NxSpacing.sp4),
-                  ],
-                  if (assignee != null)
-                    NxTooltip(
-                      message: '담당 ${assignee.name}',
-                      child: UserAvatar(
-                        userId: assignee.id,
-                        name: assignee.name,
-                        avatarUrl: assignee.avatarUrl,
-                        size: 20,
-                      ),
-                    ),
-                ],
-              ),
-            ),
           ],
-        ),
+          const SizedBox(height: NxSpacing.sp5),
+          Padding(
+            padding: const EdgeInsets.only(right: NxSpacing.sp3),
+            child: Row(
+              children: [
+                Text(issue.key, style: nx.text.mono),
+                const SizedBox(width: NxSpacing.sp4),
+                _Priority(priority: issue.priority),
+                const Spacer(),
+                if (issue.storyPoints != null) ...[
+                  Text('${issue.storyPoints}p', style: nx.text.mono),
+                  if (assignee != null) const SizedBox(width: NxSpacing.sp4),
+                ],
+                if (assignee != null)
+                  NxTooltip(
+                    message: '담당 ${assignee.name}',
+                    child: UserAvatar(
+                      userId: assignee.id,
+                      name: assignee.name,
+                      avatarUrl: assignee.avatarUrl,
+                      size: 20,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

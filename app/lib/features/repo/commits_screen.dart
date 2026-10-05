@@ -66,7 +66,6 @@ class _CommitRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
-    final c = nx.colors;
     final count = commit.changedCount;
     final who = commit.authorName;
     final meta = [
@@ -75,46 +74,39 @@ class _CommitRow extends StatelessWidget {
       if (count != null) '파일 $count개',
     ];
 
-    return NxPressable(
+    return NxHoverSurface(
       onPressed: onPressed,
-      builder: (context, s) => AnimatedContainer(
-        duration: NxMotion.micro,
-        padding: const EdgeInsets.symmetric(
-          horizontal: NxSpacing.inset,
-          vertical: NxSpacing.sp4,
-        ),
-        decoration: BoxDecoration(
-          color: s.hovered || s.pressed ? c.bgElevated : NxColors.transparent,
-          borderRadius: BorderRadius.circular(NxRadius.md),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 제목만 그린다. 본문까지 넣으면 목록이 문단이 된다.
-            Text(
-              commit.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: nx.text.base,
-            ),
-            const SizedBox(height: NxSpacing.sp1),
-            Row(
-              children: [
-                Text(commit.shortSha, style: nx.text.mono),
-                if (meta.isNotEmpty) ...[
-                  const SizedBox(width: NxSpacing.sp4),
-                  Flexible(
-                    child: Text(
-                      meta.join(' · '),
-                      overflow: TextOverflow.ellipsis,
-                      style: nx.text.meta,
-                    ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: NxSpacing.inset,
+        vertical: NxSpacing.sp4,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 제목만 그린다. 본문까지 넣으면 목록이 문단이 된다.
+          Text(
+            commit.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: nx.text.base,
+          ),
+          const SizedBox(height: NxSpacing.sp1),
+          Row(
+            children: [
+              Text(commit.shortSha, style: nx.text.mono),
+              if (meta.isNotEmpty) ...[
+                const SizedBox(width: NxSpacing.sp4),
+                Flexible(
+                  child: Text(
+                    meta.join(' · '),
+                    overflow: TextOverflow.ellipsis,
+                    style: nx.text.meta,
                   ),
-                ],
+                ),
               ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }

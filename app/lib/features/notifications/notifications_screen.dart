@@ -149,91 +149,79 @@ class NotificationTile extends ConsumerWidget {
         ? '파일을 보냈습니다'
         : toPlainText(item.body, names: names);
 
-    return NxPressable(
+    return NxHoverSurface(
       onPressed: onPressed,
       semanticLabel:
           '${item.read ? '' : '안 읽음, '}${notificationHeadline(item)}',
-      builder: (context, s) => AnimatedContainer(
-        duration: NxMotion.micro,
-        padding: const EdgeInsets.symmetric(
-          horizontal: NxSpacing.sp3,
-          vertical: NxSpacing.sp4,
-        ),
-        decoration: BoxDecoration(
-          color: s.hovered || s.pressed ? c.bgElevated : NxColors.transparent,
-          borderRadius: BorderRadius.circular(NxRadius.md),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 안 읽음 점 — 줄 앞의 유일한 표시다. 읽은 줄도 자리를 비워 두어 줄이 들썩이지 않게.
-            SizedBox(
-              width: 12,
-              height: 32,
-              child: item.read
-                  ? null
-                  : Center(
-                      child: Container(
-                        key: const ValueKey('notification-unread-dot'),
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: c.accent,
-                          shape: BoxShape.circle,
+      padding: const EdgeInsets.symmetric(
+        horizontal: NxSpacing.sp3,
+        vertical: NxSpacing.sp4,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 안 읽음 점 — 줄 앞의 유일한 표시다. 읽은 줄도 자리를 비워 두어 줄이 들썩이지 않게.
+          SizedBox(
+            width: 12,
+            height: 32,
+            child: item.read
+                ? null
+                : Center(
+                    child: Container(
+                      key: const ValueKey('notification-unread-dot'),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: c.accent,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+          ),
+          const SizedBox(width: NxSpacing.sp3),
+          UserAvatar(
+            userId: item.actorId,
+            name: item.actorName,
+            avatarUrl: item.actorAvatarUrl,
+            size: 32,
+          ),
+          const SizedBox(width: NxSpacing.sp5),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        notificationHeadline(item),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: nx.text.sm.copyWith(
+                          color: item.read ? c.textSecondary : c.textPrimary,
+                          fontWeight: item.read ? null : FontWeight.w600,
                         ),
                       ),
                     ),
+                    const SizedBox(width: NxSpacing.sp3),
+                    Text(notificationTime(item.createdAt), style: nx.text.mono),
+                  ],
+                ),
+                const SizedBox(height: NxSpacing.sp1),
+                Text(
+                  preview,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: item.deleted
+                      ? nx.text.secondary.copyWith(fontStyle: FontStyle.italic)
+                      : nx.text.secondary,
+                ),
+              ],
             ),
-            const SizedBox(width: NxSpacing.sp3),
-            UserAvatar(
-              userId: item.actorId,
-              name: item.actorName,
-              avatarUrl: item.actorAvatarUrl,
-              size: 32,
-            ),
-            const SizedBox(width: NxSpacing.sp5),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          notificationHeadline(item),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: nx.text.sm.copyWith(
-                            color: item.read ? c.textSecondary : c.textPrimary,
-                            fontWeight: item.read ? null : FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: NxSpacing.sp3),
-                      Text(
-                        notificationTime(item.createdAt),
-                        style: nx.text.mono,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: NxSpacing.sp1),
-                  Text(
-                    preview,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: item.deleted
-                        ? nx.text.secondary.copyWith(
-                            fontStyle: FontStyle.italic,
-                          )
-                        : nx.text.secondary,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

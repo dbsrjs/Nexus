@@ -119,53 +119,45 @@ class _PullRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
-    final c = nx.colors;
-    return NxPressable(
+    return NxHoverSurface(
       onPressed: onPressed,
-      builder: (context, s) => AnimatedContainer(
-        duration: NxMotion.micro,
-        padding: const EdgeInsets.symmetric(
-          horizontal: NxSpacing.inset,
-          vertical: NxSpacing.sp4,
-        ),
-        decoration: BoxDecoration(
-          color: s.hovered || s.pressed ? c.bgElevated : NxColors.transparent,
-          borderRadius: BorderRadius.circular(NxRadius.md),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '#${pull.number}',
-                          style: nx.text.mono.copyWith(fontSize: NxFontSize.sm),
-                        ),
-                        const TextSpan(text: ' · '),
-                        TextSpan(text: pull.title),
-                      ],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: nx.text.base,
+      padding: const EdgeInsets.symmetric(
+        horizontal: NxSpacing.inset,
+        vertical: NxSpacing.sp4,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '#${pull.number}',
+                        style: nx.text.mono.copyWith(fontSize: NxFontSize.sm),
+                      ),
+                      const TextSpan(text: ' · '),
+                      TextSpan(text: pull.title),
+                    ],
                   ),
-                  const SizedBox(height: NxSpacing.sp1),
-                  Text(
-                    '${pull.sourceBranch ?? '?'} → ${pull.targetBranch ?? '?'}',
-                    overflow: TextOverflow.ellipsis,
-                    style: nx.text.mono,
-                  ),
-                ],
-              ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: nx.text.base,
+                ),
+                const SizedBox(height: NxSpacing.sp1),
+                Text(
+                  '${pull.sourceBranch ?? '?'} → ${pull.targetBranch ?? '?'}',
+                  overflow: TextOverflow.ellipsis,
+                  style: nx.text.mono,
+                ),
+              ],
             ),
-            const SizedBox(width: NxSpacing.sp4),
-            PullStateChip(state: pull.state, draft: pull.draft),
-          ],
-        ),
+          ),
+          const SizedBox(width: NxSpacing.sp4),
+          PullStateChip(state: pull.state, draft: pull.draft),
+        ],
       ),
     );
   }

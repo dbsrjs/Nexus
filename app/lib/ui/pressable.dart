@@ -199,3 +199,81 @@ class _RingPainter extends CustomPainter {
   bool shouldRepaint(_RingPainter old) =>
       old.color != color || old.radius != radius;
 }
+
+/// **누를 수 있는 면** — 호버 · 누름에 한 단 위 표면(`bgElevated`)으로 바뀐다.
+///
+/// 목록 줄(커밋 · PR · 파일 · 알림)과 카드(저장소 · 스페이스 · 이슈)가 저마다
+/// `NxPressable` + `AnimatedContainer` + 「호버면 bgElevated」 를 손으로 짜고 있었다
+/// (2026-10-06 리팩토링 때 열 곳). 어떤 곳은 누름에도 바뀌고 어떤 곳은 호버에만 바뀌어,
+/// 터치 기기에서 누른 줄이 반응하지 않는 화면이 섞여 있었다 — 이제 둘 다 본다.
+///
+/// 색 · 테두리를 상태에 따라 바꿔야 하는 자리(위험 버튼 · 칩)는 이것이 아니라
+/// [NxPressable] 을 직접 쓴다.
+class NxHoverSurface extends StatelessWidget {
+  const NxHoverSurface({
+    super.key,
+    required this.child,
+    this.onPressed,
+    this.onLongPress,
+    this.semanticLabel,
+    this.excludeChildSemantics = false,
+    this.shortcuts,
+    this.actions,
+    this.base,
+    this.border,
+    this.radius = NxRadius.md,
+    this.padding,
+    this.height,
+    this.width,
+    this.alignment,
+  });
+
+  final Widget child;
+  final VoidCallback? onPressed;
+  final VoidCallback? onLongPress;
+  final String? semanticLabel;
+  final bool excludeChildSemantics;
+  final Map<ShortcutActivator, Intent>? shortcuts;
+  final Map<Type, Action<Intent>>? actions;
+
+  /// 쉬는 바탕. 비우면 투명(목록 줄), 카드는 `bgSurface`.
+  final Color? base;
+
+  /// 상태마다 다른 테두리가 필요할 때(입력처럼 보이는 줄 · 끌고 있는 카드).
+  final BoxBorder? Function(NxPressState state)? border;
+
+  final double radius;
+  final EdgeInsetsGeometry? padding;
+  final double? height;
+  final double? width;
+  final AlignmentGeometry? alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = NxTheme.of(context).colors;
+    return NxPressable(
+      onPressed: onPressed,
+      onLongPress: onLongPress,
+      semanticLabel: semanticLabel,
+      excludeChildSemantics: excludeChildSemantics,
+      shortcuts: shortcuts,
+      actions: actions,
+      focusRingRadius: radius,
+      builder: (context, s) => AnimatedContainer(
+        duration: NxMotion.micro,
+        height: height,
+        width: width,
+        padding: padding,
+        alignment: alignment,
+        decoration: BoxDecoration(
+          color: s.hovered || s.pressed
+              ? c.bgElevated
+              : (base ?? NxColors.transparent),
+          borderRadius: BorderRadius.circular(radius),
+          border: border?.call(s),
+        ),
+        child: child,
+      ),
+    );
+  }
+}

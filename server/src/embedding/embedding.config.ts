@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { envTrimmed, envUint } from '../config/env';
 
 export type EmbeddingProviderName = 'gemini' | 'local' | 'fake';
 
@@ -13,10 +14,6 @@ export interface EmbeddingConfig {
 
 const NAMES: EmbeddingProviderName[] = ['gemini', 'local', 'fake'];
 
-/** 빈 문자열을 미설정으로 친다. `.env` 에 자리만 잡아 둔 경우가 있다. */
-function trimmed(config: ConfigService, key: string): string | null {
-  return config.get<string>(key)?.trim() || null;
-}
 
 /**
  * 임베딩 설정의 **유일한 해석 지점**. `oauth.config.ts` 와 같은 역할이다.
@@ -29,7 +26,7 @@ function trimmed(config: ConfigService, key: string): string | null {
  * 없는 것("이 기능을 안 쓴다")과 잘못된 것(설정 실수)은 다르다.
  */
 export function resolveEmbedding(config: ConfigService): EmbeddingConfig | null {
-  const raw = trimmed(config, 'EMBEDDING_PROVIDER');
+  const raw = envTrimmed(config, 'EMBEDDING_PROVIDER');
   if (!raw) return null;
 
   if (!NAMES.includes(raw as EmbeddingProviderName)) {
@@ -39,18 +36,17 @@ export function resolveEmbedding(config: ConfigService): EmbeddingConfig | null 
   }
   const provider = raw as EmbeddingProviderName;
 
-  const apiKey = trimmed(config, 'GEMINI_API_KEY');
+  const apiKey = envTrimmed(config, 'GEMINI_API_KEY');
   // 키가 없으면 부팅은 되고 인덱싱만 멈춘다. 던지지 않는다.
   if (provider === 'gemini' && !apiKey) return null;
 
-  const batchRaw = trimmed(config, 'EMBEDDING_BATCH_SIZE');
-  const batchSize = batchRaw && /^\d+$/.test(batchRaw) ? Number(batchRaw) : 32;
+  const batchSize = envUint(config, 'EMBEDDING_BATCH_SIZE') ?? 32;
 
   return {
     provider,
-    model: trimmed(config, 'EMBEDDING_MODEL') ?? defaultModel(provider),
+    model: envTrimmed(config, 'EMBEDDING_MODEL') ?? defaultModel(provider),
     apiKey,
-    base: trimmed(config, 'EMBEDDING_BASE'),
+    base: envTrimmed(config, 'EMBEDDING_BASE'),
     // 배치 한도가 문서에 명시돼 있지 않다. **모르는 값에 붙어 있지 않도록**
     // 낮게 잡고 설정으로 뺀다 (설계 §6).
     batchSize: batchSize > 0 ? batchSize : 32,

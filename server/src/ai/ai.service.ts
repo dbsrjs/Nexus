@@ -349,11 +349,9 @@ export class AiService {
    * AI 요약으로 읽을 수 있었다(16단계 리뷰에서 잡았다). 볼 수 없으면 404.
    */
   private async requireChannel(spaceId: string, userId: string, channelId: string) {
-    const member = await this.prisma.spaceMember.findUnique({
-      where: { spaceId_userId: { spaceId, userId } },
-    });
-    if (!member) throw new NotFoundException('채널을 찾을 수 없습니다');
-    await this.channels.assertCanView(channelId, member);
+    if (!(await this.channels.canViewAs(spaceId, userId, channelId))) {
+      throw new NotFoundException('채널을 찾을 수 없습니다');
+    }
   }
 
   /** 고른 메시지. 중복은 `validateAskRequest` 가 이미 접었다. */

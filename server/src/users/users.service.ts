@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, User } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { broadcastUserUpdated } from './user-events';
@@ -58,10 +58,5 @@ export class UsersService {
       await broadcastUserUpdated(this.prisma, this.realtime, user);
     }
     return user;
-  }
-
-  /** 인증 내부용 — 해시를 포함한 전체 레코드. */
-  findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { email } });
   }
 }

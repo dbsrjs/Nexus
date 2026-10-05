@@ -12,7 +12,7 @@ import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { room } from '../realtime/rooms';
 import { channelAccess } from '../channels/channel-access';
 import { CreateSpaceDto } from './dto/create-space.dto';
-import { slugify } from '../common/slug';
+import { slugify, withRandomSuffix } from '../common/slug';
 import { UpdateSpaceDto } from './dto/update-space.dto';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { outranks } from './space-role';
@@ -70,7 +70,7 @@ export class SpacesService {
       if (dto.slug) {
         throw new ConflictException('이미 사용 중인 slug 입니다');
       }
-      slug = `${slug.slice(0, 31)}-${randomBytes(4).toString('hex')}`;
+      slug = withRandomSuffix(slug);
     }
 
     return this.prisma.$transaction(async (tx) => {

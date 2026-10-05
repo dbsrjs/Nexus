@@ -165,33 +165,26 @@ class _Field extends StatelessWidget {
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
     final c = nx.colors;
-    return NxPressable(
+    return NxHoverSurface(
       onPressed: onPressed,
       semanticLabel: '$caption $value',
       excludeChildSemantics: true,
-      builder: (context, s) => AnimatedContainer(
-        duration: NxMotion.micro,
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: NxSpacing.inset),
-        decoration: BoxDecoration(
-          color: s.hovered ? c.bgElevated : NxColors.transparent,
-          borderRadius: BorderRadius.circular(NxRadius.md),
-          border: Border.all(color: s.hovered ? c.borderStrong : c.divider),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(caption, style: nx.text.meta),
-            const SizedBox(width: NxSpacing.sp3),
-            Text(value, style: nx.text.sm),
-            const SizedBox(width: NxSpacing.sp3),
-            NxIcon(
-              NxIcons.chevronDown,
-              size: NxIconSize.xs,
-              color: c.textSecondary,
-            ),
-          ],
-        ),
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: NxSpacing.inset),
+      border: (s) => Border.all(color: s.hovered ? c.borderStrong : c.divider),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(caption, style: nx.text.meta),
+          const SizedBox(width: NxSpacing.sp3),
+          Text(value, style: nx.text.sm),
+          const SizedBox(width: NxSpacing.sp3),
+          NxIcon(
+            NxIcons.chevronDown,
+            size: NxIconSize.xs,
+            color: c.textSecondary,
+          ),
+        ],
       ),
     );
   }

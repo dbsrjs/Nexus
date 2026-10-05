@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { AiRunKind } from '@prisma/client';
 import { LLM_PROVIDER, LlmHttpError, LlmProvider } from '../llm/llm.provider';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
@@ -36,8 +36,6 @@ export function classifyFailure(err: unknown): AiFailOptions {
 
 @Injectable()
 export class AiRunnerService {
-  private readonly logger = new Logger(AiRunnerService.name);
-
   constructor(
     @Inject(LLM_PROVIDER) private readonly llm: LlmProvider | null,
     private readonly queue: AiQueueService,

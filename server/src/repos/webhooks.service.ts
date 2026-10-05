@@ -5,6 +5,7 @@ import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { describeGithubEvent } from './event-message';
 import { IndexQueueService } from './indexing/index-queue.service';
 import { IndexingWorker } from './indexing/indexing.worker';
+import { USER_SUMMARY_SELECT } from '../users/user-summary';
 
 /**
  * 같은 배달을 두 번 처리하지 않기 위해 보는 창.
@@ -62,9 +63,7 @@ export class WebhooksService {
       return { stored: false, posted: false, duplicate: true };
     }
 
-    const author = repo.linkedChannelId
-      ? await this.botUser(repo.provider)
-      : null;
+    const author = repo.linkedChannelId ? await this.botUser(repo.provider) : null;
 
     // **적재와 게시를 한 트랜잭션으로 묶는다.** 사이에서 끊기면 "이벤트는
     // 왔는데 채널에는 없는" 상태가 되는데, GitHub 은 200 을 받았으므로 다시
@@ -114,15 +113,26 @@ export class WebhooksService {
       const full = await this.prisma.message.findUnique({
         where: { id: message.id },
         include: {
-          author: { select: { id: true, name: true, avatarUrl: true } },
+          author: { select: USER_SUMMARY_SELECT },
         },
       });
       // **목록 응답과 같은 모양이어야 한다** — 앱은 소켓으로 받은 메시지와
-      // REST 로 받은 메시지를 구분하지 않는다(10-3b).
+      // REST 로 받은 메시지를 구분하지 않는다(10-3b). 다른 `message:new` 와 같은
+      // **봉투**(`{ spaceId, channelId, message }`)에 담는다 — 메시지 필드를 맨 위에
+      // 펼쳐 보냈더니 앱이 `message` 를 못 찾아 조용히 버렸다(2026-10-06). 봇 메시지에는
+      // 리액션 · 인용 · 멘션 · 첨부가 없으므로 빈 값을 단다.
       if (full) {
         this.realtime.toChannel(message.channelId, 'message:new', {
-          ...full,
-          repoEventId: result.eventId,
+          spaceId: full.spaceId,
+          channelId: full.channelId,
+          message: {
+            ...full,
+            reactions: [],
+            quoted: null,
+            mentions: [],
+            attachments: [],
+            repoEventId: result.eventId,
+          },
         });
       }
     }
@@ -171,10 +181,7 @@ export class WebhooksService {
     }
   }
 
-  private async alreadyHandled(
-    repoId: string,
-    deliveryId: string,
-  ): Promise<boolean> {
+  private async alreadyHandled(repoId: string, deliveryId: string): Promise<boolean> {
     const since = new Date(Date.now() - DUPLICATE_WINDOW_MS);
     const seen = await this.prisma.repoEvent.findFirst({
       where: {

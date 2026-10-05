@@ -93,40 +93,34 @@ class _SpaceTile extends StatelessWidget {
     final nx = NxTheme.of(context);
     final c = nx.colors;
 
-    return NxPressable(
+    return NxHoverSurface(
       onPressed: () => context.go('/s/${space.id}'),
       semanticLabel: space.name,
-      builder: (context, s) => AnimatedContainer(
-        duration: NxMotion.micro,
-        padding: const EdgeInsets.all(NxSpacing.sp5),
-        decoration: BoxDecoration(
-          color: s.hovered || s.pressed ? c.bgElevated : c.bgSurface,
-          borderRadius: BorderRadius.circular(NxRadius.md),
-        ),
-        child: Row(
-          children: [
-            NexusAvatar(seed: space.id, label: space.name, squircle: true),
-            const SizedBox(width: NxSpacing.sp5),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(space.name, style: nx.text.strong),
-                  const SizedBox(height: NxSpacing.sp1),
-                  Text(
-                    '/${space.slug} · ${space.role.wire}',
-                    style: nx.text.meta,
-                  ),
-                ],
-              ),
+      padding: const EdgeInsets.all(NxSpacing.sp5),
+      base: c.bgSurface,
+      child: Row(
+        children: [
+          NexusAvatar(seed: space.id, label: space.name, squircle: true),
+          const SizedBox(width: NxSpacing.sp5),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(space.name, style: nx.text.strong),
+                const SizedBox(height: NxSpacing.sp1),
+                Text(
+                  '/${space.slug} · ${space.role.wire}',
+                  style: nx.text.meta,
+                ),
+              ],
             ),
-            NxIcon(
-              NxIcons.chevronRight,
-              size: NxIconSize.sm,
-              color: c.textSecondary,
-            ),
-          ],
-        ),
+          ),
+          NxIcon(
+            NxIcons.chevronRight,
+            size: NxIconSize.sm,
+            color: c.textSecondary,
+          ),
+        ],
       ),
     );
   }

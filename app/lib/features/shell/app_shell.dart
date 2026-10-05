@@ -192,38 +192,31 @@ class ShellPaneTrigger extends ConsumerWidget {
     final c = NxTheme.of(context).colors;
     final space = ref.watch(currentSpaceProvider);
 
-    return NxPressable(
+    return NxHoverSurface(
       onPressed: scope.open,
       semanticLabel: '채널 바꾸기',
-      builder: (context, s) => AnimatedContainer(
-        duration: NxMotion.micro,
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: NxSpacing.sp3),
-        decoration: BoxDecoration(
-          color: s.hovered || s.pressed ? c.bgElevated : NxColors.transparent,
-          borderRadius: BorderRadius.circular(NxRadius.md),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (space != null) ...[
-              NexusAvatar(
-                seed: space.id,
-                label: space.name,
-                size: 24,
-                squircle: true,
-              ),
-              const SizedBox(width: NxSpacing.sp4),
-            ],
-            Flexible(child: child),
-            const SizedBox(width: NxSpacing.sp3),
-            NxIcon(
-              NxIcons.chevronDown,
-              size: NxIconSize.xs,
-              color: c.textSecondary,
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: NxSpacing.sp3),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (space != null) ...[
+            NexusAvatar(
+              seed: space.id,
+              label: space.name,
+              size: 24,
+              squircle: true,
             ),
+            const SizedBox(width: NxSpacing.sp4),
           ],
-        ),
+          Flexible(child: child),
+          const SizedBox(width: NxSpacing.sp3),
+          NxIcon(
+            NxIcons.chevronDown,
+            size: NxIconSize.xs,
+            color: c.textSecondary,
+          ),
+        ],
       ),
     );
   }

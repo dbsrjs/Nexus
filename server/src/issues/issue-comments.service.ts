@@ -4,9 +4,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { hasAtLeast } from '../spaces/space-role';
 import { CreateIssueCommentDto } from './dto/create-comment.dto';
+import { USER_SUMMARY_SELECT } from '../users/user-summary';
 
 const COMMENT_INCLUDE = {
-  author: { select: { id: true, name: true, avatarUrl: true } },
+  author: { select: USER_SUMMARY_SELECT },
 } satisfies Prisma.IssueCommentInclude;
 
 /**

@@ -4,10 +4,8 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomBytes } from 'crypto';
 import { RepoIndexReason, RepoProvider } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { resolveGithubOauth, type GithubOauthConfig } from '../config/oauth.config';
@@ -18,6 +16,12 @@ import { ConnectRepoDto } from './dto/connect-repo.dto';
 import { REPO_SELECT } from './repos.service';
 import { IndexQueueService } from './indexing/index-queue.service';
 import { IndexingWorker } from './indexing/indexing.worker';
+import {
+  newWebhookSecret,
+  requireGithubConfig,
+  requireGithubToken,
+  requireLinkableChannel,
+} from './repo-guards';
 
 /**
  * 자동 등록. **10-1 의 `ReposService` 와 파일을 가른 이유**는 그쪽이 DB 만
@@ -67,7 +71,7 @@ export class RepoConnectService {
       throw new ForbiddenException('그 저장소에 웹훅을 걸 권한이 없습니다');
     }
 
-    await this.requireChannel(spaceId, dto.linkedChannelId);
+    await requireLinkableChannel(this.prisma, spaceId, dto.linkedChannelId);
 
     // 2) 행을 만들거나 **승격**한다.
     const row = await this.upsertRow(spaceId, repo, dto.linkedChannelId);
@@ -159,12 +163,7 @@ export class RepoConnectService {
 
   /** 설정 · 공개 주소 · 토큰이 모두 있어야 자동 등록이 가능하다. */
   private async requireReady(userId: string) {
-    const cfg = resolveGithubOauth(this.config);
-    if (!cfg) {
-      throw new ServiceUnavailableException(
-        'GitHub 연결이 설정되지 않았습니다. 서버 관리자가 .env 를 채워야 합니다.',
-      );
-    }
+    const cfg = requireGithubConfig(this.config);
 
     const baseUrl = resolvePublicBaseUrl(this.config);
     // **자동 등록만 거부하고 수동 경로는 남는다.** 503 이 아니라 400 인 이유는
@@ -175,9 +174,7 @@ export class RepoConnectService {
       );
     }
 
-    const token = await this.oauth.githubTokenFor(userId);
-    if (!token) throw new BadRequestException('GitHub 계정을 먼저 연결해야 합니다');
-
+    const token = await requireGithubToken(this.oauth, userId);
     return { cfg, token, baseUrl };
   }
 
@@ -218,7 +215,7 @@ export class RepoConnectService {
           defaultBranch: repo.defaultBranch ?? existing.defaultBranch,
           // 채널을 새로 지정했을 때만 바꾼다. 안 보냈다고 떼면 안 된다.
           ...(linkedChannelId ? { linkedChannelId } : {}),
-          webhookSecret: existing.webhookSecret ?? newSecret(),
+          webhookSecret: existing.webhookSecret ?? newWebhookSecret(),
         },
       });
     }
@@ -232,7 +229,7 @@ export class RepoConnectService {
         fullPath: repo.fullName,
         defaultBranch: repo.defaultBranch,
         linkedChannelId: linkedChannelId ?? null,
-        webhookSecret: newSecret(),
+        webhookSecret: newWebhookSecret(),
       },
     });
   }
@@ -297,7 +294,7 @@ export class RepoConnectService {
   }
 
   private async freshSecret(repoId: string): Promise<string> {
-    const webhookSecret = newSecret();
+    const webhookSecret = newWebhookSecret();
     await this.prisma.repo.update({ where: { id: repoId }, data: { webhookSecret } });
     return webhookSecret;
   }
@@ -313,22 +310,6 @@ export class RepoConnectService {
     });
     return { ...row, webhookStatus: row.webhookExternalId ? 'active' : 'failed' };
   }
-
-  /** 못 보는 채널에 저장소를 붙이면 그 채널로 이벤트가 새 나간다. */
-  private async requireChannel(spaceId: string, channelId?: string) {
-    if (!channelId) return;
-
-    const channel = await this.prisma.channel.findFirst({
-      // DM 에는 저장소를 잇지 않는다 — 웹훅이 DM 에 게시될 이유가 없다(17단계 D7 · D13).
-      where: { id: channelId, spaceId, kind: 'text' },
-      select: { id: true },
-    });
-    if (!channel) throw new NotFoundException('채널을 찾을 수 없습니다');
-  }
-}
-
-function newSecret(): string {
-  return `whsec_${randomBytes(24).toString('hex')}`;
 }
 
 /** 10-1 의 수신 라우트와 **같은 모양이어야 한다** — `webhooks.controller.ts`. */

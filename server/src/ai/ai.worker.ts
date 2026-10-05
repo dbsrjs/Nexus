@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { AiQueueService } from './ai-queue.service';
 import { AiRunnerService } from './ai-runner.service';
+import { DrainLoop } from '../common/drain-loop';
 
 /**
  * 큐를 비우는 쪽. **`IndexingWorker` 와 같은 모양이다** — 새로 들이는 것이
@@ -14,15 +15,23 @@ import { AiRunnerService } from './ai-runner.service';
 export class AiWorker implements OnModuleInit {
   private readonly logger = new Logger(AiWorker.name);
   /**
-   * 한 프로세스에서 한 번에 하나만 돈다. GPU 에 모델이 하나 올라가 있으므로
+   * 한 프로세스에서 한 번에 하나만 돈다(`DrainLoop`). GPU 에 모델이 하나 올라가 있으므로
    * 병렬로 불러 봐야 서로 기다린다 (설계 §5).
    */
-  private running = false;
+  private readonly loop: DrainLoop;
 
   constructor(
     private readonly queue: AiQueueService,
     private readonly runner: AiRunnerService,
-  ) {}
+  ) {
+    // 필드 초기화가 아니라 생성자 안에서 만든다 — 매개변수 속성(queue · runner)이
+    // 채워진 뒤여야 한다.
+    this.loop = new DrainLoop(
+      () => this.step(),
+      // AI 가 실패해도 서버는 계속 떠 있어야 한다.
+      (err) => this.logger.error('AI 워커 실패', err as Error),
+    );
+  }
 
   async onModuleInit(): Promise<void> {
     this.kick();
@@ -35,16 +44,12 @@ export class AiWorker implements OnModuleInit {
 
   /** 적재 직후 부른다. 기다리지 않는다 — 실패해도 크론이 받는다. */
   kick(): void {
-    void this.drain();
+    this.loop.kick();
   }
 
-  /**
-   * 도는 중에 깨우기가 왔는가. **없으면 깨우기를 잃는다** — `lease()` 가
-   * 「비었다」를 본 직후 적재된 요청의 `kick()` 은 `running` 에 막혀
-   * 돌아가고, 루프는 그대로 끝나 그 요청이 30초 크론까지 밀린다. 13-2
-   * 계약 검증에서 요청 셋 중 하나꼴로 15초 제한을 넘기며 드러났다.
-   */
-  private wanted = false;
+  private drain(): Promise<void> {
+    return this.loop.drain();
+  }
 
   /**
    * 재시도로 미룬 실행을 그 대기가 지나면 다시 깨운다. **`unref`** 라 이
@@ -54,27 +59,12 @@ export class AiWorker implements OnModuleInit {
     setTimeout(() => this.kick(), ms).unref?.();
   }
 
-  private async drain(): Promise<void> {
-    if (this.running) {
-      this.wanted = true;
-      return;
-    }
-    this.running = true;
-    try {
-      do {
-        this.wanted = false;
-        for (;;) {
-          const run = await this.queue.lease();
-          if (!run) break;
-          const retryIn = await this.runner.runOne(run);
-          if (retryIn != null) this.wakeAfter(retryIn);
-        }
-      } while (this.wanted);
-    } catch (err) {
-      // AI 가 실패해도 서버는 계속 떠 있어야 한다.
-      this.logger.error('AI 워커 실패', err as Error);
-    } finally {
-      this.running = false;
-    }
+  /** 하나를 꺼내 돌린다. 꺼낼 것이 없으면 false. */
+  private async step(): Promise<boolean> {
+    const run = await this.queue.lease();
+    if (!run) return false;
+    const retryIn = await this.runner.runOne(run);
+    if (retryIn != null) this.wakeAfter(retryIn);
+    return true;
   }
 }

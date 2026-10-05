@@ -7,12 +7,11 @@ import {
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
-import { randomBytes } from 'crypto';
 import { Channel, ChannelKind, Prisma, SpaceMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { room } from '../realtime/rooms';
-import { slugify } from '../common/slug';
+import { slugify, withRandomSuffix } from '../common/slug';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
@@ -77,14 +76,32 @@ export class ChannelsService {
     return (await this.access(channelId, member))?.send ?? false;
   }
 
+  /**
+   * 멤버 행이 아직 없는 자리(AI · 대화→이슈 — 사용자 id 만 안다)에서 쓴다. 스페이스 멤버가
+   * 아니면 false. 이 판정을 부르는 쪽마다 멤버 행을 따로 읽고 있었다.
+   */
+  async canViewAs(spaceId: string, userId: string, channelId: string): Promise<boolean> {
+    const member = await this.prisma.spaceMember.findUnique({
+      where: { spaceId_userId: { spaceId, userId } },
+    });
+    return member !== null && (await this.canView(channelId, member));
+  }
+
   /** 채널 하나의 판정. 없는 채널 · 다른 스페이스의 채널이면 null. */
   private async access(channelId: string, member: SpaceMember) {
     const channel = await this.prisma.channel.findFirst({
       where: { id: channelId, spaceId: member.spaceId },
       select: { id: true, isPrivate: true, kind: true, key: true },
     });
-    if (!channel) return null;
+    return channel ? this.accessOf(channel, member) : null;
+  }
 
+  /** 이미 읽은 채널 행으로 판정한다 — 같은 행을 두 번 읽지 않게. */
+  private async accessOf(
+    channel: Pick<Channel, 'id' | 'isPrivate' | 'kind' | 'key'>,
+    member: SpaceMember,
+  ) {
+    const channelId = channel.id;
     const [isMember, perm, dmPeerPresent] = await Promise.all([
       this.isChannelMember(channelId, member.userId),
       this.permissionFor(channelId, member),
@@ -108,13 +125,23 @@ export class ChannelsService {
 
   /** 볼 수 없으면 404. 존재 여부 자체를 흘리지 않는다. */
   async assertCanView(channelId: string, member: SpaceMember): Promise<Channel> {
+    return (await this.requireViewable(channelId, member)).channel;
+  }
+
+  /**
+   * 채널 행을 한 번 읽고 판정도 한 번 한다. 예전에는 `assertCanView` 가 행을 읽고
+   * `canView` 가 같은 행을 다시 읽었고, `assertCanSend` 는 거기에 판정을 한 번 더 했다 —
+   * 메시지 하나를 보낼 때 채널 행 세 번 · 명단 · 권한 행 두 번씩.
+   */
+  private async requireViewable(channelId: string, member: SpaceMember) {
     const channel = await this.prisma.channel.findFirst({
       where: { id: channelId, spaceId: member.spaceId },
     });
-    if (!channel || !(await this.canView(channelId, member))) {
+    const access = channel ? await this.accessOf(channel, member) : null;
+    if (!channel || !access?.view) {
       throw new NotFoundException('채널을 찾을 수 없습니다');
     }
-    return channel;
+    return { channel, access };
   }
 
   /**
@@ -134,8 +161,8 @@ export class ChannelsService {
    * (볼 수는 있으므로) 403이 맞다.
    */
   async assertCanSend(channelId: string, member: SpaceMember): Promise<Channel> {
-    const channel = await this.assertCanView(channelId, member);
-    if (!(await this.canSend(channelId, member))) {
+    const { channel, access } = await this.requireViewable(channelId, member);
+    if (!access.send) {
       throw new ForbiddenException('이 채널에 메시지를 보낼 권한이 없습니다');
     }
     return channel;
@@ -361,7 +388,7 @@ export class ChannelsService {
       if (dto.key) {
         throw new ConflictException('이미 사용 중인 채널 key 입니다');
       }
-      key = `${key.slice(0, 31)}-${randomBytes(4).toString('hex')}`;
+      key = withRandomSuffix(key);
     }
 
     if (dto.categoryId) {

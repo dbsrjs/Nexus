@@ -21,13 +21,17 @@ const repo = {
 
 function setup(existingBot: { id: string; passwordHash: string | null } | null) {
   const tx = {
-    message: { create: jest.fn().mockResolvedValue({ id: 'm-1', channelId: 'channel-1' }) },
+    message: {
+      create: jest.fn().mockResolvedValue({ id: 'm-1', channelId: 'channel-1' }),
+    },
     repoEvent: { create: jest.fn().mockResolvedValue({ id: 'e-1' }) },
   };
   const prisma = {
     user: {
       findUnique: jest.fn().mockResolvedValue(existingBot),
-      create: jest.fn().mockResolvedValue({ id: 'bot-new', passwordHash: 'bot:no-login' }),
+      create: jest
+        .fn()
+        .mockResolvedValue({ id: 'bot-new', passwordHash: 'bot:no-login' }),
     },
     message: { findUnique: jest.fn().mockResolvedValue({ id: 'm-1' }) },
     $transaction: jest.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)),
@@ -64,7 +68,10 @@ describe('WebhooksService — 봇 계정', () => {
   });
 
   it('★ 봇 이메일을 사람이 차지하고 있으면 그 계정으로 게시하지 않는다 — 이벤트는 적재한다', async () => {
-    const { service, tx, realtime } = setup({ id: 'human-1', passwordHash: '$argon2id$v=19$...' });
+    const { service, tx, realtime } = setup({
+      id: 'human-1',
+      passwordHash: '$argon2id$v=19$...',
+    });
     const result = await service.handle(repo, 'push', null, push);
 
     expect(tx.message.create).not.toHaveBeenCalled();

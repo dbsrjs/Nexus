@@ -11,6 +11,7 @@ import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { room } from '../realtime/rooms';
 import { ChannelsService } from '../channels/channels.service';
 import { hasAtLeast } from '../spaces/space-role';
+import { USER_SUMMARY_SELECT } from '../users/user-summary';
 
 export interface ChannelMemberView {
   userId: string;
@@ -38,7 +39,7 @@ export class ChannelMembersService {
     const rows = await this.prisma.channelMember.findMany({
       where: { channelId },
       orderBy: { createdAt: 'asc' },
-      include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+      include: { user: { select: USER_SUMMARY_SELECT } },
     });
     const roles = await this.prisma.spaceMember.findMany({
       where: { spaceId: member.spaceId, userId: { in: rows.map((r) => r.userId) } },

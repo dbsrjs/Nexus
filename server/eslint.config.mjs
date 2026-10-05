@@ -12,17 +12,12 @@ import prettier from 'eslint-config-prettier';
  */
 export default tseslint.config(
   {
-    // 미이관 모듈은 컴파일되지 않는다. tsconfig.build.json 의 exclude 와 같은 목록.
+    // 미이관 모듈이 있던 시절의 목록(permissions · notifications · issues · ai …)을 2026-10-06 에 비웠다 —
+    // 다시 쓴 모듈이 그 뒤로도 남아 **린트를 한 번도 받지 않았다.** tsconfig 의 exclude 와 같은 것만 둔다.
     ignores: [
       'dist/**',
       'node_modules/**',
       'coverage/**',
-      'src/permissions/**',
-      'src/notifications/**',
-      'src/files/**',
-      'src/issues/**',
-      'src/gitlab/**',
-      'src/ai/**',
       'src/realtime/redis-io.adapter.ts',
     ],
   },

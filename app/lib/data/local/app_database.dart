@@ -599,9 +599,6 @@ class AppDatabase extends _$AppDatabase {
   Future<void> upsertMessage(String spaceId, Message message) =>
       upsertMessages(spaceId, [message]);
 
-  Future<void> deleteMessage(String id) =>
-      (delete(cachedMessages)..where((m) => m.id.equals(id))).go();
-
   /// 리액션만 갈아 끼운다.
   ///
   /// 메시지 행 전체를 다시 쓰지 않는 이유: 소켓으로 오는 리액션 이벤트에는
@@ -787,10 +784,6 @@ class AppDatabase extends _$AppDatabase {
           .go();
     });
   }
-
-  Future<void> setUnread(String channelId, int count) =>
-      (update(cachedChannels)..where((c) => c.id.equals(channelId)))
-          .write(CachedChannelsCompanion(unreadCount: Value(count)));
 
   /// 음소거 한 칸만 바꾼다. 설정 창의 응답과 내 다른 기기의 `channel:muted` 가 쓴다.
   Future<void> setChannelMuted(String channelId, bool muted) =>

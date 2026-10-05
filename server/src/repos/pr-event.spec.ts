@@ -23,9 +23,15 @@ describe('readPullNumber', () => {
 
   it('raw 안에 둘 다 없으면 null 이다', () => {
     expect(
-      readPullNumber({ deliveryId: 'd3', event: 'pull_request', raw: { pull_request: {} } }),
+      readPullNumber({
+        deliveryId: 'd3',
+        event: 'pull_request',
+        raw: { pull_request: {} },
+      }),
     ).toBeNull();
-    expect(readPullNumber({ deliveryId: 'd4', event: 'pull_request', raw: {} })).toBeNull();
+    expect(
+      readPullNumber({ deliveryId: 'd4', event: 'pull_request', raw: {} }),
+    ).toBeNull();
   });
 
   it('raw 가 없거나 payload 자체가 없으면 null 이다', () => {
