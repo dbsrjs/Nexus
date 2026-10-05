@@ -2,6 +2,7 @@ import { INestApplicationContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import type { ServerOptions } from 'socket.io';
+import { resolveCorsOrigins } from '../config/env';
 
 /**
  * 소켓에도 REST 와 같은 CORS 화이트리스트를 적용한다.
@@ -17,10 +18,7 @@ export class SocketIoAdapter extends IoAdapter {
 
   constructor(app: INestApplicationContext) {
     super(app);
-    this.origins = (app.get(ConfigService).get<string>('CORS_ORIGINS') ?? '')
-      .split(',')
-      .map((o) => o.trim())
-      .filter(Boolean);
+    this.origins = resolveCorsOrigins(app.get(ConfigService));
   }
 
   createIOServer(port: number, options?: ServerOptions) {

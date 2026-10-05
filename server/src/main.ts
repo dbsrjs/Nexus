@@ -7,6 +7,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
 import { enableBigIntSerialization } from './common/bigint-serializer';
 import { SocketIoAdapter } from './realtime/socket-io.adapter';
+import { resolveCorsOrigins } from './config/env';
 
 // 모듈 로딩보다 먼저 걸어 둔다. 이게 없으면 bigint 컬럼이 섞인 응답이 전부 500 이다.
 enableBigIntSerialization();
@@ -38,10 +39,7 @@ async function bootstrap() {
   // CORS 는 환경변수 화이트리스트로만 연다. 이전의 무조건 enableCors() 는
   // 저장소를 공개하고 운영에 올리는 순간 그대로 위험이 된다 (docs/백엔드-설계.md §6).
   // 네이티브 앱은 CORS 대상이 아니므로 여기서 막히지 않는다.
-  const origins = (config.get<string>('CORS_ORIGINS') ?? '')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
+  const origins = resolveCorsOrigins(config);
 
   if (origins.length > 0) {
     app.enableCors({ origin: origins, credentials: true });

@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { envTrimmed, envUint } from '../config/env';
 
 export type LlmProviderName = 'gemini' | 'local' | 'fake';
 
@@ -24,10 +25,6 @@ export interface LlmConfig {
 
 const NAMES: LlmProviderName[] = ['gemini', 'local', 'fake'];
 
-/** 빈 문자열을 미설정으로 친다. `.env` 에 자리만 잡아 둔 경우가 있다. */
-function trimmed(config: ConfigService, key: string): string | null {
-  return config.get<string>(key)?.trim() || null;
-}
 
 /**
  * LLM 설정의 **유일한 해석 지점**. `embedding.config.ts` 와 같은 역할이다.
@@ -38,7 +35,7 @@ function trimmed(config: ConfigService, key: string): string | null {
  * 미설정이면 `null` 이고 AI 만 멈춘다. **모르는 이름은 던져 부팅을 멈춘다.**
  */
 export function resolveLlm(config: ConfigService): LlmConfig | null {
-  const raw = trimmed(config, 'LLM_PROVIDER');
+  const raw = envTrimmed(config, 'LLM_PROVIDER');
   if (!raw) return null;
 
   if (!NAMES.includes(raw as LlmProviderName)) {
@@ -48,24 +45,22 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
   }
   const provider = raw as LlmProviderName;
 
-  const apiKey = trimmed(config, 'GEMINI_API_KEY');
+  const apiKey = envTrimmed(config, 'GEMINI_API_KEY');
   // 키가 없으면 부팅은 되고 AI 만 멈춘다. 던지지 않는다.
   if (provider === 'gemini' && !apiKey) return null;
 
-  const rawMax = trimmed(config, 'LLM_MAX_TOKENS');
-  const parsed = rawMax && /^\d+$/.test(rawMax) ? Number(rawMax) : 0;
+  const parsed = envUint(config, 'LLM_MAX_TOKENS') ?? 0;
 
-  const model = trimmed(config, 'LLM_MODEL') ?? defaultModel(provider);
+  const model = envTrimmed(config, 'LLM_MODEL') ?? defaultModel(provider);
 
-  const rawTimeout = trimmed(config, 'LLM_TIMEOUT_SEC');
-  const timeoutSec = rawTimeout && /^\d+$/.test(rawTimeout) ? Number(rawTimeout) : 0;
+  const timeoutSec = envUint(config, 'LLM_TIMEOUT_SEC') ?? 0;
 
   return {
     provider,
     model,
-    fallbackModel: fallbackOf(provider, model, trimmed(config, 'LLM_FALLBACK_MODEL')),
+    fallbackModel: fallbackOf(provider, model, envTrimmed(config, 'LLM_FALLBACK_MODEL')),
     apiKey,
-    base: trimmed(config, 'LLM_BASE'),
+    base: envTrimmed(config, 'LLM_BASE'),
     // 8192 — **생각 토큰을 포함한 상한이다.** Gemini 3.x 는 생각도 이 한도에서
     // 쓴다. `gemini-3.5-flash` 코드 질문 실측(2026-09-23)이 답 ~1,450 + 생각
     // (low) 최대 ~1,900 이라 2048 에서 끊겼다. 1024 → 2048(13-2 설계 D10) → 8192.

@@ -77,3 +77,10 @@ export class LlmHttpError extends Error {
     this.name = 'LlmHttpError';
   }
 }
+
+/** 헤더가 없거나 숫자가 아니면 undefined. 0 을 지어내지 않는다. */
+export function retryAfterOf(res: { headers: { get(name: string): string | null } }) {
+  const raw = res.headers.get('retry-after');
+  if (!raw || !/^\d+$/.test(raw.trim())) return undefined;
+  return Number(raw.trim());
+}
