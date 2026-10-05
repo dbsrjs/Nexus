@@ -29,6 +29,15 @@ class MentionComposerController extends TextEditingController {
     super.value = newValue;
   }
 
+  /// 넣어 둔 초안을 되살린다 — 멘션 위치까지 함께. 커서는 끝으로.
+  void restore(MentionDraft draft) {
+    _draft = draft;
+    super.value = TextEditingValue(
+      text: draft.text,
+      selection: TextSelection.collapsed(offset: draft.text.length),
+    );
+  }
+
   /// 자동완성에서 고른 멤버를 끼워 넣고 커서를 그 뒤로 옮긴다.
   void insertMention(MentionQuery query, SpaceMemberProfile member) {
     final result = _draft.insert(query, member);
