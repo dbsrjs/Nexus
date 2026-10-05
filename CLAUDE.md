@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **기준 브랜치** | **`main`.** 새 작업은 `feat/*` 를 따 쓰고 끝나면 main 으로 합친다(CI 가 `main` 과 `feat/**` 를 돈다) |
-| **상태** | **1~17단계가 `main` 에 있다** — 17단계는 DM · 프레즌스 · 타이핑(17-1 DM · 17-2 프레즌스 · 입력 중), 16단계는 멤버 · 권한(16-1 스페이스 수준 · 16-2 채널 수준 · 스프린트 선택 기능) — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널(이어 묻기 포함) · 사용자 설정(이름 · 사진 · 비밀번호 · 음소거 · 테마) · 자체 UI(앱에 Material · Cupertino 가 없다). 12 · 13단계는 진짜 GitHub · 진짜 임베딩 · 진짜 Gemini 로 완주했다(13-3 이어 묻기 · 자동 전환 포함). **다음은 18 인앱 알림**(§5). 단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md) |
+| **상태** | **1~18단계가 `main` 에 있다** — 18단계는 인앱 알림(멘션 · DM · 내 글의 답글 · 알림함 · 종류별 스위치), 17단계는 DM · 프레즌스 · 타이핑(17-1 DM · 17-2 프레즌스 · 입력 중), 16단계는 멤버 · 권한(16-1 스페이스 수준 · 16-2 채널 수준 · 스프린트 선택 기능) — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널(이어 묻기 포함) · 사용자 설정(이름 · 사진 · 비밀번호 · 음소거 · 테마) · 자체 UI(앱에 Material · Cupertino 가 없다). 12 · 13단계는 진짜 GitHub · 진짜 임베딩 · 진짜 Gemini 로 완주했다(13-3 이어 묻기 · 자동 전환 포함). **다음은 19 AI 기록**(§5). 단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md) |
 | **새 PC 셋업** | §1 순서대로. `.env` 는 `npm run env:setup` 이 만들고, 손으로 채울 값(GitHub OAuth App · 터널 주소 · AI provider)은 [server/README.md «선택 기능을 켜는 값»](server/README.md). PC 를 오갈 때 옮겨지지 않는 것은 `nexus-pc-handoff` 스킬 |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
@@ -135,7 +135,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run server:dev` · `server:build` | 개발 서버 · 빌드 |
 | `npm --prefix server run typecheck` | 타입 검사만 |
 | `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint |
-| `npm run check:<이름>` | **실서버 · 실DB · 실소켓 계약 검증 19종(844개)** — CI 가 push 마다 돈다. 목록 · 개수 · 전제(`.env` 값 · 가짜 GitHub · `LLM_PROVIDER=fake`) · 실패할 때 볼 것은 **`nexus-verify` 스킬**이 원본이다. 정적 검사 둘(`check:migrations` · `check:sql-time`)은 DB · 서버 없이 돈다 |
+| `npm run check:<이름>` | **실서버 · 실DB · 실소켓 계약 검증 20종(911개)** — CI 가 push 마다 돈다. 목록 · 개수 · 전제(`.env` 값 · 가짜 GitHub · `LLM_PROVIDER=fake`) · 실패할 때 볼 것은 **`nexus-verify` 스킬**이 원본이다. 정적 검사 둘(`check:migrations` · `check:sql-time`)은 DB · 서버 없이 돈다 |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
 | `npm run app:flow` | **앱 통합 테스트** — Windows 데스크톱 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 스레드 · 셸 안 화면 · 설정 창(이름 · 사진 · 테마 · 음소거)까지 끝까지 돈다(약 30초, `db:up` · `server:dev` 필요). 보안 저장소 · drift 는 메모리로 바꿔 개발용 앱의 세션을 건드리지 않는다. **CI 에서는 돌지 않는다**(§5 빚) — 화면을 건드린 변경마다 사람이 돌린다 |
 | `cd app && dart run build_runner build` | freezed · json_serializable 재생성 |
@@ -332,6 +332,8 @@ users/        /api/me · 아바타(사용자 단위 — 본인 · 함께 쓰는 
 spaces/       스페이스 CRUD · 멤버 · 초대(목록 · 취소) · 나가기 · 멤버 이벤트 · 스프린트 스위치 · SpaceGuard · SpaceRoleGuard
 categories/   채널 그룹
 channels/     채널 · 가시성 규칙(channel-access.ts 의 channelAccess() 한 곳) · 읽음 마커 · DM 열기(dm-key.ts — key 가 유일성, 17-1)
+notifications/ 인앱 알림(18) — 받는 사람 계산(plan · 볼 수 있는 사람 ∩ 스위치 · 음소거) · 메시지와 한 트랜잭션 ·
+              알림함 목록 · 읽음(채널 읽음 마커가 따라 읽힘) · 종류별 스위치(/me/notification-settings)
 permissions/  채널별 역할 권한 행(guest · member) · 비공개 채널 명단 — 행을 읽고 쓸 뿐 판정은 channels 가 한다(16-2)
 messages/     메시지 목록 · 전송 · 수정 이력 · 소프트 삭제 · 리액션 · 멘션 · 스레드 · 답장 · 핀
 storage/      StorageDriver — 바이트를 어디에 둘지. URL 을 만들지 않는다. **구현은 local 하나**(S3 는 배포 때)
@@ -375,6 +377,7 @@ features/issue/          이슈 보드 · 상세 · 스프린트 · 번다운(Cu
 features/repo/           저장소 연결 · 열람 · 커밋 · PR
 features/ai/             AI 패널
 features/realtime/       소켓 수명 관리 + 채널 목록 동기화
+features/notifications/  알림함(셸 안 /s/:spaceId/notifications · 캐시하지 않는다) · 안 읽은 수(main.dart 가 뿌리에서 붙든다)
 features/settings/       설정 창(셸 밖 /settings/:section — 내 계정 · 비밀번호 · 알림 · 화면) · 테마 컨트롤러
 features/channel_settings/ 채널 설정 창(셸 밖 /s/:spaceId/c/:channelId/settings/:section — 개요 · 멤버 · 권한, 16-2)
 features/space_settings/ 스페이스 설정 창(셸 밖 /s/:spaceId/settings/:section — 일반(이름 · 스프린트) · 멤버 · 초대). 틀은 위 설정 창과
@@ -416,8 +419,8 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 ### 옛 모듈 — 남은 것이 없다
 
 단일 테넌트 시절 모듈은 전부 `spaceId` 기준으로 다시 쓰거나 지웠다 — `files`(8-1, 서명 URL 을 발급하던
-코드라 참고용으로도 남기지 않았다) · `issues`(9-1) · `ai`(13-1) · `permissions`(16-2). **`notifications` ·
-`gitlab` 은 2026-10-05 정리에서 지웠다** — 18 · 20 단계가 새로 쓴다(살릴 줄이 없었다, git 이력에 있다).
+코드라 참고용으로도 남기지 않았다) · `issues`(9-1) · `ai`(13-1) · `permissions`(16-2) · `notifications`(18). **`gitlab` 은
+2026-10-05 정리에서 지웠다** — 20 단계가 새로 쓴다(살릴 줄이 없었다, git 이력에 있다).
 `src/realtime/redis-io.adapter.ts` 만 다중 인스턴스가 될 때까지 두 tsconfig 의 `exclude` 로 빠져 있다.
 
 ---
@@ -428,10 +431,11 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 [docs/진행-기록.md](docs/진행-기록.md) 에 있다. **이미 끝난 단계의 코드를 다시 건드릴 때는
 그 절부터 읽는다** — 뒤집으면 안 되는 판단과 그 이유가 거기 있다.
 
-**아직 없는 것** — 전부 §5 의 어느 단계가 맡는다(2026-09-27 편입): 인앱 알림(18) · 지난 AI 대화
+**아직 없는 것** — 전부 §5 의 어느 단계가 맡는다(2026-09-27 편입): 지난 AI 대화
 다시 열기(19) · GitLab(20) · 푸시 · **S3 스토리지 드라이버**(지금은 `local` 하나) · 배포(마지막).
 그룹 DM · 직접 고르는 상태(방해 금지) · 마지막 접속 시각은
 17단계 범위에서 뺐다([17단계 설계 §5](docs/superpowers/specs/2026-10-05-17-DM-프레즌스-타이핑-design.md)).
+스레드 구독(참여자 전원에게 답글 알림) · 채널마다 다른 알림 스위치 · 이슈 알림은 18단계 범위에서 뺐다([18단계 설계](docs/superpowers/specs/2026-10-05-18-인앱-알림-design.md)).
 
 ---
 
@@ -462,7 +466,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 | 15 | UI/UX 개편 — Flutter 기본(Material) 컴포넌트를 전부 자체 UI 로 교체 · 디자인 다듬기 · 이슈 보드 드래그 정렬 화면. 설계는 [15단계 설계](docs/superpowers/specs/2026-09-27-15-자체-UI-design.md) — 15-1 기반(자체 컴포넌트 · import 검사 · 갤러리) · 15-2 화면 옮기기(보드 끌어 옮기기 포함) · 15-3 뼈대(WidgetsApp) · Android · 웹 확인 | ✅ |
 | 16 | 멤버 · 권한 — 16-1 스페이스 수준(만들기 · 초대 코드 참여 · 스페이스 설정 창 · 역할 · 내보내기 · 나가기) · 16-2 채널 수준(채널 만들기 · 채널 설정 창 · 비공개 채널 명단 · 역할별 채널 권한 — `permissions` 재작성) · 스프린트 선택 기능. 설계 [16단계 설계](docs/superpowers/specs/2026-10-04-16-멤버-권한-design.md) | ✅ |
 | 17 | DM · 프레즌스 · 타이핑 — 17-1 DM(`kind=dm` 비공개 채널 + key 유일성 · 사이드바 묶음 · 사람 고르기 · 떠난 상대 읽기 전용) · 17-2 프레즌스(소켓에서 계산 · 5초 유예 · 10분 무입력 자리비움) · 입력 중. 설계 [17단계 설계](docs/superpowers/specs/2026-10-05-17-DM-프레즌스-타이핑-design.md) | ✅ |
-| **18** | **인앱 알림** — 알림함(멘션 · DM · 스레드 답글) · `notifications` 재작성 · 설정 창의 알림 스위치 | |
+| 18 | 인앱 알림 — 알림함(멘션 · `@channel` · DM · 내 글의 답글, 한 메시지에 한 알림) · `notifications` 재작성 · 메시지와 한 트랜잭션 · 볼 수 있는 채널만 · 음소거면 직접 멘션만 · 채널 읽음이 알림도 읽음 · 설정 창의 종류별 스위치. 설계 [18단계 설계](docs/superpowers/specs/2026-10-05-18-인앱-알림-design.md) | ✅ |
 | **19** | **AI 기록** — 지난 문답 사슬 목록 · 다시 열어 이어 묻기 | |
 | **20** | **GitLab 연동** — provider 추상화 뒤에 GitLab. 배포 뒤로 미뤄도 되는 유일한 단계 | |
 | **마지막** | 푸시 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 · 배포(S3 드라이버 · prod compose). 푸시 · 데스크톱 알림 스위치는 14단계 설정 창에 더한다 | |
@@ -475,8 +479,8 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 2026-09-27 에 한 번 정리했다 — 갚은 것 · 단계로 옮긴 것 · 환경 함정으로 옮긴 것은
 [진행 기록](docs/진행-기록.md) «빚 정리 (2026-09-27)».
 
-- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 471개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 19종 844 케이스**(17단계 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
-- **앱 통합 테스트가 CI 에서 돌지 않는다.** `npm run app:flow` 는 Windows 데스크톱에서만 돈다 — CI 는 ubuntu 인데 앱에 `linux/` 플랫폼이 없다. 들이는 것은 플랫폼을 하나 늘리는 결정이라 «마지막» 단계의 테넌트 격리 통합 테스트와 함께 정한다. 그때까지는 **화면을 건드린 변경마다 사람이 돌린다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **467개**
+- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 478개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 20종 911 케이스**(18단계 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
+- **앱 통합 테스트가 CI 에서 돌지 않는다.** `npm run app:flow` 는 Windows 데스크톱에서만 돈다 — CI 는 ubuntu 인데 앱에 `linux/` 플랫폼이 없다. 들이는 것은 플랫폼을 하나 늘리는 결정이라 «마지막» 단계의 테넌트 격리 통합 테스트와 함께 정한다. 그때까지는 **화면을 건드린 변경마다 사람이 돌린다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **484개**
 - **`local`(Ollama) LLM 경로는 실측하지 않았다(13-1) — `LLM_PROVIDER=local` 로 바꾸기 전에 먼저 태운다.** 지금 쓰는 경로는 `gemini` 이고 실제로 확인했다. `local` 은 쓰는 곳이 없어 미뤄도 깨지는 것이 없다(2026-09-27 판단). 바꾸게 되는 계기는 Gemini 무료 한도(3.5-flash 하루 20회)가 모자라거나, 비공개 저장소 코드를 외부로 보내지 않으려 할 때 — 늦어도 «마지막» 단계에서 운영 provider 를 정할 때다. `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. 설치(`winget install Ollama.Ollama`)와 모델 받기(약 4.7GB)는 사람이 한다.
 - **인덱싱 큐의 5xx 소진은 단위 테스트만 덮는다.** 재시도 대기가 1분씩이라 계약 검증으로 세 번을 태우면 3분이 걸린다. 판정(`shouldGiveUpIndexing` · `indexRetryDelayMs`)은 순수 함수로 빼 두었다. 429 · 리스 유효/만료는 `check:indexing` 이 본다.
 - **프레즌스는 서버 메모리에 있다(17-2).** 인스턴스가 둘이 되면 서로의 연결을 모른다 — `redis-io.adapter` 를 되살릴 때 함께 Redis 로 옮긴다. 서버를 재시작하면 모두 오프라인이 됐다가 앱이 다시 붙으며 돌아온다
