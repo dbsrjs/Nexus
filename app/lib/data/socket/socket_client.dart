@@ -7,6 +7,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../../core/env.dart';
 import '../../domain/models/issue.dart';
 import '../../domain/models/message.dart';
+import '../../domain/models/notification_item.dart';
 import '../../domain/models/space.dart';
 import '../api/api_client.dart';
 import 'socket_event.dart';
@@ -73,7 +74,9 @@ class SocketClient {
       ..on('space:updated', _onSpaceUpdated)
       ..on('rooms:invalidate', _onRoomsInvalidate)
       ..on('presence:changed', _onPresenceChanged)
-      ..on('typing', _onTyping);
+      ..on('typing', _onTyping)
+      ..on('notification:new', _onNotificationNew)
+      ..on('notification:read', _onNotificationRead);
 
     _socket = socket;
     socket.connect();
@@ -369,6 +372,33 @@ class SocketClient {
       channelId: channelId,
       userId: userId,
       parentId: parentId is String ? parentId : null,
+    ));
+  }
+
+  void _onNotificationNew(dynamic data) {
+    final map = _asMap(data);
+    final spaceId = map?['spaceId'];
+    final raw = map?['notification'];
+    if (spaceId is! String || raw is! Map) return;
+    try {
+      _emit(NotificationNew(
+        spaceId: spaceId,
+        notification: NotificationItem.fromJson(Map<String, dynamic>.from(raw)),
+      ));
+    } catch (e) {
+      // 서버가 모양을 바꿨을 때 연결 전체를 죽이지 않는다. 한 건을 버린다.
+      debugPrint('소켓 알림 파싱 실패: $e');
+    }
+  }
+
+  void _onNotificationRead(dynamic data) {
+    final map = _asMap(data);
+    final spaceId = map?['spaceId'];
+    if (spaceId is! String) return;
+    final ids = map?['ids'];
+    _emit(NotificationRead(
+      spaceId: spaceId,
+      ids: ids is List ? ids.whereType<String>().toList(growable: false) : null,
     ));
   }
 

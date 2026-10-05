@@ -1,5 +1,6 @@
 import '../../domain/models/issue.dart';
 import '../../domain/models/message.dart';
+import '../../domain/models/notification_item.dart';
 import '../../domain/models/presence.dart';
 import '../../domain/models/space.dart';
 
@@ -275,4 +276,20 @@ class Typing extends SocketEvent {
   final String channelId;
   final String userId;
   final String? parentId;
+}
+
+/// 내게 새 알림이 왔다(18단계 N18). 내 사용자 룸으로만 온다 — 모양은 목록 응답의 한 줄과 같다.
+class NotificationNew extends SocketEvent {
+  const NotificationNew({required this.spaceId, required this.notification});
+
+  final String spaceId;
+  final NotificationItem notification;
+}
+
+/// 내 알림이 읽혔다 — 이 기기든 다른 기기든(N14). `ids` 가 null 이면 그 스페이스 전부.
+class NotificationRead extends SocketEvent {
+  const NotificationRead({required this.spaceId, required this.ids});
+
+  final String spaceId;
+  final List<String>? ids;
 }

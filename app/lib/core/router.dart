@@ -10,6 +10,7 @@ import '../features/files/files_screen.dart';
 import '../features/issue/board_screen.dart';
 import '../features/issue/issue_detail_screen.dart';
 import '../features/issue/sprint_screen.dart';
+import '../features/notifications/notifications_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/repo/browse_screen.dart';
 import '../features/repo/commit_detail_screen.dart';
@@ -166,6 +167,12 @@ List<RouteBase> appRoutes() => [
             path: 'repos',
             builder: (_, state) =>
                 ReposScreen(spaceId: state.pathParameters['spaceId']!),
+          ),
+          // 알림함(18단계 N19). 자주 들러 머무는 곳이라 셸 안이다.
+          GoRoute(
+            path: 'notifications',
+            builder: (_, state) =>
+                NotificationsScreen(spaceId: state.pathParameters['spaceId']!),
           ),
           // 채널을 연 상태. 셸은 같고 본문만 대화로 바뀐다.
           GoRoute(path: 'c/:channelId', builder: (_, _) => const ChatScreen()),
