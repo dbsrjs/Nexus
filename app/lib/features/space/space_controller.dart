@@ -6,6 +6,7 @@ import '../../data/repositories/workspace_repository.dart';
 import '../../domain/models/space.dart';
 import '../auth/auth_controller.dart';
 import '../channel/channel_controller.dart';
+import '../../core/settable.dart';
 
 /// 로컬 DB. 앱 전체에 하나뿐이다.
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -24,8 +25,9 @@ final workspaceRepositoryProvider = Provider<WorkspaceRepository>((ref) {
   );
 });
 
-final spacesApiProvider =
-    Provider<SpacesApi>((ref) => SpacesApi(ref.watch(apiClientProvider)));
+final spacesApiProvider = Provider<SpacesApi>(
+  (ref) => SpacesApi(ref.watch(apiClientProvider)),
+);
 
 /// 내가 속한 스페이스 목록.
 ///
@@ -54,15 +56,10 @@ final spacesProvider = StreamProvider<List<Space>>((ref) {
 ///
 /// **라우트(`/s/:spaceId`)가 진실의 원천이고** 셸이 그 값을 여기에 실어 준다.
 /// Riverpod 3 에서 `StateProvider` 는 legacy 로 밀렸으므로 Notifier 를 쓴다.
-class CurrentSpaceId extends Notifier<String?> {
-  @override
-  String? build() => null;
-
-  void set(String? id) => state = id;
-}
-
 final currentSpaceIdProvider =
-    NotifierProvider<CurrentSpaceId, String?>(CurrentSpaceId.new);
+    NotifierProvider<SettableNotifier<String?>, String?>(
+      () => SettableNotifier(null),
+    );
 
 /// 현재 스페이스의 상세. 목록에서 찾는다 — 별도 요청을 하지 않는다.
 final currentSpaceProvider = Provider<Space?>((ref) {

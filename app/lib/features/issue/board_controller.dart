@@ -5,6 +5,7 @@ import '../../data/repositories/issue_repository.dart';
 import '../../domain/models/issue.dart';
 import '../auth/auth_controller.dart';
 import '../space/space_controller.dart';
+import '../../core/settable.dart';
 
 final issuesApiProvider = Provider<IssuesApi>(
   (ref) => IssuesApi(ref.watch(apiClientProvider)),
@@ -27,15 +28,10 @@ final issueListProvider = StreamProvider<List<Issue>>((ref) {
 
 /// 컬럼별 상한(200)에 걸려 잘린 컬럼. 화면이 "더 있다"를 말하는 데 쓴다.
 /// 조용히 자르면 다 봤다고 오해한다.
-class TruncatedColumns extends Notifier<List<IssueStatus>> {
-  @override
-  List<IssueStatus> build() => const [];
-
-  void set(List<IssueStatus> value) => state = value;
-}
-
 final truncatedColumnsProvider =
-    NotifierProvider<TruncatedColumns, List<IssueStatus>>(TruncatedColumns.new);
+    NotifierProvider<SettableNotifier<List<IssueStatus>>, List<IssueStatus>>(
+      () => SettableNotifier(const []),
+    );
 
 /// 상태별로 묶는다. **빈 컬럼도 자리를 지킨다** — 사라지면 거기로 옮길 수 없다.
 final boardProvider = Provider<Map<IssueStatus, List<Issue>>>((ref) {
@@ -57,7 +53,9 @@ class BoardActions {
   Future<bool> refresh() async {
     final spaceId = _ref.read(currentSpaceIdProvider);
     if (spaceId == null) return false;
-    final truncated = await _ref.read(issueRepositoryProvider).refreshIssues(spaceId);
+    final truncated = await _ref
+        .read(issueRepositoryProvider)
+        .refreshIssues(spaceId);
     if (truncated == null) return false;
     _ref.read(truncatedColumnsProvider.notifier).set(truncated);
     return true;

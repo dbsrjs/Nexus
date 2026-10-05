@@ -6,19 +6,15 @@ import '../auth/auth_controller.dart';
 import '../realtime/socket_controller.dart';
 import '../space/space_controller.dart';
 import 'message_controller.dart';
+import '../../core/settable.dart';
 
 /// 지금 열려 있는 스레드의 부모 메시지 id.
 ///
 /// 채널과 같은 방식이다 — 라우트가 진실의 원천이고 화면이 그 값을 실어 준다.
-class CurrentThreadId extends Notifier<String?> {
-  @override
-  String? build() => null;
-
-  void set(String? id) => state = id;
-}
-
 final currentThreadIdProvider =
-    NotifierProvider<CurrentThreadId, String?>(CurrentThreadId.new);
+    NotifierProvider<SettableNotifier<String?>, String?>(
+      () => SettableNotifier(null),
+    );
 
 /// 스레드의 부모 메시지. 캐시에서 읽는다 — 채널을 거쳐 들어왔으면 이미 있고,
 /// 없으면 `refreshThread` 가 채워 준다.
@@ -60,8 +56,9 @@ void _listenToSocket(Ref ref, String parentId, String spaceId) {
 }
 
 /// 스레드 답글 전송. 채널 전송과 같은 큐를 쓰고 `parentId` 만 다르다.
-final threadActionsProvider =
-    Provider<ThreadActions>((ref) => ThreadActions(ref));
+final threadActionsProvider = Provider<ThreadActions>(
+  (ref) => ThreadActions(ref),
+);
 
 class ThreadActions {
   ThreadActions(this._ref);
@@ -86,7 +83,9 @@ class ThreadActions {
     final auth = _ref.read(authControllerProvider);
     if (auth is! AuthSignedIn) return;
 
-    await _ref.read(messageRepositoryProvider).enqueue(
+    await _ref
+        .read(messageRepositoryProvider)
+        .enqueue(
           spaceId: spaceId,
           channelId: parent.channelId,
           body: trimmed,
