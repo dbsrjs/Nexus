@@ -32,6 +32,15 @@ bool get _hardwareKeyboard =>
     defaultTargetPlatform != TargetPlatform.android &&
     defaultTargetPlatform != TargetPlatform.iOS;
 
+/// 채널(또는 스레드)마다 쓰다 만 글. 채널을 옮겨도 입력창 State 는 그대로라, 이것이 없으면
+/// **쓰던 글이 다른 대화의 입력창에 남았다** — 엉뚱한 곳으로 보내기 쉽다(17단계 Android 확인에서 봤다).
+/// 앱이 사는 동안만 둔다(저장하지 않는다). 열쇠는 `channelId|parentId`.
+final composerDraftsProvider = Provider<ComposerDrafts>((ref) => ComposerDrafts());
+
+class ComposerDrafts {
+  final Map<String, MentionDraft> byKey = {};
+}
+
 /// 입력창. 채널과 스레드가 함께 쓴다 — Enter 전송 · IME 처리가 한 벌이어야 한다.
 class MessageComposer extends ConsumerStatefulWidget {
   const MessageComposer({super.key, this.onSend, this.hint, this.channelId, this.parentId});
@@ -74,8 +83,29 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
     _controller.addListener(_onTextChanged);
   }
 
+  /// 초안 보관함. dispose 에서 ref 를 읽지 않도록 처음 build 에서 잡아 둔다(CLAUDE.md §2).
+  Map<String, MentionDraft>? _store;
+
+  String? _draftKey;
+
+  String? _keyFor(String? channelId) =>
+      channelId == null ? null : '$channelId|${widget.parentId ?? ''}';
+
+  /// 지금 글을 그 대화의 초안으로 넣어 둔다. 비었으면 지운다.
+  void _stash(String? key) {
+    final store = _store;
+    if (key == null || store == null) return;
+    if (_controller.text.trim().isEmpty) {
+      store.remove(key);
+    } else {
+      store[key] = _controller.draft;
+    }
+  }
+
   @override
   void dispose() {
+    // 셸 밖(설정 창)으로 나가며 입력창이 내려가도 쓰던 글을 잃지 않는다.
+    _stash(_draftKey);
     _controller.removeListener(_onTextChanged);
     _controller.dispose();
     _attachments?.dispose();
@@ -177,6 +207,7 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
     send(body, attachments);
     _attachments?.clear();
     _controller.clear();
+    _store?.remove(_draftKey);
     setState(() => _mentionQuery = null);
     _focus.requestFocus();
   }
@@ -198,6 +229,27 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
       final pending = _attachments;
       if (pending != null && !pending.isEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) => pending.clear());
+      }
+    }
+
+    // **쓰던 글은 그 대화에 남긴다.** 옮기기 전 대화의 초안으로 넣어 두고, 옮긴 대화의 초안을
+    // 꺼낸다. 입력창을 고치면 리스너가 setState 를 부르므로 꺼내는 일은 프레임 뒤로 미룬다.
+    final store = _store ?? ref.read(composerDraftsProvider).byKey;
+    _store = store;
+    final key = _keyFor(widget.channelId ?? channelId);
+    if (key != _draftKey) {
+      _stash(_draftKey);
+      _draftKey = key;
+      final next = key == null ? null : store.remove(key);
+      if (next != null || _controller.text.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _draftKey != key) return;
+          final draft = next ?? const MentionDraft();
+          // 되살린 글은 입력이 아니다 — 「입력 중」을 보내지 않는다.
+          _lastText = draft.text;
+          _controller.restore(draft);
+          setState(() => _mentionQuery = null);
+        });
       }
     }
 

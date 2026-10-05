@@ -33,4 +33,47 @@ void main() {
     ).dy;
     expect((hint - send).abs(), lessThanOrEqualTo(1));
   });
+
+  testWidgets('★ 쓰던 글은 그 채널에 남는다 - 채널을 옮기면 다른 대화의 입력창에 그대로 있었다', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [currentChannelProvider.overrideWithValue(null)],
+    );
+    addTearDown(container.dispose);
+    final channel = container.read(currentChannelIdProvider.notifier);
+    channel.set('a');
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: nxTestApp(
+          home: NxPage(
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: MessageComposer(hint: '메시지 보내기', onSend: (_, _) {}),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.enterText(find.byType(NxField), 'draft for a');
+    await tester.pump();
+
+    channel.set('b');
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('draft for a'), findsNothing);
+
+    await tester.enterText(find.byType(NxField), 'draft for b');
+    channel.set('a');
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('draft for a'), findsOneWidget);
+
+    channel.set('b');
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('draft for b'), findsOneWidget);
+  });
 }
