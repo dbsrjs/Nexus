@@ -47,8 +47,7 @@ export function readPushCommits(payload: unknown): PushView {
       message: str(commit.message) ?? '',
       authorName: str(asRecord(commit.author)?.name),
       committedAt: str(commit.timestamp),
-      changedCount:
-        count(commit.added) + count(commit.removed) + count(commit.modified),
+      changedCount: count(commit.added) + count(commit.removed) + count(commit.modified),
     });
   }
 

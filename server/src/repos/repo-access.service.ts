@@ -1,14 +1,9 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RepoProvider } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { resolveGithubOauth } from '../config/oauth.config';
 import { OauthService } from '../oauth/oauth.service';
+import { requireGithubConfig, requireGithubToken } from './repo-guards';
 
 /**
  * 저장소 · GitHub 설정 · 토큰이 모두 있어야 열람이 된다.
@@ -33,15 +28,8 @@ export class RepoAccessService {
     // 403 이 아니라 404 다 — 403 은 "그 저장소가 존재한다"를 알려 준다.
     if (!repo) throw new NotFoundException('저장소를 찾을 수 없습니다');
 
-    const cfg = resolveGithubOauth(this.config);
-    if (!cfg) {
-      throw new ServiceUnavailableException(
-        'GitHub 연결이 설정되지 않았습니다. 서버 관리자가 .env 를 채워야 합니다.',
-      );
-    }
-
-    const token = await this.oauth.githubTokenFor(userId);
-    if (!token) throw new BadRequestException('GitHub 계정을 먼저 연결해야 합니다');
+    const cfg = requireGithubConfig(this.config);
+    const token = await requireGithubToken(this.oauth, userId);
 
     return { repo, cfg, token };
   }

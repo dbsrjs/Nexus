@@ -5,14 +5,13 @@ import {
   Get,
   ParseIntPipe,
   Query,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { resolveGithubOauth } from '../config/oauth.config';
 import { GithubOauthClient } from '../oauth/github-oauth.client';
 import { OauthService } from '../oauth/oauth.service';
 import { toGithubHttpError } from './github-error';
+import { requireGithubConfig, requireGithubToken } from './repo-guards';
 
 /**
  * 내 GitHub 저장소 목록. **DB 에 두지 않고 프록시한다** — 원본은 GitHub 이고
@@ -34,23 +33,15 @@ export class GithubReposController {
     @CurrentUser('id') userId: string,
     @Query('page', new DefaultValuePipe(1), new ParseIntPipe()) page: number,
   ) {
-    const cfg = resolveGithubOauth(this.config);
-    if (!cfg) {
-      throw new ServiceUnavailableException(
-        'GitHub 연결이 설정되지 않았습니다. 서버 관리자가 .env 를 채워야 합니다.',
-      );
-    }
+    const cfg = requireGithubConfig(this.config);
 
     // 페이지 번호는 GitHub 의 것을 그대로 노출한다 — 커서를 새로 만들 이유가
     // 없다. 다만 0 이하는 GitHub 이 422 를 주므로 여기서 막는다.
     if (page < 1) throw new BadRequestException('page 는 1 이상이어야 합니다');
 
-    const token = await this.oauth.githubTokenFor(userId);
     // 연결이 없으면 빈 목록이 아니라 400 이다. 빈 목록은 "저장소가 없다"로
     // 읽혀 사용자가 연결부터 해야 한다는 것을 알 수 없다.
-    if (!token) {
-      throw new BadRequestException('GitHub 계정을 먼저 연결해야 합니다');
-    }
+    const token = await requireGithubToken(this.oauth, userId);
 
     const res = await this.github.listRepos(cfg, token, page);
     if (!res.ok) throw toGithubHttpError(res.status, res.retryAfter);

@@ -62,9 +62,7 @@ export class WebhooksService {
       return { stored: false, posted: false, duplicate: true };
     }
 
-    const author = repo.linkedChannelId
-      ? await this.botUser(repo.provider)
-      : null;
+    const author = repo.linkedChannelId ? await this.botUser(repo.provider) : null;
 
     // **적재와 게시를 한 트랜잭션으로 묶는다.** 사이에서 끊기면 "이벤트는
     // 왔는데 채널에는 없는" 상태가 되는데, GitHub 은 200 을 받았으므로 다시
@@ -171,10 +169,7 @@ export class WebhooksService {
     }
   }
 
-  private async alreadyHandled(
-    repoId: string,
-    deliveryId: string,
-  ): Promise<boolean> {
+  private async alreadyHandled(repoId: string, deliveryId: string): Promise<boolean> {
     const since = new Date(Date.now() - DUPLICATE_WINDOW_MS);
     const seen = await this.prisma.repoEvent.findFirst({
       where: {
