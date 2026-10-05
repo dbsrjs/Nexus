@@ -117,11 +117,22 @@ export class WebhooksService {
         },
       });
       // **목록 응답과 같은 모양이어야 한다** — 앱은 소켓으로 받은 메시지와
-      // REST 로 받은 메시지를 구분하지 않는다(10-3b).
+      // REST 로 받은 메시지를 구분하지 않는다(10-3b). 다른 `message:new` 와 같은
+      // **봉투**(`{ spaceId, channelId, message }`)에 담는다 — 메시지 필드를 맨 위에
+      // 펼쳐 보냈더니 앱이 `message` 를 못 찾아 조용히 버렸다(2026-10-06). 봇 메시지에는
+      // 리액션 · 인용 · 멘션 · 첨부가 없으므로 빈 값을 단다.
       if (full) {
         this.realtime.toChannel(message.channelId, 'message:new', {
-          ...full,
-          repoEventId: result.eventId,
+          spaceId: full.spaceId,
+          channelId: full.channelId,
+          message: {
+            ...full,
+            reactions: [],
+            quoted: null,
+            mentions: [],
+            attachments: [],
+            repoEventId: result.eventId,
+          },
         });
       }
     }

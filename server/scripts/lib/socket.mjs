@@ -1,7 +1,7 @@
 // 계약 검증의 공용 소켓 헬퍼.
 //
 // **socket.io-client 를 import 하는 곳은 여기 하나다.** 소켓을 쓰지 않는
-// 스크립트(attachments · mentions · oauth · repos · browse)가 그것을 로드하지
+// 스크립트(attachments · mentions · oauth · browse)가 그것을 로드하지
 // 않도록 파일을 갈랐다.
 import { io } from 'socket.io-client';
 
