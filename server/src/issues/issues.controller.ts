@@ -30,7 +30,7 @@ import { ListIssuesDto } from './dto/list-issues.dto';
 import { MoveIssueDto } from './dto/move-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { CreateIssueCommentDto } from './dto/create-comment.dto';
-import { CreateIssueLabelDto, SetIssueLabelsDto } from './dto/label.dto';
+import { SetIssueLabelsDto } from './dto/label.dto';
 
 /**
  * 이슈 보드 (docs/백엔드-설계.md §4).
