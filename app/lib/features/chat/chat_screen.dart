@@ -851,24 +851,18 @@ class _ThreadSummary extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.only(top: NxSpacing.sp2),
-      child: NxPressable(
+      child: NxHoverSurface(
         onPressed: () => _openThread(context, ref, message),
-        builder: (context, s) => AnimatedContainer(
-          duration: NxMotion.micro,
-          padding: const EdgeInsets.symmetric(
-            horizontal: NxSpacing.sp4,
-            vertical: NxSpacing.sp2,
-          ),
-          decoration: BoxDecoration(
-            color: s.hovered ? c.bgElevated : NxColors.transparent,
-            borderRadius: BorderRadius.circular(NxRadius.inner),
-          ),
-          child: Text(
-            '답글 ${message.replyCount}개',
-            style: nx.text.sm.copyWith(
-              color: c.accent,
-              fontWeight: FontWeight.w600,
-            ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: NxSpacing.sp4,
+          vertical: NxSpacing.sp2,
+        ),
+        radius: NxRadius.inner,
+        child: Text(
+          '답글 ${message.replyCount}개',
+          style: nx.text.sm.copyWith(
+            color: c.accent,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),

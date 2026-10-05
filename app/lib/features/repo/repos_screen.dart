@@ -34,7 +34,10 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
       final url = await ref.read(connectionsApiProvider).startGithub();
       final ok = url.isEmpty
           ? false
-          : await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+          : await launchUrl(
+              Uri.parse(url),
+              mode: LaunchMode.externalApplication,
+            );
       if (!ok && mounted) {
         setState(() => _waiting = false);
         _toast('브라우저를 열지 못했습니다');
@@ -121,10 +124,16 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
                     _ when connections.hasError => _Retry(
                       onRetry: () => ref.invalidate(connectionsProvider),
                     ),
-                    AsyncLoading() => const NxSkeleton(lines: 1, lineHeight: 64),
+                    AsyncLoading() => const NxSkeleton(
+                      lines: 1,
+                      lineHeight: 64,
+                    ),
                     _ =>
                       github == null
-                          ? _Disconnected(waiting: _waiting, onConnect: _connect)
+                          ? _Disconnected(
+                              waiting: _waiting,
+                              onConnect: _connect,
+                            )
                           : _Connected(
                               connection: github,
                               onDisconnect: _disconnect,
@@ -228,64 +237,56 @@ class _RepoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
     final c = nx.colors;
-    return NxPressable(
+    return NxHoverSurface(
       onPressed: onOpen,
-      builder: (context, s) => AnimatedContainer(
-        duration: NxMotion.micro,
-        padding: const EdgeInsets.fromLTRB(
-          NxSpacing.sp6,
-          NxSpacing.sp5,
-          NxSpacing.sp4,
-          NxSpacing.sp5,
-        ),
-        decoration: BoxDecoration(
-          color: s.hovered || s.pressed ? c.bgElevated : c.bgSurface,
-          borderRadius: BorderRadius.circular(NxRadius.md),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    repo.fullPath,
-                    overflow: TextOverflow.ellipsis,
-                    style: nx.text.strong,
-                  ),
-                  const SizedBox(height: NxSpacing.sp2),
-                  // 훅이 안 걸린 것을 조용히 두면 사용자는 커밋이 왜 안 오는지 모른다.
-                  NxTag(
-                    repo.webhookActive ? '웹훅 연결됨' : '웹훅 등록 실패',
-                    dot: true,
-                    color: repo.webhookActive ? c.success : c.danger,
-                  ),
-                ],
-              ),
-            ),
-            if (!repo.webhookActive) ...[
-              NxButton(
-                label: '다시 걸기',
-                kind: NxButtonKind.secondary,
-                size: NxSize.sm,
-                onPressed: onReattach,
-              ),
-              const SizedBox(width: NxSpacing.sp2),
-            ],
-            // 떼어 내기는 한 번 더 눌러야 닿게 메뉴 안에 둔다 — 행을 누르려다 빗나가지 않게.
-            NxMenu(
-              width: 180,
-              entries: [
-                NxMenuItem('떼어 내기', danger: true, onSelected: onRemove),
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp6,
+        NxSpacing.sp5,
+        NxSpacing.sp4,
+        NxSpacing.sp5,
+      ),
+      base: c.bgSurface,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  repo.fullPath,
+                  overflow: TextOverflow.ellipsis,
+                  style: nx.text.strong,
+                ),
+                const SizedBox(height: NxSpacing.sp2),
+                // 훅이 안 걸린 것을 조용히 두면 사용자는 커밋이 왜 안 오는지 모른다.
+                NxTag(
+                  repo.webhookActive ? '웹훅 연결됨' : '웹훅 등록 실패',
+                  dot: true,
+                  color: repo.webhookActive ? c.success : c.danger,
+                ),
               ],
-              anchorBuilder: (context, toggle) => NxIconButton(
-                icon: NxIcons.more,
-                label: '${repo.fullPath} 더 보기',
-                onPressed: toggle,
-              ),
             ),
+          ),
+          if (!repo.webhookActive) ...[
+            NxButton(
+              label: '다시 걸기',
+              kind: NxButtonKind.secondary,
+              size: NxSize.sm,
+              onPressed: onReattach,
+            ),
+            const SizedBox(width: NxSpacing.sp2),
           ],
-        ),
+          // 떼어 내기는 한 번 더 눌러야 닿게 메뉴 안에 둔다 — 행을 누르려다 빗나가지 않게.
+          NxMenu(
+            width: 180,
+            entries: [NxMenuItem('떼어 내기', danger: true, onSelected: onRemove)],
+            anchorBuilder: (context, toggle) => NxIconButton(
+              icon: NxIcons.more,
+              label: '${repo.fullPath} 더 보기',
+              onPressed: toggle,
+            ),
+          ),
+        ],
       ),
     );
   }

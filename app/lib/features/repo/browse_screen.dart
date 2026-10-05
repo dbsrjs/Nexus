@@ -289,33 +289,25 @@ class _EntryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
-    final c = nx.colors;
-    return NxPressable(
+    return NxHoverSurface(
       onPressed: onPressed,
       semanticLabel: entry.isDir ? '${entry.name} 폴더' : entry.name,
-      builder: (context, s) => AnimatedContainer(
-        duration: NxMotion.micro,
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: NxSpacing.inset),
-        decoration: BoxDecoration(
-          color: s.hovered || s.pressed ? c.bgElevated : NxColors.transparent,
-          borderRadius: BorderRadius.circular(NxRadius.md),
-        ),
-        child: Row(
-          children: [
-            Flexible(
-              child: Text(
-                entry.name,
-                overflow: TextOverflow.ellipsis,
-                style: nx.text.base.copyWith(
-                  fontWeight: entry.isDir ? FontWeight.w600 : null,
-                ),
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: NxSpacing.inset),
+      child: Row(
+        children: [
+          Flexible(
+            child: Text(
+              entry.name,
+              overflow: TextOverflow.ellipsis,
+              style: nx.text.base.copyWith(
+                fontWeight: entry.isDir ? FontWeight.w600 : null,
               ),
             ),
-            if (entry.isDir)
-              Text('/', style: nx.text.mono.copyWith(fontSize: NxFontSize.sm)),
-          ],
-        ),
+          ),
+          if (entry.isDir)
+            Text('/', style: nx.text.mono.copyWith(fontSize: NxFontSize.sm)),
+        ],
       ),
     );
   }
