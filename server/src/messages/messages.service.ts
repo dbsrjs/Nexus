@@ -17,10 +17,11 @@ import { MentionsService } from './mentions.service';
 import { AttachmentsService } from '../attachments/attachments.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { cursorArgs, pageOf } from '../common/pagination';
+import { USER_SUMMARY_SELECT } from '../users/user-summary';
 
 /** 메시지에 함께 실어 보내는 작성자 정보. 이메일은 내보내지 않는다. */
 const AUTHOR_SELECT = {
-  select: { id: true, name: true, avatarUrl: true },
+  select: USER_SUMMARY_SELECT,
 } as const;
 
 /**

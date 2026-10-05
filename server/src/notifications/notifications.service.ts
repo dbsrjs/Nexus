@@ -14,6 +14,7 @@ import {
 } from './notification-type';
 import { UpdateNotificationSettingsDto } from './dto/update-notification-settings.dto';
 import { cursorArgs, pageOf } from '../common/pagination';
+import { USER_SUMMARY_SELECT } from '../users/user-summary';
 
 /** 메시지 하나로 만들 알림 한 건 — 트랜잭션 전에 계산해 둔다. */
 export interface PlannedNotification {
@@ -53,7 +54,7 @@ const MESSAGE_SELECT = {
     body: true,
     deletedAt: true,
     parentId: true,
-    author: { select: { id: true, name: true, avatarUrl: true } },
+    author: { select: USER_SUMMARY_SELECT },
   },
 } as const;
 

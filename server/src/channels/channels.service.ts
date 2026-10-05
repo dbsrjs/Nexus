@@ -7,12 +7,11 @@ import {
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
-import { randomBytes } from 'crypto';
 import { Channel, ChannelKind, Prisma, SpaceMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { room } from '../realtime/rooms';
-import { slugify } from '../common/slug';
+import { slugify, withRandomSuffix } from '../common/slug';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
@@ -389,7 +388,7 @@ export class ChannelsService {
       if (dto.key) {
         throw new ConflictException('이미 사용 중인 채널 key 입니다');
       }
-      key = `${key.slice(0, 31)}-${randomBytes(4).toString('hex')}`;
+      key = withRandomSuffix(key);
     }
 
     if (dto.categoryId) {

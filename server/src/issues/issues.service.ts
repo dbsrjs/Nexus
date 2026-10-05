@@ -14,12 +14,13 @@ import { ListIssuesDto } from './dto/list-issues.dto';
 import { MoveIssueDto } from './dto/move-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { ChannelsService } from '../channels/channels.service';
+import { USER_SUMMARY_SELECT } from '../users/user-summary';
 
 /** 컬럼 하나가 한 번에 주는 최대 건수. 넘치면 truncated 로 알린다. */
 export const COLUMN_LIMIT = 200;
 
 export const ISSUE_INCLUDE = {
-  assignee: { select: { id: true, name: true, avatarUrl: true } },
+  assignee: { select: USER_SUMMARY_SELECT },
   labelLinks: { select: { label: true } },
   // 대화 → 이슈의 역방향 링크. **요약만 싣는다** — 원문 전체를 실으면
   // 그 메시지의 인용·첨부가 딸려 와 응답이 끝없이 깊어진다(7-3 과 같은 판단).

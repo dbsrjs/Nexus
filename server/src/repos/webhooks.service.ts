@@ -5,6 +5,7 @@ import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { describeGithubEvent } from './event-message';
 import { IndexQueueService } from './indexing/index-queue.service';
 import { IndexingWorker } from './indexing/indexing.worker';
+import { USER_SUMMARY_SELECT } from '../users/user-summary';
 
 /**
  * 같은 배달을 두 번 처리하지 않기 위해 보는 창.
@@ -112,7 +113,7 @@ export class WebhooksService {
       const full = await this.prisma.message.findUnique({
         where: { id: message.id },
         include: {
-          author: { select: { id: true, name: true, avatarUrl: true } },
+          author: { select: USER_SUMMARY_SELECT },
         },
       });
       // **목록 응답과 같은 모양이어야 한다** — 앱은 소켓으로 받은 메시지와

@@ -19,3 +19,11 @@ export function slugify(name: string, fallbackPrefix: string): string {
 
   return slug || `${fallbackPrefix}-${randomBytes(4).toString('hex')}`;
 }
+
+/**
+ * 같은 식별자가 이미 있을 때 뒤에 임의 꼬리를 붙인다(이름 둘이 같은 스페이스 · 채널).
+ * 앞부분을 31자로 잘라 꼬리를 붙여도 40자 안에 든다.
+ */
+export function withRandomSuffix(slug: string): string {
+  return `${slug.slice(0, 31)}-${randomBytes(4).toString('hex')}`;
+}
