@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 
 import '../../domain/models/message.dart';
 import 'api_client.dart';
@@ -43,7 +42,7 @@ class MessagesApi {
     String? cursor,
     int limit = 30,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/channels/$channelId/messages',
         queryParameters: {'limit': limit, 'cursor': ?cursor},
@@ -56,9 +55,7 @@ class MessagesApi {
             .toList(growable: false),
         nextCursor: body['nextCursor'] as String?,
       );
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// GET /api/spaces/:spaceId/messages/:messageId/replies
@@ -68,7 +65,7 @@ class MessagesApi {
     String? cursor,
     int limit = 50,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/messages/$messageId/replies',
         queryParameters: {'limit': limit, 'cursor': ?cursor},
@@ -82,9 +79,7 @@ class MessagesApi {
             .toList(growable: false),
         nextCursor: body['nextCursor'] as String?,
       );
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// 고정 · 해제. **멱등이다** - 이미 그 상태여도 같은 결과가 온다.
@@ -93,15 +88,13 @@ class MessagesApi {
     required String messageId,
     required bool pinned,
   }) async {
-    try {
+    return guardApi(() async {
       final path = '/spaces/$spaceId/messages/$messageId/pin';
       final res = pinned
           ? await _client.dio.post<Map<String, dynamic>>(path)
           : await _client.dio.delete<Map<String, dynamic>>(path);
       return Message.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// GET /api/spaces/:spaceId/channels/:channelId/pins
@@ -109,7 +102,7 @@ class MessagesApi {
     required String spaceId,
     required String channelId,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<List<dynamic>>(
         '/spaces/$spaceId/channels/$channelId/pins',
       );
@@ -117,9 +110,7 @@ class MessagesApi {
           .cast<Map<String, dynamic>>()
           .map(Message.fromJson)
           .toList(growable: false);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// POST /api/spaces/:spaceId/messages/:messageId/reactions
@@ -130,15 +121,13 @@ class MessagesApi {
     required String messageId,
     required String emoji,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.post<List<dynamic>>(
         '/spaces/$spaceId/messages/$messageId/reactions',
         data: {'emoji': emoji},
       );
       return _parseReactions(res.data);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// DELETE /api/spaces/:spaceId/messages/:messageId/reactions/:emoji
@@ -150,15 +139,13 @@ class MessagesApi {
     required String messageId,
     required String emoji,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.delete<List<dynamic>>(
         '/spaces/$spaceId/messages/$messageId/reactions/'
         '${Uri.encodeComponent(emoji)}',
       );
       return _parseReactions(res.data);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   static List<MessageReaction> _parseReactions(List<dynamic>? data) =>
@@ -178,7 +165,7 @@ class MessagesApi {
     String? quotedMessageId,
     List<String> attachmentIds = const [],
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/channels/$channelId/messages',
         data: {
@@ -189,8 +176,6 @@ class MessagesApi {
         },
       );
       return Message.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 }

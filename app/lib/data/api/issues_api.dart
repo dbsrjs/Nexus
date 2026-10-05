@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 
 import '../../domain/models/issue.dart';
 import '../../domain/models/issue_comment.dart';
@@ -36,7 +35,7 @@ class IssuesApi {
 
   /// GET /api/spaces/:spaceId/issues
   Future<IssuePage> list(String spaceId) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/issues',
       );
@@ -50,9 +49,7 @@ class IssuesApi {
             .map((v) => IssueStatus.values.byName(v as String))
             .toList(growable: false),
       );
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// POST /api/spaces/:spaceId/issues — 만들면 그 컬럼 맨 위에 놓인다.
@@ -65,7 +62,7 @@ class IssuesApi {
     String? assigneeId,
     String? originMessageId,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/issues',
         data: {
@@ -79,9 +76,7 @@ class IssuesApi {
         },
       );
       return Issue.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// PATCH /api/spaces/:spaceId/issues/:issueId
@@ -97,7 +92,7 @@ class IssuesApi {
     Patch<String?>? sprintId,
     Patch<int?>? storyPoints,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.patch<Map<String, dynamic>>(
         '/spaces/$spaceId/issues/$issueId',
         data: {
@@ -109,15 +104,13 @@ class IssuesApi {
         },
       );
       return Issue.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// GET /api/spaces/:spaceId/issues?key=NEXUS-12 — 딥링크로 상세에 곧장
   /// 들어왔는데 캐시가 비어 있을 때 한 건만 받아 온다.
   Future<Issue?> findByKey(String spaceId, String key) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/issues',
         queryParameters: {'key': key},
@@ -125,23 +118,22 @@ class IssuesApi {
       final issues = (res.data?['issues'] as List<dynamic>? ?? const [])
           .cast<Map<String, dynamic>>();
       return issues.isEmpty ? null : Issue.fromJson(issues.first);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// DELETE /api/spaces/:spaceId/issues/:issueId — **하드 삭제**다.
   Future<void> remove(String spaceId, String issueId) async {
-    try {
+    return guardApi(() async {
       await _client.dio.delete<void>('/spaces/$spaceId/issues/$issueId');
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// GET /api/spaces/:spaceId/issues/:issueId/comments — 오래된 것부터.
-  Future<List<IssueComment>> listComments(String spaceId, String issueId) async {
-    try {
+  Future<List<IssueComment>> listComments(
+    String spaceId,
+    String issueId,
+  ) async {
+    return guardApi(() async {
       final res = await _client.dio.get<List<dynamic>>(
         '/spaces/$spaceId/issues/$issueId/comments',
       );
@@ -149,9 +141,7 @@ class IssuesApi {
           .cast<Map<String, dynamic>>()
           .map(IssueComment.fromJson)
           .toList(growable: false);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// POST /api/spaces/:spaceId/issues/:issueId/comments
@@ -160,28 +150,26 @@ class IssuesApi {
     String issueId,
     String body,
   ) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/issues/$issueId/comments',
         data: {'body': body},
       );
       return IssueComment.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// GET /api/spaces/:spaceId/labels — 스페이스가 공유하는 어휘.
   Future<List<IssueLabel>> listLabels(String spaceId) async {
-    try {
-      final res = await _client.dio.get<List<dynamic>>('/spaces/$spaceId/labels');
+    return guardApi(() async {
+      final res = await _client.dio.get<List<dynamic>>(
+        '/spaces/$spaceId/labels',
+      );
       return (res.data ?? const [])
           .cast<Map<String, dynamic>>()
           .map(IssueLabel.fromJson)
           .toList(growable: false);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// POST /api/spaces/:spaceId/labels
@@ -190,15 +178,13 @@ class IssuesApi {
     required String name,
     required String color,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/labels',
         data: {'name': name, 'color': color},
       );
       return IssueLabel.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// PUT /api/spaces/:spaceId/issues/:issueId/labels — **통째로 교체**한다.
@@ -208,7 +194,7 @@ class IssuesApi {
     String issueId,
     List<String> labelIds,
   ) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.put<List<dynamic>>(
         '/spaces/$spaceId/issues/$issueId/labels',
         data: {'labelIds': labelIds},
@@ -217,9 +203,7 @@ class IssuesApi {
           .cast<Map<String, dynamic>>()
           .map(IssueLabel.fromJson)
           .toList(growable: false);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// PUT /api/spaces/:spaceId/issues/:issueId/position — 자리까지 정한다.
@@ -231,7 +215,7 @@ class IssuesApi {
     String? afterId,
     String? beforeId,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.put<Map<String, dynamic>>(
         '/spaces/$spaceId/issues/$issueId/position',
         data: {
@@ -241,8 +225,6 @@ class IssuesApi {
         },
       );
       return Issue.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 }

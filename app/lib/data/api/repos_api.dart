@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 
 import '../../domain/models/repo.dart';
 import 'api_client.dart';
@@ -13,8 +12,10 @@ class ReposApi {
 
   /// 내 GitHub 저장소 한 페이지. **검색은 앱이 받아 온 목록 안에서 한다**
   /// — 서버에 검색이 없다 (설계 §6).
-  Future<({List<GithubRepo> repos, bool hasNext})> myGithubRepos(int page) async {
-    try {
+  Future<({List<GithubRepo> repos, bool hasNext})> myGithubRepos(
+    int page,
+  ) async {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/me/github/repos',
         queryParameters: {'page': page},
@@ -25,21 +26,19 @@ class ReposApi {
         repos: raw.map(GithubRepo.fromJson).toList(growable: false),
         hasNext: res.data?['hasNext'] == true,
       );
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   Future<List<SpaceRepo>> spaceRepos(String spaceId) async {
-    try {
-      final res = await _client.dio.get<List<dynamic>>('/spaces/$spaceId/repos');
+    return guardApi(() async {
+      final res = await _client.dio.get<List<dynamic>>(
+        '/spaces/$spaceId/repos',
+      );
       return (res.data ?? const [])
           .cast<Map<String, dynamic>>()
           .map(SpaceRepo.fromJson)
           .toList(growable: false);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// 붙이고 훅을 건다. **숫자 id 만 보낸다** — 이름과 권한은 서버가 GitHub 에
@@ -49,7 +48,7 @@ class ReposApi {
     required int githubRepoId,
     String? linkedChannelId,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/repos/connect',
         data: {
@@ -60,28 +59,22 @@ class ReposApi {
         },
       );
       return SpaceRepo.fromJson(res.data ?? const {});
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// 훅을 다시 건다. 주소가 바뀌었거나 등록에 실패했던 행에 쓴다.
   Future<SpaceRepo> reattach(String spaceId, String repoId) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/repos/$repoId/webhook',
       );
       return SpaceRepo.fromJson(res.data ?? const {});
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   Future<void> remove(String spaceId, String repoId) async {
-    try {
+    return guardApi(() async {
       await _client.dio.delete<void>('/spaces/$spaceId/repos/$repoId');
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 }

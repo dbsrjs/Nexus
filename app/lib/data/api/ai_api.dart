@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 
 import '../../domain/models/ai_run.dart';
 import '../../features/ai/ai_request.dart';
@@ -16,26 +15,22 @@ class AiApi {
   /// 돌려준다. **캐시 적중이면 곧바로 done 이지만 그 구분은 호출자가
   /// `getRun` 으로 본다** — 두 경로를 하나로 둔다.
   Future<String> ask(String spaceId, AiRequest request) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/ai/ask',
         data: request.toJson(),
       );
       return res.data!['runId'] as String;
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// GET /api/spaces/:spaceId/ai/runs/:runId
   Future<AiRun> getRun(String spaceId, String runId) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/ai/runs/$runId',
       );
       return AiRun.fromJson(res.data!);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 }

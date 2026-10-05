@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 
 import '../../domain/models/repo_browse.dart';
 import 'api_client.dart';
@@ -14,7 +13,7 @@ class BrowseApi {
     String spaceId,
     String repoId,
   ) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/repos/$repoId/branches',
       );
@@ -24,9 +23,7 @@ class BrowseApi {
         branches: raw.map(RepoBranch.fromJson).toList(growable: false),
         defaultBranch: res.data?['defaultBranch'] as String?,
       );
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// `path` 를 비우면 루트, `ref` 를 비우면 기본 브랜치다.
@@ -36,7 +33,7 @@ class BrowseApi {
     required String ref,
     required String path,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/repos/$repoId/tree',
         queryParameters: {'ref': ref, 'path': path},
@@ -47,9 +44,7 @@ class BrowseApi {
         ref: res.data?['ref'] as String? ?? ref,
         entries: raw.map(TreeEntry.fromJson).toList(growable: false),
       );
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   Future<BlobView> blob(
@@ -58,27 +53,24 @@ class BrowseApi {
     required String ref,
     required String path,
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/repos/$repoId/blob',
         queryParameters: {'ref': ref, 'path': path},
       );
       return BlobView.fromJson(res.data ?? const {});
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
-/// 그 이벤트의 상세. **서버가 GitHub 을 부르지 않는다**(설계 §0) —
+
+  /// 그 이벤트의 상세. **서버가 GitHub 을 부르지 않는다**(설계 §0) —
   /// repo_events.payload 에 이미 있다. `kind` 로 push · pr · other 가 갈린다.
   Future<RepoEventView> event(String spaceId, String eventId) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/repo-events/$eventId',
       );
       return RepoEventView.fromJson(res.data ?? const {});
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// 브랜치 이력. 커서는 GitHub 의 page 번호를 그대로 쓴다.
@@ -88,7 +80,7 @@ class BrowseApi {
     required String ref,
     String cursor = '',
   }) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/repos/$repoId/commits',
         queryParameters: {'ref': ref, 'cursor': cursor},
@@ -99,19 +91,15 @@ class BrowseApi {
         commits: raw.map(CommitSummary.fromJson).toList(growable: false),
         nextCursor: res.data?['nextCursor'] as String?,
       );
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   Future<CommitDetail> commit(String spaceId, String repoId, String sha) async {
-    try {
+    return guardApi(() async {
       final res = await _client.dio.get<Map<String, dynamic>>(
         '/spaces/$spaceId/repos/$repoId/commits/$sha',
       );
       return CommitDetail.fromJson(res.data ?? const {});
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 }

@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 
 import '../../domain/models/channel.dart';
 import '../../domain/models/channel_access.dart';
@@ -16,30 +15,28 @@ class ChannelsApi {
   /// 비공개 채널은 채널 멤버가 아니면 아예 목록에 없다. 안 읽은 수도 서버가
   /// 계산해서 함께 준다 (docs/백엔드-설계.md §6 채널 가시성).
   Future<List<Channel>> list(String spaceId) async {
-    try {
-      final res =
-          await _client.dio.get<List<dynamic>>('/spaces/$spaceId/channels');
+    return guardApi(() async {
+      final res = await _client.dio.get<List<dynamic>>(
+        '/spaces/$spaceId/channels',
+      );
       return (res.data ?? const [])
           .cast<Map<String, dynamic>>()
           .map(Channel.fromJson)
           .toList(growable: false);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   /// GET /api/spaces/:spaceId/categories
   Future<List<Category>> listCategories(String spaceId) async {
-    try {
-      final res =
-          await _client.dio.get<List<dynamic>>('/spaces/$spaceId/categories');
+    return guardApi(() async {
+      final res = await _client.dio.get<List<dynamic>>(
+        '/spaces/$spaceId/categories',
+      );
       return (res.data ?? const [])
           .cast<Map<String, dynamic>>()
           .map(Category.fromJson)
           .toList(growable: false);
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 
   // ── 16단계 — 채널 만들기 · 고치기 · 비공개 명단 · 권한 ──────────
@@ -51,29 +48,28 @@ class ChannelsApi {
     String? topic,
     String? categoryId,
     bool isPrivate = false,
-  }) =>
-      _guard(() async {
-        final res = await _client.dio.post<Map<String, dynamic>>(
-          '/spaces/$spaceId/channels',
-          data: {
-            'name': name,
-            'topic': ?topic,
-            'categoryId': ?categoryId,
-            'isPrivate': isPrivate,
-          },
-        );
-        return Channel.fromJson(res.data!);
-      });
+  }) => guardApi(() async {
+    final res = await _client.dio.post<Map<String, dynamic>>(
+      '/spaces/$spaceId/channels',
+      data: {
+        'name': name,
+        'topic': ?topic,
+        'categoryId': ?categoryId,
+        'isPrivate': isPrivate,
+      },
+    );
+    return Channel.fromJson(res.data!);
+  });
 
   /// POST /api/spaces/:spaceId/dms — 그 사람과의 DM 을 연다(17단계 D3). 있으면 그것, 없으면
   /// 만든다. 응답은 채널 목록 한 줄과 같은 모양이다.
-  Future<Channel> openDm(String spaceId, String userId) => _guard(() async {
-        final res = await _client.dio.post<Map<String, dynamic>>(
-          '/spaces/$spaceId/dms',
-          data: {'userId': userId},
-        );
-        return Channel.fromJson(res.data!);
-      });
+  Future<Channel> openDm(String spaceId, String userId) => guardApi(() async {
+    final res = await _client.dio.post<Map<String, dynamic>>(
+      '/spaces/$spaceId/dms',
+      data: {'userId': userId},
+    );
+    return Channel.fromJson(res.data!);
+  });
 
   /// PATCH /api/spaces/:spaceId/channels/:channelId (admin+). 준 값만 바꾼다.
   Future<void> update(
@@ -82,17 +78,19 @@ class ChannelsApi {
     String? name,
     String? topic,
     bool? isPrivate,
-  }) =>
-      _guard(() => _client.dio.patch<void>(
-            '/spaces/$spaceId/channels/$channelId',
-            data: {'name': ?name, 'topic': ?topic, 'isPrivate': ?isPrivate},
-          ));
+  }) => guardApi(
+    () => _client.dio.patch<void>(
+      '/spaces/$spaceId/channels/$channelId',
+      data: {'name': ?name, 'topic': ?topic, 'isPrivate': ?isPrivate},
+    ),
+  );
 
   /// GET …/members — 비공개 채널의 명단. 공개 채널은 400.
   Future<List<ChannelMemberView>> members(String spaceId, String channelId) =>
-      _guard(() async {
-        final res = await _client.dio
-            .get<List<dynamic>>('/spaces/$spaceId/channels/$channelId/members');
+      guardApi(() async {
+        final res = await _client.dio.get<List<dynamic>>(
+          '/spaces/$spaceId/channels/$channelId/members',
+        );
         return (res.data ?? const [])
             .cast<Map<String, dynamic>>()
             .map(ChannelMemberView.fromJson)
@@ -104,26 +102,28 @@ class ChannelsApi {
     String spaceId,
     String channelId,
     List<String> userIds,
-  ) =>
-      _guard(() async {
-        final res = await _client.dio.post<List<dynamic>>(
-          '/spaces/$spaceId/channels/$channelId/members',
-          data: {'userIds': userIds},
-        );
-        return (res.data ?? const [])
-            .cast<Map<String, dynamic>>()
-            .map(ChannelMemberView.fromJson)
-            .toList(growable: false);
-      });
+  ) => guardApi(() async {
+    final res = await _client.dio.post<List<dynamic>>(
+      '/spaces/$spaceId/channels/$channelId/members',
+      data: {'userIds': userIds},
+    );
+    return (res.data ?? const [])
+        .cast<Map<String, dynamic>>()
+        .map(ChannelMemberView.fromJson)
+        .toList(growable: false);
+  });
 
   /// DELETE …/members/:userId — 본인이면 나가기. 마지막 한 명은 409.
   Future<void> removeMember(String spaceId, String channelId, String userId) =>
-      _guard(() => _client.dio
-          .delete<void>('/spaces/$spaceId/channels/$channelId/members/$userId'));
+      guardApi(
+        () => _client.dio.delete<void>(
+          '/spaces/$spaceId/channels/$channelId/members/$userId',
+        ),
+      );
 
   /// GET …/permissions (admin+) — 손님 · 멤버 두 줄.
   Future<List<RolePermission>> permissions(String spaceId, String channelId) =>
-      _guard(() async {
+      guardApi(() async {
         final res = await _client.dio.get<List<dynamic>>(
           '/spaces/$spaceId/channels/$channelId/permissions',
         );
@@ -140,25 +140,23 @@ class ChannelsApi {
     SpaceRole role, {
     required bool canView,
     required bool canSend,
-  }) =>
-      _guard(() => _client.dio.put<void>(
-            '/spaces/$spaceId/channels/$channelId/permissions/${role.wire}',
-            data: {'canView': canView, 'canSend': canSend},
-          ));
+  }) => guardApi(
+    () => _client.dio.put<void>(
+      '/spaces/$spaceId/channels/$channelId/permissions/${role.wire}',
+      data: {'canView': canView, 'canSend': canSend},
+    ),
+  );
 
   /// DELETE …/permissions/:role (admin+) — 기본값으로.
-  Future<void> resetPermission(String spaceId, String channelId, SpaceRole role) =>
-      _guard(() => _client.dio.delete<void>(
-            '/spaces/$spaceId/channels/$channelId/permissions/${role.wire}',
-          ));
-
-  Future<T> _guard<T>(Future<T> Function() call) async {
-    try {
-      return await call();
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
-  }
+  Future<void> resetPermission(
+    String spaceId,
+    String channelId,
+    SpaceRole role,
+  ) => guardApi(
+    () => _client.dio.delete<void>(
+      '/spaces/$spaceId/channels/$channelId/permissions/${role.wire}',
+    ),
+  );
 
   /// POST /api/spaces/:spaceId/channels/:channelId/read
   ///
@@ -169,13 +167,11 @@ class ChannelsApi {
     required String channelId,
     required String lastReadMessageId,
   }) async {
-    try {
+    return guardApi(() async {
       await _client.dio.post<Map<String, dynamic>>(
         '/spaces/$spaceId/channels/$channelId/read',
         data: {'lastReadMessageId': lastReadMessageId},
       );
-    } on DioException catch (e) {
-      throw ApiException(classifyDioException(e));
-    }
+    });
   }
 }
