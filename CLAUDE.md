@@ -135,7 +135,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm run server:dev` · `server:build` | 개발 서버 · 빌드 |
 | `npm --prefix server run typecheck` | 타입 검사만 |
 | `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint |
-| `npm run check:<이름>` | **실서버 · 실DB · 실소켓 계약 검증 19종(844개)** — CI 가 push 마다 돈다. 목록 · 개수 · 전제(`.env` 값 · 가짜 GitHub · `LLM_PROVIDER=fake`) · 실패할 때 볼 것은 **`nexus-verify` 스킬**이 원본이다. 정적 검사 둘(`check:migrations` · `check:sql-time`)은 DB · 서버 없이 돈다 |
+| `npm run check:<이름>` | **실서버 · 실DB · 실소켓 계약 검증 19종(852개)** — CI 가 push 마다 돈다. 목록 · 개수 · 전제(`.env` 값 · 가짜 GitHub · `LLM_PROVIDER=fake`) · 실패할 때 볼 것은 **`nexus-verify` 스킬**이 원본이다. 정적 검사 둘(`check:migrations` · `check:sql-time`)은 DB · 서버 없이 돈다 |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
 | `npm run app:flow` | **앱 통합 테스트** — Windows 데스크톱 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 스레드 · 셸 안 화면 · 설정 창(이름 · 사진 · 테마 · 음소거)까지 끝까지 돈다(약 30초, `db:up` · `server:dev` 필요). 보안 저장소 · drift 는 메모리로 바꿔 개발용 앱의 세션을 건드리지 않는다. **CI 에서는 돌지 않는다**(§5 빚) — 화면을 건드린 변경마다 사람이 돌린다 |
 | `cd app && dart run build_runner build` | freezed · json_serializable 재생성 |
@@ -187,7 +187,8 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 
 | 증상 | 원인 · 대응 |
 |---|---|
-| 인증 없는 경로의 500 응답에 키 길이 · DB 호스트가 실림 | 전역 예외 필터는 `HttpException` 이 아닌 `Error` 의 message 를 **응답에 그대로 싣는다.** 공개 경로(OAuth 콜백 · 웹훅)의 throw 는 감싸서 접을 것 (10-2a) |
+| 인증 없는 경로의 500 응답에 키 길이 · DB 호스트가 실림 | 전역 예외 필터가 `HttpException` 이 아닌 `Error` 의 message 를 응답에 그대로 실었다. **2026-10-05 보안 점검에서 필터가 원문을 접고 로그로만 남기게 바꿨다** — 사람에게 보일 문구는 `HttpException` 으로 던질 것. 공개 경로(OAuth 콜백 · 웹훅)의 감싸기는 그대로 둔다 (10-2a) |
+| 사람이 `github@bot.nexus.invalid` 로 가입해 GitHub 봇 자리를 차지함 | 봇은 이메일로 찾는데 가입이 `.invalid` 를 막지 않았다. 이제 가입이 예약 도메인을 400 으로 막고, 웹훅은 봇 표식(`bot:no-login`)이 없는 행이면 게시하지 않는다. **서버가 만드는 계정은 `.invalid` 도메인에 둔다** (보안 점검) |
 | 응답 본문에 실은 `retryAfter` 가 앱에 도착하지 않음 | 같은 필터가 본문을 일정한 봉투로 다시 빚으며 **커스텀 필드를 버린다.** 표준 헤더(`Retry-After`)로 보낼 것 (10-3a) |
 | `.env` 에 `X=` 로 자리만 잡았더니 엉뚱한 경로가 됨 | `??` 는 빈 문자열을 통과시킨다(`resolve('')` = 작업 디렉터리). **빈 값을 미설정으로 치려면 `\|\|`** (8-1) |
 | `retryAfterSec: 0` 이 무시됨 | `x ? … : …` 는 `0` 을 거짓으로 본다. `!= null` 로 볼 것 (12). **12단계에서 고친 뒤에도 인덱싱 큐의 `fail()` 에 같은 모양이 남아 있었다**(2026-09-27) — 판정을 순수 함수로 빼 한 자리에만 두었다 |
@@ -475,7 +476,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 2026-09-27 에 한 번 정리했다 — 갚은 것 · 단계로 옮긴 것 · 환경 함정으로 옮긴 것은
 [진행 기록](docs/진행-기록.md) «빚 정리 (2026-09-27)».
 
-- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 471개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 19종 844 케이스**(17단계 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
+- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 493개는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 19종 852 케이스**(2026-10-05 보안 점검 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
 - **앱 통합 테스트가 CI 에서 돌지 않는다.** `npm run app:flow` 는 Windows 데스크톱에서만 돈다 — CI 는 ubuntu 인데 앱에 `linux/` 플랫폼이 없다. 들이는 것은 플랫폼을 하나 늘리는 결정이라 «마지막» 단계의 테넌트 격리 통합 테스트와 함께 정한다. 그때까지는 **화면을 건드린 변경마다 사람이 돌린다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **467개**
 - **`local`(Ollama) LLM 경로는 실측하지 않았다(13-1) — `LLM_PROVIDER=local` 로 바꾸기 전에 먼저 태운다.** 지금 쓰는 경로는 `gemini` 이고 실제로 확인했다. `local` 은 쓰는 곳이 없어 미뤄도 깨지는 것이 없다(2026-09-27 판단). 바꾸게 되는 계기는 Gemini 무료 한도(3.5-flash 하루 20회)가 모자라거나, 비공개 저장소 코드를 외부로 보내지 않으려 할 때 — 늦어도 «마지막» 단계에서 운영 provider 를 정할 때다. `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. 설치(`winget install Ollama.Ollama`)와 모델 받기(약 4.7GB)는 사람이 한다.
 - **인덱싱 큐의 5xx 소진은 단위 테스트만 덮는다.** 재시도 대기가 1분씩이라 계약 검증으로 세 번을 태우면 3분이 걸린다. 판정(`shouldGiveUpIndexing` · `indexRetryDelayMs`)은 순수 함수로 빼 두었다. 429 · 리스 유효/만료는 `check:indexing` 이 본다.
