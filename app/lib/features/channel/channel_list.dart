@@ -9,6 +9,7 @@ import '../space/space_controller.dart';
 import 'channel_controller.dart';
 import '../../domain/models/space.dart';
 import 'channel_dialogs.dart';
+import 'dm.dart';
 
 /// 채널 패널의 채널 부분. 카테고리 → 채널 순으로 그린다.
 ///
@@ -38,8 +39,9 @@ class ChannelList extends ConsumerWidget {
         onRetry: () => ref.invalidate(channelsProvider),
       ),
       data: (_) {
+        final dms = _DmSection(onChannelTap: onChannelTap);
         if (groups.isEmpty) {
-          return Padding(
+          final empty = Padding(
             padding: const EdgeInsets.all(NxSpacing.sp6),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -65,6 +67,10 @@ class ChannelList extends ConsumerWidget {
                 ],
               ],
             ),
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [empty, dms],
           );
         }
 
@@ -93,6 +99,7 @@ class ChannelList extends ConsumerWidget {
               for (final channel in group.channels)
                 _ChannelTile(channel: channel, onTap: onChannelTap),
             ],
+            dms,
           ],
         );
       },
@@ -201,6 +208,111 @@ class _ChannelTile extends ConsumerWidget {
               ),
               // 멘션은 안 읽은 수와 **따로** 보여 준다. 나를 부른 것이라
               // 무게가 다르고, 숫자에 묻히면 놓친다.
+              if (channel.mentionCount > 0) ...[
+                const SizedBox(width: 6),
+                NxBadge(count: channel.mentionCount, mention: true),
+              ],
+              if (unread > 0) ...[
+                const SizedBox(width: 6),
+                NxBadge(count: unread),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 「다이렉트 메시지」 묶음(17단계 D10). 머리 「+」 가 사람 고르기 창을 연다 — 역할을 묻지
+/// 않는다(D5).
+class _DmSection extends ConsumerWidget {
+  const _DmSection({this.onChannelTap});
+
+  final VoidCallback? onChannelTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dms = ref.watch(dmChannelsProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PaneSectionTitle(
+          '다이렉트 메시지',
+          trailing: NxIconButton(
+            icon: NxIcons.plus,
+            label: '다이렉트 메시지 열기',
+            size: NxSize.sm,
+            onPressed: () => showDmPicker(context, ref, onOpened: onChannelTap),
+          ),
+        ),
+        for (final dm in dms) _DmTile(channel: dm, onTap: onChannelTap),
+      ],
+    );
+  }
+}
+
+class _DmTile extends ConsumerWidget {
+  const _DmTile({required this.channel, this.onTap});
+
+  final Channel channel;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    final selected = ref.watch(currentChannelIdProvider) == channel.id;
+    final spaceId = ref.watch(currentSpaceIdProvider);
+    final peer = ref.watch(memberProfilesProvider)[channel.dmUserId];
+    final name = peer?.displayName ?? '나간 사람';
+    final unread = channel.muted ? 0 : channel.unreadCount;
+    final bold = selected || unread > 0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: NxPressable(
+        selected: selected,
+        semanticLabel: '$name 님과의 다이렉트 메시지',
+        onPressed: () {
+          if (spaceId != null) context.go('/s/$spaceId/c/${channel.id}');
+          onTap?.call();
+        },
+        builder: (context, s) => AnimatedContainer(
+          duration: NxMotion.micro,
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: selected
+                ? c.accentSubtle
+                : (s.hovered || s.pressed ? c.bgElevated : const Color(0x00000000)),
+            borderRadius: BorderRadius.circular(NxRadius.md),
+          ),
+          child: Row(
+            children: [
+              DmAvatar(
+                userId: channel.dmUserId ?? channel.id,
+                name: name,
+                avatarUrl: peer?.avatarUrl,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  name,
+                  overflow: TextOverflow.ellipsis,
+                  style: nx.text.base.copyWith(
+                    fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
+                    color: channel.muted
+                        ? c.borderStrong
+                        : (peer == null
+                              ? c.borderStrong
+                              : (bold ? c.textPrimary : c.textSecondary)),
+                  ),
+                ),
+              ),
+              // DM 은 글 하나하나가 나를 향한다 — 멘션과 안 읽음을 따로 셀 이유가 적지만,
+              // 채널 줄과 같은 규칙을 둔다(음소거면 멘션만 남는다).
               if (channel.mentionCount > 0) ...[
                 const SizedBox(width: 6),
                 NxBadge(count: channel.mentionCount, mention: true),

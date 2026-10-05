@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Inject,
@@ -7,7 +8,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
-import { Channel, Prisma, SpaceMember } from '@prisma/client';
+import { Channel, ChannelKind, Prisma, SpaceMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { room } from '../realtime/rooms';
@@ -17,6 +18,7 @@ import { UpdateChannelDto } from './dto/update-channel.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
 import { MentionsService } from '../messages/mentions.service';
 import { channelAccess } from './channel-access';
+import { dmKey, dmPeerOf } from './dm-key';
 
 /** 채널 목록 한 줄. 사이드바가 필요로 하는 것만 담는다. */
 export interface ChannelListItem extends Channel {
@@ -34,6 +36,10 @@ export interface ChannelListItem extends Channel {
    * 따로 받는다 — 브로드캐스트가 아니다. 앱은 거짓이면 입력창 대신 「읽기 전용」을 보인다.
    */
   canSend: boolean;
+  /** DM 의 상대(17단계 D6). 일반 채널은 null. */
+  dmUserId: string | null;
+  /** 마지막 최상위 메시지 시각 — 사이드바가 DM 을 최근순으로 줄 세운다. 메시지가 없으면 null. */
+  lastMessageAt: Date | null;
 }
 
 @Injectable()
@@ -70,15 +76,29 @@ export class ChannelsService {
   private async access(channelId: string, member: SpaceMember) {
     const channel = await this.prisma.channel.findFirst({
       where: { id: channelId, spaceId: member.spaceId },
-      select: { id: true, isPrivate: true },
+      select: { id: true, isPrivate: true, kind: true, key: true },
     });
     if (!channel) return null;
 
-    const [isMember, perm] = await Promise.all([
+    const [isMember, perm, dmPeerPresent] = await Promise.all([
       this.isChannelMember(channelId, member.userId),
       this.permissionFor(channelId, member),
+      channel.kind === ChannelKind.dm
+        ? this.isDmPeerPresent(channel.key, member)
+        : Promise.resolve(undefined),
     ]);
-    return channelAccess({ isPrivate: channel.isPrivate, isMember, perm });
+    return channelAccess({ isPrivate: channel.isPrivate, isMember, perm, dmPeerPresent });
+  }
+
+  /** DM 의 상대가 아직 이 스페이스 멤버인가(17단계 D8). */
+  private async isDmPeerPresent(key: string, member: SpaceMember): Promise<boolean> {
+    const peer = dmPeerOf(key, member.userId);
+    if (!peer) return false;
+    const row = await this.prisma.spaceMember.findUnique({
+      where: { spaceId_userId: { spaceId: member.spaceId, userId: peer } },
+      select: { userId: true },
+    });
+    return row !== null;
   }
 
   /** 볼 수 없으면 404. 존재 여부 자체를 흘리지 않는다. */
@@ -87,6 +107,18 @@ export class ChannelsService {
       where: { id: channelId, spaceId: member.spaceId },
     });
     if (!channel || !(await this.canView(channelId, member))) {
+      throw new NotFoundException('채널을 찾을 수 없습니다');
+    }
+    return channel;
+  }
+
+  /**
+   * 채널 구조 API(설정 · 참여 · 명단 · 권한)가 쓴다 — **DM 은 없는 채널로 본다(404)**
+   * (17단계 D7). 관리자도 남의 DM 이 있다는 것을 알 수 없어야 한다.
+   */
+  async assertStructural(channelId: string, member: SpaceMember): Promise<Channel> {
+    const channel = await this.assertCanView(channelId, member);
+    if (channel.kind === ChannelKind.dm) {
       throw new NotFoundException('채널을 찾을 수 없습니다');
     }
     return channel;
@@ -125,7 +157,7 @@ export class ChannelsService {
     const [channels, memberships, perms] = await Promise.all([
       this.prisma.channel.findMany({
         where: { spaceId: member.spaceId },
-        select: { id: true, isPrivate: true },
+        select: { id: true, isPrivate: true, kind: true, key: true },
       }),
       this.prisma.channelMember.findMany({
         where: { userId: member.userId, channel: { spaceId: member.spaceId } },
@@ -140,15 +172,38 @@ export class ChannelsService {
     const joined = new Set(memberships.map((m) => m.channelId));
     const permByChannel = new Map(perms.map((p) => [p.channelId, p]));
 
+    // 내가 든 DM 의 상대가 아직 멤버인지 — 한 쿼리로 본다(17단계 D8).
+    const peerOf = (c: { kind: ChannelKind; key: string }) =>
+      c.kind === ChannelKind.dm ? dmPeerOf(c.key, member.userId) : null;
+    const peers = channels
+      .filter((c) => joined.has(c.id))
+      .map(peerOf)
+      .filter((id): id is string => id !== null);
+    const present = new Set(
+      peers.length === 0
+        ? []
+        : (
+            await this.prisma.spaceMember.findMany({
+              where: { spaceId: member.spaceId, userId: { in: peers } },
+              select: { userId: true },
+            })
+          ).map((m) => m.userId),
+    );
+
     return new Map(
-      channels.map((c) => [
-        c.id,
-        channelAccess({
-          isPrivate: c.isPrivate,
-          isMember: joined.has(c.id),
-          perm: permByChannel.get(c.id) ?? null,
-        }),
-      ]),
+      channels.map((c) => {
+        const peer = peerOf(c);
+        return [
+          c.id,
+          channelAccess({
+            isPrivate: c.isPrivate,
+            isMember: joined.has(c.id),
+            perm: permByChannel.get(c.id) ?? null,
+            dmPeerPresent:
+              c.kind === ChannelKind.dm ? peer !== null && present.has(peer) : undefined,
+          }),
+        ];
+      }),
     );
   }
 
@@ -158,7 +213,7 @@ export class ChannelsService {
     const ids = [...access.entries()].filter(([, a]) => a.view).map(([id]) => id);
     if (ids.length === 0) return [];
 
-    const [channels, memberships, unread, mentions] = await Promise.all([
+    const [channels, memberships, unread, mentions, latest] = await Promise.all([
       this.prisma.channel.findMany({
         where: { id: { in: ids }, spaceId: member.spaceId },
         orderBy: [{ position: 'asc' }, { name: 'asc' }],
@@ -168,7 +223,13 @@ export class ChannelsService {
       }),
       this.unreadCounts(member.userId, ids),
       this.mentions.unreadCounts(member, ids),
+      this.prisma.message.groupBy({
+        by: ['channelId'],
+        where: { channelId: { in: ids }, parentId: null, deletedAt: null },
+        _max: { createdAt: true },
+      }),
     ]);
+    const latestByChannel = new Map(latest.map((r) => [r.channelId, r._max.createdAt]));
 
     const membershipByChannel = new Map(memberships.map((m) => [m.channelId, m]));
 
@@ -182,6 +243,9 @@ export class ChannelsService {
         unreadCount: unread.get(channel.id) ?? 0,
         mentionCount: mentions.get(channel.id) ?? 0,
         canSend: access.get(channel.id)?.send ?? false,
+        dmUserId:
+          channel.kind === ChannelKind.dm ? dmPeerOf(channel.key, member.userId) : null,
+        lastMessageAt: latestByChannel.get(channel.id) ?? null,
       };
     });
   }
@@ -291,6 +355,10 @@ export class ChannelsService {
     dto: UpdateChannelDto,
   ): Promise<Channel> {
     const before = await this.requireChannel(spaceId, channelId);
+    // DM 은 채널 구조 API 에게 없는 채널이다(17단계 D7).
+    if (before.kind === ChannelKind.dm) {
+      throw new NotFoundException('채널을 찾을 수 없습니다');
+    }
 
     if (dto.categoryId) {
       await this.requireCategoryInSpace(spaceId, dto.categoryId);
@@ -407,7 +475,7 @@ export class ChannelsService {
 
   /** 채널 참여 — 공개 채널에 스스로 들어간다. */
   async join(channelId: string, member: SpaceMember) {
-    await this.assertCanView(channelId, member);
+    await this.assertStructural(channelId, member);
     const joined = await this.prisma.channelMember.upsert({
       where: { channelId_userId: { channelId, userId: member.userId } },
       update: {},
@@ -417,6 +485,66 @@ export class ChannelsService {
     // 본인에게만. 다른 사람의 룸 계산은 바뀌지 않았다.
     this.realtime.toUser(member.userId, 'rooms:invalidate', { reason: 'channel.joined' });
     return joined;
+  }
+
+  /**
+   * POST /api/spaces/:spaceId/dms — 그 사람과의 DM 을 연다(17단계 D3 · D4). 있으면 그것, 없으면
+   * 만든다. **두 사람의 명단 행을 채운다** — 스페이스를 나갔다 돌아온 사람은 행이 지워져 있다.
+   * 행이 새로 생긴 사람에게만 `rooms:invalidate` 를 보낸다.
+   *
+   * 같은 두 사람이 동시에 열면 key 유일성(D2)이 한쪽을 P2002 로 막는다 — 다시 읽는다.
+   */
+  async openDm(member: SpaceMember, peerId: string): Promise<ChannelListItem> {
+    if (peerId === member.userId) {
+      throw new BadRequestException('자기 자신과는 DM 을 열 수 없습니다');
+    }
+    const peer = await this.prisma.spaceMember.findUnique({
+      where: { spaceId_userId: { spaceId: member.spaceId, userId: peerId } },
+      select: { userId: true },
+    });
+    if (!peer) throw new NotFoundException('멤버를 찾을 수 없습니다');
+
+    const where = { spaceId_key: { spaceId: member.spaceId, key: dmKey(member.userId, peerId) } };
+    let channel = await this.prisma.channel.findUnique({ where });
+    if (!channel) {
+      try {
+        channel = await this.prisma.channel.create({
+          data: {
+            spaceId: member.spaceId,
+            key: where.spaceId_key.key,
+            name: 'DM',
+            kind: ChannelKind.dm,
+            isPrivate: true,
+          },
+        });
+      } catch (err) {
+        if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2002') {
+          throw err;
+        }
+        channel = await this.prisma.channel.findUniqueOrThrow({ where });
+      }
+    }
+    const channelId = channel.id;
+
+    const existing = await this.prisma.channelMember.findMany({
+      where: { channelId },
+      select: { userId: true },
+    });
+    const had = new Set(existing.map((r) => r.userId));
+    const added = [member.userId, peerId].filter((id) => !had.has(id));
+    if (added.length > 0) {
+      await this.prisma.channelMember.createMany({
+        data: added.map((userId) => ({ channelId, userId })),
+        skipDuplicates: true,
+      });
+      for (const userId of added) {
+        this.realtime.toUser(userId, 'rooms:invalidate', { reason: 'dm.opened' });
+      }
+    }
+
+    const item = (await this.listForMember(member)).find((c) => c.id === channelId);
+    if (!item) throw new NotFoundException('채널을 찾을 수 없습니다');
+    return item;
   }
 
   // ──────────────────────────────────────────────

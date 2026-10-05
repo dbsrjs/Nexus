@@ -65,6 +65,16 @@ class ChannelsApi {
         return Channel.fromJson(res.data!);
       });
 
+  /// POST /api/spaces/:spaceId/dms — 그 사람과의 DM 을 연다(17단계 D3). 있으면 그것, 없으면
+  /// 만든다. 응답은 채널 목록 한 줄과 같은 모양이다.
+  Future<Channel> openDm(String spaceId, String userId) => _guard(() async {
+        final res = await _client.dio.post<Map<String, dynamic>>(
+          '/spaces/$spaceId/dms',
+          data: {'userId': userId},
+        );
+        return Channel.fromJson(res.data!);
+      });
+
   /// PATCH /api/spaces/:spaceId/channels/:channelId (admin+). 준 값만 바꾼다.
   Future<void> update(
     String spaceId,

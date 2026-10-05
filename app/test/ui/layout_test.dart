@@ -58,6 +58,30 @@ void main() {
     expect(bottom, lessThanOrEqualTo(800 - 300));
   });
 
+  testWidgets('★ 겹친 NxPage 는 키보드만큼 한 번만 올린다 - 셸 안 대화 화면의 입력창이 키보드 위로 떴다', (tester) async {
+    // WidgetsApp 은 제 MediaQuery 를 뷰에서 다시 만든다 — 키보드는 뷰에 싣는다.
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(app(const NxPage(
+      body: NxPage(body: SizedBox.expand(key: ValueKey('body'))),
+    )));
+    final bottom = tester.getBottomLeft(find.byKey(const ValueKey('body'))).dy;
+    expect(bottom, 800 - 300);
+  });
+
+  testWidgets('★ 겹친 NxPage 는 상태 표시줄 여백도 한 번만 둔다 - 키보드를 고치며 머리 줄이 내려갔다', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(top: 40);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(app(const NxPage(
+      body: NxPage(body: SizedBox.expand(key: ValueKey('body'))),
+    )));
+    expect(tester.getTopLeft(find.byKey(const ValueKey('body'))).dy, 40);
+  });
+
   testWidgets('탭은 고르면 부르고 고른 탭에 막대가 있다', (tester) async {
     int? picked;
     await tester.pumpWidget(app(NxTabBar(

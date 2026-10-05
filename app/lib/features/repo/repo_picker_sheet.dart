@@ -78,7 +78,10 @@ class _RepoPickerSheetState extends ConsumerState<RepoPickerSheet> {
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
     final c = nx.colors;
-    final channels = ref.watch(channelsProvider).value ?? const <Channel>[];
+    // DM 에는 저장소를 잇지 않는다(17단계 D13 — 서버도 404).
+    final channels = (ref.watch(channelsProvider).value ?? const <Channel>[])
+        .where((c) => !c.isDm)
+        .toList(growable: false);
     final shown = _filter.isEmpty
         ? _repos
         : _repos

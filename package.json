@@ -34,6 +34,8 @@
     "check:ai": "node server/scripts/check-ai.mjs",
     "check:settings": "node server/scripts/check-settings.mjs",
     "check:members": "node server/scripts/check-members.mjs",
+    "check:dm": "node server/scripts/check-dm.mjs",
+    "check:presence": "node server/scripts/check-presence.mjs",
     "app:flow": "cd app && flutter test integration_test -d windows",
     "check:migrations": "node server/scripts/check-migrations.mjs",
     "check:sql-time": "node server/scripts/check-sql-time.mjs"

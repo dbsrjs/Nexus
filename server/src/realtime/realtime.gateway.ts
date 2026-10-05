@@ -18,11 +18,24 @@ import { RealtimeEmitter } from './realtime-emitter';
 import { RoomsService } from './rooms.service';
 import { isPinnedRoom, room } from './rooms';
 import { SocketReadDto } from './dto/socket-read.dto';
+import { SocketPresenceDto } from './dto/socket-presence.dto';
+import { SocketTypingDto } from './dto/socket-typing.dto';
+import { PresenceService } from './presence.service';
 import { ChannelsService } from '../channels/channels.service';
 
 /** 인증을 통과한 소켓. 역할은 담지 않는다 — 스페이스마다 다르다. */
 interface AuthedSocket extends Socket {
   data: { userId: string };
+}
+
+/** 같은 소켓 · 같은 채널의 `typing` 을 이 간격 안에서는 버린다(17단계 D22). */
+export const TYPING_MIN_INTERVAL_MS = 1000;
+
+/** 소켓 페이로드를 DTO 로 검사한다. 틀리면 null — 연결은 끊지 않는다. */
+async function parse<T extends object>(cls: new () => T, body: unknown): Promise<T | null> {
+  const dto = plainToInstance(cls, body ?? {});
+  const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: true });
+  return errors.length > 0 ? null : dto;
 }
 
 /**
@@ -42,6 +55,8 @@ export class RealtimeGateway
 {
   private readonly logger = new Logger(RealtimeGateway.name);
   private readonly accessSecret: string;
+  /** `${socketId}:${channelId}` → 마지막으로 넘긴 시각. 소켓이 끊기면 지운다. */
+  private readonly lastTyping = new Map<string, number>();
 
   constructor(
     private readonly jwt: JwtService,
@@ -49,6 +64,7 @@ export class RealtimeGateway
     private readonly emitter: RealtimeEmitter,
     private readonly rooms: RoomsService,
     private readonly channels: ChannelsService,
+    private readonly presence: PresenceService,
   ) {
     // 시크릿 해석은 부팅 시 한 번. 미설정이면 여기서 부팅이 중단된다.
     this.accessSecret = resolveJwtSecrets(config).accessSecret;
@@ -95,6 +111,8 @@ export class RealtimeGateway
    */
   async handleConnection(client: AuthedSocket): Promise<void> {
     client.join(room.user(client.data.userId));
+    // 룸 조인보다 먼저 센다 — 조인이 실패해도 연결은 살아 있다(17단계 D15).
+    this.presence.connected(client.data.userId, client.id);
     try {
       const joined = await this.syncRooms(client);
       this.logger.log(
@@ -108,6 +126,61 @@ export class RealtimeGateway
 
   handleDisconnect(client: AuthedSocket): void {
     this.logger.log(`소켓 ${client.id} 연결 해제 (user=${client.data?.userId})`);
+    // 미들웨어에서 거부된 소켓은 userId 가 없다 — 센 적도 없다.
+    if (client.data?.userId) this.presence.disconnected(client.data.userId, client.id);
+    for (const key of this.lastTyping.keys()) {
+      if (key.startsWith(`${client.id}:`)) this.lastTyping.delete(key);
+    }
+  }
+
+  /** 이 소켓의 상태 — 앱이 앞에 없거나 10분 동안 입력이 없으면 away(17단계 D16). */
+  @SubscribeMessage('presence:set')
+  async handlePresence(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: unknown,
+  ) {
+    const dto = await parse(SocketPresenceDto, body);
+    if (!dto) return { ok: false, error: 'invalid_payload' };
+    this.presence.set(client.data.userId, client.id, dto.status);
+    return { ok: true };
+  }
+
+  /**
+   * 입력 중(17단계 D21 · D22). **보낼 수 있는 사람만** 받아 채널 룸의 **나머지 소켓**에 넘긴다 —
+   * 읽기 전용 채널에서 「입력 중」이 뜨면 거짓말이다. 저장하지 않는다.
+   *
+   * 판정은 `ChannelsService` 한 곳이다. 같은 소켓 · 같은 채널은 1초 안의 반복을 DB 를 보기
+   * 전에 버린다 — 고친 클라이언트가 DB 를 두드리지 못하게.
+   */
+  @SubscribeMessage('typing')
+  async handleTyping(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: unknown,
+  ) {
+    const dto = await parse(SocketTypingDto, body);
+    if (!dto) return { ok: false, error: 'invalid_payload' };
+
+    const key = `${client.id}:${dto.channelId}`;
+    const now = Date.now();
+    const last = this.lastTyping.get(key);
+    if (last !== undefined && now - last < TYPING_MIN_INTERVAL_MS) {
+      return { ok: false, error: 'too_fast' };
+    }
+    this.lastTyping.set(key, now);
+
+    const member = await this.rooms.findMember(client.data.userId, dto.spaceId);
+    // 볼 수 없는 채널과 보낼 수 없는 채널을 가르지 않는다 — 존재를 흘리게 된다.
+    if (!member || !(await this.channels.canSend(dto.channelId, member))) {
+      return { ok: false, error: 'not_allowed' };
+    }
+
+    client.to(room.channel(dto.channelId)).emit('typing', {
+      spaceId: dto.spaceId,
+      channelId: dto.channelId,
+      parentId: dto.parentId ?? null,
+      userId: client.data.userId,
+    });
+    return { ok: true };
   }
 
   /**

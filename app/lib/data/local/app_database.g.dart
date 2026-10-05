@@ -1237,6 +1237,36 @@ class $CachedChannelsTable extends CachedChannels
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('text'),
+  );
+  static const VerificationMeta _dmUserIdMeta = const VerificationMeta(
+    'dmUserId',
+  );
+  @override
+  late final GeneratedColumn<String> dmUserId = GeneratedColumn<String>(
+    'dm_user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> lastMessageAt =
+      GeneratedColumn<int>(
+        'last_message_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($CachedChannelsTable.$converterlastMessageAtn);
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1251,6 +1281,9 @@ class $CachedChannelsTable extends CachedChannels
     mentionCount,
     muted,
     canSend,
+    kind,
+    dmUserId,
+    lastMessageAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1347,6 +1380,18 @@ class $CachedChannelsTable extends CachedChannels
         canSend.isAcceptableOrUnknown(data['can_send']!, _canSendMeta),
       );
     }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    }
+    if (data.containsKey('dm_user_id')) {
+      context.handle(
+        _dmUserIdMeta,
+        dmUserId.isAcceptableOrUnknown(data['dm_user_id']!, _dmUserIdMeta),
+      );
+    }
     return context;
   }
 
@@ -1404,6 +1449,20 @@ class $CachedChannelsTable extends CachedChannels
         DriftSqlType.bool,
         data['${effectivePrefix}can_send'],
       )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      dmUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dm_user_id'],
+      ),
+      lastMessageAt: $CachedChannelsTable.$converterlastMessageAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}last_message_at'],
+        ),
+      ),
     );
   }
 
@@ -1411,6 +1470,11 @@ class $CachedChannelsTable extends CachedChannels
   $CachedChannelsTable createAlias(String alias) {
     return $CachedChannelsTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<DateTime, int> $converterlastMessageAt =
+      const _UtcMicros();
+  static TypeConverter<DateTime?, int?> $converterlastMessageAtn =
+      NullAwareTypeConverter.wrap($converterlastMessageAt);
 }
 
 class CachedChannel extends DataClass implements Insertable<CachedChannel> {
@@ -1432,6 +1496,15 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
 
   /// 보낼 수 있는가(16단계). 오프라인에서도 읽기 전용 입력창이 맞게 보여야 해 캐시한다.
   final bool canSend;
+
+  /// `text` · `dm`(17단계). DM 은 사이드바에서 따로 묶는다.
+  final String kind;
+
+  /// DM 의 상대(17단계). 이름은 멤버 목록에서 찾는다 — 보는 사람마다 다르다.
+  final String? dmUserId;
+
+  /// 마지막 최상위 메시지 시각(17단계). DM 을 최근순으로 줄 세운다.
+  final DateTime? lastMessageAt;
   const CachedChannel({
     required this.id,
     required this.spaceId,
@@ -1445,6 +1518,9 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     required this.mentionCount,
     required this.muted,
     required this.canSend,
+    required this.kind,
+    this.dmUserId,
+    this.lastMessageAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1465,6 +1541,15 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     map['mention_count'] = Variable<int>(mentionCount);
     map['muted'] = Variable<bool>(muted);
     map['can_send'] = Variable<bool>(canSend);
+    map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || dmUserId != null) {
+      map['dm_user_id'] = Variable<String>(dmUserId);
+    }
+    if (!nullToAbsent || lastMessageAt != null) {
+      map['last_message_at'] = Variable<int>(
+        $CachedChannelsTable.$converterlastMessageAtn.toSql(lastMessageAt),
+      );
+    }
     return map;
   }
 
@@ -1486,6 +1571,13 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       mentionCount: Value(mentionCount),
       muted: Value(muted),
       canSend: Value(canSend),
+      kind: Value(kind),
+      dmUserId: dmUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dmUserId),
+      lastMessageAt: lastMessageAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastMessageAt),
     );
   }
 
@@ -1507,6 +1599,9 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       mentionCount: serializer.fromJson<int>(json['mentionCount']),
       muted: serializer.fromJson<bool>(json['muted']),
       canSend: serializer.fromJson<bool>(json['canSend']),
+      kind: serializer.fromJson<String>(json['kind']),
+      dmUserId: serializer.fromJson<String?>(json['dmUserId']),
+      lastMessageAt: serializer.fromJson<DateTime?>(json['lastMessageAt']),
     );
   }
   @override
@@ -1525,6 +1620,9 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
       'mentionCount': serializer.toJson<int>(mentionCount),
       'muted': serializer.toJson<bool>(muted),
       'canSend': serializer.toJson<bool>(canSend),
+      'kind': serializer.toJson<String>(kind),
+      'dmUserId': serializer.toJson<String?>(dmUserId),
+      'lastMessageAt': serializer.toJson<DateTime?>(lastMessageAt),
     };
   }
 
@@ -1541,6 +1639,9 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     int? mentionCount,
     bool? muted,
     bool? canSend,
+    String? kind,
+    Value<String?> dmUserId = const Value.absent(),
+    Value<DateTime?> lastMessageAt = const Value.absent(),
   }) => CachedChannel(
     id: id ?? this.id,
     spaceId: spaceId ?? this.spaceId,
@@ -1554,6 +1655,11 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     mentionCount: mentionCount ?? this.mentionCount,
     muted: muted ?? this.muted,
     canSend: canSend ?? this.canSend,
+    kind: kind ?? this.kind,
+    dmUserId: dmUserId.present ? dmUserId.value : this.dmUserId,
+    lastMessageAt: lastMessageAt.present
+        ? lastMessageAt.value
+        : this.lastMessageAt,
   );
   CachedChannel copyWithCompanion(CachedChannelsCompanion data) {
     return CachedChannel(
@@ -1575,6 +1681,11 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
           : this.mentionCount,
       muted: data.muted.present ? data.muted.value : this.muted,
       canSend: data.canSend.present ? data.canSend.value : this.canSend,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      dmUserId: data.dmUserId.present ? data.dmUserId.value : this.dmUserId,
+      lastMessageAt: data.lastMessageAt.present
+          ? data.lastMessageAt.value
+          : this.lastMessageAt,
     );
   }
 
@@ -1592,7 +1703,10 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
           ..write('unreadCount: $unreadCount, ')
           ..write('mentionCount: $mentionCount, ')
           ..write('muted: $muted, ')
-          ..write('canSend: $canSend')
+          ..write('canSend: $canSend, ')
+          ..write('kind: $kind, ')
+          ..write('dmUserId: $dmUserId, ')
+          ..write('lastMessageAt: $lastMessageAt')
           ..write(')'))
         .toString();
   }
@@ -1611,6 +1725,9 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
     mentionCount,
     muted,
     canSend,
+    kind,
+    dmUserId,
+    lastMessageAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -1627,7 +1744,10 @@ class CachedChannel extends DataClass implements Insertable<CachedChannel> {
           other.unreadCount == this.unreadCount &&
           other.mentionCount == this.mentionCount &&
           other.muted == this.muted &&
-          other.canSend == this.canSend);
+          other.canSend == this.canSend &&
+          other.kind == this.kind &&
+          other.dmUserId == this.dmUserId &&
+          other.lastMessageAt == this.lastMessageAt);
 }
 
 class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
@@ -1643,6 +1763,9 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
   final Value<int> mentionCount;
   final Value<bool> muted;
   final Value<bool> canSend;
+  final Value<String> kind;
+  final Value<String?> dmUserId;
+  final Value<DateTime?> lastMessageAt;
   final Value<int> rowid;
   const CachedChannelsCompanion({
     this.id = const Value.absent(),
@@ -1657,6 +1780,9 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     this.mentionCount = const Value.absent(),
     this.muted = const Value.absent(),
     this.canSend = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.dmUserId = const Value.absent(),
+    this.lastMessageAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CachedChannelsCompanion.insert({
@@ -1672,6 +1798,9 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     this.mentionCount = const Value.absent(),
     this.muted = const Value.absent(),
     this.canSend = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.dmUserId = const Value.absent(),
+    this.lastMessageAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        spaceId = Value(spaceId),
@@ -1690,6 +1819,9 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     Expression<int>? mentionCount,
     Expression<bool>? muted,
     Expression<bool>? canSend,
+    Expression<String>? kind,
+    Expression<String>? dmUserId,
+    Expression<int>? lastMessageAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1705,6 +1837,9 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
       if (mentionCount != null) 'mention_count': mentionCount,
       if (muted != null) 'muted': muted,
       if (canSend != null) 'can_send': canSend,
+      if (kind != null) 'kind': kind,
+      if (dmUserId != null) 'dm_user_id': dmUserId,
+      if (lastMessageAt != null) 'last_message_at': lastMessageAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1722,6 +1857,9 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     Value<int>? mentionCount,
     Value<bool>? muted,
     Value<bool>? canSend,
+    Value<String>? kind,
+    Value<String?>? dmUserId,
+    Value<DateTime?>? lastMessageAt,
     Value<int>? rowid,
   }) {
     return CachedChannelsCompanion(
@@ -1737,6 +1875,9 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
       mentionCount: mentionCount ?? this.mentionCount,
       muted: muted ?? this.muted,
       canSend: canSend ?? this.canSend,
+      kind: kind ?? this.kind,
+      dmUserId: dmUserId ?? this.dmUserId,
+      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1780,6 +1921,19 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
     if (canSend.present) {
       map['can_send'] = Variable<bool>(canSend.value);
     }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (dmUserId.present) {
+      map['dm_user_id'] = Variable<String>(dmUserId.value);
+    }
+    if (lastMessageAt.present) {
+      map['last_message_at'] = Variable<int>(
+        $CachedChannelsTable.$converterlastMessageAtn.toSql(
+          lastMessageAt.value,
+        ),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1801,6 +1955,9 @@ class CachedChannelsCompanion extends UpdateCompanion<CachedChannel> {
           ..write('mentionCount: $mentionCount, ')
           ..write('muted: $muted, ')
           ..write('canSend: $canSend, ')
+          ..write('kind: $kind, ')
+          ..write('dmUserId: $dmUserId, ')
+          ..write('lastMessageAt: $lastMessageAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5759,6 +5916,9 @@ typedef $$CachedChannelsTableCreateCompanionBuilder =
       Value<int> mentionCount,
       Value<bool> muted,
       Value<bool> canSend,
+      Value<String> kind,
+      Value<String?> dmUserId,
+      Value<DateTime?> lastMessageAt,
       Value<int> rowid,
     });
 typedef $$CachedChannelsTableUpdateCompanionBuilder =
@@ -5775,6 +5935,9 @@ typedef $$CachedChannelsTableUpdateCompanionBuilder =
       Value<int> mentionCount,
       Value<bool> muted,
       Value<bool> canSend,
+      Value<String> kind,
+      Value<String?> dmUserId,
+      Value<DateTime?> lastMessageAt,
       Value<int> rowid,
     });
 
@@ -5846,6 +6009,22 @@ class $$CachedChannelsTableFilterComposer
     column: $table.canSend,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dmUserId => $composableBuilder(
+    column: $table.dmUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get lastMessageAt =>
+      $composableBuilder(
+        column: $table.lastMessageAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 }
 
 class $$CachedChannelsTableOrderingComposer
@@ -5916,6 +6095,21 @@ class $$CachedChannelsTableOrderingComposer
     column: $table.canSend,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dmUserId => $composableBuilder(
+    column: $table.dmUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastMessageAt => $composableBuilder(
+    column: $table.lastMessageAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CachedChannelsTableAnnotationComposer
@@ -5968,6 +6162,18 @@ class $$CachedChannelsTableAnnotationComposer
 
   GeneratedColumn<bool> get canSend =>
       $composableBuilder(column: $table.canSend, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get dmUserId =>
+      $composableBuilder(column: $table.dmUserId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get lastMessageAt =>
+      $composableBuilder(
+        column: $table.lastMessageAt,
+        builder: (column) => column,
+      );
 }
 
 class $$CachedChannelsTableTableManager
@@ -6015,6 +6221,9 @@ class $$CachedChannelsTableTableManager
                 Value<int> mentionCount = const Value.absent(),
                 Value<bool> muted = const Value.absent(),
                 Value<bool> canSend = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> dmUserId = const Value.absent(),
+                Value<DateTime?> lastMessageAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedChannelsCompanion(
                 id: id,
@@ -6029,6 +6238,9 @@ class $$CachedChannelsTableTableManager
                 mentionCount: mentionCount,
                 muted: muted,
                 canSend: canSend,
+                kind: kind,
+                dmUserId: dmUserId,
+                lastMessageAt: lastMessageAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6045,6 +6257,9 @@ class $$CachedChannelsTableTableManager
                 Value<int> mentionCount = const Value.absent(),
                 Value<bool> muted = const Value.absent(),
                 Value<bool> canSend = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> dmUserId = const Value.absent(),
+                Value<DateTime?> lastMessageAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedChannelsCompanion.insert(
                 id: id,
@@ -6059,6 +6274,9 @@ class $$CachedChannelsTableTableManager
                 mentionCount: mentionCount,
                 muted: muted,
                 canSend: canSend,
+                kind: kind,
+                dmUserId: dmUserId,
+                lastMessageAt: lastMessageAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

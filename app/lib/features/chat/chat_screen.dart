@@ -9,7 +9,10 @@ import '../../domain/models/repo_browse.dart';
 import '../../shared/markdown/markdown_body.dart';
 import '../../shared/widgets/user_avatar.dart';
 import '../../ui/ui.dart';
+import '../../domain/models/channel.dart';
 import '../channel/channel_controller.dart';
+import '../channel/dm.dart';
+import '../presence/presence_widgets.dart';
 import '../realtime/socket_controller.dart';
 import '../repo/browse_controller.dart';
 import '../space/space_controller.dart';
@@ -64,6 +67,18 @@ class ChatScreen extends ConsumerWidget {
                 ),
               ),
             )
+          else if (channel != null && channel.isDm)
+            _DmHeader(
+              channel: channel,
+              onAsk: () => _openAi(
+                context,
+                ref,
+                (channelId) => ChannelContext(
+                  channelId: channelId,
+                  channelName: dmPeerName(ref.read(memberProfilesProvider), channel),
+                ),
+              ),
+            )
           else if (channel != null)
             _ChannelHeader(
               name: channel.name,
@@ -90,9 +105,12 @@ class ChatScreen extends ConsumerWidget {
                   : MessageList(items: items),
             ),
           ),
+          if (channel != null) TypingLine(channelId: channel.id),
           // 보낼 수 없는 채널은 입력창 대신 이유를 말한다(16단계 D27).
           if (channel != null && !channel.canSend)
-            const ReadOnlyBar()
+            channel.isDm
+                ? const ReadOnlyBar(text: '상대가 스페이스를 떠나 보낼 수 없습니다')
+                : const ReadOnlyBar()
           else
             const MessageComposer(),
         ],
@@ -203,6 +221,67 @@ class _ChannelHeader extends StatelessWidget {
           NxIconButton(icon: NxIcons.ai, label: 'AI 에게 묻기', onPressed: onAsk),
           const _PinnedButton(),
           const _ChannelSettingsButton(),
+          const _FilesButton(),
+          const SizedBox(width: NxSpacing.sp3),
+          const _ConnectionDot(),
+        ],
+      ),
+    );
+  }
+}
+
+/// DM 의 머리 줄(17단계 D12) — `#이름` 대신 상대 아바타 · 이름. 채널 설정이 없다(D7).
+class _DmHeader extends ConsumerWidget {
+  const _DmHeader({required this.channel, required this.onAsk});
+
+  final Channel channel;
+  final VoidCallback onAsk;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    final peer = ref.watch(memberProfilesProvider)[channel.dmUserId];
+    final name = peer?.displayName ?? '나간 사람';
+    return Container(
+      height: SelectionAppBar.height,
+      padding: const EdgeInsets.only(left: NxSpacing.sp6, right: NxSpacing.sp4),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: c.divider)),
+      ),
+      child: Row(
+        children: [
+          // flex 0 — 뒤의 Spacer 와 자리를 반씩 나누면 넓은 화면에서도 이름이 잘린다(Android 에서 보였다).
+          Flexible(
+            flex: 0,
+            child: ShellPaneTrigger(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DmAvatar(
+                    userId: channel.dmUserId ?? channel.id,
+                    name: name,
+                    avatarUrl: peer?.avatarUrl,
+                    size: 24,
+                  ),
+                  const SizedBox(width: NxSpacing.sp4),
+                  Flexible(
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        name,
+                        overflow: TextOverflow.ellipsis,
+                        style: nx.text.title.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Spacer(),
+          NxIconButton(icon: NxIcons.ai, label: 'AI 에게 묻기', onPressed: onAsk),
+          const _PinnedButton(),
           const _FilesButton(),
           const SizedBox(width: NxSpacing.sp3),
           const _ConnectionDot(),

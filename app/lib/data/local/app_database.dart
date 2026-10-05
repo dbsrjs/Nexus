@@ -300,6 +300,15 @@ class CachedChannels extends Table {
   /// 보낼 수 있는가(16단계). 오프라인에서도 읽기 전용 입력창이 맞게 보여야 해 캐시한다.
   BoolColumn get canSend => boolean().withDefault(const Constant(true))();
 
+  /// `text` · `dm`(17단계). DM 은 사이드바에서 따로 묶는다.
+  TextColumn get kind => text().withDefault(const Constant('text'))();
+
+  /// DM 의 상대(17단계). 이름은 멤버 목록에서 찾는다 — 보는 사람마다 다르다.
+  TextColumn get dmUserId => text().nullable()();
+
+  /// 마지막 최상위 메시지 시각(17단계). DM 을 최근순으로 줄 세운다.
+  IntColumn get lastMessageAt => integer().map(const _UtcMicros()).nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -437,7 +446,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'nexus', web: _webOptions));
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   /// **캐시는 서버에서 다시 받을 수 있다.** 그래서 스키마가 바뀌면 데이터를
   /// 옮기지 않고 통째로 다시 만든다 — 마이그레이션을 한 단계씩 쓰는 값이

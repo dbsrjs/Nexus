@@ -28,4 +28,9 @@ describe('channelAccess', () => {
     expect(channelAccess({ isPrivate: true, isMember: true, perm: hide })).toEqual({ view: true, send: false });
     expect(channelAccess({ isPrivate: true, isMember: true, perm: readOnly })).toEqual({ view: true, send: false });
   });
+
+  it('★ 상대가 떠난 DM 은 보되 못 보낸다(17단계 D8)', () => {
+    expect(channelAccess({ isPrivate: true, isMember: true, perm: null, dmPeerPresent: false })).toEqual({ view: true, send: false });
+    expect(channelAccess({ isPrivate: true, isMember: true, perm: null, dmPeerPresent: true })).toEqual({ view: true, send: true });
+  });
 });

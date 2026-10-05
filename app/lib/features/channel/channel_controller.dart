@@ -85,7 +85,10 @@ class ChannelGroup {
 }
 
 final channelGroupsProvider = Provider<List<ChannelGroup>>((ref) {
-  final channels = ref.watch(channelsProvider).value ?? const <Channel>[];
+  // DM 은 「다이렉트 메시지」 묶음이 따로 그린다(17단계 D10).
+  final channels = (ref.watch(channelsProvider).value ?? const <Channel>[])
+      .where((c) => !c.isDm)
+      .toList(growable: false);
   final categories = ref.watch(categoriesProvider).value ?? const <Category>[];
 
   final groups = <ChannelGroup>[];

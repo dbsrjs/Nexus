@@ -34,7 +34,7 @@ export class PermissionsService {
 
   /** guest · member 두 줄을 늘 돌려준다. 행이 없는 역할은 기본값(보기 · 보내기). */
   async list(channelId: string, member: SpaceMember): Promise<RolePermission[]> {
-    await this.channels.assertCanView(channelId, member);
+    await this.channels.assertStructural(channelId, member);
     const rows = await this.prisma.channelPermission.findMany({ where: { channelId } });
     return OVERRIDABLE_ROLES.map((role) => {
       const row = rows.find((r) => r.role === role);
@@ -54,7 +54,7 @@ export class PermissionsService {
     dto: SetPermissionDto,
   ): Promise<RolePermission[]> {
     const target = this.requireRole(role);
-    const channel = await this.channels.assertCanView(channelId, member);
+    const channel = await this.channels.assertStructural(channelId, member);
     if (channel.isPrivate && !dto.canView) {
       // 비공개 채널은 명단이 정한다(D22). 둘이 겹치면 「명단에 있는데 안 보임」이 생긴다.
       throw new BadRequestException('비공개 채널은 역할로 가릴 수 없습니다 — 멤버에서 빼세요');
@@ -74,7 +74,7 @@ export class PermissionsService {
   /** 기본값으로 — 행을 지운다. 예외로만 쓰는 행이 남지 않는다(D24). */
   async reset(channelId: string, member: SpaceMember, role: string): Promise<void> {
     const target = this.requireRole(role);
-    await this.channels.assertCanView(channelId, member);
+    await this.channels.assertStructural(channelId, member);
     await this.prisma.channelPermission.deleteMany({ where: { channelId, role: target } });
     this.realtime.toSpace(member.spaceId, 'rooms:invalidate', { reason: 'channel.permissions' });
   }

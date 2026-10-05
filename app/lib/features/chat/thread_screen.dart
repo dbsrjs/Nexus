@@ -9,6 +9,7 @@ import '../space/space_controller.dart';
 import 'chat_screen.dart';
 import 'read_only_bar.dart';
 import 'thread_controller.dart';
+import '../presence/presence_widgets.dart';
 
 /// 스레드 하나. 부모 메시지 + 답글 목록 + 답글 입력창.
 ///
@@ -94,12 +95,15 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
                   : MessageList(items: items),
             ),
           ),
+          TypingLine(channelId: widget.channelId, parentId: widget.messageId),
           // 읽기 전용 채널의 스레드에도 답글을 달 수 없다(서버가 403) — 이유를 말한다.
           if (!ref.watch(channelCanSendProvider(widget.channelId)))
             const ReadOnlyBar()
           else
             MessageComposer(
               hint: '스레드에 답글 달기',
+              channelId: widget.channelId,
+              parentId: widget.messageId,
               onSend: (body, attachments) => ref
                   .read(threadActionsProvider)
                   .reply(body, attachments: attachments),

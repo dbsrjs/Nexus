@@ -131,13 +131,23 @@ class NxPage extends StatelessWidget {
         bottom: keyboard == 0,
         child: Padding(
           padding: EdgeInsets.only(bottom: keyboard),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ?header,
-              Expanded(child: body),
-              if (keyboard == 0) ?bottom,
-            ],
+          // 올린 만큼을 안쪽에서 지운다 — 셸의 NxPage 안에 화면의 NxPage 가 겹치면 둘 다
+          // 키보드만큼 올려 입력창이 키보드 위로 한 번 더 떴다(Android, 17단계에서 잡음).
+          // SafeArea 안쪽의 MediaQuery 에서 지워야 한다 — 바깥 것을 복사하면 SafeArea 가 지운
+          // 상태 표시줄 여백이 되살아나 머리 줄이 한 번 더 내려간다.
+          child: Builder(
+            builder: (inner) => MediaQuery.removeViewInsets(
+              context: inner,
+              removeBottom: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ?header,
+                  Expanded(child: body),
+                  if (keyboard == 0) ?bottom,
+                ],
+              ),
+            ),
           ),
         ),
       ),
