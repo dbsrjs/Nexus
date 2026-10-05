@@ -296,11 +296,9 @@ class _EntryRow extends StatelessWidget {
       builder: (context, s) => AnimatedContainer(
         duration: NxMotion.micro,
         height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: NxSpacing.inset),
         decoration: BoxDecoration(
-          color: s.hovered || s.pressed
-              ? c.bgElevated
-              : const Color(0x00000000),
+          color: s.hovered || s.pressed ? c.bgElevated : NxColors.transparent,
           borderRadius: BorderRadius.circular(NxRadius.md),
         ),
         child: Row(
@@ -315,7 +313,7 @@ class _EntryRow extends StatelessWidget {
               ),
             ),
             if (entry.isDir)
-              Text('/', style: nx.text.mono.copyWith(fontSize: 13)),
+              Text('/', style: nx.text.mono.copyWith(fontSize: NxFontSize.sm)),
           ],
         ),
       ),
@@ -362,7 +360,10 @@ class _Crumbs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
-    final slash = Text('/', style: nx.text.mono.copyWith(fontSize: 13));
+    final slash = Text(
+      '/',
+      style: nx.text.mono.copyWith(fontSize: NxFontSize.sm),
+    );
     Widget crumb(String label, VoidCallback onPressed) => NxButton(
       label: label,
       kind: NxButtonKind.ghost,

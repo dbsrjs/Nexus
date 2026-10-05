@@ -36,7 +36,7 @@ class NxRoot extends StatelessWidget {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
           .copyWith(
-            statusBarColor: const Color(0x00000000),
+            statusBarColor: NxColors.transparent,
             systemNavigationBarColor: NxThemeData.of(brightness).colors.bgBase,
             systemNavigationBarIconBrightness: dark
                 ? Brightness.light

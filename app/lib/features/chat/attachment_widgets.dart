@@ -24,7 +24,9 @@ String formatBytes(int bytes) {
     unit++;
   }
   // 1KB 미만 소수점은 의미가 없고, 큰 값에서는 한 자리면 충분하다.
-  final text = value >= 100 ? value.round().toString() : value.toStringAsFixed(1);
+  final text = value >= 100
+      ? value.round().toString()
+      : value.toStringAsFixed(1);
   return '$text ${units[unit]}';
 }
 
@@ -369,7 +371,7 @@ class _FullImage extends StatelessWidget {
             child: Focus(
               autofocus: true,
               child: NxPage(
-                background: const Color(0xFF000000),
+                background: NxBrand.plate, // 사진 보기는 테마와 무관하게 검정 바탕
                 header: NxHeader(
                   title: name,
                   actions: [
@@ -386,10 +388,8 @@ class _FullImage extends StatelessWidget {
                     child: Image.network(
                       url,
                       headers: headers,
-                      errorBuilder: (context, _, _) => Text(
-                        '이미지를 불러오지 못했습니다.',
-                        style: nx.text.secondary,
-                      ),
+                      errorBuilder: (context, _, _) =>
+                          Text('이미지를 불러오지 못했습니다.', style: nx.text.secondary),
                     ),
                   ),
                 ),

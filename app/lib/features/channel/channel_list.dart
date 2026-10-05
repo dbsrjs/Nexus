@@ -31,7 +31,10 @@ class ChannelList extends ConsumerWidget {
     return channels.when(
       // 자리를 지키는 뼈대(15단계 D10).
       loading: () => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: NxSpacing.sp6),
+        padding: EdgeInsets.symmetric(
+          horizontal: NxSpacing.inset,
+          vertical: NxSpacing.sp6,
+        ),
         child: NxSkeleton(lines: 5, lineHeight: 14),
       ),
       error: (error, _) => _ErrorBlock(
@@ -109,7 +112,12 @@ class ChannelList extends ConsumerWidget {
 
 /// 목록 묶음의 제목(「작업」 · 카테고리 이름). 11px · 굵게 · 넓은 자간.
 class PaneSectionTitle extends StatelessWidget {
-  const PaneSectionTitle(this.text, {super.key, this.first = false, this.trailing});
+  const PaneSectionTitle(
+    this.text, {
+    super.key,
+    this.first = false,
+    this.trailing,
+  });
 
   final String text;
 
@@ -127,8 +135,20 @@ class PaneSectionTitle extends StatelessWidget {
     );
     final extra = trailing;
     return Padding(
-      padding: EdgeInsets.fromLTRB(10, first ? 4 : NxSpacing.sp6, extra == null ? 10 : 2, 6),
-      child: extra == null ? title : Row(children: [Expanded(child: title), extra]),
+      padding: EdgeInsets.fromLTRB(
+        NxSpacing.inset,
+        first ? NxSpacing.sp2 : NxSpacing.sp6,
+        extra == null ? NxSpacing.inset : NxSpacing.sp1,
+        NxSpacing.sp3,
+      ),
+      child: extra == null
+          ? title
+          : Row(
+              children: [
+                Expanded(child: title),
+                extra,
+              ],
+            ),
     );
   }
 }
@@ -162,13 +182,13 @@ class _ChannelTile extends ConsumerWidget {
         : Text(
             '#',
             style: nx.text.mono.copyWith(
-              fontSize: 14,
+              fontSize: NxFontSize.base,
               color: selected ? c.accent : c.borderStrong,
             ),
           );
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: NxSpacing.sp1),
       child: NxPressable(
         selected: selected,
         semanticLabel: channel.name,
@@ -179,19 +199,19 @@ class _ChannelTile extends ConsumerWidget {
         builder: (context, s) => AnimatedContainer(
           duration: NxMotion.micro,
           height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: NxSpacing.inset),
           decoration: BoxDecoration(
             color: selected
                 ? c.accentSubtle
                 : (s.hovered || s.pressed
                       ? c.bgElevated
-                      : const Color(0x00000000)),
+                      : NxColors.transparent),
             borderRadius: BorderRadius.circular(NxRadius.md),
           ),
           child: Row(
             children: [
               SizedBox(width: 14, child: Center(child: mark)),
-              const SizedBox(width: 10),
+              const SizedBox(width: NxSpacing.inset),
               Expanded(
                 child: Text(
                   channel.name,
@@ -209,11 +229,11 @@ class _ChannelTile extends ConsumerWidget {
               // 멘션은 안 읽은 수와 **따로** 보여 준다. 나를 부른 것이라
               // 무게가 다르고, 숫자에 묻히면 놓친다.
               if (channel.mentionCount > 0) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: NxSpacing.sp3),
                 NxBadge(count: channel.mentionCount, mention: true),
               ],
               if (unread > 0) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: NxSpacing.sp3),
                 NxBadge(count: unread),
               ],
             ],
@@ -270,7 +290,7 @@ class _DmTile extends ConsumerWidget {
     final bold = selected || unread > 0;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: NxSpacing.sp1),
       child: NxPressable(
         selected: selected,
         semanticLabel: '$name 님과의 다이렉트 메시지',
@@ -281,11 +301,13 @@ class _DmTile extends ConsumerWidget {
         builder: (context, s) => AnimatedContainer(
           duration: NxMotion.micro,
           height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: NxSpacing.inset),
           decoration: BoxDecoration(
             color: selected
                 ? c.accentSubtle
-                : (s.hovered || s.pressed ? c.bgElevated : const Color(0x00000000)),
+                : (s.hovered || s.pressed
+                      ? c.bgElevated
+                      : NxColors.transparent),
             borderRadius: BorderRadius.circular(NxRadius.md),
           ),
           child: Row(
@@ -296,7 +318,7 @@ class _DmTile extends ConsumerWidget {
                 avatarUrl: peer?.avatarUrl,
                 size: 18,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: NxSpacing.sp4),
               Expanded(
                 child: Text(
                   name,
@@ -314,11 +336,11 @@ class _DmTile extends ConsumerWidget {
               // DM 은 글 하나하나가 나를 향한다 — 멘션과 안 읽음을 따로 셀 이유가 적지만,
               // 채널 줄과 같은 규칙을 둔다(음소거면 멘션만 남는다).
               if (channel.mentionCount > 0) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: NxSpacing.sp3),
                 NxBadge(count: channel.mentionCount, mention: true),
               ],
               if (unread > 0) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: NxSpacing.sp3),
                 NxBadge(count: unread),
               ],
             ],

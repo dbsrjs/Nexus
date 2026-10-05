@@ -61,7 +61,7 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
           child: Text(
             widget.issueKey,
             style: nx.text.mono.copyWith(
-              fontSize: 14,
+              fontSize: NxFontSize.base,
               color: nx.colors.textPrimary,
             ),
           ),
@@ -81,9 +81,8 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
           padding: EdgeInsets.all(NxSpacing.sp7),
           child: NxSkeleton(lines: 6),
         ),
-        error: (_, _) => Center(
-          child: Text('이슈를 불러오지 못했습니다.', style: nx.text.secondary),
-        ),
+        error: (_, _) =>
+            Center(child: Text('이슈를 불러오지 못했습니다.', style: nx.text.secondary)),
         data: (value) => value == null
             ? Center(child: Text('이슈를 찾을 수 없습니다.', style: nx.text.secondary))
             : _Body(issue: value),
@@ -190,10 +189,7 @@ class _Body extends ConsumerWidget {
                 padding: EdgeInsets.symmetric(vertical: NxSpacing.sp7),
                 child: NxDivider(),
               ),
-              Semantics(
-                header: true,
-                child: Text('댓글', style: nx.text.strong),
-              ),
+              Semantics(header: true, child: Text('댓글', style: nx.text.strong)),
               const SizedBox(height: NxSpacing.sp5),
               comments.when(
                 loading: () => const NxSkeleton(lines: 2),
@@ -369,7 +365,11 @@ class _CommentComposerState extends ConsumerState<_CommentComposer> {
       return;
     }
     // 댓글은 큐에 넣지 않으므로 오프라인에서는 달 수 없다. 그대로 말한다.
-    NxToast.show(context, '댓글을 달지 못했습니다. 연결을 확인해 주세요.', kind: NxToastKind.error);
+    NxToast.show(
+      context,
+      '댓글을 달지 못했습니다. 연결을 확인해 주세요.',
+      kind: NxToastKind.error,
+    );
   }
 
   @override

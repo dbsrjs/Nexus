@@ -76,7 +76,7 @@ class NxHeader extends StatelessWidget {
                           header: true,
                           child: Text(
                             title!,
-                            style: theme.text.title.copyWith(fontSize: 15),
+                            style: theme.text.header,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -190,16 +190,22 @@ class NxRow extends StatelessWidget {
     Widget content(NxPressState s) => AnimatedContainer(
       duration: NxMotion.micro,
       constraints: BoxConstraints(minHeight: dense ? 32 : 44),
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: dense ? 0 : 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: NxSpacing.inset,
+        vertical: dense ? 0 : NxSpacing.sp3,
+      ),
       decoration: BoxDecoration(
         color: selected
             ? c.accentSubtle
-            : (s.hovered || s.pressed ? c.bgElevated : const Color(0x00000000)),
+            : (s.hovered || s.pressed ? c.bgElevated : NxColors.transparent),
         borderRadius: BorderRadius.circular(NxRadius.md),
       ),
       child: Row(
         children: [
-          if (leading != null) ...[leading!, const SizedBox(width: 10)],
+          if (leading != null) ...[
+            leading!,
+            const SizedBox(width: NxSpacing.inset),
+          ],
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -224,7 +230,10 @@ class NxRow extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+          if (trailing != null) ...[
+            const SizedBox(width: NxSpacing.sp4),
+            trailing!,
+          ],
         ],
       ),
     );
@@ -303,7 +312,9 @@ class NxTabBar extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: c.accent,
                             borderRadius: const BorderRadius.vertical(
-                              bottom: Radius.circular(2),
+                              bottom: Radius.circular(
+                                NxSpacing.sp1,
+                              ), // 토큰 밖: 탭 표시줄 두께(2)의 반원
                             ),
                           ),
                         ),
@@ -319,7 +330,7 @@ class NxTabBar extends StatelessWidget {
                           ),
                         ),
                         if (tabs[i].count != null) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: NxSpacing.sp3),
                           Text('${tabs[i].count}', style: theme.text.mono),
                         ],
                       ],

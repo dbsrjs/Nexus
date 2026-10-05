@@ -128,7 +128,12 @@ class _ChannelSwitches extends ConsumerWidget {
                   width: 20,
                   child: channel.isPrivate
                       ? NxIcon(NxIcons.lock, size: 13, color: c.textSecondary)
-                      : Text('#', style: nx.text.mono.copyWith(fontSize: 14)),
+                      : Text(
+                          '#',
+                          style: nx.text.mono.copyWith(
+                            fontSize: NxFontSize.base,
+                          ),
+                        ),
                 ),
                 Expanded(
                   child: Text(
@@ -154,9 +159,10 @@ class _ChannelSwitches extends ConsumerWidget {
 
 /// 알림 스위치(18단계 N9 · N23). 사용자 단위라 스페이스를 고르지 않는다. 캐시하지 않는다 —
 /// 설정 창을 열 때 받는다.
-final notificationSettingsProvider = FutureProvider.autoDispose<NotificationSettings>(
-  (ref) => ref.watch(notificationsApiProvider).settings(),
-);
+final notificationSettingsProvider =
+    FutureProvider.autoDispose<NotificationSettings>(
+      (ref) => ref.watch(notificationsApiProvider).settings(),
+    );
 
 class _TypeSwitches extends ConsumerStatefulWidget {
   const _TypeSwitches();
@@ -171,7 +177,12 @@ class _TypeSwitchesState extends ConsumerState<_TypeSwitches> {
   bool _saving = false;
   String? _error;
 
-  Future<void> _set({bool? mentions, bool? broadcast, bool? dms, bool? replies}) async {
+  Future<void> _set({
+    bool? mentions,
+    bool? broadcast,
+    bool? dms,
+    bool? replies,
+  }) async {
     final before = _local;
     if (before == null) return;
     setState(() {
@@ -185,7 +196,9 @@ class _TypeSwitchesState extends ConsumerState<_TypeSwitches> {
       );
     });
     try {
-      final saved = await ref.read(notificationsApiProvider).updateSettings(
+      final saved = await ref
+          .read(notificationsApiProvider)
+          .updateSettings(
             mentions: mentions,
             broadcast: broadcast,
             dms: dms,
@@ -222,33 +235,43 @@ class _TypeSwitchesState extends ConsumerState<_TypeSwitches> {
       return const NxSkeleton(lines: 4, lineHeight: 28);
     }
 
-    Widget row(String title, String hint, bool value, ValueChanged<bool> onChanged) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: NxSpacing.sp3),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: nx.text.base),
-                    Text(hint, style: nx.text.meta),
-                  ],
-                ),
-              ),
-              NxSwitch(
-                value: value,
-                label: '$title 알림',
-                onChanged: _saving ? null : onChanged,
-              ),
-            ],
+    Widget row(
+      String title,
+      String hint,
+      bool value,
+      ValueChanged<bool> onChanged,
+    ) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: NxSpacing.sp3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: nx.text.base),
+                Text(hint, style: nx.text.meta),
+              ],
+            ),
           ),
-        );
+          NxSwitch(
+            value: value,
+            label: '$title 알림',
+            onChanged: _saving ? null : onChanged,
+          ),
+        ],
+      ),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         row('멘션', '누군가 나를 @이름 으로 불렀을 때', s.mentions, (v) => _set(mentions: v)),
-        row('@channel · @everyone', '채널 전체를 불렀을 때', s.broadcast, (v) => _set(broadcast: v)),
+        row(
+          '@channel · @everyone',
+          '채널 전체를 불렀을 때',
+          s.broadcast,
+          (v) => _set(broadcast: v),
+        ),
         row('다이렉트 메시지', 'DM 에 새 메시지가 왔을 때', s.dms, (v) => _set(dms: v)),
         row('스레드 답글', '내 글에 답글이 달렸을 때', s.replies, (v) => _set(replies: v)),
         if (_error != null) SettingsError(_error!),

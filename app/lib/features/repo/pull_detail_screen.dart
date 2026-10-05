@@ -22,13 +22,14 @@ typedef PullView = ({
 ///
 /// **`autoDispose` 다**(목록과 같은 이유). 빼 두었더니 상세가 앱을 끌 때까지
 /// 굳어, 머지된 PR 을 다시 열어도 옛 상태가 보였다.
-final pullDetailProvider = FutureProvider.autoDispose
-    .family<PullView, PullKey>((ref, key) async {
-      final api = ref.read(pullsApiProvider);
-      final pull = await api.detail(key.spaceId, key.repoId, key.number);
-      final files = await api.files(key.spaceId, key.repoId, key.number);
-      return (pull: pull, files: files.files, truncated: files.truncated);
-    });
+final pullDetailProvider = FutureProvider.autoDispose.family<PullView, PullKey>(
+  (ref, key) async {
+    final api = ref.read(pullsApiProvider);
+    final pull = await api.detail(key.spaceId, key.repoId, key.number);
+    final files = await api.files(key.spaceId, key.repoId, key.number);
+    return (pull: pull, files: files.files, truncated: files.truncated);
+  },
+);
 
 /// 리뷰 상태 표지. `review` 가 `null` 이면 이 위젯 자체가 쓰이지 않는다 — 리뷰
 /// 칸을 만들지 않는 판단은 부르는 쪽(`_PullDetailBody`)이 한다.
@@ -89,9 +90,7 @@ class PullFileList extends StatelessWidget {
             title: f.status == 'renamed' && f.previousPath != null
                 ? '${f.previousPath} → ${f.path}'
                 : f.path,
-            titleStyle: nx.text.code.copyWith(
-              fontSize: 12,
-              height: 1.3,
+            titleStyle: nx.text.codeLine.copyWith(
               color: f.status == 'removed' ? c.borderStrong : c.textPrimary,
             ),
             trailing: Text(
@@ -135,7 +134,7 @@ class PullDetailScreen extends ConsumerWidget {
           child: Text(
             '#$number',
             style: nx.text.mono.copyWith(
-              fontSize: 14,
+              fontSize: NxFontSize.base,
               color: nx.colors.textPrimary,
             ),
           ),

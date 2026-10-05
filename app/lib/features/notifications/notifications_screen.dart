@@ -54,7 +54,8 @@ class NotificationsScreen extends ConsumerWidget {
             NxButton(
               label: '다시 시도',
               kind: NxButtonKind.secondary,
-              onPressed: () => ref.read(notificationsProvider.notifier).refresh(),
+              onPressed: () =>
+                  ref.read(notificationsProvider.notifier).refresh(),
             ),
           ],
         ),
@@ -126,7 +127,11 @@ class NotificationsScreen extends ConsumerWidget {
 
 /// 알림 한 줄(N22) — 작성자 아바타 · 머리 문구 · 본문 두 줄 · 시각. 안 읽은 줄은 앞에 점.
 class NotificationTile extends ConsumerWidget {
-  const NotificationTile({super.key, required this.item, required this.onPressed});
+  const NotificationTile({
+    super.key,
+    required this.item,
+    required this.onPressed,
+  });
 
   final NotificationItem item;
   final VoidCallback onPressed;
@@ -141,12 +146,13 @@ class NotificationTile extends ConsumerWidget {
     final preview = item.deleted
         ? '삭제된 메시지입니다'
         : item.body.isEmpty
-            ? '파일을 보냈습니다'
-            : toPlainText(item.body, names: names);
+        ? '파일을 보냈습니다'
+        : toPlainText(item.body, names: names);
 
     return NxPressable(
       onPressed: onPressed,
-      semanticLabel: '${item.read ? '' : '안 읽음, '}${notificationHeadline(item)}',
+      semanticLabel:
+          '${item.read ? '' : '안 읽음, '}${notificationHeadline(item)}',
       builder: (context, s) => AnimatedContainer(
         duration: NxMotion.micro,
         padding: const EdgeInsets.symmetric(
@@ -154,7 +160,7 @@ class NotificationTile extends ConsumerWidget {
           vertical: NxSpacing.sp4,
         ),
         decoration: BoxDecoration(
-          color: s.hovered || s.pressed ? c.bgElevated : const Color(0x00000000),
+          color: s.hovered || s.pressed ? c.bgElevated : NxColors.transparent,
           borderRadius: BorderRadius.circular(NxRadius.md),
         ),
         child: Row(
@@ -206,16 +212,21 @@ class NotificationTile extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: NxSpacing.sp3),
-                      Text(notificationTime(item.createdAt), style: nx.text.mono),
+                      Text(
+                        notificationTime(item.createdAt),
+                        style: nx.text.mono,
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: NxSpacing.sp1),
                   Text(
                     preview,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: item.deleted
-                        ? nx.text.secondary.copyWith(fontStyle: FontStyle.italic)
+                        ? nx.text.secondary.copyWith(
+                            fontStyle: FontStyle.italic,
+                          )
                         : nx.text.secondary,
                   ),
                 ],
@@ -233,7 +244,9 @@ String notificationTime(DateTime at, {DateTime? now}) {
   final local = at.toLocal();
   final today = (now ?? DateTime.now()).toLocal();
   String two(int v) => v.toString().padLeft(2, '0');
-  if (local.year == today.year && local.month == today.month && local.day == today.day) {
+  if (local.year == today.year &&
+      local.month == today.month &&
+      local.day == today.day) {
     return '${two(local.hour)}:${two(local.minute)}';
   }
   final md = '${local.month}/${local.day}';

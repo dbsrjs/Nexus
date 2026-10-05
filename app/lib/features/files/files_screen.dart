@@ -16,8 +16,9 @@ import '../space/space_controller.dart';
 /// 내려받지도 못한다), 자주 여는 화면도 아니다. 멤버 목록과 같은 판단이다.
 ///
 /// 서버가 **볼 수 있는 채널의 것만** 준다 — 비공개 채널의 파일은 여기 없다.
-final spaceFilesProvider =
-    FutureProvider.autoDispose<List<AttachmentItem>>((ref) async {
+final spaceFilesProvider = FutureProvider.autoDispose<List<AttachmentItem>>((
+  ref,
+) async {
   final spaceId = ref.watch(currentSpaceIdProvider);
   if (spaceId == null) return const [];
   return ref.watch(attachmentsApiProvider).listForSpace(spaceId: spaceId);
@@ -55,9 +56,7 @@ class FilesScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(spaceFilesProvider),
         ),
         data: (items) => items.isEmpty
-            ? Center(
-                child: Text('아직 올라온 파일이 없습니다.', style: nx.text.secondary),
-              )
+            ? Center(child: Text('아직 올라온 파일이 없습니다.', style: nx.text.secondary))
             : ListView.separated(
                 padding: const EdgeInsets.symmetric(
                   horizontal: NxSpacing.sp7,
@@ -119,11 +118,8 @@ class _FileTile extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                   style: nx.text.base,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  formatBytes(attachment.sizeBytes),
-                  style: nx.text.mono,
-                ),
+                const SizedBox(height: NxSpacing.sp1),
+                Text(formatBytes(attachment.sizeBytes), style: nx.text.mono),
               ],
             ),
           ),

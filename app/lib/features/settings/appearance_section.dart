@@ -96,7 +96,7 @@ class _ThemeCard extends StatelessWidget {
       excludeChildSemantics: true,
       builder: (context, s) => AnimatedContainer(
         duration: NxMotion.micro,
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(NxSpacing.inset),
         decoration: BoxDecoration(
           color: selected
               ? c.accentSubtle
@@ -108,7 +108,7 @@ class _ThemeCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(NxRadius.inner),
               child: SizedBox(height: 52, child: preview),
             ),
             const SizedBox(height: NxSpacing.sp4),
@@ -137,13 +137,14 @@ class _Swatch extends StatelessWidget {
     child: Align(
       alignment: Alignment.bottomLeft,
       child: Padding(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(NxSpacing.sp3),
         child: FractionallySizedBox(
           widthFactor: .4,
           child: Container(
             height: 6,
             decoration: BoxDecoration(
               color: tokens.accent,
+              // 토큰 밖: 축소 미리보기 — 실제 버튼 반경(sm)을 미리보기 비율로 줄인 값.
               borderRadius: BorderRadius.circular(3),
             ),
           ),

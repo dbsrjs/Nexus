@@ -250,7 +250,8 @@ class _AiPanelState extends ConsumerState<AiPanel> {
             _Waiting(
               compact: true,
               onRetry: () => ref.read(aiControllerProvider.notifier).retry(),
-              onAbandon: () => ref.read(aiControllerProvider.notifier).abandon(),
+              onAbandon: () =>
+                  ref.read(aiControllerProvider.notifier).abandon(),
             )
           else ...[
             if (state case AiFailed(:final failure)) ...[
@@ -536,7 +537,10 @@ class _TurnView extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: NxSpacing.sp5,
+                vertical: NxSpacing.sp4,
+              ),
               decoration: BoxDecoration(
                 color: c.bgSurface,
                 borderRadius: BorderRadius.circular(NxRadius.md),
@@ -558,7 +562,11 @@ class _TurnView extends StatelessWidget {
           Text('참고한 코드', style: nx.text.label),
           const SizedBox(height: NxSpacing.sp2),
           for (final citation in run.citations)
-            _CitationTile(citation: citation, spaceId: spaceId, repoId: repoId!),
+            _CitationTile(
+              citation: citation,
+              spaceId: spaceId,
+              repoId: repoId!,
+            ),
         ],
         if (run.fallback) ...[
           const SizedBox(height: NxSpacing.sp5),
@@ -567,7 +575,7 @@ class _TurnView extends StatelessWidget {
           Row(
             children: [
               NxIcon(NxIcons.info, size: 14, color: c.textSecondary),
-              const SizedBox(width: 6),
+              const SizedBox(width: NxSpacing.sp3),
               Expanded(
                 child: Text('사용량이 많아 가벼운 모델이 답했습니다', style: nx.text.secondary),
               ),
@@ -677,7 +685,7 @@ class _CitationTile extends StatelessWidget {
       dense: true,
       leading: Text('[${citation.n}]', style: nx.text.mono),
       title: citation.location,
-      titleStyle: nx.text.code.copyWith(fontSize: 12, height: 1.3),
+      titleStyle: nx.text.codeLine,
       onPressed: () => context.push(
         '/s/$spaceId/repos/$repoId/browse'
         '?ref=${Uri.encodeQueryComponent(citation.commitSha)}'

@@ -62,9 +62,7 @@ class ChangedFileRow extends StatelessWidget {
     return NxRow(
       title: path,
       dense: true,
-      titleStyle: nx.text.code.copyWith(
-        fontSize: 12,
-        height: 1.3,
+      titleStyle: nx.text.codeLine.copyWith(
         color: enabled ? c.textPrimary : c.borderStrong,
       ),
       trailing: Row(
@@ -143,7 +141,7 @@ class _CommitDetailScreenState extends ConsumerState<CommitDetailScreen> {
           child: Text(
             commit?.shortSha ?? '커밋',
             style: nx.text.mono.copyWith(
-              fontSize: 14,
+              fontSize: NxFontSize.base,
               color: nx.colors.textPrimary,
             ),
           ),

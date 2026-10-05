@@ -39,7 +39,9 @@ class _InvitesSectionState extends ConsumerState<InvitesSection> {
       _error = null;
     });
     try {
-      final invite = await ref.read(invitesApiProvider).create(
+      final invite = await ref
+          .read(invitesApiProvider)
+          .create(
             widget.spaceId,
             role: _role,
             expiresInHours: _hours,
@@ -147,7 +149,10 @@ class _CodeBox extends StatelessWidget {
               Expanded(
                 child: Text(
                   code,
-                  style: nx.text.mono.copyWith(fontSize: 20, color: c.textPrimary),
+                  style: nx.text.mono.copyWith(
+                    fontSize: NxFontSize.lg,
+                    color: c.textPrimary,
+                  ),
                 ),
               ),
               NxButton(
@@ -163,10 +168,7 @@ class _CodeBox extends StatelessWidget {
             ],
           ),
           const SizedBox(height: NxSpacing.sp4),
-          Text(
-            '받는 사람은 스페이스 화면의 「초대 코드로 참여」에 붙여넣으면 됩니다.',
-            style: nx.text.meta,
-          ),
+          Text('받는 사람은 스페이스 화면의 「초대 코드로 참여」에 붙여넣으면 됩니다.', style: nx.text.meta),
         ],
       ),
     );
@@ -201,7 +203,7 @@ class _InviteRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: NxSpacing.sp1),
       child: NxRow(
         title: invite.code,
         titleStyle: NxTheme.of(context).text.mono,

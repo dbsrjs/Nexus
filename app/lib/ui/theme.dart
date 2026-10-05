@@ -47,6 +47,18 @@ class NxColors {
   /// 라이트에서 어두운 글자를 얹었다가 갤러리에서 놓치고 설정 화면 캡처에서 찾았다.
   Color get onAccent => bgBase;
 
+  /// 투명. **화면에 `Color(0x00000000)` 을 쓰지 않고 이것을 쓴다** — 호버 전 배경 ·
+  /// 선택 안 된 테두리처럼 «없음» 을 뜻하는 자리. 숫자로 박으면 토큰 검사가 잡는다.
+  static const transparent = Color(0x00000000);
+
+  // ── 장식(로그인 같은 빈 화면의 배경) ──
+
+  /// 점 격자의 점. 본문 글자색을 10% 로 — 바탕과 거의 같은 명도라 «무늬» 로만 읽힌다.
+  Color get decorDot => textPrimary.withValues(alpha: .10);
+
+  /// 조각을 잇는 점선. 액센트를 38% 로 — 선이 폼보다 먼저 눈에 들어오면 안 된다.
+  Color get decorWire => accent.withValues(alpha: .38);
+
   /// 밝기와 무관하게 밝은 고정색(위험 · 아바타 8색) 위의 글자.
   Color get onBright => const Color(0xFF121314);
 
@@ -92,6 +104,25 @@ class NxColors {
   );
 }
 
+/// 브랜드 마크의 색. **테마를 따르지 않는다** — 마크는 OS 런처 · 브라우저 탭에서와 같은
+/// 물건이어야 해서 앱이 다크든 라이트든 같은 색이다. 원본은
+/// `design-system/logo/build_logo.py` 이고, 값이 갈라지면 아이콘과 앱 안 마크가 달라진다.
+class NxBrand {
+  const NxBrand._();
+
+  /// 타일 바탕 — Space Black.
+  static const plate = Color(0xFF000000);
+
+  /// 'N' 두 획.
+  static const mark = Color(0xFFFFFFFF);
+
+  /// 연결점(노드). 다크 테마의 `accent` 와 같은 값이다.
+  static const node = Color(0xFF77AECF);
+
+  /// 타일 모서리 반경 ÷ 타일 한 변. `build_logo.py` 의 `TILE_RADIUS_RATIO`.
+  static const plateRadiusRatio = 0.225;
+}
+
 class NxSpacing {
   const NxSpacing._();
 
@@ -105,12 +136,22 @@ class NxSpacing {
   static const double sp8 = 24;
   static const double sp9 = 32;
   static const double sp10 = 48;
+
+  /// **목록 줄 · 메뉴 항목의 좌우 안쪽**과 줄 머리 아이콘 ↔ 글자 사이. 4px 격자 밖의
+  /// 유일한 간격이다 — 8 이면 줄 머리 아이콘이 가장자리에 붙어 보이고 12 면 목록이
+  /// 들떠 보였다. 15단계 이전부터 40곳 가까이 숫자로 박혀 있던 값을 이름으로 올렸다.
+  static const double inset = 10;
 }
 
 class NxRadius {
   const NxRadius._();
 
   static const double sm = 4;
+
+  /// **패널 안의 항목** — 메뉴 항목 · 토스트 버튼 · 선택 손잡이. 바깥 판(`md`)보다
+  /// 한 단 작게 두어 안쪽 모서리가 바깥 모서리와 평행해 보이게 한다.
+  static const double inner = 6;
+
   static const double md = 8;
 
   /// 동작 카드 · 모바일 메뉴처럼 화면 위에 뜨는 것. 캔버스 결정(15단계).
@@ -124,6 +165,23 @@ class NxMotion {
   static const micro = Duration(milliseconds: 120);
   static const panel = Duration(milliseconds: 180);
   static const ease = Cubic(0, 0, 0.2, 1);
+}
+
+/// 글자 크기. **화면에서 `fontSize:` 에 숫자를 쓰지 않고 이것을 쓴다.**
+/// `tokens.css` 의 `--text-*` 와 1:1 이다.
+class NxFontSize {
+  const NxFontSize._();
+
+  static const double xs2 = 11;
+  static const double xs = 12;
+  static const double sm = 13;
+  static const double base = 14;
+
+  /// 읽는 본문 · 머리 줄 제목.
+  static const double body = 15;
+  static const double md = 16;
+  static const double lg = 20;
+  static const double xl = 24;
 }
 
 const _font = 'Pretendard';
@@ -149,27 +207,32 @@ class NxText {
   );
 
   // ── 크기(토큰) ──
-  TextStyle get xs2 => _ui(11);
-  TextStyle get xs => _ui(12);
-  TextStyle get sm => _ui(13);
-  TextStyle get base => _ui(14);
-  TextStyle get md => _ui(16);
-  TextStyle get lg => _ui(20);
-  TextStyle get xl => _ui(24);
+  TextStyle get xs2 => _ui(NxFontSize.xs2);
+  TextStyle get xs => _ui(NxFontSize.xs);
+  TextStyle get sm => _ui(NxFontSize.sm);
+  TextStyle get base => _ui(NxFontSize.base);
+  TextStyle get md => _ui(NxFontSize.md);
+  TextStyle get lg => _ui(NxFontSize.lg);
+  TextStyle get xl => _ui(NxFontSize.xl);
 
   /// **읽는 본문** — 메시지 · 이슈 본문 · 댓글. 15px · 행간 1.6.
-  TextStyle get body => _ui(15).copyWith(height: 1.6);
+  TextStyle get body => _ui(NxFontSize.body).copyWith(height: 1.6);
 
   // ── 쓰임새 ──
-  TextStyle get heading => _ui(20, weight: FontWeight.w700);
-  TextStyle get title => _ui(16, weight: FontWeight.w600);
-  TextStyle get strong => _ui(14, weight: FontWeight.w600);
-  TextStyle get secondary => _ui(13, color: _c.textSecondary);
-  TextStyle get meta => _ui(12, color: _c.textSecondary);
+  TextStyle get heading => _ui(NxFontSize.lg, weight: FontWeight.w700);
+  TextStyle get title => _ui(NxFontSize.md, weight: FontWeight.w600);
+
+  /// **머리 줄 제목** — 채널 이름 · 스페이스 이름 · 화면 머리 줄. 15px · 700.
+  /// 화면마다 `title.copyWith(fontSize: 15, …)` 를 따로 쓰다가 굵기가 600 과 700 으로
+  /// 갈라져 있었다.
+  TextStyle get header => _ui(NxFontSize.body, weight: FontWeight.w700);
+  TextStyle get strong => _ui(NxFontSize.base, weight: FontWeight.w600);
+  TextStyle get secondary => _ui(NxFontSize.sm, color: _c.textSecondary);
+  TextStyle get meta => _ui(NxFontSize.xs, color: _c.textSecondary);
 
   /// 섹션 머리(「작업」 · 「일반」). 대문자가 없는 한글이라 자간만 조금 연다.
   TextStyle get label => _ui(
-    11,
+    NxFontSize.xs2,
     weight: FontWeight.w600,
     color: _c.borderStrong,
   ).copyWith(letterSpacing: 0.6);
@@ -178,14 +241,25 @@ class NxText {
   TextStyle get mono => TextStyle(
     fontFamily: _mono,
     fontFamilyFallback: _monoFallback,
-    fontSize: 11,
+    fontSize: NxFontSize.xs2,
     height: 1.3,
     color: _c.textSecondary,
     decoration: TextDecoration.none,
   );
 
-  TextStyle get code =>
-      mono.copyWith(fontSize: 13, height: 1.6, color: _c.textPrimary);
+  TextStyle get code => mono.copyWith(
+    fontSize: NxFontSize.sm,
+    height: 1.6,
+    color: _c.textPrimary,
+  );
+
+  /// 한 줄짜리 경로 · 파일 이름 목록(커밋 · PR 의 바뀐 파일, AI 근거). 코드와 같은
+  /// 서체지만 행간이 UI 행간(1.3)이라 줄이 촘촘하다.
+  TextStyle get codeLine => mono.copyWith(
+    fontSize: NxFontSize.xs,
+    height: 1.3,
+    color: _c.textPrimary,
+  );
 }
 
 @immutable

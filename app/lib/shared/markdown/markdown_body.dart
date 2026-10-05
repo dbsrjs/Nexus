@@ -48,7 +48,7 @@ class MarkdownBody extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < blocks.length; i++) ...[
-          if (i > 0) const SizedBox(height: 6),
+          if (i > 0) const SizedBox(height: NxSpacing.sp3),
           _block(context, blocks[i], base, names),
         ],
       ],
@@ -90,7 +90,7 @@ Widget _block(
 
     case BlockKind.quote:
       return Container(
-        padding: const EdgeInsets.only(left: 10),
+        padding: const EdgeInsets.only(left: NxSpacing.inset),
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: c.divider, width: 3)),
         ),
@@ -109,7 +109,7 @@ Widget _block(
         children: [
           for (var i = 0; i < block.lines.length; i++)
             Padding(
-              padding: const EdgeInsets.only(bottom: 2),
+              padding: const EdgeInsets.only(bottom: NxSpacing.sp1),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -319,7 +319,7 @@ class _CodeBlock extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(NxSpacing.inset),
       decoration: BoxDecoration(
         // 한 단 위 표면 + 1px 선(캔버스 「채널」의 코드 블록). 반투명 회색은 다크에서
         // 본문보다 밝게 떠 글자가 묻혔다.
@@ -333,7 +333,7 @@ class _CodeBlock extends StatelessWidget {
         children: [
           if (language != null) ...[
             Text(language, style: nx.text.meta),
-            const SizedBox(height: 6),
+            const SizedBox(height: NxSpacing.sp3),
           ],
           // 긴 줄은 접지 않고 가로로 민다 — 접으면 코드를 읽을 수 없다.
           SingleChildScrollView(
@@ -391,8 +391,8 @@ class _TableBlock extends StatelessWidget {
                       Container(
                         constraints: const BoxConstraints(minWidth: 64),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                          horizontal: NxSpacing.inset,
+                          vertical: NxSpacing.sp3,
                         ),
                         child: Text.rich(
                           TextSpan(

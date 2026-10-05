@@ -35,7 +35,9 @@ bool get _hardwareKeyboard =>
 /// 채널(또는 스레드)마다 쓰다 만 글. 채널을 옮겨도 입력창 State 는 그대로라, 이것이 없으면
 /// **쓰던 글이 다른 대화의 입력창에 남았다** — 엉뚱한 곳으로 보내기 쉽다(17단계 Android 확인에서 봤다).
 /// 앱이 사는 동안만 둔다(저장하지 않는다). 열쇠는 `channelId|parentId`.
-final composerDraftsProvider = Provider<ComposerDrafts>((ref) => ComposerDrafts());
+final composerDraftsProvider = Provider<ComposerDrafts>(
+  (ref) => ComposerDrafts(),
+);
 
 class ComposerDrafts {
   final Map<String, MentionDraft> byKey = {};
@@ -43,7 +45,13 @@ class ComposerDrafts {
 
 /// 입력창. 채널과 스레드가 함께 쓴다 — Enter 전송 · IME 처리가 한 벌이어야 한다.
 class MessageComposer extends ConsumerStatefulWidget {
-  const MessageComposer({super.key, this.onSend, this.hint, this.channelId, this.parentId});
+  const MessageComposer({
+    super.key,
+    this.onSend,
+    this.hint,
+    this.channelId,
+    this.parentId,
+  });
 
   /// 비우면 채널 전송. 스레드는 답글 전송을 넘긴다.
   final void Function(String body, List<MessageAttachment> attachments)? onSend;
@@ -152,7 +160,9 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
     final channelId = widget.channelId ?? ref.read(currentChannelIdProvider);
     if (spaceId == null || channelId == null) return;
     _typingSentAt = now;
-    ref.read(socketClientProvider).sendTyping(
+    ref
+        .read(socketClientProvider)
+        .sendTyping(
           spaceId: spaceId,
           channelId: channelId,
           parentId: widget.parentId,
@@ -285,7 +295,7 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
             ),
           // 캔버스 「채널」 — 한 판 안에 첨부 · 입력 · 보내기.
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(NxSpacing.sp3),
             decoration: BoxDecoration(
               color: c.bgElevated,
               borderRadius: BorderRadius.circular(NxRadius.md),
@@ -358,7 +368,12 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
           ),
           if (_hardwareKeyboard)
             Padding(
-              padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+              padding: const EdgeInsets.fromLTRB(
+                NxSpacing.sp2,
+                NxSpacing.sp3,
+                NxSpacing.sp2,
+                0,
+              ),
               child: ExcludeSemantics(
                 child: Text(
                   'Enter 보내기 · Shift+Enter 줄바꿈',

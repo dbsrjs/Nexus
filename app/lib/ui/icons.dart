@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'theme.dart';
 
 /// 자체 선 아이콘(15단계 설계 D5). **Material 아이콘 글꼴(`Icons.*`)을 쓰지 않는다.**
 ///
@@ -155,7 +156,7 @@ class NxIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = IconTheme.of(context);
     final resolvedSize = size ?? theme.size ?? 16;
-    final resolvedColor = color ?? theme.color ?? const Color(0xFF9DA0A4);
+    final resolvedColor = color ?? theme.color ?? NxColors.dark.textSecondary;
     final paint = CustomPaint(
       size: Size.square(resolvedSize),
       painter: _IconPainter(icon, resolvedColor),
