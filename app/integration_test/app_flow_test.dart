@@ -14,6 +14,7 @@ import 'package:nexus_app/data/auth_storage.dart';
 import 'package:nexus_app/data/local/app_database.dart';
 import 'package:nexus_app/data/settings_storage.dart';
 import 'package:nexus_app/features/auth/auth_controller.dart';
+import 'package:nexus_app/features/chat/message_composer.dart';
 import 'package:nexus_app/features/chat/thread_screen.dart';
 import 'package:nexus_app/features/settings/settings_controller.dart';
 import 'package:nexus_app/features/settings/theme_controller.dart';
@@ -69,11 +70,14 @@ void main() {
             SettingsStorage(storage: _MemoryStorage()),
           ),
           initialThemeModeProvider.overrideWithValue(ThemePreference.dark),
-          appDatabaseProvider.overrideWith((ref) {
-            final db = AppDatabase(NativeDatabase.memory());
-            ref.onDispose(db.close);
-            return db;
-          }),
+          // 메모리 DB 를 **닫지 않는다.** 화면이 내려가는 순간에도 뒤에서 도는 새로고침
+          // (`channelsProvider` 의 `refreshChannels` 등)이 응답을 받으면 캐시에 쓰는데,
+          // 닫힌 DB 에 쓰면 테스트가 끝난 뒤의 잡히지 않은 오류로 테스트가 실패한다
+          // (2026-10-06, 여덟 번에 한 번꼴). 앱에서는 DB 가 앱과 수명이 같아 생기지 않는다.
+          // 메모리 DB 라 프로세스가 끝나면 사라진다.
+          appDatabaseProvider.overrideWith(
+            (ref) => AppDatabase(NativeDatabase.memory()),
+          ),
         ],
         child: const NexusApp(),
       ),
@@ -81,11 +85,8 @@ void main() {
 
     // ── 로그인 ────────────────────────────────
     await tester.pumpUntil(find.widgetWithText(NxField, '이메일'));
-    await tester.enterText(find.widgetWithText(NxField, '이메일'), fx.email);
-    await tester.enterText(
-      find.widgetWithText(NxField, '비밀번호'),
-      _password,
-    );
+    await tester.typeInto(find.widgetWithText(NxField, '이메일'), fx.email);
+    await tester.typeInto(find.widgetWithText(NxField, '비밀번호'), _password);
     await tester.tap(find.widgetWithText(NxButton, '로그인'));
 
     // ── 스페이스 고르기 → 셸 ──────────────────
@@ -99,7 +100,7 @@ void main() {
 
     // ── 입력창으로 전송 → 서버에 들어갔는지 ───
     final sent = 'sent from app ${fx.stamp}';
-    await tester.enterText(find.byType(NxField).last, sent);
+    await tester.typeInto(_composerField(), sent);
     await tester.pump();
     await tester.tap(
       find.byWidgetPredicate((w) => w is NxIconButton && w.label == '보내기'),
@@ -173,10 +174,8 @@ void main() {
     await tester.tap(find.text('설정'));
     await tester.pumpUntil(find.text('표시 이름'));
     final aliceRenamed = 'Alice Renamed ${fx.stamp}';
-    await tester.enterText(
-      find.widgetWithText(NxField, 'AppFlow A'),
-      aliceRenamed,
-    );
+    // 라벨로 찾는다 — 값('AppFlow A')으로 찾으면 입력이 들어간 뒤에는 그 칸을 못 찾는다.
+    await tester.typeInto(find.widgetWithText(NxField, '표시 이름'), aliceRenamed);
     // 저장 버튼은 바뀐 이름을 본 다음 프레임에 켜진다. 그 전에 누르면 꺼진 버튼이다.
     await tester.pump();
     await tester.tap(find.widgetWithText(NxButton, '저장'));
@@ -257,7 +256,7 @@ void main() {
       find.byWidgetPredicate((w) => w is NxIconButton && w.label.endsWith('에 채널 만들기')).first,
     );
     await tester.pumpUntil(find.text('채널 만들기'));
-    await tester.enterText(find.widgetWithText(NxField, '이름'), secret);
+    await tester.typeInto(find.widgetWithText(NxField, '이름'), secret);
     await tester.tap(find.byWidgetPredicate((w) => w is NxSwitch && w.label == '비공개 채널'));
     // 만들기 버튼은 이름을 본 다음 프레임에 켜진다.
     await tester.pump();
@@ -298,7 +297,7 @@ void main() {
     // DM 의 입력창은 상대 이름으로 안내한다(D12).
     await tester.pumpUntil(find.text('AppFlow C 님에게 메시지 보내기'));
     final dmText = 'dm from app ${fx.stamp}';
-    await tester.enterText(find.byType(NxField).last, dmText);
+    await tester.typeInto(_composerField(), dmText);
     await tester.pump();
     await tester.tap(
       find.byWidgetPredicate((w) => w is NxIconButton && w.label == '보내기'),
@@ -340,6 +339,14 @@ const _password = 'app-flow-check-1234';
 /// 메시지 본문 찾기. 본문은 마크다운이라 `RichText` 로 그려지는데 `find.text` 는
 /// 기본으로 `RichText` 를 보지 않는다.
 Finder _body(String text) => find.text(text, findRichText: true);
+
+/// 메시지 입력창. **`find.byType(NxField).last` 로 찾지 않는다** — 다이얼로그가 닫히는
+/// 전환 동안에는 그 안의 입력(DM 사람 고르기의 검색)이 트리 위쪽에 남아 `.last` 가 그쪽을
+/// 가리킨다. 느린 러너에서만 걸려, 글자가 닫히는 다이얼로그로 들어가고 보내기는 꺼진 채
+/// 아무것도 나가지 않았다(2026-10-06 CI 에서 처음 드러남, 로컬에서 두 번에 한 번 재현).
+Finder _composerField() => find
+    .descendant(of: find.byType(MessageComposer), matching: find.byType(NxField))
+    .last;
 
 /// 서버에 테스트용 계정 · 스페이스 · 메시지 · 답글 · 이슈를 API 로 만든다.
 /// 이름은 영문이다 — slug 가 한글을 떨어뜨려 이름이 겹친다(CLAUDE.md §2).
@@ -545,6 +552,30 @@ class _Fixture {
 }
 
 extension on WidgetTester {
+  /// 글자를 넣고 **그 칸에 실제로 들어갔는지 본다** — 안 들어갔으면 다시 넣는다.
+  ///
+  /// `enterText` 는 지금 붙어 있는 입력 연결로 글자를 보낼 뿐, 들어갔는지 알려 주지 않는다.
+  /// 느린 러너에서 덮어 여는 화면(설정 창)의 전환이 끝나기 전에 넣으면 연결이 아직 그
+  /// 칸에 없어 글자가 **어느 칸에도 들어가지 않고** 사라졌다 — 저장 버튼은 꺼진 채로
+  /// 눌려 다음 단계에서 시간 초과가 났다(2026-10-06, CPU 1코어로 재현).
+  /// [field] 는 글자가 바뀌어도 같은 칸을 가리켜야 한다(라벨 · 위치로 찾는다).
+  Future<void> typeInto(
+    Finder field,
+    String text, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final entered = find.descendant(of: field, matching: find.text(text));
+    final end = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(end)) {
+      await enterText(field, text);
+      // 입력으로 켜지는 버튼은 다음 프레임에 켜진다(CLAUDE.md §2) — 여기서 한 번 넘겨 둔다.
+      await pump();
+      if (entered.evaluate().isNotEmpty) return;
+      await pump(const Duration(milliseconds: 200));
+    }
+    throw TestFailure('입력이 들어가지 않았다: $field ← "$text"');
+  }
+
   /// `pumpAndSettle` 은 쓰지 않는다 — 스피너 · 소켓 재연결 타이머가 있어
   /// 끝내 가라앉지 않는다. 찾는 것이 보일 때까지 짧게 돌린다.
   Future<void> pumpUntil(
