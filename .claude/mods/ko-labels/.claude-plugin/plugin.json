@@ -1,0 +1,8 @@
+{
+  "name": "ko-labels",
+  "version": "0.1.0",
+  "description": "슬래시 명령과 /config 설정 행에 한국어 설명을 덧붙인다",
+  "author": {
+    "name": "dbsrjs"
+  }
+}

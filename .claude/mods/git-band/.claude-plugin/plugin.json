@@ -1,0 +1,9 @@
+{
+  "name": "git-band",
+  "version": "0.1.0",
+  "description": "입력창 위에 프로젝트 · 브랜치 · 변경 · 동기화 · CI 상태를 한 줄로 보여 준다",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "dbsrjs"
+  }
+}

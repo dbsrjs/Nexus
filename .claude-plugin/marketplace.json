@@ -1,0 +1,17 @@
+{
+  "name": "nexus-mods",
+  "owner": {
+    "name": "dbsrjs"
+  },
+  "description": "Nexus 개발용 Claude Code 모드(git 상태 띠 · 한국어 병기)",
+  "plugins": [
+    {
+      "name": "git-band",
+      "source": "./.claude/mods/git-band"
+    },
+    {
+      "name": "ko-labels",
+      "source": "./.claude/mods/ko-labels"
+    }
+  ]
+}
