@@ -70,8 +70,9 @@ final scopedBoardProvider = Provider<Map<IssueStatus, List<Issue>>>((ref) {
   final board = ref.watch(boardProvider);
   final scope = ref.watch(boardScopeProvider);
   // 스프린트를 끄면 보기 줄도 감춰진다 — 전에 골라 둔 보기가 남아 보드를 거르면 안 된다.
-  if (scope == BoardScope.all || !ref.watch(sprintsEnabledProvider))
+  if (scope == BoardScope.all || !ref.watch(sprintsEnabledProvider)) {
     return board;
+  }
 
   final activeId = ref.watch(activeSprintProvider)?.id;
 
