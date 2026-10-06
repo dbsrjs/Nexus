@@ -8,6 +8,7 @@ import 'features/presence/presence_controller.dart';
 import 'features/presence/typing_controller.dart';
 import 'features/realtime/socket_controller.dart';
 import 'features/space/members_controller.dart';
+import 'features/space/space_controller.dart';
 import 'features/settings/theme_controller.dart';
 import 'ui/root.dart';
 import 'ui/theme.dart';
@@ -52,6 +53,11 @@ class NexusApp extends ConsumerWidget {
     ref.listen(presenceReporterProvider, (_, _) {});
     // 안 읽은 알림 수(18단계) — 셸 밖(설정 창)에 다녀오는 동안 멈추지 않게 뿌리에서 붙든다.
     ref.listen(unreadNotificationsProvider, (_, _) {});
+    // 지금 스페이스 — 위 이름표와 같은 결함이었다. 셸(ChannelPane · 채널 목록)이 build 중에
+    // 처음 구독하는데, 설정 창에 다녀오는 동안 멈춰 있던 이것이 그 build 안에서 갱신되며
+    // 기대는 provider(스프린트 스위치 등)를 다시 그리라고 해 「build 중 setState」가 났다
+    // (2026-10-06, CI 헤드리스 흐름 · CPU 1코어에서 여덟 번에 한 번).
+    ref.listen(currentSpaceProvider, (_, _) {});
 
     final preference = ref.watch(themeModeProvider);
 
