@@ -107,8 +107,9 @@ WSL 배포판에 systemd 가 켜져 있으면(`/etc/wsl.conf` 의 `[boot] system
 | `npm run seed` | `ts-node prisma/seed.ts` |
 | `npm test` | Jest 단위 테스트 — 순수 로직 · 가드 · 권한 규칙 |
 | `npm run lint` | ESLint |
+| `npm run format` · `format:check` | Prettier 정렬 · 검사(CI 가 `format:check` 를 돈다). ESLint 는 서식 규칙을 꺼 두고 이쪽에 맡긴다 |
 
-**계약 검증**은 저장소 루트에서 돌린다(`npm run check:*`, 15종). **실서버 · 실DB · 실소켓**을
+**계약 검증**은 저장소 루트에서 돌린다(`npm run check:*`, 19종). **실서버 · 실DB · 실소켓**을
 쓰고, 전부 자체 계정 · 자체 스페이스를 만들어 쓰므로 기존 데이터를 건드리지 않는다.
 GitHub 이 필요한 것은 가짜 GitHub(4599)을 스스로 띄운다. 목록과 필요한 `.env` 는
 [CLAUDE.md §1 «자주 쓰는 명령»](../CLAUDE.md). CI 가 push 마다 전부 돈다.

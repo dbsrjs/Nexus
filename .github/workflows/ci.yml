@@ -47,6 +47,10 @@ jobs:
       - name: raw SQL 이 DB 시계를 쓰는지 검사
         run: node scripts/check-sql-time.mjs
 
+      # eslint 는 서식 규칙을 prettier 에 넘기고 꺼 두었다(eslint-config-prettier). 그런데
+      # prettier 를 아무도 돌리지 않아 69개 파일이 어긋나 있었다(2026-10-06 정렬).
+      - run: npm run format:check
+
       - run: npm run lint
 
       - run: npm run build
