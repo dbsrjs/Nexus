@@ -18,9 +18,9 @@ jobs:
         working-directory: server
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -61,7 +61,7 @@ jobs:
         working-directory: app
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # **버전을 고정한다.** channel: stable 만 두면 CI 만 늘 최신을 쓰게 되어,
       # 어느 개발 PC 에서도 재현되지 않는 실패가 CI 에서만 난다.
@@ -155,9 +155,9 @@ jobs:
       PORT: '3000'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
