@@ -123,8 +123,7 @@ export interface GithubCompare {
  * 다르게 다뤄야 한다. 접으면 그 분기가 사라진다.
  */
 export type GithubResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; status: number; retryAfter?: number };
+  { ok: true; value: T } | { ok: false; status: number; retryAfter?: number };
 
 /** GitHub 의 저장소 JSON. 우리가 쓰는 것만 적는다. */
 interface RawRepo {
@@ -212,7 +211,10 @@ export class GithubOauthClient {
     }
   }
 
-  async fetchUser(cfg: GithubOauthConfig, accessToken: string): Promise<GithubUser | null> {
+  async fetchUser(
+    cfg: GithubOauthConfig,
+    accessToken: string,
+  ): Promise<GithubUser | null> {
     try {
       const res = await fetch(`${cfg.apiBase}/user`, {
         headers: {
@@ -306,11 +308,7 @@ export class GithubOauthClient {
   ): Promise<GithubResult<GithubContentFile | GithubContentDir>> {
     // 경로 세그먼트마다 인코딩한다. 통째로 encodeURIComponent 하면 `/` 가
     // %2F 가 되어 GitHub 이 다른 경로로 읽는다.
-    const encoded = path
-      .split('/')
-      .filter(Boolean)
-      .map(encodeURIComponent)
-      .join('/');
+    const encoded = path.split('/').filter(Boolean).map(encodeURIComponent).join('/');
     const query = new URLSearchParams({ ref });
 
     const res = await this.call<unknown>(
@@ -354,8 +352,7 @@ export class GithubOauthClient {
         path: raw.path,
         size: typeof raw.size === 'number' ? raw.size : 0,
         // 1MB 초과면 GitHub 이 빈 문자열을 준다 — 없는 것으로 친다.
-        contentBase64:
-          typeof content === 'string' && content.length > 0 ? content : null,
+        contentBase64: typeof content === 'string' && content.length > 0 ? content : null,
       },
     };
   }
@@ -372,10 +369,7 @@ export class GithubOauthClient {
     token: string,
     repoId: number,
   ): Promise<GithubResult<GithubRepoView>> {
-    const res = await this.call<RawRepo>(
-      `${cfg.apiBase}/repositories/${repoId}`,
-      token,
-    );
+    const res = await this.call<RawRepo>(`${cfg.apiBase}/repositories/${repoId}`, token);
     if (!res.ok) return res;
 
     const view = toRepoView(res.value);
@@ -676,7 +670,8 @@ export class GithubOauthClient {
     );
     if (!res.ok) return res;
 
-    const usable = res.value.encoding === 'base64' && typeof res.value.content === 'string';
+    const usable =
+      res.value.encoding === 'base64' && typeof res.value.content === 'string';
     return {
       ok: true,
       value: {

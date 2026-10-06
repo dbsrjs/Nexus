@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { SpaceGuard } from '../../spaces/guards/space.guard';
 import { SpaceRoleGuard } from '../../spaces/guards/space-role.guard';
 import { MinRole } from '../../spaces/decorators/min-role.decorator';

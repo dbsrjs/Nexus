@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OauthProvider } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -87,7 +83,10 @@ export class OauthService {
    * 콜백을 끝낸다. **성공 여부만 돌려준다** — 실패 종류를 브라우저에
    * 알려 줄 이유가 없다(공격자에게 힌트가 된다).
    */
-  async completeGithub(code: string | undefined, state: string | undefined): Promise<boolean> {
+  async completeGithub(
+    code: string | undefined,
+    state: string | undefined,
+  ): Promise<boolean> {
     const cfg = resolveGithubOauth(this.config);
     const key = this.tokenKeyOrNull();
     if (!cfg || !key || !code) return false;
@@ -244,9 +243,7 @@ export class OauthService {
     try {
       return resolveOauthTokenKey(this.config);
     } catch (err) {
-      this.logger.warn(
-        `OAUTH_TOKEN_KEY 설정이 잘못됐습니다: ${(err as Error).message}`,
-      );
+      this.logger.warn(`OAUTH_TOKEN_KEY 설정이 잘못됐습니다: ${(err as Error).message}`);
       return null;
     }
   }

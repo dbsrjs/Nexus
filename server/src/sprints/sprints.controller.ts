@@ -16,11 +16,7 @@ import { SpaceGuard } from '../spaces/guards/space.guard';
 import { SpaceRoleGuard } from '../spaces/guards/space-role.guard';
 import { MinRole } from '../spaces/decorators/min-role.decorator';
 import { SprintsService } from './sprints.service';
-import {
-  CreateSprintDto,
-  ListSprintsDto,
-  UpdateSprintDto,
-} from './dto/sprint.dto';
+import { CreateSprintDto, ListSprintsDto, UpdateSprintDto } from './dto/sprint.dto';
 
 /**
  * 스프린트 (docs/백엔드-설계.md §4).

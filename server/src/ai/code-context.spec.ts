@@ -19,7 +19,9 @@ describe('codeSection', () => {
   });
 
   it('[n] 경로:시작-끝 머리말과 언어 펜스로 싼다', () => {
-    expect(codeSection([chunk()])).toBe('[1] lib/socket.dart:1-6\n```dart\nclass A {}\n```');
+    expect(codeSection([chunk()])).toBe(
+      '[1] lib/socket.dart:1-6\n```dart\nclass A {}\n```',
+    );
   });
 
   it('번호는 1부터 순서대로다 — 인용 번호가 여기에 묶인다', () => {
@@ -37,7 +39,12 @@ describe('codeSection', () => {
 
 describe('citationsOf', () => {
   it('★ 인용은 우리가 넣은 청크에서만 나온다', () => {
-    expect(citationsOf([chunk(), chunk({ id: 'k-2', path: 'b.ts', startLine: 9, endLine: 12 })])).toEqual([
+    expect(
+      citationsOf([
+        chunk(),
+        chunk({ id: 'k-2', path: 'b.ts', startLine: 9, endLine: 12 }),
+      ]),
+    ).toEqual([
       { n: 1, path: 'lib/socket.dart', startLine: 1, endLine: 6, commitSha: 'abc' },
       { n: 2, path: 'b.ts', startLine: 9, endLine: 12, commitSha: 'abc' },
     ]);

@@ -1,0 +1,6 @@
+# git blame 이 건너뛸 커밋 — 서식만 바꾼 일괄 정렬.
+# GitHub 은 이 파일을 스스로 읽는다. 로컬에서는 한 번:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# chore: 서버 src 를 prettier 로 일괄 정렬 (2026-10-06)
+dd7b213c696bf15997131b220b374b06905a966a

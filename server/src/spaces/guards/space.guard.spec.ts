@@ -1,4 +1,8 @@
-import { ExecutionContext, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { SpaceMember, SpaceRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SpaceGuard, SpaceScopedRequest } from './space.guard';

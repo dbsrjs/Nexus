@@ -1,4 +1,8 @@
-import { MAX_ATTEMPTS, indexRetryDelayMs, shouldGiveUpIndexing } from './index-queue.service';
+import {
+  MAX_ATTEMPTS,
+  indexRetryDelayMs,
+  shouldGiveUpIndexing,
+} from './index-queue.service';
 
 describe('indexRetryDelayMs', () => {
   it('★ Retry-After 0 은 곧바로 다시다 - 0 을 없음으로 읽으면 1분을 기다린다(§2 함정)', () => {
@@ -25,6 +29,8 @@ describe('shouldGiveUpIndexing', () => {
   });
 
   it('시도로 세지 않는 실패(429 · 네트워크)로는 포기하지 않는다', () => {
-    expect(shouldGiveUpIndexing(MAX_ATTEMPTS + 5, { countsAsAttempt: false })).toBe(false);
+    expect(shouldGiveUpIndexing(MAX_ATTEMPTS + 5, { countsAsAttempt: false })).toBe(
+      false,
+    );
   });
 });

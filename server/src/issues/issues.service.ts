@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { IssueStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeEmitter } from '../realtime/realtime-emitter';
@@ -97,9 +93,7 @@ export class IssuesService {
       ...(dto.assigneeId ? { assigneeId: dto.assigneeId } : {}),
       ...(dto.sprintId ? { sprintId: dto.sprintId } : {}),
       ...(dto.sprint === 'none' ? { sprintId: null } : {}),
-      ...(dto.q
-        ? { title: { contains: dto.q, mode: 'insensitive' as const } }
-        : {}),
+      ...(dto.q ? { title: { contains: dto.q, mode: 'insensitive' as const } } : {}),
     };
 
     const columns = dto.status ? [dto.status] : Object.values(IssueStatus);
@@ -214,16 +208,12 @@ export class IssuesService {
       where: { id: issueId },
       data: {
         ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
-        ...(dto.description !== undefined
-          ? { description: dto.description }
-          : {}),
+        ...(dto.description !== undefined ? { description: dto.description } : {}),
         ...(dto.status !== undefined ? { status: dto.status } : {}),
         ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
         ...(dto.assigneeId !== undefined ? { assigneeId: dto.assigneeId } : {}),
         ...(dto.sprintId !== undefined ? { sprintId: dto.sprintId } : {}),
-        ...(dto.storyPoints !== undefined
-          ? { storyPoints: dto.storyPoints }
-          : {}),
+        ...(dto.storyPoints !== undefined ? { storyPoints: dto.storyPoints } : {}),
         ...(closedAt !== undefined ? { closedAt } : {}),
         ...(position !== undefined ? { position } : {}),
       },
@@ -263,10 +253,7 @@ export class IssuesService {
       throw new BadRequestException('기준 이슈 두 개의 순서가 뒤바뀌었습니다');
     }
 
-    const position = positionBetween(
-      prev?.position ?? null,
-      next?.position ?? null,
-    );
+    const position = positionBetween(prev?.position ?? null, next?.position ?? null);
 
     if (needsRenumber(position, prev?.position ?? null, next?.position ?? null)) {
       if (renumbered) {
@@ -330,10 +317,7 @@ export class IssuesService {
     }
   }
 
-  private async requireIssue(
-    spaceId: string,
-    issueId: string,
-  ): Promise<IssueRow> {
+  private async requireIssue(spaceId: string, issueId: string): Promise<IssueRow> {
     const issue = await this.prisma.issue.findFirst({
       where: { id: issueId, spaceId },
       include: ISSUE_INCLUDE,

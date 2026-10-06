@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:nexus_app/core/breakpoints.dart';
 import 'package:nexus_app/core/env.dart';
 import 'package:nexus_app/data/auth_storage.dart';
 import 'package:nexus_app/data/local/app_database.dart';
@@ -29,11 +30,13 @@ import 'package:nexus_app/ui/ui.dart';
 /// (CLAUDE.md §5 빚).
 ///
 /// 사전 조건: `npm run db:up` · `npm run server:dev`
-/// 실행: `npm run app:flow` (Windows 데스크톱, 약 30초)
+/// 실행: `npm run app:flow` (Windows 데스크톱 창, 약 30초) 또는
+///       `npm run app:flow:headless` (창 없이 flutter_tester 에서, CI 가 이것을 돈다)
 ///
-/// **CI 에서는 돌지 않는다.** CI 는 ubuntu 인데 앱에 `linux/` 플랫폼이 없다.
-/// 들이는 것은 플랫폼을 하나 늘리는 결정이라 «마지막» 단계의 테넌트 격리 통합
-/// 테스트와 함께 정한다. 그때까지는 화면을 건드린 변경마다 사람이 돌린다.
+/// **헤드리스로 도는 이유** — 이 흐름은 보안 저장소 · drift 를 메모리로 덮어써 플랫폼
+/// 플러그인을 부르지 않으므로 데스크톱 창이 필요 없다. 그래서 CI(ubuntu)에 `linux/`
+/// 플랫폼을 들이지 않고 flutter_tester 로 돌린다(2026-10-06). 창에서만 드러나는 것
+/// (실제 렌더링 · IME · 창 크기 변화)은 여전히 `app:flow` 로 사람이 본다.
 ///
 /// **사용자의 개발 앱을 건드리지 않는다.** 토큰 저장소와 drift 를 메모리 구현으로
 /// 덮어쓴다 — 같은 앱 id 라 보안 저장소를 공유하므로, 그대로 두면 이 테스트가
@@ -44,6 +47,16 @@ void main() {
   testWidgets('로그인 → 스페이스 → 채널 → 전송 · 실시간 → 스레드 → 이슈 · 파일 · 저장소 → 설정 → DM → 알림', (
     tester,
   ) async {
+    // 이 흐름은 데스크톱 배치(채널 패널이 늘 보임)를 전제로 누른다. flutter_tester 의
+    // 기본 창은 800×600 이라 태블릿 배치가 되어, 밀려 들어가 있는 패널의 채널을 화면
+    // 밖 좌표로 누르게 된다. Windows 창(1280×720)은 이미 데스크톱이라 손대지 않는다.
+    if (tester.view.physicalSize.width / tester.view.devicePixelRatio <
+        Layout.desktopMin) {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+    }
+
     final fx = await _Fixture.create();
 
     await tester.pumpWidget(

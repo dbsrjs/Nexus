@@ -23,9 +23,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** 그 시각이 속한 UTC 날짜의 자정. */
 function utcMidnight(date: Date): Date {
-  return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
 /**
@@ -82,8 +80,7 @@ export function buildBurndown(input: BurndownInput): {
       let points = 0;
       let count = 0;
       for (const issue of input.issues) {
-        const open =
-          issue.closedAt === null || issue.closedAt.getTime() >= endOfDay;
+        const open = issue.closedAt === null || issue.closedAt.getTime() >= endOfDay;
         if (!open) continue;
         points += issue.storyPoints ?? 0;
         count += 1;

@@ -57,13 +57,21 @@ describe('resolveLlm', () => {
 
   it('LLM_FALLBACK_MODEL 을 주면 그대로 쓰고, none 이면 끈다', () => {
     const base = { LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'k' };
-    expect(resolveLlm(cfg({ ...base, LLM_FALLBACK_MODEL: 'x' }))?.fallbackModel).toBe('x');
-    expect(resolveLlm(cfg({ ...base, LLM_FALLBACK_MODEL: 'none' }))?.fallbackModel).toBeNull();
+    expect(resolveLlm(cfg({ ...base, LLM_FALLBACK_MODEL: 'x' }))?.fallbackModel).toBe(
+      'x',
+    );
+    expect(
+      resolveLlm(cfg({ ...base, LLM_FALLBACK_MODEL: 'none' }))?.fallbackModel,
+    ).toBeNull();
   });
 
   it('전환 모델이 주 모델과 같으면 전환하지 않는다', () => {
     const r = resolveLlm(
-      cfg({ LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'k', LLM_MODEL: 'gemini-3.1-flash-lite' }),
+      cfg({
+        LLM_PROVIDER: 'gemini',
+        GEMINI_API_KEY: 'k',
+        LLM_MODEL: 'gemini-3.1-flash-lite',
+      }),
     );
     expect(r?.fallbackModel).toBeNull();
   });
@@ -87,9 +95,9 @@ describe('resolveLlm', () => {
 
   it('local 은 기본으로 시간 제한이 없다 - CPU 추론은 원래 느리다', () => {
     expect(resolveLlm(cfg({ LLM_PROVIDER: 'local' }))?.timeoutMs).toBeNull();
-    expect(resolveLlm(cfg({ LLM_PROVIDER: 'local', LLM_TIMEOUT_SEC: '300' }))?.timeoutMs).toBe(
-      300000,
-    );
+    expect(
+      resolveLlm(cfg({ LLM_PROVIDER: 'local', LLM_TIMEOUT_SEC: '300' }))?.timeoutMs,
+    ).toBe(300000);
   });
 
   it('LLM_MODEL 을 주면 그대로 쓴다', () => {

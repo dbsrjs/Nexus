@@ -51,7 +51,12 @@ export class ChannelMembersService {
       const role = roleOf.get(r.userId);
       // 스페이스를 떠난 사람의 행은 16-1 이 지운다. 그래도 남아 있으면 보이지 않는다.
       if (!role) continue;
-      views.push({ userId: r.userId, name: r.user.name, avatarUrl: r.user.avatarUrl, role });
+      views.push({
+        userId: r.userId,
+        name: r.user.name,
+        avatarUrl: r.user.avatarUrl,
+        role,
+      });
     }
     return views;
   }
@@ -93,7 +98,11 @@ export class ChannelMembersService {
    * 뺀다 — 본인이면 누구나(나가기), 남이면 admin+(D18). **마지막 한 명은 나갈 수 없다(409)** —
    * 비공개 채널은 admin 도 명단에 있어야 본다. 아무도 없으면 영영 열 수 없다.
    */
-  async remove(channelId: string, member: SpaceMember, targetUserId: string): Promise<void> {
+  async remove(
+    channelId: string,
+    member: SpaceMember,
+    targetUserId: string,
+  ): Promise<void> {
     await this.requirePrivate(channelId, member);
     const self = targetUserId === member.userId;
     if (!self && !hasAtLeast(member.role, SpaceRole.admin)) {

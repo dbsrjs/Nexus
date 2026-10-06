@@ -16,7 +16,11 @@ import { promptHash } from './prompt-hash';
 import { AskInputShape, AskPreset, validateAskRequest } from './ask-request';
 import { Citation, citationsOf } from './code-context';
 import { AskMaterial, buildAskPrompt } from './prompts/build';
-import { FollowUpThread, MAX_THREAD_TURNS, buildFollowUpPrompt } from './prompts/follow-up';
+import {
+  FollowUpThread,
+  MAX_THREAD_TURNS,
+  buildFollowUpPrompt,
+} from './prompts/follow-up';
 import { ChannelsService } from '../channels/channels.service';
 
 /** 채널만 줬을 때 읽는 최근 최상위 메시지 수 (13-2 설계 §2). */
@@ -83,9 +87,7 @@ export class AiService {
 
     // 저장소 소속(404) · 임베딩 미설정 · 모델 불일치(503)는 search() 가 본다.
     const searchCode = (query: string) =>
-      this.indexing
-        .search(spaceId, req.repoId!, query, CODE_TOP_K)
-        .then((r) => r.chunks);
+      this.indexing.search(spaceId, req.repoId!, query, CODE_TOP_K).then((r) => r.chunks);
 
     // 검색어는 지시문이다. 지시문이 있으면 **대화 조립과 검색을 함께 돌린다** —
     // 검색은 임베딩 왕복이라 DB 조회 뒤에 줄 세울 이유가 없다. 프리셋이면
@@ -138,7 +140,11 @@ export class AiService {
         chain[0].input as StoredAskInput,
         missingChunks,
       );
-      const built = buildFollowUpPrompt(threadOf(chain), material, input.instruction ?? '');
+      const built = buildFollowUpPrompt(
+        threadOf(chain),
+        material,
+        input.instruction ?? '',
+      );
       return { ...built, citations: citationsOf(material.chunks) };
     }
 
@@ -172,7 +178,8 @@ export class AiService {
     }
     const rootInput = chain[0].input as StoredAskInput;
     // 첫 문답 뒤에 비공개 채널에서 빠졌을 수 있다 — 가시성을 다시 본다.
-    if (rootInput.channelId) await this.requireChannel(spaceId, userId, rootInput.channelId);
+    if (rootInput.channelId)
+      await this.requireChannel(spaceId, userId, rootInput.channelId);
 
     const material = await this.materialOf(
       spaceId,
@@ -184,7 +191,15 @@ export class AiService {
     );
     const built = buildFollowUpPrompt(threadOf(chain), material, instruction);
     const input: StoredAskInput = { instruction, parentRunId };
-    return this.start(spaceId, userId, built.kind, input, built.messages, llm, parentRunId);
+    return this.start(
+      spaceId,
+      userId,
+      built.kind,
+      input,
+      built.messages,
+      llm,
+      parentRunId,
+    );
   }
 
   /**
@@ -297,7 +312,13 @@ export class AiService {
     const cached = await this.prisma.aiRun.findFirst({
       // **전환 모델이 쓴 답은 캐시로 쓰지 않는다** — 주 모델이 풀린 뒤 같은
       // 질문에는 다시 주 모델이 답해야 한다(LLM 교체, 2026-09-23).
-      where: { spaceId, userId, promptHash: hash, state: AiRunState.done, fallback: false },
+      where: {
+        spaceId,
+        userId,
+        promptHash: hash,
+        state: AiRunState.done,
+        fallback: false,
+      },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     });
@@ -384,8 +405,14 @@ export class AiService {
     return latest.reverse();
   }
 
-  private async transcriptOf(spaceId: string, messages: LoadedMessage[]): Promise<string> {
-    const names = await this.mentionNames(spaceId, messages.map((m) => m.body));
+  private async transcriptOf(
+    spaceId: string,
+    messages: LoadedMessage[],
+  ): Promise<string> {
+    const names = await this.mentionNames(
+      spaceId,
+      messages.map((m) => m.body),
+    );
     return buildTranscript(toTranscript(messages), names);
   }
 

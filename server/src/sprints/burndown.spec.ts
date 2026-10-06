@@ -101,9 +101,7 @@ describe('buildBurndown', () => {
     const result = buildBurndown({
       startsAt: start,
       endsAt: end,
-      issues: [
-        { storyPoints: 3, closedAt: new Date('2026-08-10T10:00:00.000Z') },
-      ],
+      issues: [{ storyPoints: 3, closedAt: new Date('2026-08-10T10:00:00.000Z') }],
     });
 
     expect(result.days[result.days.length - 1].points).toBe(3);

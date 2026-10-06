@@ -44,13 +44,17 @@ describe('resolveGithubOauth', () => {
 
   it('빈 문자열을 미설정으로 친다', () => {
     // .env 에 자리만 잡아 둔 경우다. 8-1 에서 STORAGE_LOCAL_DIR= 로 겪었다.
-    expect(resolveGithubOauth(fakeConfig({ ...FULL, GITHUB_CLIENT_ID: '  ' }))).toBeNull();
+    expect(
+      resolveGithubOauth(fakeConfig({ ...FULL, GITHUB_CLIENT_ID: '  ' })),
+    ).toBeNull();
   });
 });
 
 describe('resolveOauthTokenKey', () => {
   it('32바이트 base64url 을 Buffer 로 준다', () => {
-    expect(resolveOauthTokenKey(fakeConfig({ OAUTH_TOKEN_KEY: KEY_32 }))?.length).toBe(32);
+    expect(resolveOauthTokenKey(fakeConfig({ OAUTH_TOKEN_KEY: KEY_32 }))?.length).toBe(
+      32,
+    );
   });
 
   it('없으면 null 이다 — 저장소를 안 쓰는 사람까지 부팅을 막을 이유가 없다', () => {

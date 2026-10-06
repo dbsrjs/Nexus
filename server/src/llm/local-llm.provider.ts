@@ -11,7 +11,6 @@ import {
 
 const DEFAULT_BASE = 'http://127.0.0.1:11434';
 
-
 /**
  * Ollama 로컬 생성. **배포 대안이 아니라 개발 도구다** (설계 §0) — 무료 티어
  * 한도에 걸리지 않고 프롬프트를 다듬을 때 쓴다. Phase 1 배포 대상(ARM · GPU
@@ -30,10 +29,7 @@ export class LocalLlmProvider implements LlmProvider {
     return this.config.maxTokens;
   }
 
-  async complete(
-    messages: LlmMessage[],
-    options: LlmOptions,
-  ): Promise<LlmResult> {
+  async complete(messages: LlmMessage[], options: LlmOptions): Promise<LlmResult> {
     const base = this.config.base ?? DEFAULT_BASE;
 
     const res = await fetch(`${base}/api/chat`, {

@@ -38,7 +38,10 @@ describe('validateAskRequest', () => {
   });
 
   it('지시문은 앞뒤 공백을 벗긴다', () => {
-    const req = validateAskRequest({ instruction: '  세 줄로  ', context: { channelId: C } });
+    const req = validateAskRequest({
+      instruction: '  세 줄로  ',
+      context: { channelId: C },
+    });
     expect(req.instruction).toBe('세 줄로');
     expect(req.preset).toBeNull();
   });
@@ -60,7 +63,10 @@ describe('validateAskRequest', () => {
       repoId: R,
       parentRunId: null,
     });
-    const both = validateAskRequest({ preset: 'issue', context: { channelId: C, repoId: R } });
+    const both = validateAskRequest({
+      preset: 'issue',
+      context: { channelId: C, repoId: R },
+    });
     expect(both.channelId).toBe(C);
     expect(both.repoId).toBe(R);
   });
@@ -87,7 +93,11 @@ describe('validateAskRequest — 이어 묻기(13-3)', () => {
 
   it('★ parentRunId 와 context 가 함께 오면 400 - 근거는 첫 문답에서 물려받는다', () => {
     expect(() =>
-      validateAskRequest({ instruction: 'q', parentRunId: 'p-1', context: { channelId: 'c-1' } }),
+      validateAskRequest({
+        instruction: 'q',
+        parentRunId: 'p-1',
+        context: { channelId: 'c-1' },
+      }),
     ).toThrow(BadRequestException);
   });
 

@@ -57,7 +57,9 @@ export class PermissionsService {
     const channel = await this.channels.assertStructural(channelId, member);
     if (channel.isPrivate && !dto.canView) {
       // 비공개 채널은 명단이 정한다(D22). 둘이 겹치면 「명단에 있는데 안 보임」이 생긴다.
-      throw new BadRequestException('비공개 채널은 역할로 가릴 수 없습니다 — 멤버에서 빼세요');
+      throw new BadRequestException(
+        '비공개 채널은 역할로 가릴 수 없습니다 — 멤버에서 빼세요',
+      );
     }
 
     await this.prisma.channelPermission.upsert({
@@ -67,7 +69,9 @@ export class PermissionsService {
     });
 
     if (!dto.canView) await this.evictRole(member.spaceId, channelId, target);
-    this.realtime.toSpace(member.spaceId, 'rooms:invalidate', { reason: 'channel.permissions' });
+    this.realtime.toSpace(member.spaceId, 'rooms:invalidate', {
+      reason: 'channel.permissions',
+    });
     return this.list(channelId, member);
   }
 
@@ -75,8 +79,12 @@ export class PermissionsService {
   async reset(channelId: string, member: SpaceMember, role: string): Promise<void> {
     const target = this.requireRole(role);
     await this.channels.assertStructural(channelId, member);
-    await this.prisma.channelPermission.deleteMany({ where: { channelId, role: target } });
-    this.realtime.toSpace(member.spaceId, 'rooms:invalidate', { reason: 'channel.permissions' });
+    await this.prisma.channelPermission.deleteMany({
+      where: { channelId, role: target },
+    });
+    this.realtime.toSpace(member.spaceId, 'rooms:invalidate', {
+      reason: 'channel.permissions',
+    });
   }
 
   private requireRole(role: string): OverridableRole {
@@ -91,7 +99,11 @@ export class PermissionsService {
    * 그 역할의 스페이스 멤버를 채널 룸에서 **서버가 직접** 뺀다(16단계 설계 D25 · D13a).
    * `rooms:invalidate` 만 보내면 고친 클라이언트는 계속 듣는다.
    */
-  private async evictRole(spaceId: string, channelId: string, role: SpaceRole): Promise<void> {
+  private async evictRole(
+    spaceId: string,
+    channelId: string,
+    role: SpaceRole,
+  ): Promise<void> {
     const members = await this.prisma.spaceMember.findMany({
       where: { spaceId, role },
       select: { userId: true },

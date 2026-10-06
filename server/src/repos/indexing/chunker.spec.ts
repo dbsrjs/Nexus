@@ -37,7 +37,9 @@ describe('chunkText', () => {
 
   it('빈 줄이 경계 근처에 있으면 거기서 끊는다', () => {
     // 58번째 줄을 비워 둔다. 상한(60) 앞 5줄 안이라 여기로 당겨져야 한다.
-    const src = Array.from({ length: 200 }, (_, i) => (i === 57 ? '' : `L${i + 1}`)).join('\n');
+    const src = Array.from({ length: 200 }, (_, i) => (i === 57 ? '' : `L${i + 1}`)).join(
+      '\n',
+    );
     const [first] = chunkText(src);
     expect(first.endLine).toBe(57);
   });

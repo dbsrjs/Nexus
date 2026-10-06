@@ -7,11 +7,7 @@ import {
 import { Sprint, SprintState } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { buildBurndown } from './burndown';
-import {
-  CreateSprintDto,
-  ListSprintsDto,
-  UpdateSprintDto,
-} from './dto/sprint.dto';
+import { CreateSprintDto, ListSprintsDto, UpdateSprintDto } from './dto/sprint.dto';
 
 /** 화면에 보이는 순서. enum 선언 순서와 다르다 — 도는 것이 맨 위다. */
 const SPRINT_ORDER: Record<SprintState, number> = {
@@ -39,9 +35,7 @@ export class SprintsService {
     // **선언 순서에 기대지 않는다.** Prisma 의 enum 정렬은 스키마 선언 순서
     // (planned · active · closed)라, 그대로 쓰면 도는 스프린트가 계획 뒤로
     // 밀린다. 지금 하는 일이 맨 위에 있어야 한다.
-    return sprints.sort(
-      (a, b) => SPRINT_ORDER[a.state] - SPRINT_ORDER[b.state],
-    );
+    return sprints.sort((a, b) => SPRINT_ORDER[a.state] - SPRINT_ORDER[b.state]);
   }
 
   create(spaceId: string, dto: CreateSprintDto): Promise<Sprint> {
@@ -56,11 +50,7 @@ export class SprintsService {
     });
   }
 
-  async update(
-    spaceId: string,
-    sprintId: string,
-    dto: UpdateSprintDto,
-  ): Promise<Sprint> {
+  async update(spaceId: string, sprintId: string, dto: UpdateSprintDto): Promise<Sprint> {
     const current = await this.requireSprint(spaceId, sprintId);
 
     if (dto.state !== undefined && dto.state !== current.state) {
@@ -146,32 +136,22 @@ export class SprintsService {
       closed: [],
     };
     if (!allowed[from].includes(to)) {
-      throw new BadRequestException(
-        `스프린트를 ${from} 에서 ${to} 로 바꿀 수 없습니다`,
-      );
+      throw new BadRequestException(`스프린트를 ${from} 에서 ${to} 로 바꿀 수 없습니다`);
     }
   }
 
   /** 스페이스당 도는 스프린트는 하나다. 둘이면 "지금 하는 일"이 뜻을 잃는다. */
-  private async assertNoOtherActive(
-    spaceId: string,
-    sprintId: string,
-  ): Promise<void> {
+  private async assertNoOtherActive(spaceId: string, sprintId: string): Promise<void> {
     const other = await this.prisma.sprint.findFirst({
       where: { spaceId, state: SprintState.active, id: { not: sprintId } },
       select: { name: true },
     });
     if (other) {
-      throw new ConflictException(
-        `이미 진행 중인 스프린트가 있습니다: ${other.name}`,
-      );
+      throw new ConflictException(`이미 진행 중인 스프린트가 있습니다: ${other.name}`);
     }
   }
 
-  private async requireSprint(
-    spaceId: string,
-    sprintId: string,
-  ): Promise<Sprint> {
+  private async requireSprint(spaceId: string, sprintId: string): Promise<Sprint> {
     const sprint = await this.prisma.sprint.findFirst({
       where: { id: sprintId, spaceId },
     });

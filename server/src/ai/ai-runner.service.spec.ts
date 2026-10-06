@@ -65,12 +65,7 @@ function service(llm: LlmProvider) {
     getRunState: jest.fn().mockResolvedValue('failed'),
   };
   const realtime = { toUser: jest.fn() };
-  const runner = new AiRunnerService(
-    llm,
-    queue as never,
-    ai as never,
-    realtime as never,
-  );
+  const runner = new AiRunnerService(llm, queue as never, ai as never, realtime as never);
   return { runner, queue, ai, realtime };
 }
 
@@ -89,8 +84,14 @@ describe('resultOf', () => {
   const cites = [{ n: 1, path: 'a.ts', startLine: 1, endLine: 2, commitSha: 'x' }];
 
   it('요약 · 자유 질문은 마크다운과 인용이다', () => {
-    expect(resultOf(AiRunKind.ask, '답', cites)).toEqual({ markdown: '답', citations: cites });
-    expect(resultOf(AiRunKind.summarize, '요약', [])).toEqual({ markdown: '요약', citations: [] });
+    expect(resultOf(AiRunKind.ask, '답', cites)).toEqual({
+      markdown: '답',
+      citations: cites,
+    });
+    expect(resultOf(AiRunKind.summarize, '요약', [])).toEqual({
+      markdown: '요약',
+      citations: [],
+    });
   });
 
   it('이슈 초안은 제목 · 본문 · 인용이다', () => {
@@ -101,7 +102,10 @@ describe('resultOf', () => {
 
   it('★ 이슈 초안이 JSON 이 아니면 던진다 — 러너가 fatal 로 친다', () => {
     expect(() => resultOf(AiRunKind.draft_issue, '제목: 버튼', [])).toThrow();
-    expect(classifyFailure(new Error('x'))).toEqual({ countsAsAttempt: true, fatal: true });
+    expect(classifyFailure(new Error('x'))).toEqual({
+      countsAsAttempt: true,
+      fatal: true,
+    });
   });
 });
 
@@ -163,7 +167,11 @@ describe('AiRunnerService.runOne', () => {
       truncated: false,
       fallback: true,
     });
-    const llm: LlmProvider = { modelId: 'gemini:gemini-3.5-flash', maxTokens: 8192, complete };
+    const llm: LlmProvider = {
+      modelId: 'gemini:gemini-3.5-flash',
+      maxTokens: 8192,
+      complete,
+    };
     const { runner, queue } = service(llm);
 
     await runner.runOne(leasedRun());

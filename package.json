@@ -38,6 +38,7 @@
     "check:presence": "node server/scripts/check-presence.mjs",
     "check:notifications": "node server/scripts/check-notifications.mjs",
     "app:flow": "cd app && flutter test integration_test -d windows",
+    "app:flow:headless": "cd app && flutter test integration_test -d flutter-tester",
     "check:migrations": "node server/scripts/check-migrations.mjs",
     "check:sql-time": "node server/scripts/check-sql-time.mjs"
   }

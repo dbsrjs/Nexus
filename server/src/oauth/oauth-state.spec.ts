@@ -23,7 +23,13 @@ describe('oauth-state', () => {
   });
 
   it('다른 시크릿으로 서명한 것을 거부한다', () => {
-    expect(verifyState(signState(USER, 'another-secret-value-32-chars-min!!', NOW), SECRET, NOW)).toBeNull();
+    expect(
+      verifyState(
+        signState(USER, 'another-secret-value-32-chars-min!!', NOW),
+        SECRET,
+        NOW,
+      ),
+    ).toBeNull();
   });
 
   it('본문을 고치면 거부한다', () => {
@@ -54,7 +60,13 @@ describe('oauth-state', () => {
   });
 
   it('userId 가 비었으면 거부한다', () => {
-    expect(verifyState(forge({ u: '', p: 'github_oauth', n: 'x', e: NOW / 1000 + 60 }), SECRET, NOW)).toBeNull();
+    expect(
+      verifyState(
+        forge({ u: '', p: 'github_oauth', n: 'x', e: NOW / 1000 + 60 }),
+        SECRET,
+        NOW,
+      ),
+    ).toBeNull();
   });
 
   it('빈 값 · 쓰레기 문자열을 거부한다', () => {

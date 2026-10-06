@@ -122,10 +122,14 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
 
         // `?? ` 로 본다 — `0` 은 "곧바로 다시"라는 뜻이지 미설정이 아니다.
         const waitMs =
-          err.retryAfterSec !== undefined ? err.retryAfterSec * 1000 : rateLimitWaitMs(attempt);
+          err.retryAfterSec !== undefined
+            ? err.retryAfterSec * 1000
+            : rateLimitWaitMs(attempt);
         // 매번 찍으면 로그가 429 로 덮인다 — 몇 번 만에 한 번만 남긴다.
         if (attempt % 5 === 0) {
-          this.logger.warn(`분당 한도 — ${Math.round(waitMs / 100) / 10}초 뒤 다시 (${attempt + 1}회)`);
+          this.logger.warn(
+            `분당 한도 — ${Math.round(waitMs / 100) / 10}초 뒤 다시 (${attempt + 1}회)`,
+          );
         }
         await new Promise((resolve) => setTimeout(resolve, waitMs));
       }

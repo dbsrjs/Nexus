@@ -62,5 +62,8 @@ export function parseIssueDraft(text: string): IssueDraft {
   if (typeof description !== 'string') {
     throw new Error('이슈 초안의 본문이 문자열이 아닙니다.');
   }
-  return { title: title.trim().slice(0, MAX_ISSUE_TITLE), description: description.trim() };
+  return {
+    title: title.trim().slice(0, MAX_ISSUE_TITLE),
+    description: description.trim(),
+  };
 }
