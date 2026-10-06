@@ -30,6 +30,7 @@ flutter run -d <에뮬레이터> --dart-define=API_BASE=http://10.0.2.2:3000
 flutter analyze
 flutter test
 npm --prefix .. run app:flow       # 통합 테스트 — Windows 앱을 실서버에 붙여 끝까지 돈다(서버 필요)
+npm --prefix .. run app:flow:headless  # 같은 흐름을 창 없이(flutter_tester) — CI 가 이것을 돈다
 ```
 
 **화면은 `lib/ui/` 의 자체 부품만 쓴다** — `lib/` 에서 material · cupertino 를 import 하면

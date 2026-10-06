@@ -58,7 +58,7 @@ flutter run -d windows --dart-define=API_BASE=http://127.0.0.1:3000
 
 #### Flutter 버전 — CI 가 하한선을 고정한다
 
-`.github/workflows/ci.yml` 이 **`flutter-version: 3.44.9`** 로 못 박혀 있다.
+`.github/workflows/ci.yml` 이 **`env.FLUTTER_VERSION: 3.44.9`** 로 못 박혀 있다(앱 잡 · 통합 잡이 함께 쓴다).
 `channel: stable` 만 두면 CI 만 늘 최신을 쓰게 되어, **어느 개발 PC 에서도
 재현되지 않는 실패가 CI 에서만 난다.**
 
@@ -138,7 +138,8 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | `npm --prefix server run format` | 서버 Prettier 정렬. **CI 가 `format:check` 를 돈다** — 서버 코드를 고쳤으면 커밋 전에 한 번 |
 | `npm run check:<이름>` | **실서버 · 실DB · 실소켓 계약 검증 19종(927개)** — CI 가 push 마다 돈다. 목록 · 개수 · 전제(`.env` 값 · 가짜 GitHub · `LLM_PROVIDER=fake`) · 실패할 때 볼 것은 **`nexus-verify` 스킬**이 원본이다. 정적 검사 둘(`check:migrations` · `check:sql-time`)은 DB · 서버 없이 돈다 |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
-| `npm run app:flow` | **앱 통합 테스트** — Windows 데스크톱 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 스레드 · 셸 안 화면 · 설정 창(이름 · 사진 · 테마 · 음소거) · 멤버 · DM · 알림함까지 끝까지 돈다(약 30초, `db:up` · `server:dev` 필요). 보안 저장소 · drift 는 메모리로 바꿔 개발용 앱의 세션을 건드리지 않는다. **CI 에서는 돌지 않는다**(§5 빚) — 화면을 건드린 변경마다 사람이 돌린다 |
+| `npm run app:flow` | **앱 통합 테스트** — Windows 데스크톱 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 스레드 · 셸 안 화면 · 설정 창(이름 · 사진 · 테마 · 음소거) · 멤버 · DM · 알림함까지 끝까지 돈다(약 30초, `db:up` · `server:dev` 필요). 보안 저장소 · drift 는 메모리로 바꿔 개발용 앱의 세션을 건드리지 않는다 |
+| `npm run app:flow:headless` | 같은 흐름을 **창 없이**(flutter_tester) 돈다(약 15초). **CI 통합 잡이 push 마다 이것을 돈다**(2026-10-06). 위 흐름이 플랫폼 플러그인을 부르지 않아 창이 필요 없다 — 창 크기가 데스크톱 폭보다 좁으면 테스트가 1280×720 으로 맞춘다 |
 | `cd app && dart run build_runner build` | freezed · json_serializable 재생성 |
 
 ### 인덱싱 실사용 · 실제 GitHub 웹훅
@@ -487,7 +488,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 [진행 기록](docs/진행-기록.md) «빚 정리 (2026-09-27)».
 
 - **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 514개(2026-10-06 리팩토링 2차 시점)는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 19종 927 케이스**(2026-10-06 리팩토링 시점, `서버 통합` 잡. 오랫동안 「20종」으로 적었으나 실제 스크립트는 19개였다) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
-- **앱 통합 테스트가 CI 에서 돌지 않는다.** `npm run app:flow` 는 Windows 데스크톱에서만 돈다 — CI 는 ubuntu 인데 앱에 `linux/` 플랫폼이 없다. 들이는 것은 플랫폼을 하나 늘리는 결정이라 «마지막» 단계의 테넌트 격리 통합 테스트와 함께 정한다. 그때까지는 **화면을 건드린 변경마다 사람이 돌린다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **522개**(2026-10-06 CI · 테스트 정리 시점)
+- **앱 통합 테스트는 CI 에서 창 없이만 돈다(2026-10-06).** `linux/` 플랫폼을 들이지 않고 flutter_tester 로 돌린다(`app:flow:headless`) — 창이 있어야 드러나는 것(실제 렌더링 · 창 크기 변화 · 태블릿 · 모바일 배치의 흐름)은 여전히 덮지 않는다. 흐름은 데스크톱 배치만 탄다. **화면 모습을 바꾼 변경은 Windows 창(`app:flow`)으로 한 번 본다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **522개**(2026-10-06 CI · 테스트 정리 시점)
 - **`local`(Ollama) LLM 경로는 실측하지 않았다(13-1) — `LLM_PROVIDER=local` 로 바꾸기 전에 먼저 태운다.** 지금 쓰는 경로는 `gemini` 이고 실제로 확인했다. `local` 은 쓰는 곳이 없어 미뤄도 깨지는 것이 없다(2026-09-27 판단). 바꾸게 되는 계기는 Gemini 무료 한도(3.5-flash 하루 20회)가 모자라거나, 비공개 저장소 코드를 외부로 보내지 않으려 할 때 — 늦어도 «마지막» 단계에서 운영 provider 를 정할 때다. `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. 설치(`winget install Ollama.Ollama`)와 모델 받기(약 4.7GB)는 사람이 한다.
 - **인덱싱 큐의 5xx 소진은 단위 테스트만 덮는다.** 재시도 대기가 1분씩이라 계약 검증으로 세 번을 태우면 3분이 걸린다. 판정(`shouldGiveUpIndexing` · `indexRetryDelayMs`)은 순수 함수로 빼 두었다. 429 · 리스 유효/만료는 `check:indexing` 이 본다.
 - **프레즌스는 서버 메모리에 있다(17-2).** 인스턴스가 둘이 되면 서로의 연결을 모른다 — `redis-io.adapter` 를 되살릴 때 함께 Redis 로 옮긴다. 서버를 재시작하면 모두 오프라인이 됐다가 앱이 다시 붙으며 돌아온다
