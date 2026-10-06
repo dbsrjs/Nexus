@@ -1,7 +1,10 @@
 import { fullReindexBeforeCompare, planFromCompare } from './changed-files';
 
 describe('fullReindexBeforeCompare', () => {
-  const same = { indexedModel: 'local:embeddinggemma', currentModel: 'local:embeddinggemma' };
+  const same = {
+    indexedModel: 'local:embeddinggemma',
+    currentModel: 'local:embeddinggemma',
+  };
 
   it('기준 커밋이 없으면 첫 인덱싱이다', () => {
     expect(fullReindexBeforeCompare({ ...same, baseSha: null })).toBe('first');
@@ -33,7 +36,11 @@ describe('fullReindexBeforeCompare', () => {
 
   it('기록이 없는 옛 인덱스는 모델을 모르므로 전체다', () => {
     expect(
-      fullReindexBeforeCompare({ baseSha: 'abc', indexedModel: null, currentModel: 'fake:fake' }),
+      fullReindexBeforeCompare({
+        baseSha: 'abc',
+        indexedModel: null,
+        currentModel: 'fake:fake',
+      }),
     ).toBe('model-changed');
   });
 });
@@ -49,7 +56,9 @@ describe('planFromCompare', () => {
   });
 
   it('삭제는 지우기만 한다', () => {
-    const plan = planFromCompare([{ path: 'gone.ts', status: 'removed', previousPath: null }]);
+    const plan = planFromCompare([
+      { path: 'gone.ts', status: 'removed', previousPath: null },
+    ]);
     expect(plan.reindex).toEqual([]);
     expect(plan.remove).toEqual(['gone.ts']);
   });
@@ -63,7 +72,9 @@ describe('planFromCompare', () => {
   });
 
   it('previousPath 가 없는 renamed 는 추가로 본다 — 지울 대상을 짐작하지 않는다', () => {
-    const plan = planFromCompare([{ path: 'new.ts', status: 'renamed', previousPath: null }]);
+    const plan = planFromCompare([
+      { path: 'new.ts', status: 'renamed', previousPath: null },
+    ]);
     expect(plan.reindex).toEqual(['new.ts']);
     expect(plan.remove).toEqual([]);
   });

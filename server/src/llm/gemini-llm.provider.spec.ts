@@ -34,7 +34,12 @@ describe('GeminiLlmProvider', () => {
 
   it('응답 본문에서 text · 토큰 수 · 모델을 꺼낸다', async () => {
     ok({
-      candidates: [{ content: { parts: [{ text: '요약' }, { text: '입니다' }] }, finishReason: 'STOP' }],
+      candidates: [
+        {
+          content: { parts: [{ text: '요약' }, { text: '입니다' }] },
+          finishReason: 'STOP',
+        },
+      ],
       usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 7 },
       modelVersion: 'gemini-test-001',
     });
@@ -55,7 +60,9 @@ describe('GeminiLlmProvider', () => {
 
   it('★ 출력 한도에서 멈췄으면 truncated 다 - 러너가 잘린 답을 캐시에 굳히지 않는다', async () => {
     ok({
-      candidates: [{ content: { parts: [{ text: '원인은 두 가지' }] }, finishReason: 'MAX_TOKENS' }],
+      candidates: [
+        { content: { parts: [{ text: '원인은 두 가지' }] }, finishReason: 'MAX_TOKENS' },
+      ],
     });
 
     const r = await new GeminiLlmProvider(config).complete(
@@ -66,7 +73,9 @@ describe('GeminiLlmProvider', () => {
   });
 
   it('★ 생각 수준을 low 로 보낸다 - 생각 토큰이 출력 한도를 나눠 쓰기 때문이다', async () => {
-    const spy = ok({ candidates: [{ content: { parts: [{ text: 'x' }] }, finishReason: 'STOP' }] });
+    const spy = ok({
+      candidates: [{ content: { parts: [{ text: 'x' }] }, finishReason: 'STOP' }],
+    });
 
     await new GeminiLlmProvider(config).complete([{ role: 'user', content: 'a' }], {
       maxTokens: 8192,
@@ -82,7 +91,9 @@ describe('GeminiLlmProvider', () => {
   });
 
   it('★ assistant 는 model 로, 메시지마다 content 하나로 옮긴다 - 멀티턴 순서를 지킨다', async () => {
-    const spy = ok({ candidates: [{ content: { parts: [{ text: 'x' }] }, finishReason: 'STOP' }] });
+    const spy = ok({
+      candidates: [{ content: { parts: [{ text: 'x' }] }, finishReason: 'STOP' }],
+    });
 
     await new GeminiLlmProvider(config).complete(
       [
@@ -102,7 +113,9 @@ describe('GeminiLlmProvider', () => {
   });
 
   it('system 은 systemInstruction 으로, json 은 responseMimeType 으로 옮긴다', async () => {
-    const spy = ok({ candidates: [{ content: { parts: [{ text: '{}' }] }, finishReason: 'STOP' }] });
+    const spy = ok({
+      candidates: [{ content: { parts: [{ text: '{}' }] }, finishReason: 'STOP' }],
+    });
 
     await new GeminiLlmProvider(config).complete(
       [
@@ -121,7 +134,9 @@ describe('GeminiLlmProvider', () => {
   it('★ 시간 제한을 넘으면 504 로 던진다 - 전환 모델이 받고, 없으면 큐가 5xx 로 다시 건다', async () => {
     jest
       .spyOn(global, 'fetch')
-      .mockRejectedValue(new DOMException('The operation was aborted due to timeout', 'TimeoutError'));
+      .mockRejectedValue(
+        new DOMException('The operation was aborted due to timeout', 'TimeoutError'),
+      );
 
     await expect(
       new GeminiLlmProvider(config).complete([{ role: 'user', content: 'a' }], {
@@ -132,7 +147,9 @@ describe('GeminiLlmProvider', () => {
   });
 
   it('시간 제한을 fetch 의 signal 로 건다', async () => {
-    const spy = ok({ candidates: [{ content: { parts: [{ text: 'x' }] }, finishReason: 'STOP' }] });
+    const spy = ok({
+      candidates: [{ content: { parts: [{ text: 'x' }] }, finishReason: 'STOP' }],
+    });
 
     await new GeminiLlmProvider(config).complete([{ role: 'user', content: 'a' }], {
       maxTokens: 8192,

@@ -15,7 +15,9 @@ describe('issuePrompt', () => {
   });
 
   it('코드가 있으면 코드 절을 덧붙인다', () => {
-    expect(issuePrompt('대화', '[1] a.ts:1-2')[1].content).toContain('## 코드\n[1] a.ts:1-2');
+    expect(issuePrompt('대화', '[1] a.ts:1-2')[1].content).toContain(
+      '## 코드\n[1] a.ts:1-2',
+    );
   });
 });
 
@@ -28,7 +30,9 @@ describe('parseIssueDraft', () => {
   });
 
   it('코드펜스로 감싼 JSON 도 읽는다 — 모델이 종종 그렇게 준다', () => {
-    expect(parseIssueDraft('```json\n{"title":"t","description":"d"}\n```').title).toBe('t');
+    expect(parseIssueDraft('```json\n{"title":"t","description":"d"}\n```').title).toBe(
+      't',
+    );
   });
 
   it('★ JSON 이 아니면 던진다 — 러너가 fatal 로 친다', () => {
@@ -45,8 +49,8 @@ describe('parseIssueDraft', () => {
 
   it('제목이 상한을 넘으면 자른다 — 사람이 확인하는 초안이다', () => {
     const long = 'a'.repeat(MAX_ISSUE_TITLE + 5);
-    expect(parseIssueDraft(JSON.stringify({ title: long, description: '' })).title).toHaveLength(
-      MAX_ISSUE_TITLE,
-    );
+    expect(
+      parseIssueDraft(JSON.stringify({ title: long, description: '' })).title,
+    ).toHaveLength(MAX_ISSUE_TITLE);
   });
 });

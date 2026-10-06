@@ -19,7 +19,9 @@ async function setup(passwordHash: string | null) {
   };
   const prisma = {
     user: {
-      findUnique: jest.fn().mockResolvedValue({ id: 'u-1', email: 'a@x.io', passwordHash }),
+      findUnique: jest
+        .fn()
+        .mockResolvedValue({ id: 'u-1', email: 'a@x.io', passwordHash }),
       update: tx.user.update,
     },
     // 해시 교체와 세션 끊기는 한 트랜잭션이다 — 사이에서 끊기면 옛 세션이 산다.
@@ -39,8 +41,7 @@ async function setup(passwordHash: string | null) {
   };
   const jwt = { signAsync: jest.fn().mockResolvedValue('signed') };
   const config = {
-    get: (key: string) =>
-      key === 'JWT_SECRET' ? 'x'.repeat(40) : undefined,
+    get: (key: string) => (key === 'JWT_SECRET' ? 'x'.repeat(40) : undefined),
   };
   const service = new AuthService(
     prisma as never,
@@ -79,7 +80,14 @@ describe('AuthService.changePassword', () => {
     const tokens = await service.changePassword('u-1', CURRENT, 'new-password-12');
 
     // 새 세션을 먼저 만들고 전부 끊으면 방금 만든 것까지 끊긴다.
-    expect(calls).toEqual(['begin', 'update', 'revokeAll', 'commit', 'startFamily', 'persist']);
+    expect(calls).toEqual([
+      'begin',
+      'update',
+      'revokeAll',
+      'commit',
+      'startFamily',
+      'persist',
+    ]);
     const hash = prisma.user.update.mock.calls[0][0].data.passwordHash as string;
     await expect(argon2.verify(hash, 'new-password-12')).resolves.toBe(true);
     expect(tokens.accessToken).toBe('signed');

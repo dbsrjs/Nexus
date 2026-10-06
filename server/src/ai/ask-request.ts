@@ -85,7 +85,9 @@ export function validateAskRequest(dto: AskInputShape): AskRequest {
     throw new BadRequestException('메시지를 한 개 이상 골라야 합니다');
   }
   if (messageIds !== null && messageIds.length > MAX_TRANSCRIPT_MESSAGES) {
-    throw new BadRequestException(`한 번에 ${MAX_TRANSCRIPT_MESSAGES}개까지 고를 수 있습니다`);
+    throw new BadRequestException(
+      `한 번에 ${MAX_TRANSCRIPT_MESSAGES}개까지 고를 수 있습니다`,
+    );
   }
   // 요약 · 이슈 초안은 대화를 재료로 한다. 코드만으로 만들면 지어낸다.
   if (preset !== null && channelId === null) {

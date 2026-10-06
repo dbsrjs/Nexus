@@ -25,7 +25,6 @@ export interface LlmConfig {
 
 const NAMES: LlmProviderName[] = ['gemini', 'local', 'fake'];
 
-
 /**
  * LLM 설정의 **유일한 해석 지점**. `embedding.config.ts` 와 같은 역할이다.
  *

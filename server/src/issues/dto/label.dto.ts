@@ -1,4 +1,12 @@
-import { ArrayMaxSize, IsArray, IsString, Matches, MaxLength, MinLength, IsUUID } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+  IsUUID,
+} from 'class-validator';
 
 /** `#RRGGBB`. 이름은 스페이스 안에서 유일하다(스키마 UNIQUE). */
 export class CreateIssueLabelDto {

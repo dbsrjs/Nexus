@@ -23,11 +23,14 @@ describe('FakeEmbeddingProvider', () => {
   });
 
   it('낱말이 겹치면 더 가깝다 — 검증이 순위를 단언할 수 있어야 한다', async () => {
-    const [target, near, far] = await provider.embed([
-      'socket reconnect with fresh token',
-      'reconnect the socket using a fresh token please',
-      '고아 첨부를 한 시간마다 지운다',
-    ], 'document');
+    const [target, near, far] = await provider.embed(
+      [
+        'socket reconnect with fresh token',
+        'reconnect the socket using a fresh token please',
+        '고아 첨부를 한 시간마다 지운다',
+      ],
+      'document',
+    );
     const dot = (a: number[], b: number[]) => a.reduce((s, x, i) => s + x * b[i], 0);
     expect(dot(target, near)).toBeGreaterThan(dot(target, far));
   });
@@ -41,7 +44,7 @@ describe('FakeEmbeddingProvider', () => {
     const out = await provider.embed(['a', 'b', 'c'], 'document');
     expect(out).toHaveLength(3);
   });
-// **task 를 무시하는 것이 요구 조건이다.** 진짜 provider 는 문서와 질의를
+  // **task 를 무시하는 것이 요구 조건이다.** 진짜 provider 는 문서와 질의를
   // 다르게 다루지만(taskType · 접두사), fake 가 그것을 흉내 내면 접두사 낱말이
   // 벡터에 섞여 문서와 질의가 서로 멀어진다 — 낱말 겹침으로 순위를 단언하는
   // check:indexing 이 통째로 무너진다.

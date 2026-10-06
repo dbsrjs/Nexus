@@ -36,14 +36,20 @@ describe('buildFollowUpPrompt', () => {
       material,
       '더',
     );
-    const withTranscript = built.messages.filter((m) => m.content.includes('배포는 금요일'));
+    const withTranscript = built.messages.filter((m) =>
+      m.content.includes('배포는 금요일'),
+    );
     expect(withTranscript).toHaveLength(1);
     expect(withTranscript[0]).toBe(built.messages[1]);
   });
 
   it('★ 첫 문답이 요약 프리셋이어도 system 은 ask 의 것이다 - 세 항목 양식에 굳지 않게', () => {
     const built = buildFollowUpPrompt(
-      { root: { instruction: null, preset: 'summary' }, rootAnswer: '### 정해진 것', later: [] },
+      {
+        root: { instruction: null, preset: 'summary' },
+        rootAnswer: '### 정해진 것',
+        later: [],
+      },
       material,
       '담당자별로',
     );

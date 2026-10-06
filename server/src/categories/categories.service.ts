@@ -66,10 +66,7 @@ export class CategoriesService {
     return (last?.position ?? -1) + 1;
   }
 
-  private async requireCategory(
-    spaceId: string,
-    categoryId: string,
-  ): Promise<Category> {
+  private async requireCategory(spaceId: string, categoryId: string): Promise<Category> {
     const category = await this.prisma.category.findFirst({
       where: { id: categoryId, spaceId },
     });

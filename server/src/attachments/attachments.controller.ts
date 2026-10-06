@@ -38,9 +38,7 @@ export class AttachmentsController {
    * `attachmentIds` 로 넘기면 연결된다.
    */
   @Post('channels/:channelId/attachments')
-  @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }),
-  )
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }))
   upload(
     @Param('channelId', new ParseUUIDPipe()) channelId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -51,10 +49,7 @@ export class AttachmentsController {
 
   /** 스페이스의 파일 목록. 볼 수 있는 채널의 것만 나온다. */
   @Get('attachments')
-  list(
-    @Query() query: ListAttachmentsDto,
-    @CurrentSpaceMember() member: SpaceMember,
-  ) {
+  list(@Query() query: ListAttachmentsDto, @CurrentSpaceMember() member: SpaceMember) {
     return this.attachments.listForSpace(member, query);
   }
 

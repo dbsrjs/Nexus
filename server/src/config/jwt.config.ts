@@ -26,7 +26,7 @@ export function resolveJwtSecrets(config: ConfigService): JwtSecrets {
   if (!accessSecret) {
     throw new Error(
       'JWT_SECRET 이 설정되지 않았습니다. .env.example 을 참고해 값을 채우십시오.\n' +
-        '  생성: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'base64url\'))"',
+        "  생성: node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\"",
     );
   }
 
@@ -38,8 +38,7 @@ export function resolveJwtSecrets(config: ConfigService): JwtSecrets {
 
   // 리프레시 시크릿을 분리하면 액세스 토큰 시크릿이 유출돼도 리프레시 토큰까지
   // 위조되지는 않는다. 미설정 시에는 액세스 시크릿을 재사용한다(폴백 상수가 아니다).
-  const refreshSecret =
-    config.get<string>('JWT_REFRESH_SECRET')?.trim() || accessSecret;
+  const refreshSecret = config.get<string>('JWT_REFRESH_SECRET')?.trim() || accessSecret;
 
   return {
     accessSecret,

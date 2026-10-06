@@ -16,7 +16,9 @@ function setup(over: { prisma?: Record<string, unknown> } = {}) {
     exists: jest.fn(),
   };
   const user = {
-    findUnique: jest.fn().mockResolvedValue({ id: 'u-1', avatarKey: 'avatars/u-1/old.webp' }),
+    findUnique: jest
+      .fn()
+      .mockResolvedValue({ id: 'u-1', avatarKey: 'avatars/u-1/old.webp' }),
     update: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
       calls.push('update');
       return { id: 'u-1', name: '가영', avatarUrl: data.avatarUrl ?? null };
@@ -91,7 +93,10 @@ describe('AvatarService.upload', () => {
 
   it('바뀌면 함께 쓰는 스페이스마다 user:updated 를 보낸다', async () => {
     const { service, prisma, realtime } = setup();
-    prisma.spaceMember.findMany.mockResolvedValue([{ spaceId: 's-1' }, { spaceId: 's-2' }]);
+    prisma.spaceMember.findMany.mockResolvedValue([
+      { spaceId: 's-1' },
+      { spaceId: 's-2' },
+    ]);
     await service.upload('u-1', await png());
     expect(realtime.toSpace).toHaveBeenCalledTimes(2);
     expect(realtime.toSpace).toHaveBeenCalledWith(
@@ -99,7 +104,11 @@ describe('AvatarService.upload', () => {
       'user:updated',
       expect.objectContaining({ userId: 'u-1', name: '가영' }),
     );
-    expect(realtime.toUser).toHaveBeenCalledWith('u-1', 'user:updated', expect.anything());
+    expect(realtime.toUser).toHaveBeenCalledWith(
+      'u-1',
+      'user:updated',
+      expect.anything(),
+    );
   });
 });
 

@@ -30,7 +30,6 @@ const DEFAULT_BASE = 'https://generativelanguage.googleapis.com/v1beta';
  */
 const THINKING_LEVEL = 'low';
 
-
 /**
  * Gemini 생성. **기본 provider 다** (설계 §0) — Phase 1 배포 대상에 GPU 가 없다.
  *
@@ -59,7 +58,6 @@ export class GeminiLlmProvider implements LlmProvider {
     return this.config.maxTokens;
   }
 
-
   /**
    * 시간 제한을 건 `fetch`. **넘으면 504 로 던진다** — 전환 모델이 5xx 로 받고,
    * 전환이 없으면 큐가 5xx 처럼 다시 건다(`classifyFailure`). 네트워크 실패
@@ -84,41 +82,35 @@ export class GeminiLlmProvider implements LlmProvider {
       throw err;
     }
   }
-  async complete(
-    messages: LlmMessage[],
-    options: LlmOptions,
-  ): Promise<LlmResult> {
+  async complete(messages: LlmMessage[], options: LlmOptions): Promise<LlmResult> {
     const base = this.config.base ?? DEFAULT_BASE;
     const system = messages.filter((m) => m.role === 'system');
     // 메시지마다 content 하나 — 합치면 멀티턴의 차례가 사라진다(13-3).
     const turns = messages.filter((m) => m.role !== 'system');
 
-    const res = await this.post(
-      `${base}/models/${this.config.model}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          // 키를 URL 에 넣지 않는다 — 액세스 로그에 남는다.
-          'x-goog-api-key': this.config.apiKey ?? '',
-        },
-        body: JSON.stringify({
-          ...(system.length > 0
-            ? { systemInstruction: { parts: system.map((m) => ({ text: m.content })) } }
-            : {}),
-          contents: turns.map((m) => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }],
-          })),
-          generationConfig: {
-            temperature: options.temperature,
-            maxOutputTokens: options.maxTokens,
-            thinkingConfig: { thinkingLevel: THINKING_LEVEL },
-            ...(options.json ? { responseMimeType: 'application/json' } : {}),
-          },
-        }),
+    const res = await this.post(`${base}/models/${this.config.model}:generateContent`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        // 키를 URL 에 넣지 않는다 — 액세스 로그에 남는다.
+        'x-goog-api-key': this.config.apiKey ?? '',
       },
-    );
+      body: JSON.stringify({
+        ...(system.length > 0
+          ? { systemInstruction: { parts: system.map((m) => ({ text: m.content })) } }
+          : {}),
+        contents: turns.map((m) => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }],
+        })),
+        generationConfig: {
+          temperature: options.temperature,
+          maxOutputTokens: options.maxTokens,
+          thinkingConfig: { thinkingLevel: THINKING_LEVEL },
+          ...(options.json ? { responseMimeType: 'application/json' } : {}),
+        },
+      }),
+    });
 
     if (!res.ok) {
       this.logger.warn(`Gemini LLM 호출 실패: ${res.status}`);

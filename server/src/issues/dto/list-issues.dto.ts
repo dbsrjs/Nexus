@@ -1,12 +1,5 @@
 import { IssueStatus } from '@prisma/client';
-import {
-  IsEnum,
-  IsIn,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MaxLength,
-} from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class ListIssuesDto {
   /** 주면 그 컬럼만. 안 주면 보드 전체. */

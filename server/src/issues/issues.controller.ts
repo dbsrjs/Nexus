@@ -15,10 +15,7 @@ import {
 } from '@nestjs/common';
 import { SpaceRole } from '@prisma/client';
 import { CurrentSpaceMember } from '../spaces/decorators/current-space-member.decorator';
-import {
-  AuthUser,
-  CurrentUser,
-} from '../common/decorators/current-user.decorator';
+import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { SpaceGuard } from '../spaces/guards/space.guard';
 import { SpaceRoleGuard } from '../spaces/guards/space-role.guard';
 import { MinRole } from '../spaces/decorators/min-role.decorator';

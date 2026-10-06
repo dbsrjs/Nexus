@@ -37,7 +37,10 @@ describe('HttpExceptionFilter', () => {
 
   it('HttpException 의 문구는 그대로 준다 — 의도해서 던진 것이다', () => {
     const { host, json } = hostWith();
-    new HttpExceptionFilter().catch(new NotFoundException('채널을 찾을 수 없습니다'), host);
+    new HttpExceptionFilter().catch(
+      new NotFoundException('채널을 찾을 수 없습니다'),
+      host,
+    );
 
     expect(json.mock.calls[0][0]).toMatchObject({
       statusCode: 404,

@@ -8,7 +8,9 @@ function fakeConfig(values: Record<string, string>): ConfigService {
 describe('resolvePublicBaseUrl', () => {
   it('값이 있으면 그대로 준다', () => {
     expect(
-      resolvePublicBaseUrl(fakeConfig({ PUBLIC_BASE_URL: 'https://a.trycloudflare.com' })),
+      resolvePublicBaseUrl(
+        fakeConfig({ PUBLIC_BASE_URL: 'https://a.trycloudflare.com' }),
+      ),
     ).toBe('https://a.trycloudflare.com');
   });
 
@@ -28,6 +30,8 @@ describe('resolvePublicBaseUrl', () => {
   });
 
   it('http(s) 가 아니면 미설정으로 친다 — 훅 URL 로 쓸 수 없다', () => {
-    expect(resolvePublicBaseUrl(fakeConfig({ PUBLIC_BASE_URL: 'localhost:3000' }))).toBeNull();
+    expect(
+      resolvePublicBaseUrl(fakeConfig({ PUBLIC_BASE_URL: 'localhost:3000' })),
+    ).toBeNull();
   });
 });

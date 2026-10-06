@@ -18,10 +18,7 @@ export interface GithubOauthConfig {
 
 const KEY_BYTES = 32;
 
-
-export function resolveGithubOauth(
-  config: ConfigService,
-): GithubOauthConfig | null {
+export function resolveGithubOauth(config: ConfigService): GithubOauthConfig | null {
   const clientId = envTrimmed(config, 'GITHUB_CLIENT_ID');
   const clientSecret = envTrimmed(config, 'GITHUB_CLIENT_SECRET');
   const callbackUrl = envTrimmed(config, 'GITHUB_CALLBACK_URL');
@@ -53,7 +50,7 @@ export function resolveOauthTokenKey(config: ConfigService): Buffer | null {
   if (key.length !== KEY_BYTES) {
     throw new Error(
       `OAUTH_TOKEN_KEY 는 base64url 로 인코딩한 ${KEY_BYTES}바이트여야 합니다 (지금 ${key.length}바이트).\n` +
-        '  생성: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64url\'))"',
+        "  생성: node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"",
     );
   }
   return key;

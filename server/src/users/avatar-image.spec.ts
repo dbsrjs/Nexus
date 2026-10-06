@@ -12,7 +12,9 @@ async function halves(width: number, height: number): Promise<Buffer> {
       else raw[i + 2] = 255;
     }
   }
-  return sharp(raw, { raw: { width, height, channels: 3 } }).png().toBuffer();
+  return sharp(raw, { raw: { width, height, channels: 3 } })
+    .png()
+    .toBuffer();
 }
 
 describe('processAvatar', () => {
@@ -35,7 +37,9 @@ describe('processAvatar', () => {
         raw[(y * width + x) * 3 + Math.floor(x / 200)] = 255;
       }
     }
-    const png = await sharp(raw, { raw: { width, height, channels: 3 } }).png().toBuffer();
+    const png = await sharp(raw, { raw: { width, height, channels: 3 } })
+      .png()
+      .toBuffer();
     const out = await processAvatar(png);
     const { data, info } = await sharp(out).raw().toBuffer({ resolveWithObject: true });
     const left = (128 * info.width + 5) * info.channels;
@@ -55,7 +59,12 @@ describe('processAvatar', () => {
 
   it('투명 PNG 도 받는다', async () => {
     const clear = await sharp({
-      create: { width: 50, height: 50, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+      create: {
+        width: 50,
+        height: 50,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
     })
       .png()
       .toBuffer();

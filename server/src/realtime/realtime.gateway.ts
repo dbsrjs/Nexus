@@ -32,7 +32,10 @@ interface AuthedSocket extends Socket {
 export const TYPING_MIN_INTERVAL_MS = 1000;
 
 /** 소켓 페이로드를 DTO 로 검사한다. 틀리면 null — 연결은 끊지 않는다. */
-async function parse<T extends object>(cls: new () => T, body: unknown): Promise<T | null> {
+async function parse<T extends object>(
+  cls: new () => T,
+  body: unknown,
+): Promise<T | null> {
   const dto = plainToInstance(cls, body ?? {});
   const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: true });
   return errors.length > 0 ? null : dto;
@@ -83,9 +86,12 @@ export class RealtimeGateway
       }
 
       try {
-        const payload = await this.jwt.verifyAsync<{ sub?: string; type?: string }>(token, {
-          secret: this.accessSecret,
-        });
+        const payload = await this.jwt.verifyAsync<{ sub?: string; type?: string }>(
+          token,
+          {
+            secret: this.accessSecret,
+          },
+        );
         // **액세스 토큰만 받는다** — REST 의 JwtStrategy 와 같은 조건이다.
         // JWT_REFRESH_SECRET 을 비우면 리프레시 토큰도 같은 시크릿으로 서명되어,
         // 이 검사가 없으면 7일짜리 리프레시 토큰으로 소켓이 붙는다. 그 토큰은
@@ -124,7 +130,10 @@ export class RealtimeGateway
           `스페이스 ${joined.spaceIds.length} · 채널 ${joined.channelIds.length}`,
       );
     } catch (err) {
-      this.logger.error(`연결 시 룸 조인 실패 (user=${client.data.userId})`, err as Error);
+      this.logger.error(
+        `연결 시 룸 조인 실패 (user=${client.data.userId})`,
+        err as Error,
+      );
     }
   }
 

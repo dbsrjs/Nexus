@@ -11,10 +11,7 @@ describe('fold — 리액션 요약', () => {
   const row = (emoji: string, userId: string) => ({ emoji, userId });
 
   it('이모지별로 개수를 센다', () => {
-    const result = fold(
-      [row('👍', 'u1'), row('👍', 'u2'), row('🎉', 'u3')],
-      'u9',
-    );
+    const result = fold([row('👍', 'u1'), row('👍', 'u2'), row('🎉', 'u3')], 'u9');
 
     expect(result).toEqual([
       { emoji: '👍', count: 2, mine: false },

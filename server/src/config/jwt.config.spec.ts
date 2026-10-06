@@ -28,9 +28,9 @@ describe('resolveJwtSecrets', () => {
   });
 
   it('32자 미만은 거부한다', () => {
-    expect(() =>
-      resolveJwtSecrets(configOf({ JWT_SECRET: 'a'.repeat(31) })),
-    ).toThrow(/짧습니다/);
+    expect(() => resolveJwtSecrets(configOf({ JWT_SECRET: 'a'.repeat(31) }))).toThrow(
+      /짧습니다/,
+    );
   });
 
   it('리프레시 시크릿을 지정하지 않으면 액세스 시크릿을 재사용한다', () => {

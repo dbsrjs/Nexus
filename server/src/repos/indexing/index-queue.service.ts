@@ -41,7 +41,10 @@ export interface IndexFailOptions {
  * **다시 걸어도 같은 실패는 세 번을 기다리지 않는다** — 401(토큰 만료) ·
  * 404(저장소 사라짐)가 그렇다. 6-2 의 전송 큐가 같은 구분을 했다.
  */
-export function shouldGiveUpIndexing(attempts: number, options: IndexFailOptions): boolean {
+export function shouldGiveUpIndexing(
+  attempts: number,
+  options: IndexFailOptions,
+): boolean {
   if (options.fatal === true) return true;
   return options.countsAsAttempt && attempts >= MAX_ATTEMPTS;
 }
@@ -246,11 +249,7 @@ export class IndexQueueService {
    * **네트워크 실패는 시도 횟수로 치지 않는다**(6-2 전송 큐와 같은 규칙).
    * 오프라인은 오류가 아니다 — 429 도 "잠시 뒤 다시"라는 뜻이지 우리 잘못이 아니다.
    */
-  async fail(
-    repoId: string,
-    message: string,
-    options: IndexFailOptions,
-  ): Promise<void> {
+  async fail(repoId: string, message: string, options: IndexFailOptions): Promise<void> {
     const job = await this.prisma.repoIndexJob.findUnique({
       where: { repoId },
       select: { attempts: true },

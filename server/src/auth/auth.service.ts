@@ -218,7 +218,10 @@ export class AuthService {
 
     const passwordHash = await argon2.hash(newPassword);
     const updated = await this.prisma.$transaction(async (tx) => {
-      const saved = await tx.user.update({ where: { id: userId }, data: { passwordHash } });
+      const saved = await tx.user.update({
+        where: { id: userId },
+        data: { passwordHash },
+      });
       await tx.refreshToken.updateMany({
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
@@ -292,10 +295,7 @@ export class AuthService {
     return tokens;
   }
 
-  private async signPair(
-    user: User,
-    issued: IssuedRefreshToken,
-  ): Promise<AuthTokens> {
+  private async signPair(user: User, issued: IssuedRefreshToken): Promise<AuthTokens> {
     const accessToken = await this.jwt.signAsync(
       { sub: user.id, email: user.email, type: 'access' } satisfies JwtPayload,
       { secret: this.secrets.accessSecret, expiresIn: this.secrets.accessTtl },

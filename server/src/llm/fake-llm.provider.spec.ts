@@ -52,16 +52,20 @@ describe('FakeLlmProvider', () => {
     it('times 가 없으면 매번 던진다', async () => {
       const p = new FakeLlmProvider();
       for (let i = 0; i < 7; i++) {
-        await expect(ask(p, '[[fake-llm:status=503]]')).rejects.toBeInstanceOf(LlmHttpError);
+        await expect(ask(p, '[[fake-llm:status=503]]')).rejects.toBeInstanceOf(
+          LlmHttpError,
+        );
       }
     });
 
     it('★ retry-after 는 0 도 살려 싣는다 - 0 을 없음으로 읽으면 1분을 기다린다', async () => {
       const p = new FakeLlmProvider();
-      await expect(ask(p, '[[fake-llm:status=429;retry-after=0]]')).rejects.toMatchObject({
-        status: 429,
-        retryAfterSec: 0,
-      });
+      await expect(ask(p, '[[fake-llm:status=429;retry-after=0]]')).rejects.toMatchObject(
+        {
+          status: 429,
+          retryAfterSec: 0,
+        },
+      );
     });
 
     it('횟수는 프롬프트마다 따로 센다', async () => {
@@ -74,7 +78,9 @@ describe('FakeLlmProvider', () => {
     it('empty 는 빈 답, truncated 는 잘린 답을 준다 - 러너가 둘 다 실패로 돌린다', async () => {
       const p = new FakeLlmProvider();
       await expect(ask(p, '[[fake-llm:empty]]')).resolves.toMatchObject({ text: '' });
-      await expect(ask(p, '[[fake-llm:truncated]]')).resolves.toMatchObject({ truncated: true });
+      await expect(ask(p, '[[fake-llm:truncated]]')).resolves.toMatchObject({
+        truncated: true,
+      });
     });
 
     it('모르는 지시는 던진다 - 오타가 성공으로 보이면 검증이 거짓으로 통과한다', async () => {

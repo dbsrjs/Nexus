@@ -24,10 +24,6 @@ export function promptHash(
   modelId: string,
   messages: LlmMessage[],
 ): string {
-  const body = messages
-    .map((m) => `${m.role}\u0000${m.content}`)
-    .join('\u0000');
-  return createHash('sha256')
-    .update([kind, modelId, body].join('\u0000'))
-    .digest('hex');
+  const body = messages.map((m) => `${m.role}\u0000${m.content}`).join('\u0000');
+  return createHash('sha256').update([kind, modelId, body].join('\u0000')).digest('hex');
 }

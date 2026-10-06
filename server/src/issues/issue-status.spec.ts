@@ -22,9 +22,7 @@ describe('resolveClosedAt', () => {
   });
 
   it('done 과 무관한 전이는 건드리지 않는다', () => {
-    expect(
-      resolveClosedAt(IssueStatus.backlog, IssueStatus.doing, NOW),
-    ).toBeUndefined();
+    expect(resolveClosedAt(IssueStatus.backlog, IssueStatus.doing, NOW)).toBeUndefined();
   });
 
   it('상태를 바꾸지 않으면 건드리지 않는다', () => {

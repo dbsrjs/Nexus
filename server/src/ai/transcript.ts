@@ -47,9 +47,7 @@ export function buildTranscript(
 
       const body = withNames(m.body, names);
       const files =
-        m.attachmentNames.length > 0
-          ? `(첨부: ${m.attachmentNames.join(', ')})`
-          : '';
+        m.attachmentNames.length > 0 ? `(첨부: ${m.attachmentNames.join(', ')})` : '';
 
       return head + [body, files].filter((s) => s.length > 0).join(' ');
     })

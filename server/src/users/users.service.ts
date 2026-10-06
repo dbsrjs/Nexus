@@ -48,9 +48,7 @@ export class UsersService {
       where: { id },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
-        ...(dto.globalStatus !== undefined
-          ? { globalStatus: dto.globalStatus }
-          : {}),
+        ...(dto.globalStatus !== undefined ? { globalStatus: dto.globalStatus } : {}),
       },
       select: publicUserSelect,
     });

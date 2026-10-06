@@ -14,7 +14,6 @@ export interface EmbeddingConfig {
 
 const NAMES: EmbeddingProviderName[] = ['gemini', 'local', 'fake'];
 
-
 /**
  * 임베딩 설정의 **유일한 해석 지점**. `oauth.config.ts` 와 같은 역할이다.
  *

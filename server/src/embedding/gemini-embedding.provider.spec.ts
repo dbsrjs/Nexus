@@ -42,7 +42,9 @@ describe('GeminiEmbeddingProvider', () => {
       return {
         ok: true,
         status: 200,
-        json: async () => ({ embeddings: Array.from({ length: n }, () => ({ values: vector(1) })) }),
+        json: async () => ({
+          embeddings: Array.from({ length: n }, () => ({ values: vector(1) })),
+        }),
       };
     }) as any;
 
@@ -70,7 +72,9 @@ describe('GeminiEmbeddingProvider', () => {
       json: async () => ({ embeddings: [{ values: [1, 2, 3] }] }),
     })) as any;
 
-    await expect(new GeminiEmbeddingProvider(CFG).embed(['a'], 'document')).rejects.toThrow(/768/);
+    await expect(
+      new GeminiEmbeddingProvider(CFG).embed(['a'], 'document'),
+    ).rejects.toThrow(/768/);
   });
 
   // 429 는 provider 안에서 먼저 삼킨다(지수 백오프). 밖으로 던지면 작업
@@ -88,7 +92,9 @@ describe('GeminiEmbeddingProvider', () => {
       };
     }) as any;
 
-    await expect(new GeminiEmbeddingProvider(CFG).embed(['a'], 'document')).rejects.toMatchObject({
+    await expect(
+      new GeminiEmbeddingProvider(CFG).embed(['a'], 'document'),
+    ).rejects.toMatchObject({
       status: 429,
     });
     // 최초 1회 + RATE_LIMIT_RETRIES(20)
@@ -102,7 +108,9 @@ describe('GeminiEmbeddingProvider', () => {
       return { ok: false, status: 500, headers: { get: () => null } };
     }) as any;
 
-    await expect(new GeminiEmbeddingProvider(CFG).embed(['a'], 'document')).rejects.toMatchObject({
+    await expect(
+      new GeminiEmbeddingProvider(CFG).embed(['a'], 'document'),
+    ).rejects.toMatchObject({
       status: 500,
     });
     expect(calls).toBe(1);
@@ -111,7 +119,11 @@ describe('GeminiEmbeddingProvider', () => {
     let seen: any = null;
     global.fetch = (async (url: string, init: any) => {
       seen = { url, headers: init.headers };
-      return { ok: true, status: 200, json: async () => ({ embeddings: [{ values: vector(1) }] }) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ embeddings: [{ values: vector(1) }] }),
+      };
     }) as any;
 
     await new GeminiEmbeddingProvider(CFG).embed(['a'], 'document');

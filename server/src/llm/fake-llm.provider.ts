@@ -1,4 +1,10 @@
-import { LlmHttpError, LlmMessage, LlmOptions, LlmProvider, LlmResult } from './llm.provider';
+import {
+  LlmHttpError,
+  LlmMessage,
+  LlmOptions,
+  LlmProvider,
+  LlmResult,
+} from './llm.provider';
 import { createHash } from 'node:crypto';
 
 /**
@@ -32,13 +38,17 @@ interface Directive {
  */
 function parseDirective(raw: string): Directive {
   const out: Directive = {};
-  for (const part of raw.split(';').map((p) => p.trim()).filter(Boolean)) {
+  for (const part of raw
+    .split(';')
+    .map((p) => p.trim())
+    .filter(Boolean)) {
     const [key, value] = part.split('=').map((s) => s.trim());
     if (key === 'empty' && value === undefined) out.empty = true;
     else if (key === 'truncated' && value === undefined) out.truncated = true;
     else if (key === 'status' && /^\d{3}$/.test(value ?? '')) out.status = Number(value);
     else if (key === 'times' && /^\d+$/.test(value ?? '')) out.times = Number(value);
-    else if (key === 'retry-after' && /^\d+$/.test(value ?? '')) out.retryAfterSec = Number(value);
+    else if (key === 'retry-after' && /^\d+$/.test(value ?? ''))
+      out.retryAfterSec = Number(value);
     else throw new Error(`fake-llm 지시문을 읽을 수 없습니다: "${part}"`);
   }
   return out;

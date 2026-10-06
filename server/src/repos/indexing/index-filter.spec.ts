@@ -13,7 +13,9 @@ describe('isTooLarge', () => {
 
 describe('isGenerated', () => {
   it('Dart 코드젠의 표시를 잡는다', () => {
-    expect(isGenerated('// GENERATED CODE - DO NOT MODIFY BY HAND\npart of ...')).toBe(true);
+    expect(isGenerated('// GENERATED CODE - DO NOT MODIFY BY HAND\npart of ...')).toBe(
+      true,
+    );
   });
 
   it('널리 쓰이는 @generated 표시도 잡는다', () => {

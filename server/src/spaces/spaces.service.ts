@@ -137,7 +137,9 @@ export class SpacesService {
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
         ...(dto.iconUrl !== undefined ? { iconUrl: dto.iconUrl } : {}),
-        ...(dto.sprintsEnabled !== undefined ? { sprintsEnabled: dto.sprintsEnabled } : {}),
+        ...(dto.sprintsEnabled !== undefined
+          ? { sprintsEnabled: dto.sprintsEnabled }
+          : {}),
       },
     });
     this.realtime.toSpace(spaceId, 'space:updated', { spaceId });
@@ -178,9 +180,7 @@ export class SpacesService {
     }
 
     if (!outranks(actor.role, target.role)) {
-      throw new ForbiddenException(
-        '자신과 같거나 높은 역할의 멤버는 변경할 수 없습니다',
-      );
+      throw new ForbiddenException('자신과 같거나 높은 역할의 멤버는 변경할 수 없습니다');
     }
 
     const updated = await this.prisma.spaceMember.update({
@@ -196,7 +196,11 @@ export class SpacesService {
     await this.evictHiddenChannels({ ...target, role });
     this.realtime.toUser(targetUserId, 'rooms:invalidate', { reason: 'member.role' });
     // 모두에게 같은 값이다(§3-6). 받은 앱은 멤버 목록을 다시 받는다.
-    this.realtime.toSpace(spaceId, 'member:updated', { spaceId, userId: targetUserId, role });
+    this.realtime.toSpace(spaceId, 'member:updated', {
+      spaceId,
+      userId: targetUserId,
+      role,
+    });
 
     return updated;
   }
@@ -221,9 +225,7 @@ export class SpacesService {
     }
 
     if (!outranks(actor.role, target.role)) {
-      throw new ForbiddenException(
-        '자신과 같거나 높은 역할의 멤버는 추방할 수 없습니다',
-      );
+      throw new ForbiddenException('자신과 같거나 높은 역할의 멤버는 추방할 수 없습니다');
     }
 
     await this.removeAndNotify(spaceId, targetUserId);
@@ -268,7 +270,10 @@ export class SpacesService {
       select: { id: true },
     });
     await this.dropMembership(spaceId, userId);
-    this.realtime.evict(userId, [room.space(spaceId), ...channels.map((c) => room.channel(c.id))]);
+    this.realtime.evict(userId, [
+      room.space(spaceId),
+      ...channels.map((c) => room.channel(c.id)),
+    ]);
     this.realtime.toUser(userId, 'space:removed', { spaceId });
     this.realtime.toUser(userId, 'rooms:invalidate', { reason: 'member.left' });
     this.realtime.toSpace(spaceId, 'member:left', { spaceId, userId });
@@ -304,7 +309,10 @@ export class SpacesService {
           perm: permOf.get(c.id) ?? null,
         }).view,
     );
-    this.realtime.evict(member.userId, hidden.map((c) => room.channel(c.id)));
+    this.realtime.evict(
+      member.userId,
+      hidden.map((c) => room.channel(c.id)),
+    );
   }
 
   /** POST /api/spaces/:spaceId/invites (admin+) */
@@ -402,15 +410,15 @@ export class SpacesService {
 
     // 새 스페이스 룸에 붙어야 실시간이 온다. 기존 멤버의 멘션 자동완성에는 바로 떠야 한다.
     this.realtime.toUser(userId, 'rooms:invalidate', { reason: 'member.joined' });
-    this.realtime.toSpace(invite.spaceId, 'member:joined', { spaceId: invite.spaceId, userId });
+    this.realtime.toSpace(invite.spaceId, 'member:joined', {
+      spaceId: invite.spaceId,
+      userId,
+    });
 
     return invite.space;
   }
 
-  private async requireMember(
-    spaceId: string,
-    userId: string,
-  ): Promise<SpaceMember> {
+  private async requireMember(spaceId: string, userId: string): Promise<SpaceMember> {
     const member = await this.prisma.spaceMember.findUnique({
       where: { spaceId_userId: { spaceId, userId } },
     });

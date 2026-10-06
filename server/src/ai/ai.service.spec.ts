@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { AiService } from './ai.service';
 import { MAX_TRANSCRIPT_MESSAGES, buildTranscript } from './transcript';
 import { promptHash } from './prompt-hash';
@@ -42,9 +46,9 @@ describe('AiService.ask — 요약 프리셋(13-1 에서 옮김)', () => {
   it('LLM 미설정이면 503 이다 — 서버는 떠 있고 AI 만 멈춘다', async () => {
     await expect(
       service({ llm: null }).ask('s-1', 'u-1', {
-      preset: 'summary',
-      context: { channelId: 'c-1', messageIds: ['m-1'] },
-    }),
+        preset: 'summary',
+        context: { channelId: 'c-1', messageIds: ['m-1'] },
+      }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
@@ -56,9 +60,9 @@ describe('AiService.ask — 요약 프리셋(13-1 에서 옮김)', () => {
     };
     await expect(
       service({ prisma }).ask('s-1', 'u-1', {
-      preset: 'summary',
-      context: { channelId: 'c-1', messageIds: ['m-1'] },
-    }),
+        preset: 'summary',
+        context: { channelId: 'c-1', messageIds: ['m-1'] },
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -66,18 +70,18 @@ describe('AiService.ask — 요약 프리셋(13-1 에서 옮김)', () => {
     const ids = Array.from({ length: MAX_TRANSCRIPT_MESSAGES + 1 }, (_, i) => `m-${i}`);
     await expect(
       service().ask('s-1', 'u-1', {
-      preset: 'summary',
-      context: { channelId: 'c-1', messageIds: ids },
-    }),
+        preset: 'summary',
+        context: { channelId: 'c-1', messageIds: ids },
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('빈 선택은 400 이다', async () => {
     await expect(
       service().ask('s-1', 'u-1', {
-      preset: 'summary',
-      context: { channelId: 'c-1', messageIds: [] },
-    }),
+        preset: 'summary',
+        context: { channelId: 'c-1', messageIds: [] },
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -101,9 +105,9 @@ describe('AiService.ask — 요약 프리셋(13-1 에서 옮김)', () => {
     };
     await expect(
       service({ prisma }).ask('s-1', 'u-1', {
-      preset: 'summary',
-      context: { channelId: 'c-1', messageIds: ['m-1', 'm-2'] },
-    }),
+        preset: 'summary',
+        context: { channelId: 'c-1', messageIds: ['m-1', 'm-2'] },
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -232,9 +236,9 @@ describe('AiService.ask — 요약 프리셋(13-1 에서 옮김)', () => {
       const queue = { enqueue: jest.fn().mockResolvedValue('run-1') };
 
       await service({ prisma, queue }).ask('s-1', 'bob', {
-      preset: 'summary',
-      context: { channelId: 'c-1', messageIds: ['m-1'] },
-    });
+        preset: 'summary',
+        context: { channelId: 'c-1', messageIds: ['m-1'] },
+      });
 
       expect(prisma.aiRun.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -295,7 +299,11 @@ describe('AiService.ask — 13-2', () => {
     expect(queue.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: 'ask',
-        input: { instruction: '뭐 정했어?', channelId: 'c-1', messageIds: ['m-1', 'm-2'] },
+        input: {
+          instruction: '뭐 정했어?',
+          channelId: 'c-1',
+          messageIds: ['m-1', 'm-2'],
+        },
       }),
     );
   });
@@ -310,7 +318,9 @@ describe('AiService.ask — 13-2', () => {
   });
 
   it('저장소는 지시문으로 검색하고 고른 청크 id 를 input 에 박는다', async () => {
-    const indexing = { search: jest.fn().mockResolvedValue({ chunks: [chunk('k-1'), chunk('k-2')] }) };
+    const indexing = {
+      search: jest.fn().mockResolvedValue({ chunks: [chunk('k-1'), chunk('k-2')] }),
+    };
     const queue = { enqueue: jest.fn().mockResolvedValue('run-1') };
 
     await service({ prisma: prismaWith([]), queue, indexing }).ask('s-1', 'u-1', {
@@ -318,10 +328,19 @@ describe('AiService.ask — 13-2', () => {
       context: { repoId: 'r-1' },
     });
 
-    expect(indexing.search).toHaveBeenCalledWith('s-1', 'r-1', '소켓 재연결은 어디서?', 8);
+    expect(indexing.search).toHaveBeenCalledWith(
+      's-1',
+      'r-1',
+      '소켓 재연결은 어디서?',
+      8,
+    );
     expect(queue.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
-        input: { instruction: '소켓 재연결은 어디서?', repoId: 'r-1', chunkIds: ['k-1', 'k-2'] },
+        input: {
+          instruction: '소켓 재연결은 어디서?',
+          repoId: 'r-1',
+          chunkIds: ['k-1', 'k-2'],
+        },
       }),
     );
   });
@@ -387,7 +406,9 @@ describe('AiService.loadPrompt', () => {
   });
 
   it('인용은 input 의 청크 순서다', async () => {
-    const indexing = { chunksByIds: jest.fn().mockResolvedValue([chunk('k-1'), chunk('k-2')]) };
+    const indexing = {
+      chunksByIds: jest.fn().mockResolvedValue([chunk('k-1'), chunk('k-2')]),
+    };
     const out = await service({ prisma: prismaWith([]), indexing }).loadPrompt('s-1', {
       instruction: 'q',
       repoId: 'r-1',
@@ -447,9 +468,15 @@ describe('AiService.ask — 이어 묻기(13-3)', () => {
       spaceMember: { findMany: jest.fn().mockResolvedValue([]) },
       aiRun: {
         findFirst: jest.fn(
-          ({ where }: { where: { id?: string; userId?: string; promptHash?: string } }) => {
+          ({
+            where,
+          }: {
+            where: { id?: string; userId?: string; promptHash?: string };
+          }) => {
             if (where.promptHash) return Promise.resolve(null); // 캐시 조회
-            const row = where.id ? (rows[where.id] as { userId: string } | undefined) : undefined;
+            const row = where.id
+              ? (rows[where.id] as { userId: string } | undefined)
+              : undefined;
             if (!row) return Promise.resolve(null);
             if (where.userId && row.userId !== where.userId) return Promise.resolve(null);
             return Promise.resolve(row);
@@ -530,7 +557,12 @@ describe('AiService.ask — 이어 묻기(13-3)', () => {
       parentRunId: 'root',
     });
     expect(prepared.kind).toBe('ask');
-    expect(prepared.messages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
+    expect(prepared.messages.map((m) => m.role)).toEqual([
+      'system',
+      'user',
+      'assistant',
+      'user',
+    ]);
     expect(prepared.messages[2].content).toBe('첫 답');
     expect(prepared.messages[3].content).toBe('더 짧게');
   });

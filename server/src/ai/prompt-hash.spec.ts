@@ -26,7 +26,10 @@ describe('promptHash', () => {
   });
 
   it('본문이 한 글자만 달라도 값이 다르다', () => {
-    const other: LlmMessage[] = [msgs[0], { role: 'user', content: '[01:00] 가영: 안뇽' }];
+    const other: LlmMessage[] = [
+      msgs[0],
+      { role: 'user', content: '[01:00] 가영: 안뇽' },
+    ];
     expect(promptHash('summarize', 'fake:fake', msgs)).not.toBe(
       promptHash('summarize', 'fake:fake', other),
     );

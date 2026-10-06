@@ -78,15 +78,21 @@ describe('LocalEmbeddingProvider', () => {
       json: async () => ({ embeddings: [[1, 2, 3]] }),
     })) as any;
 
-    await expect(new LocalEmbeddingProvider(CFG).embed(['a'], 'document')).rejects.toThrow(
-      /768/,
-    );
+    await expect(
+      new LocalEmbeddingProvider(CFG).embed(['a'], 'document'),
+    ).rejects.toThrow(/768/);
   });
 
   it('실패는 status 를 들고 던진다 — 워커가 429 를 다르게 다룬다', async () => {
-    global.fetch = (async () => ({ ok: false, status: 503, headers: { get: () => null } })) as any;
+    global.fetch = (async () => ({
+      ok: false,
+      status: 503,
+      headers: { get: () => null },
+    })) as any;
 
-    await expect(new LocalEmbeddingProvider(CFG).embed(['a'], 'document')).rejects.toMatchObject({
+    await expect(
+      new LocalEmbeddingProvider(CFG).embed(['a'], 'document'),
+    ).rejects.toMatchObject({
       status: 503,
     });
   });

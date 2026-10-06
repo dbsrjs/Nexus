@@ -1,4 +1,8 @@
-import { BadRequestException, HttpException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { AuthService, isReservedEmail } from './auth.service';
 
@@ -8,7 +12,9 @@ async function setup() {
   const passwordHash = await argon2.hash(PASSWORD);
   const prisma = {
     user: {
-      findUnique: jest.fn().mockResolvedValue({ id: 'u-1', email: 'a@x.io', passwordHash }),
+      findUnique: jest
+        .fn()
+        .mockResolvedValue({ id: 'u-1', email: 'a@x.io', passwordHash }),
       create: jest.fn(),
     },
   };
@@ -17,7 +23,9 @@ async function setup() {
     persist: jest.fn(),
   };
   const jwt = { signAsync: jest.fn().mockResolvedValue('signed') };
-  const config = { get: (key: string) => (key === 'JWT_SECRET' ? 'x'.repeat(40) : undefined) };
+  const config = {
+    get: (key: string) => (key === 'JWT_SECRET' ? 'x'.repeat(40) : undefined),
+  };
   const service = new AuthService(
     prisma as never,
     jwt as never,
@@ -54,9 +62,9 @@ describe('AuthService — 가입 · 로그인 보강', () => {
     const { service } = await setup();
     const client = { ip: '10.0.0.1' };
     for (let i = 0; i < 10; i++) {
-      await expect(service.login('a@x.io', 'wrong-password', client)).rejects.toBeInstanceOf(
-        UnauthorizedException,
-      );
+      await expect(
+        service.login('a@x.io', 'wrong-password', client),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
     }
 
     const blocked = service.login('a@x.io', PASSWORD, client);
@@ -71,9 +79,13 @@ describe('AuthService — 가입 · 로그인 보강', () => {
   it('다른 주소에서는 막히지 않는다 — 남이 내 이메일로 틀려도 나는 잠기지 않는다', async () => {
     const { service } = await setup();
     for (let i = 0; i < 10; i++) {
-      await service.login('a@x.io', 'wrong-password', { ip: '10.0.0.1' }).catch(() => undefined);
+      await service
+        .login('a@x.io', 'wrong-password', { ip: '10.0.0.1' })
+        .catch(() => undefined);
     }
-    await expect(service.login('a@x.io', PASSWORD, { ip: '10.0.0.2' })).resolves.toMatchObject({
+    await expect(
+      service.login('a@x.io', PASSWORD, { ip: '10.0.0.2' }),
+    ).resolves.toMatchObject({
       accessToken: 'signed',
     });
   });
