@@ -13,8 +13,15 @@ import '../auth_storage.dart';
 /// 리프레시 재사용 탐지에 걸려 그 세션 family 전체가 끊긴다
 /// (server/src/auth/refresh-token.service.ts).
 class ApiClient {
-  ApiClient({required AuthStorage storage}) : _storage = storage {
+  /// [httpClientAdapter] 는 테스트가 가짜 서버를 끼우는 자리다. 리프레시 전용
+  /// dio 에도 같이 끼워야 401 → 리프레시 → 재시도 경로 전체를 태울 수 있다.
+  ApiClient({
+    required AuthStorage storage,
+    HttpClientAdapter? httpClientAdapter,
+  })  : _storage = storage,
+        _adapter = httpClientAdapter {
     dio = Dio(_baseOptions);
+    if (_adapter != null) dio.httpClientAdapter = _adapter;
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -30,11 +37,16 @@ class ApiClient {
   }
 
   final AuthStorage _storage;
+  final HttpClientAdapter? _adapter;
 
   late final Dio dio;
 
   /// 리프레시 전용. 인터셉터가 없어서 재귀하지 않는다.
-  late final Dio _refreshDio = Dio(_baseOptions);
+  late final Dio _refreshDio = () {
+    final refresh = Dio(_baseOptions);
+    if (_adapter != null) refresh.httpClientAdapter = _adapter;
+    return refresh;
+  }();
 
   AuthTokens? _tokens;
 
