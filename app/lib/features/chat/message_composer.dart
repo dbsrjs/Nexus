@@ -25,6 +25,21 @@ class _SendIntent extends Intent {
   const _SendIntent();
 }
 
+/// 멘션 후보를 키보드로 다룬다 — 후보가 떠 있을 때만 걸린다(2026-10-08 웹 확인).
+/// 없으면 Enter 가 늘 전송이라 반쯤 친 `@이름` 이 그대로 나갔다.
+class _PickMentionIntent extends Intent {
+  const _PickMentionIntent();
+}
+
+class _MoveMentionIntent extends Intent {
+  const _MoveMentionIntent(this.delta);
+  final int delta;
+}
+
+class _DismissMentionIntent extends Intent {
+  const _DismissMentionIntent();
+}
+
 /// 물리 키보드가 주인 플랫폼 — Enter 전송 안내를 보인다. 모바일 소프트 키보드는 Enter 를
 /// IME 가 줄바꿈으로 쓴다(CLAUDE.md 앱 규칙). 폭이 아니라 입력 방식의 차이다.
 bool get _hardwareKeyboard => !nxTouchFirst;
@@ -73,6 +88,12 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
 
   /// 지금 치고 있는 멘션. null 이면 후보를 띄우지 않는다.
   MentionQuery? _mentionQuery;
+
+  /// 키보드로 고른 후보의 자리. 친 글자가 바뀌면 처음으로 돌아간다.
+  int _mentionIndex = 0;
+
+  /// Esc 로 닫은 멘션의 `@` 위치. 같은 멘션을 계속 치는 동안은 다시 띄우지 않는다.
+  int? _dismissedMentionStart;
 
   /// 담아 둔 첨부. 고르는 즉시 올라간다.
   AttachmentDraftController? _attachments;
@@ -176,14 +197,34 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
     }
     final selection = _controller.selection;
     // 범위를 잡고 있으면(드래그) 멘션을 치는 중이 아니다.
-    final query = selection.isValid && selection.isCollapsed
+    var query = selection.isValid && selection.isCollapsed
         ? findMentionQuery(_controller.text, selection.baseOffset)
         : null;
+    if (query == null) {
+      _dismissedMentionStart = null;
+    } else if (query.start == _dismissedMentionStart) {
+      query = null;
+    }
 
     if (query?.start != _mentionQuery?.start ||
         query?.text != _mentionQuery?.text) {
-      setState(() => _mentionQuery = query);
+      setState(() {
+        _mentionQuery = query;
+        _mentionIndex = 0;
+      });
     }
+  }
+
+  /// 지금 띄울 멘션 후보. 후보 목록과 키보드 처리가 같은 것을 본다.
+  List<SpaceMemberProfile> _mentionMatches() {
+    final query = _mentionQuery;
+    if (query == null) return const [];
+    final auth = ref.watch(authControllerProvider);
+    return filterMembers(
+      ref.watch(spaceMembersProvider).value ?? const [],
+      query.text,
+      excludeUserId: auth is AuthSignedIn ? auth.user.id : null,
+    );
   }
 
   void _insertMention(SpaceMemberProfile member) {
@@ -268,6 +309,10 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
 
     final drafts = _attachments?.drafts ?? const <AttachmentDraft>[];
     final uploading = _attachments?.isUploading ?? false;
+    final matches = _mentionMatches();
+    final selected = matches.isEmpty
+        ? 0
+        : _mentionIndex.clamp(0, matches.length - 1);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -280,8 +325,12 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_mentionQuery != null)
-            _MentionSuggestions(query: _mentionQuery!, onPick: _insertMention),
+          if (matches.isNotEmpty)
+            _MentionSuggestions(
+              matches: matches,
+              selected: selected,
+              onPick: _insertMention,
+            ),
           // 답장 대상이 있으면 입력창 위에 띄운다. 무엇에 답하는지 보이지
           // 않으면 엉뚱한 메시지에 답하기 쉽다.
           if (widget.onSend == null) const _ReplyPreview(),
@@ -318,12 +367,31 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
                   // Enter 가 전송이어야 하므로 가로챈다. **Shift+Enter 는 그대로
                   // 줄바꿈** — SingleActivator 가 수식키까지 정확히 일치할 때만
                   // 발동하므로, Shift 가 눌린 Enter 는 입력으로 흘러간다.
+                  //
+                  // **멘션 후보가 떠 있으면 Enter · Tab 은 후보를 고르고 ↑↓ 는 옮기며 Esc 는
+                  // 닫는다** — 슬랙 · 디스코드와 같은 손버릇이다.
                   child: Shortcuts(
-                    shortcuts: const <ShortcutActivator, Intent>{
-                      SingleActivator(LogicalKeyboardKey.enter): _SendIntent(),
-                      SingleActivator(LogicalKeyboardKey.numpadEnter):
-                          _SendIntent(),
-                    },
+                    shortcuts: matches.isNotEmpty
+                        ? const <ShortcutActivator, Intent>{
+                            SingleActivator(LogicalKeyboardKey.enter):
+                                _PickMentionIntent(),
+                            SingleActivator(LogicalKeyboardKey.numpadEnter):
+                                _PickMentionIntent(),
+                            SingleActivator(LogicalKeyboardKey.tab):
+                                _PickMentionIntent(),
+                            SingleActivator(LogicalKeyboardKey.arrowDown):
+                                _MoveMentionIntent(1),
+                            SingleActivator(LogicalKeyboardKey.arrowUp):
+                                _MoveMentionIntent(-1),
+                            SingleActivator(LogicalKeyboardKey.escape):
+                                _DismissMentionIntent(),
+                          }
+                        : const <ShortcutActivator, Intent>{
+                            SingleActivator(LogicalKeyboardKey.enter):
+                                _SendIntent(),
+                            SingleActivator(LogicalKeyboardKey.numpadEnter):
+                                _SendIntent(),
+                          },
                     child: Actions(
                       actions: <Type, Action<Intent>>{
                         _SendIntent: CallbackAction<_SendIntent>(
@@ -332,6 +400,31 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
                             return null;
                           },
                         ),
+                        _PickMentionIntent: CallbackAction<_PickMentionIntent>(
+                          onInvoke: (_) {
+                            _insertMention(matches[selected]);
+                            return null;
+                          },
+                        ),
+                        _MoveMentionIntent: CallbackAction<_MoveMentionIntent>(
+                          onInvoke: (intent) {
+                            setState(
+                              () => _mentionIndex =
+                                  (selected + intent.delta) % matches.length,
+                            );
+                            return null;
+                          },
+                        ),
+                        _DismissMentionIntent:
+                            CallbackAction<_DismissMentionIntent>(
+                              onInvoke: (_) {
+                                setState(() {
+                                  _dismissedMentionStart = _mentionQuery?.start;
+                                  _mentionQuery = null;
+                                });
+                                return null;
+                              },
+                            ),
                       },
                       // 아이콘 버튼(32px)과 같은 최소 높이에 가운데 — 한 줄일 때 글자가 버튼과
                       // 가운데가 맞는다. 없으면 한 줄(24px)이 줄의 바닥에 붙어 4px 처졌다.
@@ -394,21 +487,22 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
 ///
 /// 서버가 본문에 `<@userId>` 형식을 요구하므로 **이것이 없으면 사용자가 멘션을
 /// 만들 방법이 없다.** 자동완성은 편의가 아니라 필수 경로다.
-class _MentionSuggestions extends ConsumerWidget {
-  const _MentionSuggestions({required this.query, required this.onPick});
+class _MentionSuggestions extends StatelessWidget {
+  const _MentionSuggestions({
+    required this.matches,
+    required this.selected,
+    required this.onPick,
+  });
 
-  final MentionQuery query;
+  final List<SpaceMemberProfile> matches;
+
+  /// 키보드로 옮긴 자리. Enter · Tab 이 이것을 고른다.
+  final int selected;
   final void Function(SpaceMemberProfile) onPick;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final c = NxTheme.of(context).colors;
-    final members = ref.watch(spaceMembersProvider).value ?? const [];
-    final auth = ref.watch(authControllerProvider);
-    final myId = auth is AuthSignedIn ? auth.user.id : null;
-
-    final matches = filterMembers(members, query.text, excludeUserId: myId);
-    if (matches.isEmpty) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.only(bottom: NxSpacing.sp4),
@@ -434,6 +528,7 @@ class _MentionSuggestions extends ConsumerWidget {
               size: 22,
             ),
             title: member.displayName,
+            selected: i == selected,
             onPressed: () => onPick(member),
           );
         },
