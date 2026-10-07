@@ -84,6 +84,10 @@ check('돌아오면 온라인', (await backSees) === 'online');
 const badStatus = await ben2.emitWithAck('presence:set', { status: 'offline' });
 check('offline 은 보낼 수 없다(끊는 것으로 알린다)', badStatus?.ok === false, JSON.stringify(badStatus));
 
+// 두 소켓을 온라인으로 맞춘 뒤 끊는다. ben1 이 away 로 남아 있으면 서버가 끊김을 받는
+// 순서에 따라(ben2 가 먼저면) 남은 ben1 때문에 오프라인 전에 'away' 가 한 번 나간다 —
+// 서버로서는 맞는 전이라 검증 쪽 순서 경합이다(CI 에서 간헐 실패).
+await ben1.emitWithAck('presence:set', { status: 'online' });
 const offlineSees = presenceOf(annSocket, ben.userId, GRACE + 3000);
 const t0 = Date.now();
 ben1.close();
