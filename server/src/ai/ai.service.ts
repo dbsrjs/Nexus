@@ -22,6 +22,7 @@ import {
   buildFollowUpPrompt,
 } from './prompts/follow-up';
 import { ChannelsService } from '../channels/channels.service';
+import { rootRequestOf } from './ai-history';
 
 /** 채널만 줬을 때 읽는 최근 최상위 메시지 수 (13-2 설계 §2). */
 export const RECENT_MESSAGES = 50;
@@ -493,17 +494,6 @@ type ChainRow = {
 };
 
 const missingChunks = () => new Error('참고한 코드가 다시 인덱싱되어 사라졌습니다.');
-
-/** 13-1 에서 적재된 행은 `{channelId, messageIds}` 뿐이다 — 요약으로 읽는다. */
-function rootRequestOf(input: StoredAskInput): {
-  instruction: string | null;
-  preset: AskPreset | null;
-} {
-  return {
-    instruction: input.instruction ?? null,
-    preset: input.preset ?? (input.instruction === undefined ? 'summary' : null),
-  };
-}
 
 function answerOf(row: ChainRow): string {
   const markdown = (row.result as { markdown?: unknown } | null)?.markdown;
