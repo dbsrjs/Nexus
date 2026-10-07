@@ -22,6 +22,8 @@ import {
   buildFollowUpPrompt,
 } from './prompts/follow-up';
 import { ChannelsService } from '../channels/channels.service';
+import { rootRequestOf } from './ai-history';
+import { RUN_VIEW_SELECT, toRunView } from './run-view';
 
 /** 채널만 줬을 때 읽는 최근 최상위 메시지 수 (13-2 설계 §2). */
 export const RECENT_MESSAGES = 50;
@@ -268,23 +270,10 @@ export class AiService {
     // **본인 것만.** 같은 스페이스라도 남의 질문과 답을 읽을 이유가 없다.
     const run = await this.prisma.aiRun.findFirst({
       where: { id: runId, spaceId, userId },
-      select: {
-        id: true,
-        kind: true,
-        state: true,
-        result: true,
-        error: true,
-        model: true,
-        fallback: true,
-        parentRunId: true,
-        promptTokens: true,
-        completionTokens: true,
-        createdAt: true,
-        finishedAt: true,
-      },
+      select: RUN_VIEW_SELECT,
     });
     if (!run) throw new NotFoundException('실행을 찾을 수 없습니다');
-    return { runId: run.id, ...run, id: undefined };
+    return toRunView(run);
   }
 
   /** 캐시를 보고, 없으면 적재한다. */
@@ -493,17 +482,6 @@ type ChainRow = {
 };
 
 const missingChunks = () => new Error('참고한 코드가 다시 인덱싱되어 사라졌습니다.');
-
-/** 13-1 에서 적재된 행은 `{channelId, messageIds}` 뿐이다 — 요약으로 읽는다. */
-function rootRequestOf(input: StoredAskInput): {
-  instruction: string | null;
-  preset: AskPreset | null;
-} {
-  return {
-    instruction: input.instruction ?? null,
-    preset: input.preset ?? (input.instruction === undefined ? 'summary' : null),
-  };
-}
 
 function answerOf(row: ChainRow): string {
   const markdown = (row.result as { markdown?: unknown } | null)?.markdown;

@@ -748,6 +748,251 @@ check(
   `status=${eleventh.status}`,
 );
 
+// ── 19 AI 기록 ───────────────────────────────────
+// 지난 대화 목록 · 사슬 읽기. **새 사용자 · 새 스페이스로 돈다** — 앞 갈래가 alice 에게
+// 남긴 사슬이 섞이면 목록 길이 · 순서를 단언할 수 없다.
+console.log('\n[19 AI 기록]');
+{
+  const dave = await signup('ai', 'h', 'AI검증h');
+  const erin = await signup('ai', 'i', 'AI검증i');
+  const hs = (
+    await api('POST', '/spaces', { token: dave.token, body: { name: `ai hist ${stamp}` } })
+  ).json;
+  const hInvite = await api('POST', `/spaces/${hs.id}/invites`, {
+    token: dave.token,
+    body: { role: 'member' },
+  });
+  await api('POST', `/invites/${hInvite.json.code}/accept`, { token: erin.token });
+  const hChannel = (await api('GET', `/spaces/${hs.id}/channels`, { token: dave.token })).json[0];
+  const hMsg = (
+    await api('POST', `/spaces/${hs.id}/channels/${hChannel.id}/messages`, {
+      token: dave.token,
+      body: { body: '기록 검증용 대화' },
+    })
+  ).json;
+  check('기록 갈래 준비', !!hs?.id && !!hChannel?.id && !!hMsg?.id);
+
+  const threads = (token, q = '') => api('GET', `/spaces/${hs.id}/ai/threads${q}`, { token });
+  const thread = (token, id, sid = hs.id) =>
+    api('GET', `/spaces/${sid}/ai/threads/${id}`, { token });
+  const hAsk = (token, body) => api('POST', `/spaces/${hs.id}/ai/ask`, { token, body });
+  /** 적재하고 끝날 때까지 기다린 뒤 runId 를 돌려준다. */
+  const hDone = async (token, body) => {
+    const started = await hAsk(token, body);
+    const id = started.json?.runId;
+    if (started.json?.state === 'queued') await waitForRunDone(token, hs.id, id);
+    return id;
+  };
+  const ctx = { channelId: hChannel.id, messageIds: [hMsg.id] };
+
+  const empty = await threads(dave.token);
+  check(
+    '처음엔 빈 목록 · 커서 null',
+    empty.status === 200 && empty.json?.items?.length === 0 && empty.json.nextCursor === null,
+    JSON.stringify(empty.json),
+  );
+
+  // 사슬 A: 질문 → 이어 묻기
+  const aRoot = await hDone(dave.token, { instruction: `${stamp} 기록 A`, context: ctx });
+  const aFollow = await hDone(dave.token, { instruction: '기록 A 이어서', parentRunId: aRoot });
+  const aTip = (await api('GET', `/spaces/${hs.id}/ai/runs/${aFollow}`, { token: dave.token }))
+    .json;
+  const l1 = (await threads(dave.token)).json;
+  const a = l1?.items?.[0];
+  check(
+    '★ 사슬이 한 줄 · 문답 2 · 질문 · 근거',
+    typeof aRoot === 'string' &&
+      l1?.items?.length === 1 &&
+      a?.rootRunId === aRoot &&
+      a.turnCount === 2 &&
+      a.question === `${stamp} 기록 A` &&
+      a.preset === null &&
+      a.kind === 'ask' &&
+      a.context?.channelId === hChannel.id &&
+      a.context.messageCount === 1 &&
+      a.context.repoId === null &&
+      typeof a.lastAt === 'string',
+    JSON.stringify(l1),
+  );
+  check(
+    '미리보기는 끝 답 원문의 앞부분',
+    typeof aTip?.result?.markdown === 'string' &&
+      a?.preview?.length > 0 &&
+      aTip.result.markdown.startsWith(a.preview),
+    JSON.stringify({ preview: a?.preview }),
+  );
+
+  const t1 = await thread(dave.token, aRoot);
+  const turns1 = t1.json?.turns;
+  check(
+    '★ 사슬 열기 — 뿌리부터 두 문답 · 질문 · 부모',
+    t1.status === 200 &&
+      turns1?.length === 2 &&
+      turns1[0].runId === aRoot &&
+      turns1[0].instruction === `${stamp} 기록 A` &&
+      turns1[0].preset === null &&
+      turns1[1].runId === aFollow &&
+      turns1[1].instruction === '기록 A 이어서' &&
+      turns1[1].parentRunId === aRoot &&
+      turns1[1].state === 'done' &&
+      typeof turns1[1].result?.markdown === 'string' &&
+      t1.json.context?.channelId === hChannel.id &&
+      t1.json.context.messageIds?.[0] === hMsg.id &&
+      turns1[0].input === undefined,
+    JSON.stringify(t1.json),
+  );
+
+  // 가지: 같은 부모(뿌리)에 다른 질문 → 늦게 끝난 쪽이 끝
+  const aBranch = await hDone(dave.token, { instruction: '기록 A 가지', parentRunId: aRoot });
+  const t2 = (await thread(dave.token, aRoot)).json;
+  check(
+    '★ 가지가 생기면 가장 늦게 끝난 답이 끝이다',
+    typeof aBranch === 'string' && t2?.turns?.length === 2 && t2.turns[1].runId === aBranch,
+    JSON.stringify(t2?.turns?.map((t) => t.runId)),
+  );
+
+  // 사슬 B(프리셋 요약) — 나중에 끝났으니 위
+  const bRoot = await hDone(dave.token, { preset: 'summary', context: ctx });
+  const l2 = (await threads(dave.token)).json;
+  check(
+    '★ 나중에 답을 받은 사슬이 위 · 프리셋은 question null',
+    typeof bRoot === 'string' &&
+      l2?.items?.length === 2 &&
+      l2.items[0].rootRunId === bRoot &&
+      l2.items[0].question === null &&
+      l2.items[0].preset === 'summary' &&
+      l2.items[0].kind === 'summarize' &&
+      l2.items[0].turnCount === 1 &&
+      l2.items[1].rootRunId === aRoot,
+    JSON.stringify(l2?.items?.map((i) => i.rootRunId)),
+  );
+
+  // A 의 끝에 다시 이어 물으면 맨 위로 · 문답 3
+  await hDone(dave.token, { instruction: '기록 A 셋째', parentRunId: aBranch });
+  const l3 = (await threads(dave.token)).json;
+  check(
+    '★ 다시 이어 물은 사슬이 맨 위로 · 문답 3',
+    l3?.items?.[0]?.rootRunId === aRoot && l3.items[0].turnCount === 3,
+    JSON.stringify(l3?.items),
+  );
+
+  // 페이지
+  const p1 = (await threads(dave.token, '?limit=1')).json;
+  const p2 = p1?.nextCursor
+    ? (await threads(dave.token, `?limit=1&cursor=${p1.nextCursor}`)).json
+    : null;
+  check(
+    '★ limit=1 커서로 둘째 페이지 · 끝은 null',
+    p1?.items?.length === 1 &&
+      p1.items[0].rootRunId === aRoot &&
+      p1.nextCursor === aRoot &&
+      p2?.items?.length === 1 &&
+      p2.items[0].rootRunId === bRoot &&
+      p2.nextCursor === null,
+    JSON.stringify({ p1, p2 }),
+  );
+
+  // 실패한 뿌리는 목록에 없고 열면 404 — 4xx 는 러너가 곧바로 포기한다
+  const failed = await hAsk(dave.token, {
+    instruction: `${stamp} 기록 실패 [[fake-llm:status=400]]`,
+    context: ctx,
+  });
+  const failedId = failed.json?.runId;
+  const failedRow = failedId ? await waitForRunDone(dave.token, hs.id, failedId) : null;
+  const l4 = (await threads(dave.token)).json;
+  check(
+    '실패한 뿌리는 목록에 없다',
+    failedRow?.json?.state === 'failed' &&
+      l4?.items?.length === 2 &&
+      !l4.items.some((i) => i.rootRunId === failedId),
+    JSON.stringify({ state: failedRow?.json?.state, n: l4?.items?.length }),
+  );
+  const failedOpen = await thread(dave.token, failedId);
+  check('실패한 뿌리를 열면 404', failedOpen.status === 404, `status=${failedOpen.status}`);
+
+  // 남의 것 · 뿌리 아닌 id · 다른 스페이스 경로 · 없는 id
+  const erinList = (await threads(erin.token)).json;
+  check(
+    '★ 다른 사용자의 목록에 없다',
+    Array.isArray(erinList?.items) && erinList.items.length === 0,
+    JSON.stringify(erinList),
+  );
+  // 행을 읽는 뒤 단계도 userId 로 거르므로 항목은 비어도, 사슬 찾기가 남의 것을 셌다면
+  // 다음 커서가 남는다 — 커서까지 본다.
+  const erinPage = (await threads(erin.token, '?limit=1')).json;
+  check(
+    '★ 다른 사용자의 페이지에는 다음 커서도 없다',
+    Array.isArray(erinPage?.items) && erinPage.items.length === 0 && erinPage.nextCursor === null,
+    JSON.stringify(erinPage),
+  );
+  const erinOpen = await thread(erin.token, aRoot);
+  check('★ 다른 사용자가 열면 404', erinOpen.status === 404, `status=${erinOpen.status}`);
+  const notRoot = await thread(dave.token, aFollow);
+  check('뿌리가 아닌 id 로 열면 404', notRoot.status === 404, `status=${notRoot.status}`);
+  const daveOther = (
+    await api('POST', '/spaces', { token: dave.token, body: { name: `ai hist2 ${stamp}` } })
+  ).json;
+  const otherSpace = await thread(dave.token, aRoot, daveOther?.id);
+  check(
+    '다른 스페이스 경로로 열면 404',
+    !!daveOther?.id && otherSpace.status === 404,
+    `status=${otherSpace.status}`,
+  );
+  const ghost = await thread(dave.token, UNKNOWN_UUID);
+  check('없는 id 는 404', ghost.status === 404, `status=${ghost.status}`);
+
+  // 비공개 채널 명단에서 빠지면 숨는다 · 다시 넣으면 보인다
+  const priv = (
+    await api('POST', `/spaces/${hs.id}/channels`, {
+      token: dave.token,
+      body: { name: `hist-private-${stamp}`, isPrivate: true },
+    })
+  ).json;
+  const addErin = () =>
+    api('POST', `/spaces/${hs.id}/channels/${priv?.id}/members`, {
+      token: dave.token,
+      body: { userIds: [erin.userId] },
+    });
+  await addErin();
+  const pMsg = (
+    await api('POST', `/spaces/${hs.id}/channels/${priv?.id}/messages`, {
+      token: erin.token,
+      body: { body: '비공개 대화' },
+    })
+  ).json;
+  const pRoot = await hDone(erin.token, {
+    instruction: `${stamp} 비공개`,
+    context: { channelId: priv?.id, messageIds: [pMsg?.id] },
+  });
+  const seen = (await threads(erin.token)).json;
+  check(
+    '비공개 채널의 사슬이 보인다',
+    typeof pRoot === 'string' && seen?.items?.[0]?.rootRunId === pRoot,
+    JSON.stringify(seen),
+  );
+  await api('DELETE', `/spaces/${hs.id}/channels/${priv?.id}/members/${erin.userId}`, {
+    token: dave.token,
+  });
+  const hidden = (await threads(erin.token)).json;
+  check(
+    '★ 명단에서 빠지면 목록에서 빠진다',
+    Array.isArray(hidden?.items) && hidden.items.length === 0,
+    JSON.stringify(hidden),
+  );
+  const hiddenOpen = await thread(erin.token, pRoot);
+  check('★ 명단에서 빠지면 열면 404', hiddenOpen.status === 404, `status=${hiddenOpen.status}`);
+  await addErin();
+  const back = (await threads(erin.token)).json;
+  check(
+    '다시 넣으면 다시 보인다(행은 지우지 않는다)',
+    back?.items?.[0]?.rootRunId === pRoot,
+    JSON.stringify(back),
+  );
+
+  const badLimit = await threads(dave.token, '?limit=0');
+  check('limit 범위 밖은 400', badLimit.status === 400, `status=${badLimit.status}`);
+}
+
 // ── 큐 실패 갈래 ─────────────────────────────────
 // 13-1 빚(2026-09-27 해소). fake 가 늘 즉시 성공해 재시도 · 소진 · 포기 · 리스
 // 복구를 계약 검증이 한 번도 태우지 못했다. 시도 횟수는 응답에 싣지 않는 값이라

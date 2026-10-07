@@ -9,6 +9,7 @@ import { AiService } from './ai.service';
 import { AiQueueService } from './ai-queue.service';
 import { AiRunnerService } from './ai-runner.service';
 import { AiWorker } from './ai.worker';
+import { AiHistoryService } from './ai-history.service';
 
 /**
  * AI. **`ReposModule` 을 단방향으로 쓴다** — repos 는 ai 를 모른다.
@@ -17,6 +18,6 @@ import { AiWorker } from './ai.worker';
 @Module({
   imports: [SpacesModule, RealtimeEmitterModule, LlmModule, ReposModule, ChannelsModule],
   controllers: [AiController],
-  providers: [AiService, AiQueueService, AiRunnerService, AiWorker],
+  providers: [AiService, AiQueueService, AiRunnerService, AiWorker, AiHistoryService],
 })
 export class AiModule {}

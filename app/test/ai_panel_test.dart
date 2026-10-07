@@ -4,10 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/data/api/ai_api.dart';
 import 'package:nexus_app/data/api/api_failure.dart';
 import 'package:nexus_app/domain/models/ai_run.dart';
+import 'package:nexus_app/domain/models/ai_thread.dart';
 import 'package:nexus_app/features/ai/ai_controller.dart';
 import 'package:nexus_app/features/ai/ai_panel.dart';
 import 'package:nexus_app/features/ai/ai_request.dart';
+import 'package:nexus_app/domain/models/channel.dart';
+import 'package:nexus_app/domain/models/repo.dart';
+import 'package:nexus_app/features/channel/channel_controller.dart';
 import 'package:nexus_app/features/realtime/socket_controller.dart';
+import 'package:nexus_app/features/repo/repo_controller.dart';
 
 import 'package:nexus_app/ui/ui.dart';
 
@@ -39,6 +44,32 @@ class _FakeAiApi implements AiApi {
   @override
   Future<AiRun> getRun(String spaceId, String runId) async =>
       queued.isNotEmpty ? queued.removeAt(0) : result;
+
+  /// 지난 대화 페이지 — 커서별로. `null` 키가 첫 페이지다.
+  final Map<String?, AiThreadPage> pages = {
+    null: const AiThreadPage(items: [], nextCursor: null),
+  };
+  final List<String?> listedCursors = [];
+  ApiFailure? failList;
+
+  /// 열 사슬 — 뿌리 id 별로. 없으면 [failOpen] 또는 notFound 로 던진다.
+  final Map<String, AiThread> threads = {};
+  ApiFailure? failOpen;
+
+  @override
+  Future<AiThreadPage> listThreads(String spaceId, {String? cursor}) async {
+    listedCursors.add(cursor);
+    if (failList != null) throw ApiException(failList!);
+    return pages[cursor] ?? const AiThreadPage(items: [], nextCursor: null);
+  }
+
+  @override
+  Future<AiThread> getThread(String spaceId, String rootRunId) async {
+    if (failOpen != null) throw ApiException(failOpen!);
+    final thread = threads[rootRunId];
+    if (thread == null) throw ApiException(ApiFailure.notFound);
+    return thread;
+  }
 }
 
 Future<_FakeAiApi> _pump(
@@ -53,6 +84,17 @@ Future<_FakeAiApi> _pump(
       overrides: [
         aiApiProvider.overrideWithValue(api),
         socketEventsProvider.overrideWith((ref) => const Stream.empty()),
+        // 지난 대화가 근거 이름을 찾는 곳(19) — 캐시 · 서버 대신 고정값.
+        channelsProvider.overrideWith(
+          (ref) => Stream.value(const [
+            Channel(id: 'c1', key: 'general', name: 'general'),
+          ]),
+        ),
+        spaceReposProvider.overrideWith(
+          (ref, spaceId) async => const [
+            SpaceRepo(id: 'r1', name: 'nexus', fullPath: 'me/nexus'),
+          ],
+        ),
       ],
       child: nxTestApp(home: NxPage(body: SingleChildScrollView(
             child: AiPanel(
@@ -322,5 +364,176 @@ void main() {
     expect(find.text('답 $maxThreadTurns'), findsOneWidget);
     expect(find.byType(NxField), findsNothing);
     expect(find.textContaining('새로 시작'), findsOneWidget);
+  });
+
+  // ── 19 지난 대화 ─────────────────────────────
+
+  AiThreadSummary summary(String id, String question, {int turns = 2}) =>
+      AiThreadSummary(
+        rootRunId: id,
+        kind: 'ask',
+        question: question,
+        preset: null,
+        turnCount: turns,
+        lastAt: DateTime.utc(2026, 10, 7, 1, 2),
+        preview: '**끝** 답 미리보기',
+        channelId: 'c1',
+        messageCount: 3,
+        repoId: 'r1',
+      );
+
+  const thread = AiThread(
+    rootRunId: 't1',
+    channelId: 'c1',
+    messageIds: ['m7', 'm8', 'm9'],
+    repoId: 'r1',
+    turns: [
+      AiThreadTurn(
+        question: '지난 질문',
+        run: AiRun(
+          runId: 't1',
+          kind: 'ask',
+          state: AiRunState.done,
+          markdown: '지난 답',
+        ),
+      ),
+      AiThreadTurn(
+        question: '지난 후속',
+        run: AiRun(
+          runId: 't2',
+          kind: 'ask',
+          state: AiRunState.done,
+          markdown: '지난 후속 답',
+        ),
+      ),
+    ],
+  );
+
+  Future<void> openHistory(WidgetTester tester) async {
+    await tester.tap(find.text('지난 대화'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('★ 「지난 대화」로 목록이 열리고 「새 질문」이 원래 칩으로 돌아온다', (tester) async {
+    final api = await _pump(tester, contexts: const [_messages]);
+    api.pages[null] = AiThreadPage(
+      items: [summary('t1', '지난 질문')],
+      nextCursor: null,
+    );
+    await openHistory(tester);
+
+    expect(find.text('지난 질문'), findsOneWidget);
+    expect(find.text('끝 답 미리보기'), findsOneWidget);
+    expect(find.textContaining('#general · nexus · 문답 2'), findsOneWidget);
+
+    await tester.tap(find.text('새 질문'));
+    await tester.pumpAndSettle();
+    expect(find.text('메시지 2개'), findsOneWidget);
+    expect(find.text('무엇이든 물어보세요'), findsOneWidget);
+  });
+
+  testWidgets('지난 대화가 없으면 그렇게 말한다', (tester) async {
+    await _pump(tester, contexts: const [_messages]);
+    await openHistory(tester);
+    expect(find.text('지난 대화가 없습니다.'), findsOneWidget);
+  });
+
+  testWidgets('목록을 못 받으면 앱 문구와 「다시 시도」 — 누르면 다시 부른다', (tester) async {
+    final api = await _pump(tester, contexts: const [_messages]);
+    api.failList = ApiFailure.server;
+    await openHistory(tester);
+    expect(find.text('지난 대화를 불러오지 못했습니다.'), findsOneWidget);
+
+    api.failList = null;
+    api.pages[null] = AiThreadPage(
+      items: [summary('t1', '지난 질문')],
+      nextCursor: null,
+    );
+    await tester.tap(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+    expect(find.text('지난 질문'), findsOneWidget);
+    expect(api.listedCursors, [null, null]);
+  });
+
+  testWidgets('★ 「더 보기」가 다음 커서로 부르고 줄이 덧붙는다', (tester) async {
+    final api = await _pump(tester, contexts: const [_messages]);
+    api.pages[null] = AiThreadPage(
+      items: [summary('t1', '첫 쪽')],
+      nextCursor: 't1',
+    );
+    api.pages['t1'] = AiThreadPage(
+      items: [summary('t0', '둘째 쪽')],
+      nextCursor: null,
+    );
+    await openHistory(tester);
+    await tester.tap(find.text('더 보기'));
+    await tester.pumpAndSettle();
+
+    expect(api.listedCursors, [null, 't1']);
+    expect(find.text('첫 쪽'), findsOneWidget);
+    expect(find.text('둘째 쪽'), findsOneWidget);
+    expect(find.text('더 보기'), findsNothing);
+  });
+
+  testWidgets('★ 줄을 누르면 문답 둘과 그 사슬의 칩이 되살아난다', (tester) async {
+    final api = await _pump(tester, contexts: const [_repo]);
+    api.pages[null] = AiThreadPage(
+      items: [summary('t1', '지난 질문')],
+      nextCursor: null,
+    );
+    api.threads['t1'] = thread;
+    await openHistory(tester);
+    await tester.tap(find.text('지난 질문'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('지난 답'), findsOneWidget);
+    expect(find.text('지난 후속'), findsOneWidget);
+    expect(find.text('지난 후속 답'), findsOneWidget);
+    expect(find.text('메시지 3개'), findsOneWidget);
+    expect(find.text('nexus'), findsOneWidget);
+    expect(find.widgetWithText(NxField, '이어서 묻기'), findsOneWidget);
+  });
+
+  testWidgets('★ 다시 연 사슬에서 이어 물으면 부모는 마지막 턴이다', (tester) async {
+    final api = await _pump(tester, contexts: const [_messages]);
+    api.pages[null] = AiThreadPage(
+      items: [summary('t1', '지난 질문')],
+      nextCursor: null,
+    );
+    api.threads['t1'] = thread;
+    api.result = const AiRun(
+      runId: 't3',
+      kind: 'ask',
+      state: AiRunState.done,
+      markdown: '새 답',
+    );
+    await openHistory(tester);
+    await tester.tap(find.text('지난 질문'));
+    await tester.pumpAndSettle();
+    await ask(tester, '하나 더');
+
+    expect(api.asked.single.toJson(), {
+      'instruction': '하나 더',
+      'parentRunId': 't2',
+    });
+    expect(find.text('새 답'), findsOneWidget);
+    expect(find.text('지난 답'), findsOneWidget);
+  });
+
+  testWidgets('열지 못하면 토스트를 띄우고 목록에 머문다 — 없어진 사슬은 줄도 뺀다', (tester) async {
+    final api = await _pump(tester, contexts: const [_messages]);
+    api.pages[null] = AiThreadPage(
+      items: [summary('t1', '사라진 질문'), summary('t2', '남은 질문')],
+      nextCursor: null,
+    );
+    await openHistory(tester);
+    await tester.tap(find.text('사라진 질문'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('대화를 열지 못했습니다'), findsOneWidget);
+    expect(find.text('사라진 질문'), findsNothing);
+    expect(find.text('남은 질문'), findsOneWidget);
+    await tester.pumpAndSettle(const Duration(seconds: 5));
   });
 }

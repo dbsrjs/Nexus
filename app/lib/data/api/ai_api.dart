@@ -1,5 +1,6 @@
 
 import '../../domain/models/ai_run.dart';
+import '../../domain/models/ai_thread.dart';
 import '../../features/ai/ai_request.dart';
 import 'api_client.dart';
 import 'api_failure.dart';
@@ -31,6 +32,28 @@ class AiApi {
         '/spaces/$spaceId/ai/runs/$runId',
       );
       return AiRun.fromJson(res.data!);
+    });
+  }
+
+  /// GET /api/spaces/:spaceId/ai/threads — 지난 대화(19). 끝 답이 늦은 것부터.
+  /// **캐시하지 않는다** — 패널을 열 때마다 새로 읽는다(설계 D13).
+  Future<AiThreadPage> listThreads(String spaceId, {String? cursor}) async {
+    return guardApi(() async {
+      final res = await _client.dio.get<Map<String, dynamic>>(
+        '/spaces/$spaceId/ai/threads',
+        queryParameters: {'cursor': ?cursor},
+      );
+      return AiThreadPage.fromJson(res.data!);
+    });
+  }
+
+  /// GET /api/spaces/:spaceId/ai/threads/:rootRunId — 뿌리부터 끝까지.
+  Future<AiThread> getThread(String spaceId, String rootRunId) async {
+    return guardApi(() async {
+      final res = await _client.dio.get<Map<String, dynamic>>(
+        '/spaces/$spaceId/ai/threads/$rootRunId',
+      );
+      return AiThread.fromJson(res.data!);
     });
   }
 }
