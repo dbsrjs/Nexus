@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../domain/models/ai_run.dart';
+import '../../domain/models/ai_thread.dart';
 import '../../shared/markdown/markdown_body.dart';
 import '../../ui/ui.dart';
 import '../repo/repo_controller.dart';
 import 'ai_controller.dart';
+import 'ai_history.dart';
 import 'ai_request.dart';
 
 /// 이슈 초안을 이슈 생성 화면으로 넘긴다. 시트를 닫은 뒤에 불린다.
@@ -76,16 +78,18 @@ class AiPanel extends ConsumerStatefulWidget {
 }
 
 class _AiPanelState extends ConsumerState<AiPanel> {
-  /// 칩. **패널이 들고 있다** — 「다시 묻기」가 같은 칩으로 돌아오게.
+  /// 칩. **패널이 들고 있다** — 「다시 묻기」가 같은 칩으로 돌아오게. 실패 문구(저장소
+  /// 여부) · 인용 링크 · 이슈 원문도 여기서 읽는다 — 보낸 뒤에는 칩이 바뀌지 않는다
+  /// (문답 화면의 칩은 읽기 전용이다). 지난 대화를 열면 그 사슬의 칩으로 바뀐다(19).
   late final List<AiContext> _contexts = [...widget.initialContexts];
   final _instruction = TextEditingController();
 
-  /// 마지막으로 보낸 요청. 실패 문구(저장소 여부)와 이슈 원문 링크에 쓴다.
-  AiRequest? _sent;
-
-  /// 끝난 문답들 — 오래된 것부터 (13-3). **패널이 들고 있다** — 닫으면
-  /// 사라진다(설계 D10). 서버에는 행이 남지만 다시 여는 길은 범위 밖이다.
+  /// 끝난 문답들 — 오래된 것부터 (13-3). 패널을 닫으면 화면에서 사라지고, 「지난
+  /// 대화」에서 다시 연다(19).
   final List<_Turn> _turns = [];
+
+  /// 입력 화면 대신 지난 대화 목록을 보이는가(19 설계 §3).
+  bool _browsing = false;
 
   /// 지금 기다리는 질문의 화면 문구. 답이 오면 그 문답의 질문이 된다.
   String? _asking;
@@ -118,14 +122,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     } else {
       request = AiRequest(instruction: text, contexts: List.of(_contexts));
     }
-    setState(() {
-      _sent = request;
-      _asking = switch (preset) {
-        AiPreset.summary => '요약',
-        AiPreset.issue => '이슈 초안',
-        null => text,
-      };
-    });
+    setState(() => _asking = preset == null ? text : aiPresetLabel(preset));
     ref
         .read(aiControllerProvider.notifier)
         .run(spaceId: widget.spaceId, request: request);
@@ -140,6 +137,39 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     });
     _instruction.clear();
     ref.read(aiControllerProvider.notifier).abandon();
+  }
+
+  /// 지난 대화를 연다(19). 칩과 문답을 그 사슬로 바꾼다 — 이어 묻기는 새로 묻는
+  /// 사슬과 같은 길을 탄다(부모는 마지막 턴).
+  void _resume(AiThread thread) {
+    final repos =
+        ref.read(spaceReposProvider(widget.spaceId)).value ?? const [];
+    final repoName = repos
+        .where((r) => r.id == thread.repoId)
+        .map((r) => r.name)
+        .firstOrNull;
+    ref.read(aiControllerProvider.notifier).abandon();
+    _instruction.clear();
+    setState(() {
+      _contexts
+        ..clear()
+        ..addAll([
+          // 「채널 최근 대화」도 실제로 읽은 메시지가 저장된다 — 같은 메시지 칩으로
+          // 되살린다(설계 D11).
+          if (thread.channelId != null && thread.messageIds != null)
+            MessagesContext(
+              channelId: thread.channelId!,
+              messageIds: thread.messageIds!,
+            ),
+          if (thread.repoId != null)
+            RepoContext(repoId: thread.repoId!, repoName: repoName ?? '저장소'),
+        ]);
+      _turns
+        ..clear()
+        ..addAll([for (final t in thread.turns) _Turn(t.question, t.run)]);
+      _asking = null;
+      _browsing = false;
+    });
   }
 
   Future<void> _addRepo() async {
@@ -166,6 +196,12 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     final Widget body;
     if (_turns.isNotEmpty) {
       body = _thread(context, state);
+    } else if (_browsing && state is AiIdle) {
+      body = AiHistoryList(
+        spaceId: widget.spaceId,
+        onOpen: _resume,
+        onBack: () => setState(() => _browsing = false),
+      );
     } else {
       body = switch (state) {
         AiIdle() => _input(context),
@@ -177,10 +213,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           onRetry: () => ref.read(aiControllerProvider.notifier).retry(),
         ),
         AiFailed(:final failure) => _Failed(
-          message: aiMessageFor(
-            failure,
-            hasRepo: _sent?.hasRepo ?? _contexts.hasRepo,
-          ),
+          message: aiMessageFor(failure, hasRepo: _contexts.hasRepo),
           onAskAgain: _askAgain,
         ),
         // 목록에 들어가기 직전 한 프레임 — 리스너가 곧 _turns 에 넣는다.
@@ -233,7 +266,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                     _TurnView(
                       turn: turn,
                       spaceId: widget.spaceId,
-                      repoId: _sent?.repoId,
+                      repoId: _contexts.repoId,
                     ),
                   ],
                 ],
@@ -252,10 +285,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
             if (state case AiFailed(:final failure)) ...[
               // 그 질문만 실패다 — 지난 문답은 위에 그대로 남는다.
               Text(
-                aiMessageFor(
-                  failure,
-                  hasRepo: _sent?.hasRepo ?? _contexts.hasRepo,
-                ),
+                aiMessageFor(failure, hasRepo: _contexts.hasRepo),
                 style: nx.text.secondary.copyWith(color: nx.colors.danger),
               ),
               const SizedBox(height: NxSpacing.sp4),
@@ -296,7 +326,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                     widget.onCreateIssue!(
                       title: last.title ?? '',
                       description: last.description ?? '',
-                      originMessageId: _sent?.firstMessageId,
+                      originMessageId: _contexts.firstMessageId,
                     );
                   },
             onAskAgain: _askAgain,
@@ -362,6 +392,15 @@ class _AiPanelState extends ConsumerState<AiPanel> {
                 onPressed: canPreset && widget.onCreateIssue != null
                     ? () => _send(preset: AiPreset.issue)
                     : null,
+              ),
+              const Spacer(),
+              // 지난 대화(19). 문답 화면 · 기다리는 중에는 두지 않는다 — 대화 중에 옮겨
+              // 가면 진행 중인 답을 버린 것처럼 보인다.
+              NxButton(
+                label: '지난 대화',
+                kind: NxButtonKind.ghost,
+                size: NxSize.sm,
+                onPressed: () => setState(() => _browsing = true),
               ),
             ],
           ),
