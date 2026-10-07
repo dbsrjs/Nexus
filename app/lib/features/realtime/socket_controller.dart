@@ -77,6 +77,10 @@ final realtimeChannelSyncProvider = Provider<void>((ref) {
         // 채널이 계속 '기타'에 묶여 있다 — 실기기에서 실제로 겪은 버그다.
         ref.invalidate(channelsProvider);
         ref.invalidate(categoriesProvider);
+        // **멤버 목록도 다시 받는다.** 이 provider 는 실패를 삼키고 빈 목록을 돌려주므로,
+        // 오프라인으로 켠 앱은 서버가 돌아와도 빈 목록에 머물러 DM 상대가 「나간 사람」,
+        // 멘션 자동완성이 비어 있었다(2026-10-07 웹 확인에서 발견).
+        ref.invalidate(spaceMembersProvider);
 
         // **쌓여 있던 전송분을 내보낸다.** 여기서 하는 이유는 이 리스너가
         // 채널을 열지 않아도 살아 있기 때문이다 — 오프라인으로 여러 채널에
