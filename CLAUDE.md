@@ -529,6 +529,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 | [docs/기술-스택-가이드.md](docs/기술-스택-가이드.md) | 스택별 학습 순서 · 코드 읽기 시작점 (사용자용) |
 | [server/README.md](server/README.md) | 서버 셋업 · 선택 기능 `.env` · 규약 · 디렉터리 · Ollama · 실제 GitHub 웹훅 |
 | [app/README.md](app/README.md) | 앱 실행 · 플랫폼별 주의 |
+| [.claude/mods/README.md](.claude/mods/README.md) | Claude Code 개인용 모드(git-band · ko-labels) — 앱 · 서버와 관계없다 |
 
 ### 단계별 설계 스펙 (`docs/superpowers/specs/`)
 
