@@ -8,7 +8,9 @@ import 'package:nexus_app/data/socket/socket_client.dart';
 import 'package:nexus_app/data/socket/socket_event.dart';
 import 'package:nexus_app/features/auth/auth_controller.dart';
 import 'package:nexus_app/features/chat/message_controller.dart';
+import 'package:nexus_app/domain/models/space_member.dart';
 import 'package:nexus_app/features/realtime/socket_controller.dart';
+import 'package:nexus_app/features/space/members_controller.dart';
 
 /// 소켓 핸드셰이크 거부 → 토큰 갱신 → 재연결 경로.
 ///
@@ -22,8 +24,10 @@ void main() {
   late _FakeSocket socket;
   late _FakeMessages messages;
   late ProviderContainer container;
+  late int memberBuilds;
 
   setUp(() {
+    memberBuilds = 0;
     events = StreamController<SocketEvent>();
     api = _FakeApi();
     socket = _FakeSocket();
@@ -34,6 +38,10 @@ void main() {
         socketClientProvider.overrideWithValue(socket),
         messageRepositoryProvider.overrideWithValue(messages),
         socketEventsProvider.overrideWith((ref) => events.stream),
+        spaceMembersProvider.overrideWith((ref) async {
+          memberBuilds++;
+          return const <SpaceMemberProfile>[];
+        }),
       ],
     );
     // 리스너를 살린다 — 앱에서는 main.dart 가 watch 한다. **read 로는 안 된다** —
@@ -87,6 +95,16 @@ void main() {
     await emit(const SocketUnauthorized());
     await emit(const SocketConnected());
     expect(messages.flushes, 1);
+  });
+
+  test('★ 다시 붙으면 멤버 목록도 다시 받는다 - 오프라인으로 켜면 빈 목록이 남아 DM 상대가 「나간 사람」이 됐다', () async {
+    container.listen(spaceMembersProvider, (_, _) {});
+    await container.read(spaceMembersProvider.future);
+    expect(memberBuilds, 1);
+
+    await emit(const SocketConnected());
+    await container.read(spaceMembersProvider.future);
+    expect(memberBuilds, 2);
   });
 }
 

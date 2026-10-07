@@ -12,6 +12,27 @@ import '../../domain/models/space.dart';
 import '../api/api_client.dart';
 import 'socket_event.dart';
 
+/// 연결 옵션. 테스트가 보도록 함수로 뺐다.
+///
+/// **`forceNew` 를 켠다.** socket_io_client 는 주소마다 Manager 를 캐시하고, 캐시를
+/// 무시할지는 「같은 이름공간이 이미 있나」로 정한다. 그런데 API 주소에 경로가 없어
+/// 그 판정이 `''` 를 찾고 소켓은 `'/'` 에 있어 늘 거짓이다 — 그래서 옛 Manager 의
+/// **옛 Socket(옛 `auth`)** 이 그대로 돌아왔다. 토큰을 갱신하고 다시 붙어도 옛 토큰으로
+/// 거부당해 소켓이 영영 끊겨 있었다(2026-10-07 웹 확인에서 발견, 플랫폼 공통).
+@visibleForTesting
+Map<String, dynamic> socketOptions(String token) => io.OptionBuilder()
+    .setTransports(['websocket'])
+    // 서버는 handshake.auth.token 만 받는다. 쿼리스트링 경로는 액세스 로그에
+    // 토큰을 남기므로 서버에서 아예 제거됐다.
+    .setAuth({'token': token})
+    .disableAutoConnect()
+    .enableForceNew()
+    // 끊겨도 계속 재시도한다. 모바일은 네트워크가 자주 바뀐다.
+    .enableReconnection()
+    .setReconnectionDelay(1000)
+    .setReconnectionDelayMax(10000)
+    .build();
+
 /// Socket.IO 연결 하나로 사용자의 **모든 스페이스**를 담당한다.
 ///
 /// 서버가 연결 직후 `user:` · `space:` · `channel:` 룸에 넣어 주므로 스페이스를
@@ -34,20 +55,7 @@ class SocketClient {
     if (token == null) return;
     if (_socket != null) return;
 
-    // 서버는 handshake.auth.token 만 받는다. 쿼리스트링 경로는 액세스 로그에
-    // 토큰을 남기므로 서버에서 아예 제거됐다.
-    final socket = io.io(
-      Env.apiBase,
-      io.OptionBuilder()
-          .setTransports(['websocket'])
-          .setAuth({'token': token})
-          .disableAutoConnect()
-          // 끊겨도 계속 재시도한다. 모바일은 네트워크가 자주 바뀐다.
-          .enableReconnection()
-          .setReconnectionDelay(1000)
-          .setReconnectionDelayMax(10000)
-          .build(),
-    );
+    final socket = io.io(Env.apiBase, socketOptions(token));
 
     socket
       ..onConnect((_) => _emit(const SocketConnected()))
