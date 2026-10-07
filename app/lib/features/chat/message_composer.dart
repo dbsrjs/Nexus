@@ -225,6 +225,12 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
     final c = nx.colors;
     final channel = ref.watch(currentChannelProvider);
 
+    // 답장을 고르면 곧바로 쓸 수 있게 입력창으로 초점을 옮긴다 — 고른 뒤 입력창을
+    // 한 번 더 눌러야 했고, 그 사이 친 글자는 어디에도 들어가지 않았다(2026-10-08 웹 확인).
+    ref.listen<Message?>(replyTargetProvider, (previous, next) {
+      if (next != null && next.id != previous?.id) _focus.requestFocus();
+    });
+
     // **채널을 옮기면 담아 둔 첨부를 버린다.** 업로드 주소에 채널이 들어 있어,
     // 들고 옮기면 엉뚱한 채널에 올라간 파일을 붙이게 된다.
     //
