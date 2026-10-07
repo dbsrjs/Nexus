@@ -5,13 +5,18 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
+import { SpaceMember } from '@prisma/client';
 import { SpaceGuard } from '../spaces/guards/space.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentSpaceMember } from '../spaces/decorators/current-space-member.decorator';
 import { AiService } from './ai.service';
 import { AiWorker } from './ai.worker';
 import { AskDto } from './dto/ask.dto';
+import { AiHistoryService } from './ai-history.service';
+import { AiThreadsQueryDto } from './dto/threads-query.dto';
 
 /**
  * AI 실행.
@@ -28,6 +33,7 @@ export class AiController {
   constructor(
     private readonly ai: AiService,
     private readonly worker: AiWorker,
+    private readonly history: AiHistoryService,
   ) {}
 
   /**
@@ -55,5 +61,23 @@ export class AiController {
     @CurrentUser('id') userId: string,
   ) {
     return this.ai.getRun(spaceId, userId, runId);
+  }
+
+  /**
+   * 지난 대화 목록(19). **LLM 설정과 무관하다** — 이미 받은 답을 읽는 데 모델이 필요
+   * 없다(설계 D8). 본인 것 · 지금 볼 수 있는 채널의 것만.
+   */
+  @Get('threads')
+  threads(@CurrentSpaceMember() member: SpaceMember, @Query() query: AiThreadsQueryDto) {
+    return this.history.list(member, query);
+  }
+
+  /** 사슬 하나를 뿌리부터 끝까지. 뿌리 `runId` 로만 연다. */
+  @Get('threads/:rootRunId')
+  thread(
+    @CurrentSpaceMember() member: SpaceMember,
+    @Param('rootRunId', new ParseUUIDPipe()) rootRunId: string,
+  ) {
+    return this.history.thread(member, rootRunId);
   }
 }
