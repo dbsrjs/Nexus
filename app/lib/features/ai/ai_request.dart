@@ -62,6 +62,21 @@ enum AiPreset {
   final String wire;
 }
 
+/// 서버가 돌려준 프리셋 이름. **모르는 값은 null** — 서버가 프리셋을 늘려도 앱이
+/// 죽지 않고 그 질문을 지시문 없는 문답으로 보인다.
+AiPreset? aiPresetOf(String? wire) => switch (wire) {
+  'summary' => AiPreset.summary,
+  'issue' => AiPreset.issue,
+  _ => null,
+};
+
+/// 프리셋을 질문 자리에 쓸 때의 문구. 패널의 문답 목록과 지난 대화가 같은 것을 쓴다.
+String aiPresetLabel(AiPreset? preset) => switch (preset) {
+  AiPreset.summary => '요약',
+  AiPreset.issue => '이슈 초안',
+  null => '질문',
+};
+
 /// 칩 목록에 대한 판정. **패널과 요청이 같은 판정을 쓴다** — 둘이 따로
 /// 구현하면 컨텍스트 종류가 늘 때 한쪽만 고쳐져 프리셋 활성화와 실제 요청이
 /// 어긋난다.

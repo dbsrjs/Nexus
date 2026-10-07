@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/data/api/ai_api.dart';
 import 'package:nexus_app/data/api/api_failure.dart';
 import 'package:nexus_app/domain/models/ai_run.dart';
+import 'package:nexus_app/domain/models/ai_thread.dart';
 import 'package:nexus_app/features/ai/ai_controller.dart';
 import 'package:nexus_app/features/ai/ai_panel.dart';
 import 'package:nexus_app/features/ai/ai_request.dart';
@@ -39,6 +40,32 @@ class _FakeAiApi implements AiApi {
   @override
   Future<AiRun> getRun(String spaceId, String runId) async =>
       queued.isNotEmpty ? queued.removeAt(0) : result;
+
+  /// 지난 대화 페이지 — 커서별로. `null` 키가 첫 페이지다.
+  final Map<String?, AiThreadPage> pages = {
+    null: const AiThreadPage(items: [], nextCursor: null),
+  };
+  final List<String?> listedCursors = [];
+  ApiFailure? failList;
+
+  /// 열 사슬 — 뿌리 id 별로. 없으면 [failOpen] 또는 notFound 로 던진다.
+  final Map<String, AiThread> threads = {};
+  ApiFailure? failOpen;
+
+  @override
+  Future<AiThreadPage> listThreads(String spaceId, {String? cursor}) async {
+    listedCursors.add(cursor);
+    if (failList != null) throw ApiException(failList!);
+    return pages[cursor] ?? const AiThreadPage(items: [], nextCursor: null);
+  }
+
+  @override
+  Future<AiThread> getThread(String spaceId, String rootRunId) async {
+    if (failOpen != null) throw ApiException(failOpen!);
+    final thread = threads[rootRunId];
+    if (thread == null) throw ApiException(ApiFailure.notFound);
+    return thread;
+  }
 }
 
 Future<_FakeAiApi> _pump(

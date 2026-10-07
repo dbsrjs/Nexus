@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nexus_app/data/api/ai_api.dart';
 import 'package:nexus_app/data/api/api_failure.dart';
 import 'package:nexus_app/domain/models/ai_run.dart';
+import 'package:nexus_app/domain/models/ai_thread.dart';
 import 'package:nexus_app/features/ai/ai_controller.dart';
 import 'package:nexus_app/features/ai/ai_request.dart';
 import 'package:nexus_app/features/realtime/socket_controller.dart';
@@ -213,4 +214,13 @@ class _FakeAiApi implements AiApi {
     getRunCalls.add((spaceId: spaceId, runId: runId));
     return getRunResult;
   }
+
+  // 지난 대화(19)는 컨트롤러가 부르지 않는다 — 패널이 직접 부른다.
+  @override
+  Future<AiThreadPage> listThreads(String spaceId, {String? cursor}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<AiThread> getThread(String spaceId, String rootRunId) =>
+      throw UnimplementedError();
 }
