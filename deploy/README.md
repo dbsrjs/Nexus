@@ -39,9 +39,14 @@
 
 ```bash
 cd app
-flutter build web --release --dart-define=API_BASE=https://nexus.example.com
-scp -r build/web/* <vm>:~/Nexus/deploy/web/
+flutter build web --release --no-web-resources-cdn --dart-define=API_BASE=https://nexus.example.com
+scp -r build/web/. <vm>:~/Nexus/deploy/web/
 ```
+
+**`--no-web-resources-cdn` 을 붙인다.** 빼면 CanvasKit(렌더러)을 `www.gstatic.com` 에서 받는데, 그 주소가 막힌
+네트워크(회사 방화벽 · 이 검증 환경)에서는 **흰 화면만 뜬다**(2026-10-09 겪음). 붙이면 같은 오리진에서 받는다.
+
+초대 링크(`/#/invite/<코드>`)는 이 주소를 기준으로 만들어진다 — 앱의 `WEB_BASE` 기본값이 `API_BASE` 다(웹과 API 가 한 오리진).
 
 nginx 가 정적 파일 전부에 `Cache-Control: no-cache` 를 붙인다 — Flutter 웹 산출물은 이름에 해시가
 없어 캐시를 허락하면 배포 뒤에도 옛 `main.dart.js` 가 남는다. 파일을 바꾸면 컨테이너를 다시 띄울 필요가 없다.

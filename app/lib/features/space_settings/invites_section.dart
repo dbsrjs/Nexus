@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/env.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/invite.dart';
 import '../../domain/models/space.dart';
@@ -157,22 +158,33 @@ class _CodeBox extends StatelessWidget {
                 ),
               ),
               NxButton(
-                label: '복사',
+                label: '코드 복사',
                 kind: NxButtonKind.secondary,
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: code));
-                  if (context.mounted) {
-                    NxToast.show(context, '복사했습니다', kind: NxToastKind.success);
-                  }
-                },
+                onPressed: () => _copy(context, code),
+              ),
+              const SizedBox(width: NxSpacing.sp3),
+              NxButton(
+                label: '링크 복사',
+                kind: NxButtonKind.secondary,
+                onPressed: () => _copy(context, Env.inviteLink(code)),
               ),
             ],
           ),
           const SizedBox(height: NxSpacing.sp4),
-          Text('받는 사람은 스페이스 화면의 「초대 코드로 참여」에 붙여넣으면 됩니다.', style: nx.text.meta),
+          Text(
+            '링크를 열면 바로 참여 화면이 뜹니다. 코드는 스페이스 화면의 「초대 코드로 참여」에 붙여넣습니다.',
+            style: nx.text.meta,
+          ),
         ],
       ),
     );
+  }
+}
+
+Future<void> _copy(BuildContext context, String text) async {
+  await Clipboard.setData(ClipboardData(text: text));
+  if (context.mounted) {
+    NxToast.show(context, '복사했습니다', kind: NxToastKind.success);
   }
 }
 

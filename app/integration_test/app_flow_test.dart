@@ -238,7 +238,8 @@ void main() {
       await tester.tap(find.text('초대하기'));
       await tester.pumpUntil(find.widgetWithText(NxButton, '초대 코드 만들기'));
       await tester.tap(find.widgetWithText(NxButton, '초대 코드 만들기'));
-      await tester.pumpUntil(find.widgetWithText(NxButton, '복사'));
+      // 코드 · 초대 링크(«마지막» 딥링크) 둘 다 복사할 수 있다.
+      await tester.pumpUntil(find.widgetWithText(NxButton, '링크 복사'));
       // 만든 코드가 「쓸 수 있는 초대」 목록에도 있다(초대 취소 버튼).
       await tester.pumpUntil(find.widgetWithText(NxButton, '취소'));
 
