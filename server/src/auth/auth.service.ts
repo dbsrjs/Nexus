@@ -19,6 +19,7 @@ import {
   RefreshTokenService,
 } from './refresh-token.service';
 import { FailureThrottle } from './failure-throttle';
+import { envUint } from '../config/env';
 
 /**
  * 비밀번호 대조 실패 한도 — 15분에 10번. argon2 가 느려도 무제한이면 사전 공격이
@@ -26,6 +27,24 @@ import { FailureThrottle } from './failure-throttle';
  */
 const PASSWORD_MAX_FAILURES = 10;
 const PASSWORD_WINDOW_MS = 15 * 60 * 1000;
+
+/**
+ * 가입 시도 한도 — **주소 하나당 한 시간에 N번**(`SIGNUP_LIMIT_PER_HOUR`, 비우면 10, `0` 은 끔).
+ *
+ * 공개 배포에서 가입이 무제한이면 계정을 찍어 내고, 가입마다 도는 argon2 해시로 CPU 를 태울 수
+ * 있다. 성공 · 실패를 가리지 않고 **서비스에 닿은 시도를 전부** 센다 — 409(이미 가입된 이메일)도
+ * 세야 이메일이 가입돼 있는지 대량으로 떠보는 길이 좁아진다.
+ *
+ * 개발 · CI 는 `0` 이다 — 계약 검증이 한 주소(127.0.0.1)에서 계정을 수십 개 만든다.
+ * 「루프백이면 봐준다」는 규칙을 두지 않은 것은, 프록시 설정(`TRUST_PROXY`)이 틀어지면 모든
+ * 요청이 프록시 주소로 보여 예외가 엉뚱한 데 걸리기 때문이다 — 값으로 드러나게 둔다.
+ */
+export const SIGNUP_DEFAULT_LIMIT_PER_HOUR = 10;
+const SIGNUP_WINDOW_MS = 60 * 60 * 1000;
+
+export function resolveSignupLimit(config: ConfigService): number {
+  return envUint(config, 'SIGNUP_LIMIT_PER_HOUR') ?? SIGNUP_DEFAULT_LIMIT_PER_HOUR;
+}
 
 /**
  * 사람이 가입할 수 없는 이메일인가. **`.invalid` 는 RFC 2606 · 6761 이 예약한 최상위
@@ -60,6 +79,8 @@ export class AuthService {
     PASSWORD_MAX_FAILURES,
     PASSWORD_WINDOW_MS,
   );
+  /** 가입 시도 수. 한도가 `0`(끔)이면 null. */
+  private readonly signupAttempts: FailureThrottle | null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -69,6 +90,10 @@ export class AuthService {
   ) {
     // 부팅 시점에 한 번 해석한다. 미설정이면 여기서 프로세스가 죽는다.
     this.secrets = resolveJwtSecrets(config);
+    const signupLimit = resolveSignupLimit(config);
+    // 실패만 세는 도구지만 여기서는 「시도」를 센다 — 가입 요청마다 fail() 을 부른다.
+    this.signupAttempts =
+      signupLimit > 0 ? new FailureThrottle(signupLimit, SIGNUP_WINDOW_MS) : null;
   }
 
   /**
@@ -80,6 +105,12 @@ export class AuthService {
     name: string,
     client: ClientFingerprint = {},
   ): Promise<AuthTokens & { user: PublicUser }> {
+    if (this.signupAttempts) {
+      const key = `signup:${client.ip ?? '-'}`;
+      this.assertNotThrottled(this.signupAttempts, key);
+      this.signupAttempts.fail(key);
+    }
+
     const normalizedEmail = email.trim().toLowerCase();
     if (isReservedEmail(normalizedEmail)) {
       throw new BadRequestException('사용할 수 없는 이메일입니다');
@@ -141,7 +172,7 @@ export class AuthService {
     // **주소 + 이메일**로 센다. 이메일만으로 세면 남의 이메일을 열 번 틀려 그 사람을
     // 잠글 수 있고, 주소만으로 세면 공용 NAT 뒤의 사람들이 함께 잠긴다.
     const key = `login:${client.ip ?? '-'}:${email.trim().toLowerCase()}`;
-    this.assertNotThrottled(key);
+    this.assertNotThrottled(this.passwordFailures, key);
 
     let user: User;
     try {
@@ -202,7 +233,7 @@ export class AuthService {
   ): Promise<AuthTokens> {
     // 액세스 토큰만 훔친 사람이 현재 비밀번호를 맞혀 보는 경로다 — 로그인과 같은 한도를 건다.
     const key = `password:${userId}`;
-    this.assertNotThrottled(key);
+    this.assertNotThrottled(this.passwordFailures, key);
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const ok =
@@ -253,8 +284,8 @@ export class AuthService {
    * 한도에 닿았으면 429 + `Retry-After`. 본문 객체의 `retryAfter` 를 전역 예외 필터가
    * 헤더로 옮긴다(github-error.ts 와 같은 모양).
    */
-  private assertNotThrottled(key: string): void {
-    const retryAfter = this.passwordFailures.blockedFor(key);
+  private assertNotThrottled(throttle: FailureThrottle, key: string): void {
+    const retryAfter = throttle.blockedFor(key);
     if (retryAfter === null) return;
     throw new HttpException(
       {
