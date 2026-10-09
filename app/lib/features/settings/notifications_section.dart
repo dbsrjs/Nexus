@@ -4,16 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/channel.dart';
 import '../../ui/ui.dart';
+import '../desktop/desktop_shell.dart';
+import '../desktop/os_notifications.dart';
 import '../notifications/notifications_controller.dart';
 import '../space/space_controller.dart';
 import 'settings_controller.dart';
 import 'settings_widgets.dart';
 
-/// 알림 — **종류별 스위치**(18단계 N23)와 **채널 음소거**(14단계 D17 · D18).
+/// 알림 — **이 기기의 데스크톱 알림**(«마지막»), **종류별 스위치**(18단계 N23),
+/// **채널 음소거**(14단계 D17 · D18).
 ///
-/// 동작하지 않는 스위치는 두지 않는다(CLAUDE.md §3-7). 푸시 · 데스크톱 알림은
-/// 그것을 만드는 단계(«마지막»)가 이 섹션에 더한다. 그래서 설명도 **지금 일어나는
-/// 효과**만 적는다 — 스위치는 알림함(인앱)에만 듣는다.
+/// 동작하지 않는 스위치는 두지 않는다(CLAUDE.md §3-7) — 데스크톱 알림을 못 띄우는
+/// 기기(Android · iOS — 모바일 푸시는 이 단계에서 뺐다)에서는 스위치 대신 그 사실을 적는다.
+/// 종류별 스위치는 서버가 알림을 만들지부터 정하므로 알림함과 데스크톱 알림에 함께 듣는다.
 class NotificationsSection extends ConsumerStatefulWidget {
   const NotificationsSection({super.key, this.initialSpaceId});
 
@@ -62,9 +65,13 @@ class _NotificationsSectionState extends ConsumerState<NotificationsSection> {
     return SettingsPage(
       title: '알림',
       children: [
-        const SettingsLabel('알림함에 받을 것'),
+        const SettingsLabel('이 기기'),
+        const _DeviceSwitch(),
+        const SettingsGap(),
+        const SettingsLabel('받을 알림'),
         Text(
-          '끄면 그 종류의 새 알림이 알림함에 오지 않습니다. 이미 온 알림은 남습니다.',
+          '끄면 그 종류의 새 알림이 알림함에도 데스크톱 알림으로도 오지 않습니다. '
+          '이미 온 알림은 남습니다.',
           style: nx.text.secondary,
         ),
         const SizedBox(height: NxSpacing.sp5),
@@ -279,6 +286,96 @@ class _TypeSwitchesState extends ConsumerState<_TypeSwitches> {
         row('다이렉트 메시지', 'DM 에 새 메시지가 왔을 때', s.dms, (v) => _set(dms: v)),
         row('스레드 답글', '내 글에 답글이 달렸을 때', s.replies, (v) => _set(replies: v)),
         if (_error != null) SettingsError(_error!),
+      ],
+    );
+  }
+}
+
+/// 이 기기에서 데스크톱 알림을 띄울지(«마지막»). 값은 기기에 둔다 — 서버에 묻지 않는다.
+///
+/// 웹은 브라우저의 허락이 따로 있다. 스위치는 「켜 두었고 **허락도 받았다**」일 때만 켜져
+/// 보인다 — 켜져 보이는데 알림이 안 오는 것이 가장 나쁜 거짓말이다.
+class _DeviceSwitch extends ConsumerStatefulWidget {
+  const _DeviceSwitch();
+
+  @override
+  ConsumerState<_DeviceSwitch> createState() => _DeviceSwitchState();
+}
+
+class _DeviceSwitchState extends ConsumerState<_DeviceSwitch> {
+  bool _asking = false;
+
+  Future<void> _turnOn(DesktopShell shell) async {
+    if (shell.permission == NotifyPermission.notYet) {
+      setState(() => _asking = true);
+      // 누른 직후에 묻는다 — 브라우저는 사용자 동작 없이 묻는 요청을 거절한다.
+      await shell.requestPermission();
+      if (!mounted) return;
+      setState(() => _asking = false);
+    }
+    if (shell.permission == NotifyPermission.granted) {
+      ref.read(desktopNotifyEnabledProvider.notifier).set(true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    final shell = ref.watch(desktopShellProvider);
+    final enabled = ref.watch(desktopNotifyEnabledProvider);
+    final permission = shell.permission;
+
+    if (shell.kind == DesktopShellKind.none) {
+      return Text(
+        '이 기기는 데스크톱 알림을 띄우지 않습니다. 새 알림은 알림함에서 확인하세요.',
+        style: nx.text.secondary,
+      );
+    }
+
+    final hint = switch (shell.kind) {
+      DesktopShellKind.windows =>
+        'Nexus 창을 보고 있지 않을 때 Windows 알림으로 띄웁니다. '
+            '창을 닫아도 트레이에서 계속 받고, 끝내려면 트레이 메뉴의 「종료」를 누릅니다.',
+      _ => '이 탭을 보고 있지 않을 때 브라우저 알림으로 띄웁니다.',
+    };
+    final denied = permission == NotifyPermission.denied;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: NxSpacing.sp3),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('데스크톱 알림', style: nx.text.base),
+                    Text(hint, style: nx.text.meta),
+                  ],
+                ),
+              ),
+              NxSwitch(
+                value: enabled && permission == NotifyPermission.granted,
+                label: '데스크톱 알림',
+                onChanged: denied || _asking
+                    ? null
+                    : (v) => v
+                          ? _turnOn(shell)
+                          : ref
+                                .read(desktopNotifyEnabledProvider.notifier)
+                                .set(false),
+              ),
+            ],
+          ),
+        ),
+        if (denied)
+          // 한 번 거절하면 사이트가 다시 물을 수 없다 — 사용자가 직접 풀어야 한다.
+          SettingsError(
+            '브라우저가 이 사이트의 알림을 막고 있습니다. '
+            '주소창 왼쪽의 사이트 설정에서 알림을 허용한 뒤 다시 켜세요.',
+          ),
       ],
     );
   }

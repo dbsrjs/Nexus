@@ -25,6 +25,8 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  desktop_shell_ = std::make_unique<DesktopShell>(
+      GetHandle(), flutter_controller_->engine()->messenger());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -40,6 +42,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  desktop_shell_ = nullptr;
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
@@ -51,6 +54,16 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // 트레이가 먼저 본다 — WM_CLOSE 를 엔진보다 앞에서 잡아야 창을 숨길 수 있다
+  // (엔진은 WM_CLOSE 를 받으면 앱 종료 요청으로 넘긴다).
+  if (desktop_shell_) {
+    std::optional<LRESULT> handled =
+        desktop_shell_->HandleMessage(hwnd, message, wparam, lparam);
+    if (handled) {
+      return *handled;
+    }
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =

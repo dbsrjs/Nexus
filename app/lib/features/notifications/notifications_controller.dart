@@ -4,6 +4,7 @@ import '../../data/api/api_failure.dart';
 import '../../data/api/notifications_api.dart';
 import '../../data/socket/socket_event.dart';
 import '../../domain/models/notification_item.dart';
+import '../../shared/markdown/plain_text.dart';
 import '../auth/auth_controller.dart';
 import '../realtime/socket_controller.dart';
 import '../space/space_controller.dart';
@@ -227,6 +228,15 @@ String notificationHeadline(NotificationItem n) {
     NotificationType.other => '$who 님의 새 소식',
   };
 }
+
+/// 한 줄의 본문 미리보기. 원문 마크다운이라 서식을 벗기고 `<@id>` 를 이름으로 바꾼다.
+/// 알림함과 OS 알림(«마지막»)이 같은 문구를 쓴다.
+String notificationPreview(NotificationItem n, Map<String, String> names) =>
+    n.deleted
+    ? '삭제된 메시지입니다'
+    : n.body.isEmpty
+    ? '파일을 보냈습니다'
+    : toPlainText(n.body, names: names);
 
 /// 누르면 갈 곳(N21) — 답글이면 스레드(셸 밖, 덮어서), 아니면 채널(셸 안).
 String notificationTarget(String spaceId, NotificationItem n) {

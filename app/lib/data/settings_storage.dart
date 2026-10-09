@@ -4,7 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// 앱 뼈대가 `MaterialApp` 인 동안은 `main.dart` 가 바꿔 넘긴다.
 enum ThemePreference { system, light, dark }
 
-/// 화면 설정 보관. 지금은 테마 하나뿐이다.
+/// 화면 설정 보관 — 테마 · 이 기기의 데스크톱 알림.
 ///
 /// **비밀이 아닌 값을 안전 저장소에 둔다.** 어색한 것을 안다. 그래도 이렇게
 /// 한 이유는 **새 의존성을 들이지 않는 유일한 길**이어서다 — 이 프로젝트는
@@ -24,6 +24,7 @@ class SettingsStorage {
   final FlutterSecureStorage _storage;
 
   static const _themeKey = 'nexus.themeMode';
+  static const _desktopNotifyKey = 'nexus.desktopNotifications';
 
   /// 저장된 테마. 없거나 읽지 못하면 **시스템을 따른다**.
   ///
@@ -43,6 +44,28 @@ class SettingsStorage {
     } catch (_) {
       // 저장에 실패해도 이번 실행에는 이미 반영돼 있다. 다음에 켤 때
       // 시스템 값으로 돌아갈 뿐이라 사용자를 막을 이유가 없다.
+    }
+  }
+
+  /// 이 기기에서 OS 알림을 띄울지(«마지막»). **기기마다 다른 값이라 서버에 두지 않는다** —
+  /// 회사 PC 에서는 끄고 집 PC 에서는 켜는 것이 자연스럽다. 없거나 못 읽으면 켠다:
+  /// 웹은 브라우저 허락이 따로 있어 켜 두어도 허락 전에는 뜨지 않는다.
+  Future<bool> readDesktopNotifications() async {
+    try {
+      return await _storage.read(key: _desktopNotifyKey) != 'off';
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<void> writeDesktopNotifications(bool enabled) async {
+    try {
+      await _storage.write(
+        key: _desktopNotifyKey,
+        value: enabled ? 'on' : 'off',
+      );
+    } catch (_) {
+      // 테마와 같다 — 이번 실행에는 반영돼 있고, 다음 실행에 기본값으로 돌아갈 뿐이다.
     }
   }
 
