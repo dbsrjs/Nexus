@@ -7,7 +7,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
 import { enableBigIntSerialization } from './common/bigint-serializer';
 import { SocketIoAdapter } from './realtime/socket-io.adapter';
-import { resolveCorsOrigins } from './config/env';
+import { resolveCorsOrigins, resolveTrustProxy } from './config/env';
 
 // 모듈 로딩보다 먼저 걸어 둔다. 이게 없으면 bigint 컬럼이 섞인 응답이 전부 500 이다.
 enableBigIntSerialization();
@@ -24,6 +24,14 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   // 프레임워크 이름을 알려 줄 이유가 없다 — 알려진 취약점을 고르는 첫 단서가 된다.
   app.getHttpAdapter().getInstance().disable('x-powered-by');
+
+  // 프록시 뒤에서 `req.ip` 를 실제 클라이언트로 읽기 위해서다 — 로그인 시도 제한이
+  // IP 를 키에 쓴다(config/env.ts).
+  const trustProxy = resolveTrustProxy(config);
+  if (trustProxy !== null) {
+    app.getHttpAdapter().getInstance().set('trust proxy', trustProxy);
+    logger.log(`trust proxy: ${trustProxy}`);
+  }
 
   app.useGlobalPipes(
     new ValidationPipe({

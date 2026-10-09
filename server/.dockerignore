@@ -1,0 +1,9 @@
+# 이미지에 들어갈 것은 package*.json · prisma · src · tsconfig 뿐이다.
+# .env 가 빌드 컨텍스트에 실리면 이미지 층에 시크릿이 남는다.
+node_modules
+dist
+storage
+.env
+.env.*
+!.env.example
+scripts

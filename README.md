@@ -37,7 +37,7 @@ app/     Flutter — 한 코드베이스로 Windows · Android · Web (iOS 는 m
    ▼
 server/  NestJS + Prisma
    ├─ PostgreSQL + pgvector   모든 데이터 · 코드 임베딩 · 작업 큐(AI · 인덱싱)
-   ├─ 스토리지                첨부 파일 (지금은 로컬 디스크, 배포 때 S3 호환 드라이버)
+   ├─ 스토리지                첨부 파일 (개발은 로컬 디스크, 배포는 S3 호환 — R2)
    ├─ LLM                     gemini · local(Ollama) · fake
    └─ 임베딩                  gemini · local(Ollama) · fake
 ```

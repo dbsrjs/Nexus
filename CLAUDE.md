@@ -130,7 +130,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 |---|---|
 | `npm run db:up` / `db:down` | WSL Postgres 기동 / `wsl --shutdown` |
 | `npm run env:setup` | `server/.env` 생성 · 빈 자리 채우기. **여러 번 돌려도 안전하다** |
-| `npm run db:up:docker` / `db:down:docker` | Docker 환경일 때. **postgres 하나만 뜬다** — redis · minio 는 지금 빌드가 쓰지 않아 프로필(`--profile redis` · `--profile s3`) 뒤에 있다 |
+| `npm run db:up:docker` / `db:down:docker` | Docker 환경일 때. **postgres 하나만 뜬다** — redis · s3(SeaweedFS) 는 개발 루프가 쓰지 않아 프로필(`--profile redis` · `--profile s3`) 뒤에 있다. 배포 구성은 `deploy/`(절차 [deploy/README.md](deploy/README.md)) |
 | `npm run db:seed` · `db:studio` | 시드 · Prisma Studio |
 | `npm run server:dev` · `server:build` | 개발 서버 · 빌드 |
 | `npm --prefix server run typecheck` | 타입 검사만 |
@@ -187,6 +187,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | 웹 확인 중 Chrome 탭이 스크린숏 · 클릭에 응답하지 않음 · 클릭이 가끔 사라짐 | 확장 프로그램(Claude in Chrome)이 연 탭은 **사용자 창 뒤에 가려지면 `visibilityState: hidden` 이 되어 Flutter 가 그리기를 멈춘다.** 사용자 Chrome 을 빌리지 말고 **별도 프로필의 헤드리스 Chrome** 을 띄워 CDP 로 조작한다(`chrome --headless=new --remote-debugging-port=9520 --user-data-dir=<임시>`). 가려져도 그리고, 마우스 이동 · 누름이 사람처럼 들어가 「진입 직후 클릭 유실」도 재현되지 않았다(확장의 부작용이었다). **디버깅 포트는 예약 범위 밖으로** — 9333 은 9312~9411 예약에 걸려 조용히 안 떴다(2026-10-08) |
 | 웹 빌드를 고쳤는데 브라우저가 옛 동작 그대로 | `python -m http.server` 는 캐시 헤더를 주지 않아 Chrome 이 **옛 `main.dart.js` 를 디스크 캐시에서** 읽는다(새로고침 · `ignoreCache` 로도 남았다). CDP 의 `Network.setCacheDisabled` + `clearBrowserCache` 뒤 새로고침하고, `performance.getEntriesByType('resource')` 의 `main.dart.js` 크기가 새 빌드와 같은지 본다. **배포 때도 같은 문제다** — `index.html` · `flutter_bootstrap.js` · `main.dart.js` 는 `no-cache` 로 줄 것 |
 | `flutter test --platform chrome` 이 `loading …` 에서 영원히 멈춤(Windows) | Flutter 도구의 테스트 서버가 요청 경로를 `path.fromUri` 로 바꿔 Windows 에서 `canvaskit\canvaskit.js`(역슬래시)가 되고, `startsWith('canvaskit/')` 가 거짓이라 **CanvasKit 을 404** 로 준다(`flutter_tools/lib/src/test/flutter_web_platform.dart` 의 `_localCanvasKitHandler`, 3.47). 우리 코드 문제가 아니다 — 이 PC 에서는 앱 테스트를 JS 로 돌릴 수 없다. 리눅스(CI)에서는 돈다. `drift/native` · `dart:io` 를 import 하는 테스트는 어차피 웹으로 컴파일되지 않는다 |
+| `docker compose --profile s3` 가 `pull access denied for minio/minio` 로 실패 | **Docker Hub 의 `minio/minio` 저장소가 사라졌다**(2026-10-09 확인). s3 프로필을 SeaweedFS(`chrislusf/seaweedfs`)로 바꿨다 — 키는 `server/docker/seaweedfs-s3.json`, 버킷은 `node scripts/s3-bucket.mjs` |
 
 ### 코드에서 겪은 함정
 
@@ -347,7 +348,7 @@ notifications/ 인앱 알림(18) — 받는 사람 계산(plan · 볼 수 있는
               알림함 목록 · 읽음(채널 읽음 마커가 따라 읽힘) · 종류별 스위치(/me/notification-settings)
 permissions/  채널별 역할 권한 행(guest · member) · 비공개 채널 명단 — 행을 읽고 쓸 뿐 판정은 channels 가 한다(16-2)
 messages/     메시지 목록 · 전송 · 수정 이력 · 소프트 삭제 · 리액션 · 멘션 · 스레드 · 답장 · 핀
-storage/      StorageDriver — 바이트를 어디에 둘지. URL 을 만들지 않는다. **구현은 local 하나**(S3 는 배포 때)
+storage/      StorageDriver — 바이트를 어디에 둘지. URL 을 만들지 않는다. local(개발) · s3(배포 — R2, CI 가 SeaweedFS 로 태운다)
 attachments/  업로드 · 스트리밍 다운로드 · 썸네일 · 파일 목록 · 고아 정리
 issues/       이슈 · 라벨 · 댓글 · 칸반 정렬 · 채번(Space.issueSeq)
 sprints/      스프린트 · 번다운
@@ -444,7 +445,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 [docs/진행-기록.md](docs/진행-기록.md) 에 있다. **이미 끝난 단계의 코드를 다시 건드릴 때는
 그 절부터 읽는다** — 뒤집으면 안 되는 판단과 그 이유가 거기 있다.
 
-**아직 없는 것** — 전부 §5 의 어느 단계가 맡는다(2026-09-27 편입): GitLab(20) · 푸시 · **S3 스토리지 드라이버**(지금은 `local` 하나) · 배포(마지막).
+**아직 없는 것** — 전부 §5 의 어느 단계가 맡는다(2026-09-27 편입): GitLab(20) · 푸시 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 · 실제 VM 배포(마지막 — 배포 구성 · S3 드라이버는 2026-10-09 에 생겼다).
 그룹 DM · 직접 고르는 상태(방해 금지) · 마지막 접속 시각은
 17단계 범위에서 뺐다([17단계 설계 §5](docs/superpowers/specs/2026-10-05-17-DM-프레즌스-타이핑-design.md)).
 스레드 구독(참여자 전원에게 답글 알림) · 채널마다 다른 알림 스위치 · 이슈 알림은 18단계 범위에서 뺐다([18단계 설계](docs/superpowers/specs/2026-10-05-18-인앱-알림-design.md)).
@@ -483,7 +484,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 | 18 | 인앱 알림 — 알림함(멘션 · `@channel` · DM · 내 글의 답글, 한 메시지에 한 알림) · `notifications` 재작성 · 메시지와 한 트랜잭션 · 볼 수 있는 채널만 · 음소거면 직접 멘션만 · 채널 읽음이 알림도 읽음 · 설정 창의 종류별 스위치. 설계 [18단계 설계](docs/superpowers/specs/2026-10-05-18-인앱-알림-design.md) | ✅ |
 | 19 | AI 기록 — AI 패널의 「지난 대화」(사슬 단위 목록 · 끝 답이 늦은 순 · 커서 페이지) · 다시 열어 이어 묻기 · 본인 것 · 볼 수 있는 채널만 · 스키마 변경 없이 재귀 CTE. 설계 [19단계 설계](docs/superpowers/specs/2026-10-07-19-AI-기록-design.md) | ✅ |
 | **20** | **GitLab 연동** — provider 추상화 뒤에 GitLab. 배포 뒤로 미뤄도 되는 유일한 단계 | |
-| **마지막** | 푸시 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 · 배포(S3 드라이버 · prod compose). 푸시 · 데스크톱 알림 스위치는 14단계 설정 창에 더한다 | |
+| **마지막** | 푸시 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 · 배포(S3 드라이버 · prod compose). 푸시 · 데스크톱 알림 스위치는 14단계 설정 창에 더한다 | 🔸 배포 기반(S3 드라이버 · `TRUST_PROXY` · `deploy/` compose · nginx 한 오리진 · 백업) ✅ |
 
 16~20 은 2026-09-27 에 **단계 밖에 있던 기능을 편입**한 것이다. 15 뒤에 둔 이유(컴포넌트를
 바꾼 뒤 화면을 새로 만든다)와 단계마다의 설계 출발점은 [제품-기획 §5.1-c](docs/제품-기획.md).

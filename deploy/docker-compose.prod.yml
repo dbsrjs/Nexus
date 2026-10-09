@@ -1,0 +1,117 @@
+# Nexus 배포 구성 — 상시 구동 VM 한 대(docs/인프라-설계.md §2).
+#
+#   cd deploy
+#   cp .env.prod.example .env          # 값을 채운다(아래 «값» 절)
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml --profile tunnel up -d   # Cloudflare Tunnel 까지
+#
+# 개발용 server/docker-compose.yml 과 다른 점:
+# - 기본 비밀번호가 없다. 값이 비면 compose 가 시작을 거부한다(`:?`).
+# - Postgres 포트를 밖으로 열지 않는다. 서버만 컨테이너 네트워크로 닿는다.
+# - 밖으로 열리는 것은 web(nginx) 하나, 그것도 127.0.0.1 에만. 공개는 터널이 맡는다.
+name: nexus
+
+services:
+  postgres:
+    # 순정 postgres 면 init 마이그레이션이 CREATE EXTENSION "vector" 에서 죽는다.
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nexus
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 를 .env 에 채우십시오}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # 마이그레이션을 서버 기동과 나눈다. 서버 컨테이너에는 prisma CLI(개발 의존성)가 없고,
+  # 실패하면 서버가 옛 스키마로 뜨지 않고 여기서 멈춘다.
+  # 시드(데모 스페이스)는 손으로 한 번: docker compose -f docker-compose.prod.yml run --rm migrate npm run seed
+  migrate:
+    build:
+      context: ../server
+      target: build
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://nexus:${POSTGRES_PASSWORD}@postgres:5432/nexus
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  server:
+    build: ../server
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # .env 의 DATABASE_URL 이 무엇이든 컨테이너 안에서는 이 주소다.
+      DATABASE_URL: postgresql://nexus:${POSTGRES_PASSWORD}@postgres:5432/nexus
+      PORT: '3000'
+      # 바로 앞의 nginx 한 홉만 믿는다(nginx.conf 의 X-Forwarded-For).
+      TRUST_PROXY: '1'
+      STORAGE_LOCAL_DIR: /data/storage
+    volumes:
+      # STORAGE_DRIVER=local 일 때만 쓰인다. s3(R2)면 비어 있다.
+      - storage:/data/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # 웹 앱 정적 파일 + API · 소켓 프록시. 한 오리진이어야 리프레시 쿠키가 산다(nginx.conf).
+  # ./web 에 Flutter 웹 빌드를 넣는다(README «웹 빌드 넣기»).
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./web:/usr/share/nginx/html:ro
+    ports:
+      # 터널이 컨테이너 네트워크로 닿으므로 원래는 열 필요가 없다. VM 안에서 curl 로
+      # 확인하려고 루프백에만 연다 — 0.0.0.0 이면 Cf-Connecting-IP 를 지어낼 수 있게 된다.
+      - "127.0.0.1:${HTTP_PORT:-8080}:80"
+    depends_on:
+      - server
+
+  # Cloudflare Tunnel. 대시보드에서 터널을 만들고 공개 호스트 이름의 서비스를
+  # http://web:80 으로 둔다. 토큰만 있으면 되고 VM 의 포트를 하나도 열지 않는다.
+  cloudflared:
+    image: cloudflare/cloudflared:2025.9.1
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - web
+
+  # 하루 한 번 pg_dump. 이레치를 남긴다. VM 디스크에만 남으므로 VM 을 잃으면 같이
+  # 잃는다 — R2 로 올리는 것은 아직 하지 않았다(docs/인프라-설계.md §7).
+  backup:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          f=/backups/nexus-$$(date -u +%Y%m%dT%H%M%SZ).dump
+          # 임시 이름으로 쓰고 옮긴다 — 도중에 죽으면 반쪽 파일이 «최신 백업»으로 남는다.
+          if pg_dump -Fc -h postgres -U nexus nexus > "$$f.tmp"; then mv "$$f.tmp" "$$f"; else rm -f "$$f.tmp"; fi
+          find /backups -name 'nexus-*.dump' -mtime +7 -delete
+          sleep 86400
+        done
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pg-data:
+  storage:
