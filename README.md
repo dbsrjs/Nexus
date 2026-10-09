@@ -17,13 +17,16 @@
 | 영역 | 내용 |
 |---|---|
 | **대화** | 스페이스 · 카테고리 · 채널(공개/비공개) · 실시간 전송 · 스레드 · 답장(인용) · 멘션 · 리액션 · 핀 · 마크다운 |
-| **파일** | 첨부 업로드(진행률) · 이미지 미리보기 · 스페이스 파일 목록 |
-| **이슈** | 칸반 보드 · 상세 · 댓글 · 라벨 · 대화 → 이슈 · 스프린트 · 번다운 |
+| **DM · 프레즌스** | 스페이스 안 1:1 DM · 온라인 / 자리비움(10분 무입력) / 오프라인 · 입력 중 표시 |
+| **멤버 · 권한** | 스페이스 만들기 · 초대 코드 · 초대 링크 · 역할(owner · admin · member · guest) · 비공개 채널 명단 · 역할별 채널 권한(가리기 · 읽기 전용) |
+| **알림** | 알림함(멘션 · `@channel` · DM · 내 글의 답글) · 종류별 스위치 · 채널 음소거 · 앱을 보고 있지 않을 때 OS 알림(Windows 토스트 · 브라우저) · Windows 트레이 |
+| **파일** | 첨부 업로드(진행률) · 이미지 미리보기 · 스페이스 파일 목록 · 무기한 보관 |
+| **이슈** | 칸반 보드(끌어 옮기기) · 상세 · 댓글 · 라벨 · 대화 → 이슈 · 스프린트 · 번다운(스페이스마다 켜는 선택 기능) |
 | **GitHub** | 계정 연결(OAuth) · 웹훅 자동 등록 · 브랜치 · 파일 트리 · 커밋 · PR 열람 |
 | **인덱싱** | 저장소를 청크로 나눠 임베딩 · 벡터 검색(pgvector HNSW) · push 마다 증분 갱신 |
-| **AI 패널** | 자유 지시문 + 프리셋(요약 · 이슈 초안) · 컨텍스트(메시지 · 채널 최근 대화 · 저장소 RAG) · 이어 묻기 |
-| **설정** | 표시 이름 · 프로필 사진 · 비밀번호 변경 · 채널 음소거 · 테마(시스템 · 라이트 · 다크) |
-| **화면** | 자체 UI — Material · Cupertino 없이 직접 만든 부품(`app/lib/ui/`) · 이슈 보드 끌어 옮기기(마우스 · 터치 · 키보드) |
+| **AI 패널** | 자유 지시문 + 프리셋(요약 · 이슈 초안) · 컨텍스트(메시지 · 채널 최근 대화 · 저장소 RAG) · 이어 묻기 · 지난 대화 다시 열기 |
+| **설정** | 표시 이름 · 프로필 사진 · 비밀번호 변경 · 알림 · 테마(시스템 · 라이트 · 다크) |
+| **화면** | 자체 UI — Material · Cupertino 없이 직접 만든 부품(`app/lib/ui/`) · 반응형(데스크톱 · 태블릿 · 모바일) · 새로고침 · 로그인 뒤 원래 주소로 |
 
 ---
 
@@ -40,6 +43,9 @@ server/  NestJS + Prisma
    ├─ 스토리지                첨부 파일 (개발은 로컬 디스크, 배포는 S3 호환 — R2)
    ├─ LLM                     gemini · local(Ollama) · fake
    └─ 임베딩                  gemini · local(Ollama) · fake
+
+deploy/  VM 한 대 — Docker Compose(postgres · server · nginx · cloudflared · backup)
+         웹과 API 를 nginx 한 오리진으로 낸다 · Cloudflare Tunnel · R2
 ```
 
 **Space** 가 모든 데이터의 루트인 멀티테넌트 구조다. 채널 · 메시지 · 이슈 · 저장소는 전부 스페이스에 속하고,
@@ -55,6 +61,7 @@ server/  NestJS + Prisma
 |---|---|
 | [`server/`](server/) | NestJS 백엔드 — REST API · Socket.IO 게이트웨이 · 계약 검증 스크립트(`scripts/`) |
 | [`app/`](app/) | Flutter 앱 — 실행법은 [app/README.md](app/README.md) |
+| [`deploy/`](deploy/) | 배포 구성 — prod compose · nginx · 절차는 [deploy/README.md](deploy/README.md) |
 | [`design-system/`](design-system/) | 디자인 토큰(`tokens.css`) · 컴포넌트 · 화면 프리뷰 |
 | [`docs/`](docs/) | 기획 · 설계 문서 · 진행 기록 |
 
@@ -87,6 +94,9 @@ npm run server:dev                         # http://localhost:3000/api
 AI · 인덱싱은 `.env` 의 `LLM_PROVIDER` · `EMBEDDING_PROVIDER` 를 채워야 켜진다.
 
 > Windows 에서는 `DATABASE_URL` 에 `localhost` 대신 **`127.0.0.1`** 을 쓴다(WSL 포워딩이 IPv4 만 동작한다).
+> 서버가 `listen EACCES ...:3000` 으로 죽으면 Windows 가 그 포트를 예약한 것이다 — 처방은 [CLAUDE.md §2](CLAUDE.md).
+>
+> 앱에는 아직 **회원가입 화면이 없다** — 계정은 시드(`db:seed`)나 `POST /api/auth/signup` 으로 만든다.
 
 ### 앱
 
@@ -107,31 +117,36 @@ Windows 데스크톱 빌드에는 **개발자 모드**가 켜져 있어야 한�
 
 | 명령 | 내용 |
 |---|---|
-| `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint |
-| `npm run check:*` | **실서버 · 실DB · 실소켓 계약 검증** 20종 — 실시간 · 리액션 · 스레드 · 첨부 · 이슈 · GitHub 연동 · 인덱싱 · AI · 설정 · 멤버 · 권한 · DM · 프레즌스 · 알림 등. GitHub 은 스스로 띄우는 가짜 서버로 대신한다 |
-| `npm run check:migrations` · `check:sql-time` | 마이그레이션 · raw SQL 정적 검사 (DB 불필요) |
-| `cd app && flutter analyze && flutter test` | 앱 정적 분석 · 테스트 |
-| `npm run app:flow` | 앱 통합 테스트 — Windows 앱을 실서버에 붙여 로그인부터 설정 창까지 돈다 |
-| `npm run app:flow:headless` | 같은 흐름을 창 없이(flutter_tester) 돈다 — CI 가 이것을 돈다 |
+| 명령 | 내용 | 규모 (2026-10-09) |
+|---|---|---|
+| `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint — 순수 로직 · 가드 · 권한 규칙 | 532개 |
+| `npm run check:*` | **실서버 · 실DB · 실소켓 계약 검증** — 실시간 · 리액션 · 스레드 · 첨부 · 이슈 · GitHub 연동 · 인덱싱 · AI · 설정 · 멤버 · 권한 · DM · 프레즌스 · 알림 · **테넌트 격리**(`check:tenancy` — 스페이스 경로 전부를 남의 id 로 친다). GitHub 은 스스로 띄우는 가짜 서버로 대신한다 | 20종 1,123개 |
+| `npm run check:migrations` · `check:sql-time` | 마이그레이션 · raw SQL 정적 검사 (DB 불필요) | |
+| `cd app && flutter analyze && flutter test` | 앱 정적 분석 · 단위 · 위젯 테스트 | 575개 |
+| `npm run app:flow` | 앱 통합 테스트 — Windows 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 설정 · 멤버 · DM · 알림함 · AI 까지 돈다 | 약 30초 |
+| `npm run app:flow:headless` | 같은 흐름을 창 없이(flutter_tester) 돈다 — CI 가 이것을 돈다 | 약 15초 |
 
-CI(`.github/workflows/ci.yml`)가 `main` 과 `feat/**` 의 push 마다 위 전부를 돈다 — 앱 통합 테스트는 창 없는 쪽(`app:flow:headless`)으로. Windows 창으로 보는 `app:flow` 는 화면 모습을 바꿨을 때 사람이 돌린다.
+CI(`.github/workflows/ci.yml`)가 `main` 과 `feat/**` 의 push 마다 위 전부를 돈다 — 앱 통합 테스트는 창 없는 쪽(`app:flow:headless`)으로, 첨부는 S3 경로(SeaweedFS)로도 한 번 더. Windows 창으로 보는 `app:flow` 는 화면 모습을 바꿨을 때 사람이 돌린다.
 
 ---
 
 ## 진행 상황
 
-**1~19단계 완료.** 대화 · 파일 · 이슈 · GitHub 연동 · 저장소 인덱싱 · AI 패널(이어 묻기 포함) · 사용자 설정 · 자체 UI · 멤버 · 권한(초대 코드 · 스페이스 · 채널 설정 창 · 비공개 채널 명단 · 역할별 채널 권한 · 스프린트 선택 기능) · DM · 프레즌스(온라인 · 자리비움 · 오프라인) · 입력 중 표시 · 인앱 알림(알림함 · 멘션 · DM · 내 글의 답글 · 종류별 스위치) · AI 기록(지난 대화 다시 열어 이어 묻기)이 들어갔다.
+**1~19단계와 «마지막»(출시 준비)의 네 갈래가 끝났다**(2026-10-09). 위 기능표가 전부 동작하고,
+배포 구성(`deploy/`) · 테넌트 격리 통합 검증 · 딥링크 · 데스크톱 · 웹 알림 + Windows 트레이까지 들어갔다.
 
-| 다음 | 내용 |
+| 남은 것 | 내용 |
 |---|---|
-| 20 | GitLab 연동 |
-| 마지막 | 실제 VM 배포 남음 — 배포 구성 · 테넌트 격리 통합 테스트 · 딥링크 · 데스크톱 · 웹 알림 · 트레이는 끝났다(모바일 푸시는 뺐다) |
-단계마다의 결정과 확인 내역은 [진행 기록](docs/진행-기록.md) 에 있다.
+| **실제 VM 배포** | 구성과 절차([deploy/README.md](deploy/README.md))는 있다. VM · R2 · Cloudflare Tunnel 을 정하고 올리는 일 |
+| OS 수준 링크 연결 | Android App Links · Windows 프로토콜 등록 — 공개 도메인이 정해진 뒤 |
+| 20 GitLab 연동 | provider 추상화 뒤에 GitLab. 배포 뒤로 미뤄도 되는 유일한 단계 |
+
+모바일 푸시(FCM)는 범위에서 뺐다(2026-10-09). 단계마다의 결정과 확인 내역은 [진행 기록](docs/진행-기록.md) 에 있다.
 
 | 로드맵 | 목표 |
 |---|---|
 | **Phase 0** | 나 혼자 쓰는 개발 허브 — 프로젝트를 채널로 나누고 할 일 · 저장소를 붙인다 |
-| **Phase 1** | 2~10인 소규모 팀 — 초대 · 온보딩 · 푸시 알림 |
+| **Phase 1** | 2~10인 소규모 팀 — 초대 · 온보딩 · 알림 |
 | **Phase 2** | 공개 서비스 — 테넌트 격리 · 스토리지 쿼터 · 과금 |
 
 ---
@@ -150,3 +165,5 @@ CI(`.github/workflows/ci.yml`)가 `main` 과 `feat/**` 의 push 마다 위 전�
 | [진행 기록](docs/진행-기록.md) | 단계마다 갈린 결정 · 확인한 것 · 확인하지 못한 것 |
 | [기술 스택 가이드](docs/기술-스택-가이드.md) | 스택별 학습 순서 · 코드 읽기 시작점 |
 | [서버 README](server/README.md) | 서버 셋업 · 규약 · Ollama · 실제 GitHub 웹훅 붙이는 법 |
+| [배포 README](deploy/README.md) | VM · R2 · Cloudflare Tunnel 로 올리는 절차 |
+| [단계별 설계 스펙](docs/superpowers/specs/) | 단계마다 정한 것 · **범위에서 뺀 것과 그 이유** |
