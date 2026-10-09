@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router.dart';
 import 'data/settings_storage.dart';
+import 'features/desktop/os_notifications.dart';
 import 'features/notifications/notifications_controller.dart';
 import 'features/presence/presence_controller.dart';
 import 'features/presence/typing_controller.dart';
@@ -58,6 +59,9 @@ class NexusApp extends ConsumerWidget {
     // 기대는 provider(스프린트 스위치 등)를 다시 그리라고 해 「build 중 setState」가 났다
     // (2026-10-06, CI 헤드리스 흐름 · CPU 1코어에서 여덟 번에 한 번).
     ref.listen(currentSpaceProvider, (_, _) {});
+    // 데스크톱 · 웹 알림(«마지막») — 어느 화면에 있든, 창이 트레이에 숨어 있어도 받아야 한다.
+    ref.listen(osNotificationsProvider, (_, _) {});
+    ref.listen(desktopNotifyEnabledProvider, (_, _) {});
 
     final preference = ref.watch(themeModeProvider);
 

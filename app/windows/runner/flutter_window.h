@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "desktop_shell.h"
 #include "win32_window.h"
 
 // A window that does nothing but host a Flutter view.
@@ -28,6 +29,9 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // 트레이 · 데스크톱 알림. 엔진의 메신저를 쓰므로 엔진보다 먼저 내려야 한다.
+  std::unique_ptr<DesktopShell> desktop_shell_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

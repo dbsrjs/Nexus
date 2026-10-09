@@ -17,6 +17,12 @@ class _FakeSettingsStorage implements SettingsStorage {
     written = mode;
     writeCount++;
   }
+
+  @override
+  Future<bool> readDesktopNotifications() async => true;
+
+  @override
+  Future<void> writeDesktopNotifications(bool enabled) async {}
 }
 
 ProviderContainer _container({

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/api/api_failure.dart';
-import '../../shared/markdown/plain_text.dart';
 import '../../shared/widgets/user_avatar.dart';
 import '../../ui/ui.dart';
 import '../shell/app_shell.dart';
@@ -139,12 +138,7 @@ class NotificationTile extends ConsumerWidget {
     final c = nx.colors;
     final names = ref.watch(memberNamesProvider);
 
-    // 본문은 원문 마크다운이다 — 서식을 벗기고 `<@id>` 를 이름으로 바꿔 한 줄로.
-    final preview = item.deleted
-        ? '삭제된 메시지입니다'
-        : item.body.isEmpty
-        ? '파일을 보냈습니다'
-        : toPlainText(item.body, names: names);
+    final preview = notificationPreview(item, names);
 
     return NxHoverSurface(
       onPressed: onPressed,
