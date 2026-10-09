@@ -131,6 +131,7 @@ export class IssuesService {
     dto: CreateIssueDto,
   ): Promise<IssueView> {
     if (dto.parentId) await this.requireEpicCandidate(spaceId, dto.parentId);
+    await this.requireRefsInSpace(spaceId, dto);
     if (dto.originMessageId) {
       await this.requireVisibleMessage(spaceId, reporterId, dto.originMessageId);
     }
@@ -192,6 +193,7 @@ export class IssuesService {
     dto: UpdateIssueDto,
   ): Promise<IssueView> {
     const current = await this.requireIssue(spaceId, issueId);
+    await this.requireRefsInSpace(spaceId, dto);
     const closedAt = resolveClosedAt(current.status, dto.status, new Date());
 
     let position: Prisma.Decimal | undefined;
@@ -302,6 +304,34 @@ export class IssuesService {
       !(await this.channels.canViewAs(spaceId, userId, message.channelId))
     ) {
       throw new NotFoundException('메시지를 찾을 수 없습니다');
+    }
+  }
+
+  /**
+   * 본문으로 받은 스프린트 · 담당자가 **이 스페이스의 것**인지.
+   *
+   * 없으면 남의 스페이스 스프린트에 이슈를 걸 수 있었고(201 이냐 404 냐로 남의 id 가 있는지도
+   * 알려 줬다), 담당자는 아무 사용자 id 나 받아 응답의 `assignee` 로 **그 사람의 이름 · 사진을
+   * 돌려줬다** — 테넌트 격리 통합 검증(check:tenancy)이 잡았다. 둘 다 없는 것과 같은 404.
+   * `null` 은 「떼기」라 검사하지 않는다.
+   */
+  private async requireRefsInSpace(
+    spaceId: string,
+    dto: { sprintId?: string | null; assigneeId?: string | null },
+  ) {
+    if (dto.sprintId) {
+      const sprint = await this.prisma.sprint.findFirst({
+        where: { id: dto.sprintId, spaceId },
+        select: { id: true },
+      });
+      if (!sprint) throw new NotFoundException('스프린트를 찾을 수 없습니다');
+    }
+    if (dto.assigneeId) {
+      const member = await this.prisma.spaceMember.findUnique({
+        where: { spaceId_userId: { spaceId, userId: dto.assigneeId } },
+        select: { userId: true },
+      });
+      if (!member) throw new NotFoundException('담당자를 찾을 수 없습니다');
     }
   }
 

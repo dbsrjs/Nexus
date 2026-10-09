@@ -230,7 +230,7 @@ jobs:
           set -e
           echo "── check:realtime ──"
           node scripts/check-realtime.mjs
-          for s in reactions threads quotes mentions pins attachments issues repos oauth browse pulls indexing ai settings members dm presence notifications; do
+          for s in reactions threads quotes mentions pins attachments issues repos oauth browse pulls indexing ai settings members dm presence notifications tenancy; do
             echo "── check:$s ──"
             node "scripts/check-$s.mjs"
           done
