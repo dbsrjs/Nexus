@@ -1,6 +1,8 @@
 import { Logger, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LocalDiskDriver } from './local-disk.driver';
+import { S3Driver } from './s3.driver';
+import { resolveS3Config } from './storage.config';
 import { StorageDriver } from './storage.driver';
 
 /**
@@ -10,9 +12,8 @@ import { StorageDriver } from './storage.driver';
  * 컨트롤러 · 서비스 · 앱은 그대로다 — DB 의 `storage_key` 도 같은 문자열이
  * 로컬에서는 경로, S3 에서는 오브젝트 키가 된다.
  *
- * S3 구현을 붙이는 절차: `S3Driver` 를 만들고 아래 분기에 넣은 뒤
- * `.env` 의 `STORAGE_DRIVER=s3`. **SDK 는 그때 깐다** — 드라이버가 없는 채로
- * `minio` 를 의존성에 두었더니, 쓰지도 않는 패키지를 새 PC 마다 내려받았다.
+ * 배포는 `.env` 의 `STORAGE_DRIVER=s3` 와 `STORAGE_ENDPOINT` 등 넷(storage.config.ts).
+ * 개발 루프는 여전히 local 이다 — S3 를 띄우는 것이 새 PC 셋업 비용이 되지 않게(8-1).
  */
 @Module({
   providers: [
@@ -21,14 +22,14 @@ import { StorageDriver } from './storage.driver';
       useFactory: (config: ConfigService): StorageDriver => {
         // `??` 는 `STORAGE_DRIVER=` 처럼 자리만 잡은 빈 값을 통과시켜 부팅이 멈췄다(CLAUDE.md §2) — `||`.
         const kind = config.get<string>('STORAGE_DRIVER')?.trim() || 'local';
-        if (kind !== 'local') {
+        if (kind !== 'local' && kind !== 's3') {
           // 조용히 로컬로 떨어지면 배포에서 파일이 서버 디스크에 쌓인다.
-          throw new Error(
-            `STORAGE_DRIVER=${kind} 는 아직 구현되지 않았습니다 (8단계에서는 local 만 지원)`,
-          );
+          throw new Error(`STORAGE_DRIVER=${kind} 는 지원하지 않습니다 (local · s3)`);
         }
         new Logger('StorageModule').log(`스토리지 드라이버: ${kind}`);
-        return new LocalDiskDriver(config);
+        return kind === 's3'
+          ? new S3Driver(resolveS3Config(config))
+          : new LocalDiskDriver(config);
       },
       inject: [ConfigService],
     },

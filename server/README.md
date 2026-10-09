@@ -11,7 +11,7 @@
 - Prisma 5 + PostgreSQL 16+ (**pgvector** — 코드 임베딩 · HNSW 인덱스)
 - Socket.IO (실시간 대화 · 이슈 · AI 완료 알림)
 - JWT + argon2 — 리프레시 토큰 회전 · 재사용 탐지
-- 첨부: `StorageDriver` 추상화 — **지금 구현은 로컬 디스크 하나**(S3 호환 드라이버는 배포 때)
+- 첨부: `StorageDriver` 추상화 — 개발은 로컬 디스크, 배포는 S3 호환(R2, `STORAGE_DRIVER=s3`). 배포 절차는 [deploy/README.md](../deploy/README.md)
 - LLM · 임베딩: `gemini` · `local`(Ollama) · `fake` 를 env 로 고른다
 
 **Redis 는 쓰지 않는다.** 인덱싱 · AI 작업 큐는 Postgres 테이블(`FOR UPDATE SKIP LOCKED`)이고,
@@ -186,7 +186,8 @@ prisma/
 │                    #     (npm run check:migrations 가 잡는다)
 └─ seed.ts
 scripts/              # env-setup · WSL DB 스크립트 · 계약 검증(check-*.mjs) + lib/
-docker-compose.yml    # pgvector/postgres (redis · minio 는 프로필 뒤 — 기본으로 뜨지 않는다)
+docker-compose.yml    # pgvector/postgres (redis · s3(SeaweedFS) 는 프로필 뒤 — 기본으로 뜨지 않는다)
+Dockerfile            # 배포 이미지 — deploy/docker-compose.prod.yml 이 쓴다
 ```
 
 ## 인덱싱을 진짜로 돌리려면 — Ollama 와 모델이 필요하다
