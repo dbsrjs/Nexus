@@ -108,7 +108,7 @@ Windows 데스크톱 빌드에는 **개발자 모드**가 켜져 있어야 한�
 | 명령 | 내용 |
 |---|---|
 | `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint |
-| `npm run check:*` | **실서버 · 실DB · 실소켓 계약 검증** 19종 — 실시간 · 리액션 · 스레드 · 첨부 · 이슈 · GitHub 연동 · 인덱싱 · AI · 설정 · 멤버 · 권한 · DM · 프레즌스 · 알림 등. GitHub 은 스스로 띄우는 가짜 서버로 대신한다 |
+| `npm run check:*` | **실서버 · 실DB · 실소켓 계약 검증** 20종 — 실시간 · 리액션 · 스레드 · 첨부 · 이슈 · GitHub 연동 · 인덱싱 · AI · 설정 · 멤버 · 권한 · DM · 프레즌스 · 알림 등. GitHub 은 스스로 띄우는 가짜 서버로 대신한다 |
 | `npm run check:migrations` · `check:sql-time` | 마이그레이션 · raw SQL 정적 검사 (DB 불필요) |
 | `cd app && flutter analyze && flutter test` | 앱 정적 분석 · 테스트 |
 | `npm run app:flow` | 앱 통합 테스트 — Windows 앱을 실서버에 붙여 로그인부터 설정 창까지 돈다 |

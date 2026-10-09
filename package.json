@@ -37,6 +37,7 @@
     "check:dm": "node server/scripts/check-dm.mjs",
     "check:presence": "node server/scripts/check-presence.mjs",
     "check:notifications": "node server/scripts/check-notifications.mjs",
+    "check:tenancy": "node server/scripts/check-tenancy.mjs",
     "app:flow": "cd app && flutter test integration_test -d windows",
     "app:flow:headless": "cd app && flutter test integration_test -d flutter-tester",
     "check:migrations": "node server/scripts/check-migrations.mjs",

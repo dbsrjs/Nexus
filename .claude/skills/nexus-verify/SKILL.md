@@ -56,7 +56,7 @@ description: Use when running or debugging Nexus's check:* contract verification
 | `npm run check:quotes` | 답장(인용) 계약 검증(17개) |
 | `npm run check:mentions` | 멘션 계약 검증(18개) |
 | `npm run check:pins` | 핀 계약 검증(20개) |
-| `npm run check:attachments` | 첨부 계약 검증(43개). **드라이버와 무관하게 돈다** — 지금 드라이버는 `local` 하나다. 배포 때 `S3Driver` 를 붙이면 `STORAGE_DRIVER=s3` 로 한 번 더 돌린다 |
+| `npm run check:attachments` | 첨부 계약 검증(43개). **드라이버와 무관하게 돈다** — CI 는 `local` 로 한 번, SeaweedFS 를 붙여 `STORAGE_DRIVER=s3` 로 한 번 더 돈다(`check:settings` 도 함께, 2026-10-09) |
 | `npm run check:repos` | 저장소 웹훅 계약 검증(33개) — 게시가 소켓 `message:new` 봉투로 닿는지 포함(2026-10-06). **GitHub 없이 돈다** — 서명을 직접 만들어 보낸다 |
 | `npm run check:oauth` | GitHub **연동 전체** 계약 검증(설정된 서버에서 81개) — 계정 연결(10-2a · 콜백 확인 화면은 2026-10-05)과 저장소 목록 · 자동 등록 · 승격 · 훅 재등록/삭제(10-2b). **가짜 GitHub(4599)을 스스로 띄운다** — `.env` 에 `GITHUB_*_BASE` · `OAUTH_TOKEN_KEY` · `PUBLIC_BASE_URL` 을 넣고 서버를 재시작해야 한다. 미설정 503 분기는 그 값들을 비운 채로 한 번 더 돌려야 확인된다(스크립트가 안내를 찍는다) |
 | `npm run check:browse` | 저장소 열람 계약 검증(56개) — 브랜치 · 트리 · 파일(10-3a)과 커밋(10-3b). **가짜 GitHub(4599)을 스스로 띄운다** — `check:oauth` 와 같은 `.env` 를 쓴다. 연결 · 등록이 주제인 그쪽과 섞지 않았다 |
@@ -70,5 +70,6 @@ description: Use when running or debugging Nexus's check:* contract verification
 | `npm run check:dm` | DM 계약 검증(40개, 17-1) — 열기 멱등 · 같은 두 사람 동시 열기에도 하나(key 유일성) · 자기 자신 400 · 비멤버 404 · **셋째 사람(관리자 포함)이 목록 · 메시지 · 소켓으로 못 봄** · 구조 API(이름 · 공개 전환 · 참여 · 명단 · 권한 · 저장소 연결) 404 · 상대가 나간 DM 은 읽기 전용 403 · 돌아오면 같은 DM 이 살아남. 자체 계정을 쓴다 |
 | `npm run check:presence` | 프레즌스 · 타이핑 계약 검증(30개, 17-2) — 함께 쓰는 사람만 받음 · 소켓 둘 중 하나만 away 면 온라인 · 끊기면 **5초 유예 뒤** 오프라인 · 유예 안 재연결은 조용히 · 처음 값 REST · typing 은 보낸 소켓 제외 · 명단 밖 · 스페이스 밖 · **읽기 전용 채널 거부** · 1초 상한. **유예를 실제로 기다려 30초쯤 걸린다** |
 | `npm run check:notifications` | 인앱 알림 계약 검증(67개, 18) — 멘션 · `@channel` · DM · 내 글의 답글이 각각 알림이 됨 · 자기 글은 없음 · 겹치면 하나(우선순위) · 스위치를 끄면 다음 종류로 내려감 · **비공개 채널 밖 사람은 알림도 소켓도 없고 나중에 명단에 들어와도 없음** · 음소거면 직접 멘션만 · 목록 · 수 · 커서 · 읽음 멱등 · 남의 것 404 · 채널 읽음이 최상위 메시지 알림만 따라 읽음 · 명단에서 빠지면 목록 · 수에서 빠짐 · 삭제된 메시지는 본문 없음 · 모두 읽음. 자체 계정을 쓴다 |
+| `npm run check:tenancy` | **테넌트 격리 통합 검증(174개, «마지막»)** — 컨트롤러 소스를 읽어 **스페이스 경로 전부**(85개)를 ① 비멤버가 A 의 id 로 ② B 가 자기 스페이스 경로에 A 의 id 를 끼워 부른다 — 둘 다 404. 본문으로 남의 id 를 넣는 쓰기(DM 상대 · 저장소 채널 · AI 문맥 · 첨부 · 답글 · 인용 · 이슈 스프린트 · 담당자 · 상위 · 원문 · 라벨 · 카테고리)는 2xx · 403 · 500 이면 실패. **새 경로가 모르는 `:매개변수` 를 들고 오면 실패한다** — 스크립트의 `ids` 에 A 의 실제 값을 더할 것. `LLM_PROVIDER=fake` 필요(AI 실행 id). 자체 계정을 쓴다 |
 | `npm run check:settings` | 사용자 설정 계약 검증(53개) — 이름 변경과 `user:updated` 범위 · 아바타 올리기 · 256×256 WebP · 열람 권한(본인 · 함께 쓰는 스페이스만, 그 밖 404) · 비밀번호 변경과 다른 세션 폐기 · 예약 도메인 가입 거부 · 로그인 실패 한도(429 · `Retry-After`) · 보안 헤더 · 채널 음소거(멱등 · 읽음 위치 보존). 자체 계정을 쓴다 |
 
