@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth_controller.dart';
+import 'auth_redirect.dart';
 import '../features/chat/chat_screen.dart';
 import '../features/chat/thread_screen.dart';
 import '../features/files/files_screen.dart';
@@ -20,6 +21,7 @@ import '../features/repo/pulls_screen.dart';
 import '../features/repo/repos_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../shared/widgets/nexus_logo.dart';
+import '../features/space/invite_screen.dart';
 import '../features/space/space_picker_screen.dart';
 import '../features/space_settings/space_settings_controller.dart';
 import '../features/space_settings/space_settings_screen.dart';
@@ -52,24 +54,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         : '/',
     refreshListenable: authChanged,
     redirect: (context, state) {
-      final auth = authChanged.value;
-      final path = state.matchedLocation;
-
       // 갤러리는 로그인과 무관하다(디버그 빌드에서만 있는 라우트).
-      if (kDebugMode && path == '/dev/ui') return null;
-
-      // 저장된 토큰을 확인하는 동안에는 아무 데도 보내지 않는다.
-      // 여기서 /login 으로 보내면 앱을 켤 때마다 로그인 화면이 깜빡인다.
-      if (auth is AuthRestoring) {
-        return path == '/' ? null : '/';
-      }
-
-      final signedIn = auth is AuthSignedIn;
-      final onAuthPage = path == '/login' || path == '/signup';
-
-      if (!signedIn) return onAuthPage ? null : '/login';
-      if (onAuthPage || path == '/') return '/spaces';
-      return null;
+      if (kDebugMode && state.matchedLocation == '/dev/ui') return null;
+      return authRedirect(authChanged.value, state.uri);
     },
     routes: appRoutes(),
   );
@@ -82,6 +69,11 @@ List<RouteBase> appRoutes() => [
   GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
   GoRoute(path: '/signup', builder: (_, _) => const _SignupPlaceholder()),
   GoRoute(path: '/spaces', builder: (_, _) => const SpacePickerScreen()),
+  // 초대 링크(«마지막»). 셸 밖이다 — 아직 그 스페이스의 멤버가 아니다.
+  GoRoute(
+    path: '/invite/:code',
+    builder: (_, state) => InviteScreen(rawCode: state.pathParameters['code']!),
+  ),
   // 자체 UI 갤러리(15단계) — 디버그 빌드에서만. 디자인 캔버스와 대조하고 한글 입력을 본다.
   if (kDebugMode)
     GoRoute(path: '/dev/ui', builder: (_, _) => const NxGallery()),
