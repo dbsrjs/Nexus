@@ -15,6 +15,16 @@ enum AuthFailure {
   /// 서버에 닿지 못했다 — 꺼져 있거나 주소가 틀렸다.
   network,
 
+  /// 가입 — 이미 가입된 이메일이다 (409).
+  emailTaken,
+
+  /// 가입 — 서버가 입력을 받지 않았다 (400). 예약된 도메인(`.invalid`)이거나 앱이 거르지
+  /// 못한 형식이다. 어느 쪽인지는 가르지 않는다 — 서버 문구를 화면에 쓰지 않는다.
+  rejected,
+
+  /// 시도가 너무 많다 (429). 로그인 실패 한도에 닿았다.
+  throttled,
+
   /// 그 밖의 서버 오류 (5xx 등).
   server,
 }
@@ -64,6 +74,32 @@ class AuthApi {
     }
   }
 
+  /// POST /api/auth/signup — 가입하면 곧바로 로그인된 상태다(응답이 로그인과 같다).
+  Future<LoginResult> signup({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final res = await _client.dio.post<Map<String, dynamic>>(
+        '/auth/signup',
+        data: {
+          'name': name,
+          'email': email,
+          'password': password,
+          'client': 'native',
+        },
+      );
+      final body = res.data!;
+      return LoginResult(
+        user: User.fromJson(body['user'] as Map<String, dynamic>),
+        tokens: AuthTokens.fromJson(body),
+      );
+    } on DioException catch (e) {
+      throw AuthException(_classify(e));
+    }
+  }
+
   /// GET /api/me — 저장된 토큰이 아직 쓸 수 있는지 확인하는 데도 쓴다.
   Future<User> me() async {
     try {
@@ -91,7 +127,16 @@ class AuthApi {
   }
 
   AuthFailure _classify(DioException e) {
-    if (e.response?.statusCode == 401) return AuthFailure.invalidCredentials;
+    switch (e.response?.statusCode) {
+      case 401:
+        return AuthFailure.invalidCredentials;
+      case 409:
+        return AuthFailure.emailTaken;
+      case 400:
+        return AuthFailure.rejected;
+      case 429:
+        return AuthFailure.throttled;
+    }
     switch (e.type) {
       case DioExceptionType.connectionError:
       case DioExceptionType.connectionTimeout:

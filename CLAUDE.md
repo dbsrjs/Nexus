@@ -374,7 +374,7 @@ common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug
 ```
 core/env.dart            API 주소를 읽는 유일한 지점. 하드코딩 금지
 core/router.dart         go_router + 인증 가드(redirect). 셸 안(머무는 곳) / 셸 밖(덮어서)
-core/auth_redirect.dart  인증 갈래 판정 — 거쳐 가는 화면(/ · /login)이 `from` 으로 원래 주소를 들고 다닌다(«마지막»)
+core/auth_redirect.dart  인증 갈래 판정 — 거쳐 가는 화면(/ · /login · /signup)이 `from` 으로 원래 주소를 들고 다닌다(«마지막»). 스스로 로그아웃하면 버린다
 core/breakpoints.dart    Layout(mobile/tablet/desktop) + 고정 폭 상수
 data/api/                영역마다 한 파일 + api_client(dio · 401 → 리프레시 1회 재시도)
                          실패는 AuthFailure · ApiFailure 로 분류(api_failure.dart)
@@ -384,7 +384,7 @@ data/repositories/       API + 캐시를 잇는 곳. **화면은 여기만 통�
 data/auth_storage.dart   flutter_secure_storage 래퍼(토큰 + 마지막 계정)
 data/settings_storage.dart 같은 저장소의 화면 설정(테마). 수명이 달라 클래스를 나눴다
 domain/models/           freezed 모델
-features/auth/ space/ channel/  로그인 · 스페이스 선택 · 채널 목록(카테고리 묶기)
+features/auth/ space/ channel/  로그인 · 가입(틀은 auth_card) · 스페이스 선택 · 채널 목록(카테고리 묶기)
 features/chat/           메시지 리스트 · 입력창 · 낙관적 전송 · 실시간 반영 · 스레드 · 멘션 ·
                          첨부(attachment_draft — 고른 즉시 업로드) · 선택 모드
 features/files/          스페이스 파일 목록 (썸네일 · 캐시하지 않는다)
@@ -489,7 +489,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 | 18 | 인앱 알림 — 알림함(멘션 · `@channel` · DM · 내 글의 답글, 한 메시지에 한 알림) · `notifications` 재작성 · 메시지와 한 트랜잭션 · 볼 수 있는 채널만 · 음소거면 직접 멘션만 · 채널 읽음이 알림도 읽음 · 설정 창의 종류별 스위치. 설계 [18단계 설계](docs/superpowers/specs/2026-10-05-18-인앱-알림-design.md) | ✅ |
 | 19 | AI 기록 — AI 패널의 「지난 대화」(사슬 단위 목록 · 끝 답이 늦은 순 · 커서 페이지) · 다시 열어 이어 묻기 · 본인 것 · 볼 수 있는 채널만 · 스키마 변경 없이 재귀 CTE. 설계 [19단계 설계](docs/superpowers/specs/2026-10-07-19-AI-기록-design.md) | ✅ |
 | **20** | **GitLab 연동** — provider 추상화 뒤에 GitLab. 배포 뒤로 미뤄도 되는 유일한 단계 | |
-| **마지막** | 푸시 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 · 배포(S3 드라이버 · prod compose). 푸시 · 데스크톱 알림 스위치는 14단계 설정 창에 더한다 | 🔸 배포 기반(S3 드라이버 · `TRUST_PROXY` · `deploy/` compose · nginx 한 오리진 · 백업) ✅ · 테넌트 격리 검증(`check:tenancy`) ✅ · 딥링크(새로고침 · 로그인 뒤 원래 주소 · `/invite/:코드`) ✅ · 데스크톱 · 웹 알림 + Windows 트레이(패키지 없이 — Shell_NotifyIcon · `dart:js_interop`) ✅ · 모바일 푸시는 뺐다 |
+| **마지막** | 푸시 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 · 배포(S3 드라이버 · prod compose). 푸시 · 데스크톱 알림 스위치는 14단계 설정 창에 더한다 | 🔸 배포 기반(S3 드라이버 · `TRUST_PROXY` · `deploy/` compose · nginx 한 오리진 · 백업) ✅ · 테넌트 격리 검증(`check:tenancy`) ✅ · 딥링크(새로고침 · 로그인 뒤 원래 주소 · `/invite/:코드`) ✅ · 가입 화면 ✅ · 데스크톱 · 웹 알림 + Windows 트레이(패키지 없이 — Shell_NotifyIcon · `dart:js_interop`) ✅ · 모바일 푸시는 뺐다 |
 
 16~20 은 2026-09-27 에 **단계 밖에 있던 기능을 편입**한 것이다. 15 뒤에 둔 이유(컴포넌트를
 바꾼 뒤 화면을 새로 만든다)와 단계마다의 설계 출발점은 [제품-기획 §5.1-c](docs/제품-기획.md).
@@ -500,7 +500,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 [진행 기록](docs/진행-기록.md) «빚 정리 (2026-09-27)».
 
 - **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 532개(2026-10-09 «마지막» 시점)는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 20종 1,123 케이스**(2026-10-09 «마지막» 테넌트 격리 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
-- **앱 통합 테스트는 CI 에서 창 없이만 돈다(2026-10-06).** `linux/` 플랫폼을 들이지 않고 flutter_tester 로 돌린다(`app:flow:headless`) — 창이 있어야 드러나는 것(실제 렌더링 · 창 크기 변화 · 태블릿 · 모바일 배치의 흐름)은 여전히 덮지 않는다. 흐름은 데스크톱 배치만 탄다. **화면 모습을 바꾼 변경은 Windows 창(`app:flow`)으로 한 번 본다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **575개**(2026-10-09 «마지막» 4 시점)
+- **앱 통합 테스트는 CI 에서 창 없이만 돈다(2026-10-06).** `linux/` 플랫폼을 들이지 않고 flutter_tester 로 돌린다(`app:flow:headless`) — 창이 있어야 드러나는 것(실제 렌더링 · 창 크기 변화 · 태블릿 · 모바일 배치의 흐름)은 여전히 덮지 않는다. 흐름은 데스크톱 배치만 탄다. **화면 모습을 바꾼 변경은 Windows 창(`app:flow`)으로 한 번 본다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **587개**(2026-10-09 «마지막» 5 시점)
 - **운영 LLM provider 는 `gemini` 로 정했다(사용자 결정, 2026-10-07).** 실제로 확인한 경로이고 «마지막» 단계의 배포도 이것을 쓴다. **`local`(Ollama) 경로는 실측하지 않은 채 남는다(13-1)** — 쓰는 곳이 없어 깨지는 것이 없다. Gemini 무료 한도(3.5-flash 하루 20회)가 모자라거나 비공개 저장소 코드를 외부로 보내지 않으려 해 `LLM_PROVIDER=local` 로 바꾸게 되면 **그 전에 먼저 태운다.** `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. 설치(`winget install Ollama.Ollama`)와 모델 받기(약 4.7GB)는 사람이 한다.
 - **인덱싱 큐의 5xx 소진은 단위 테스트만 덮는다.** 재시도 대기가 1분씩이라 계약 검증으로 세 번을 태우면 3분이 걸린다. 판정(`shouldGiveUpIndexing` · `indexRetryDelayMs`)은 순수 함수로 빼 두었다. 429 · 리스 유효/만료는 `check:indexing` 이 본다.
 - **프레즌스는 서버 메모리에 있다(17-2).** 인스턴스가 둘이 되면 서로의 연결을 모른다 — `redis-io.adapter` 를 되살릴 때 함께 Redis 로 옮긴다. 서버를 재시작하면 모두 오프라인이 됐다가 앱이 다시 붙으며 돌아온다

@@ -13,6 +13,7 @@ import '../features/issue/issue_detail_screen.dart';
 import '../features/issue/sprint_screen.dart';
 import '../features/notifications/notifications_screen.dart';
 import '../features/auth/login_screen.dart';
+import '../features/auth/signup_screen.dart';
 import '../features/repo/browse_screen.dart';
 import '../features/repo/commit_detail_screen.dart';
 import '../features/repo/commits_screen.dart';
@@ -67,7 +68,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 List<RouteBase> appRoutes() => [
   GoRoute(path: '/', builder: (_, _) => const _SplashScreen()),
   GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-  GoRoute(path: '/signup', builder: (_, _) => const _SignupPlaceholder()),
+  GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
   GoRoute(path: '/spaces', builder: (_, _) => const SpacePickerScreen()),
   // 초대 링크(«마지막»). 셸 밖이다 — 아직 그 스페이스의 멤버가 아니다.
   GoRoute(
@@ -200,7 +201,9 @@ List<RouteBase> appRoutes() => [
         build: (state) => ChannelSettingsScreen(
           spaceId: state.pathParameters['spaceId']!,
           channelId: state.pathParameters['channelId']!,
-          section: ChannelSettingsSection.parse(state.pathParameters['section']),
+          section: ChannelSettingsSection.parse(
+            state.pathParameters['section'],
+          ),
         ),
       ),
     ],
@@ -324,30 +327,4 @@ class _SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const NexusSplash();
-}
-
-/// 회원가입은 아직 범위 밖이다. 시드 계정으로 로그인해 검증한다.
-class _SignupPlaceholder extends StatelessWidget {
-  const _SignupPlaceholder();
-
-  @override
-  Widget build(BuildContext context) => NxPage(
-    body: Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '회원가입은 아직 만들지 않았습니다.',
-            style: NxTheme.of(context).text.base,
-          ),
-          const SizedBox(height: NxSpacing.sp5),
-          NxButton(
-            label: '로그인으로',
-            kind: NxButtonKind.secondary,
-            onPressed: () => context.go('/login'),
-          ),
-        ],
-      ),
-    ),
-  );
 }

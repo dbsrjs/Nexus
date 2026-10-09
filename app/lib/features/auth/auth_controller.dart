@@ -18,7 +18,12 @@ class AuthRestoring extends AuthState {
 }
 
 class AuthSignedOut extends AuthState {
-  const AuthSignedOut();
+  const AuthSignedOut({this.byUser = false});
+
+  /// 사용자가 「로그아웃」을 눌러 나왔다. 세션이 만료돼 튕긴 것과 달리 **보던 주소로 돌아갈
+  /// 이유가 없다** — 다음에 들어오는 사람이 다른 계정일 수 있고, 그 사람을 남의 스페이스
+  /// 주소로 데려가면 빈 셸이 뜬다(가입 화면을 확인하다 겪었다).
+  final bool byUser;
 }
 
 class AuthSignedIn extends AuthState {
@@ -39,11 +44,13 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return client;
 });
 
-final authApiProvider =
-    Provider<AuthApi>((ref) => AuthApi(ref.watch(apiClientProvider)));
+final authApiProvider = Provider<AuthApi>(
+  (ref) => AuthApi(ref.watch(apiClientProvider)),
+);
 
-final authControllerProvider =
-    NotifierProvider<AuthController, AuthState>(AuthController.new);
+final authControllerProvider = NotifierProvider<AuthController, AuthState>(
+  AuthController.new,
+);
 
 class AuthController extends Notifier<AuthState> {
   @override
@@ -90,9 +97,18 @@ class AuthController extends Notifier<AuthState> {
   Future<AuthFailure?> signIn({
     required String email,
     required String password,
-  }) async {
+  }) => _enter(() => _api.login(email: email, password: password));
+
+  /// 가입. 성공하면 로그인한 것과 같은 상태가 된다 — 라우터가 `from` 으로 보낸다.
+  Future<AuthFailure?> signUp({
+    required String name,
+    required String email,
+    required String password,
+  }) => _enter(() => _api.signup(name: name, email: email, password: password));
+
+  Future<AuthFailure?> _enter(Future<LoginResult> Function() call) async {
     try {
-      final result = await _api.login(email: email, password: password);
+      final result = await call();
       await _client.setTokens(result.tokens);
       // 오프라인으로 켤 때 쓸 수 있도록 계정을 함께 저장한다.
       await ref.read(authStorageProvider).writeUser(result.user);
@@ -110,7 +126,7 @@ class AuthController extends Notifier<AuthState> {
     // 로컬 캐시도 비운다. 다른 계정으로 로그인했을 때 이전 계정의 대화가
     // 남아 있으면 안 된다.
     await ref.read(appDatabaseProvider).clearAll();
-    state = const AuthSignedOut();
+    state = const AuthSignedOut(byUser: true);
   }
 
   /// 내 계정 정보가 바뀌었다(설정 창의 응답, 내 다른 기기의 `user:updated`).
