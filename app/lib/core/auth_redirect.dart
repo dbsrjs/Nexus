@@ -23,6 +23,8 @@ String? authRedirect(AuthState auth, Uri location) {
   final onAuthPage = path == '/login' || path == '/signup';
   if (auth is! AuthSignedIn) {
     if (onAuthPage) return null;
+    // 스스로 나온 것이면 보던 곳을 들고 가지 않는다(AuthSignedOut.byUser).
+    if (auth is AuthSignedOut && auth.byUser) return '/login';
     return _withFrom('/login', wanted);
   }
 

@@ -67,9 +67,27 @@ class _AppShellState extends ConsumerState<AppShell> {
     }
   }
 
+  /// 멤버 확인을 마지막으로 한 스페이스. 채널만 옮길 때는 다시 묻지 않는다.
+  String? _checkedSpaceId;
+
+  /// 멤버가 아닌 스페이스면 나가고 알린다. 그대로 두면 이름 자리가 「…」 인 빈 셸이 뜬다.
+  Future<void> _leaveIfOutsider(String spaceId) async {
+    final outsider = await isConfirmedOutsider(
+      ref.read(workspaceRepositoryProvider),
+      spaceId,
+    );
+    if (!outsider || !mounted || widget.spaceId != spaceId) return;
+    NxToast.show(context, '이 스페이스를 볼 수 없습니다');
+    context.go('/spaces');
+  }
+
   /// 라우트가 진실의 원천이다. 셸이 그 값을 컨트롤러에 실어 준다.
   /// build 안에서 하면 build 중 상태 변경이라 예외가 난다.
   void _syncRoute() {
+    if (_checkedSpaceId != widget.spaceId) {
+      _checkedSpaceId = widget.spaceId;
+      _leaveIfOutsider(widget.spaceId);
+    }
     Future.microtask(() {
       if (!mounted) return;
       ref.read(currentSpaceIdProvider.notifier).set(widget.spaceId);

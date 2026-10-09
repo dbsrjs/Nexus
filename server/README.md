@@ -74,6 +74,9 @@ npm run server:dev
 비워 두면 해당 API 가 **503** 으로 답하고 나머지는 그대로 돈다. 계약 검증을 돌릴 때의
 값(`GITHUB_*_BASE` · `fake` provider)은 [CLAUDE.md §1](../CLAUDE.md) 의 명령 표에 있다.
 
+**가입 시도 한도**(`SIGNUP_LIMIT_PER_HOUR`)는 개발 `.env` 에서 `0`(끔)이다 — 계약 검증이 한 주소에서
+계정을 수십 개 만든다. 비우면 주소 하나당 한 시간에 10번이고, 배포는 비워 둔다(`deploy/.env.prod.example`).
+
 ### WSL2 로 Postgres 를 쓸 때 (Docker 없는 환경)
 
 `npm run db:setup` 은 **1회만** 실행하면 되고, 여러 번 돌려도 안전하다.

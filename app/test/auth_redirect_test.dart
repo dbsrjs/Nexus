@@ -30,6 +30,19 @@ void main() {
     fail('redirect 가 고리를 돈다: $location');
   }
 
+  group('로그아웃', () {
+    test('★ 스스로 나오면 보던 주소를 들고 가지 않는다 — 다음 사람이 다른 계정일 수 있다', () {
+      const byUser = AuthSignedOut(byUser: true);
+      expect(go(byUser, '/s/sp1/c/ch1'), '/login');
+      // 그 뒤 로그인 · 가입하면 남의 스페이스가 아니라 스페이스 고르기로 간다.
+      expect(settle(signedIn, settle(byUser, '/s/sp1/c/ch1')), '/spaces');
+    });
+
+    test('세션이 만료돼 튕긴 것은 그대로 주소를 들고 간다', () {
+      expect(go(signedOut, '/s/sp1/c/ch1'), '/login?from=%2Fs%2Fsp1%2Fc%2Fch1');
+    });
+  });
+
   group('새로고침 — 토큰을 확인하는 동안', () {
     test('깊은 주소는 / 에서 from 으로 들고 기다린다', () {
       expect(go(restoring, '/s/sp1/c/ch1'), '/?from=%2Fs%2Fsp1%2Fc%2Fch1');

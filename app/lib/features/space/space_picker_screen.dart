@@ -6,6 +6,7 @@ import '../../data/api/api_failure.dart';
 import '../../domain/models/space.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import '../../ui/ui.dart';
+import '../auth/auth_controller.dart';
 import 'space_controller.dart';
 import 'space_dialogs.dart';
 
@@ -74,11 +75,46 @@ class SpacePickerScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: NxSpacing.sp8),
+                const _AccountLine(),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 지금 계정과 로그아웃. 셸의 계정 메뉴 · 설정 창은 스페이스 안에서만 열린다 — **스페이스가
+/// 하나도 없는 사람(방금 가입한 사람)은 여기 말고 나갈 길이 없다.**
+class _AccountLine extends ConsumerWidget {
+  const _AccountLine();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nx = NxTheme.of(context);
+    final auth = ref.watch(authControllerProvider);
+    final email = auth is AuthSignedIn ? auth.user.email : null;
+    return Row(
+      children: [
+        if (email != null)
+          Expanded(
+            child: Text(
+              email,
+              style: nx.text.secondary,
+              overflow: TextOverflow.ellipsis,
+            ),
+          )
+        else
+          const Spacer(),
+        NxButton(
+          label: '로그아웃',
+          kind: NxButtonKind.ghost,
+          size: NxSize.sm,
+          onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
+        ),
+      ],
     );
   }
 }
