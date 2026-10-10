@@ -55,7 +55,7 @@ abstract class BlobView with _$BlobView {
         null => null,
         'binary' => '미리 볼 수 없는 파일입니다',
         'too_large' => '파일이 큽니다 (${_readableSize(size)})',
-        'unavailable' => 'GitHub 이 본문을 주지 않았습니다',
+        'unavailable' => 'GitHub가 본문을 주지 않았습니다',
         // 서버가 갈래를 늘려도 화면이 빈 채로 남지 않는다.
         _ => '본문을 볼 수 없습니다',
       };

@@ -445,7 +445,7 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
                                   ? '채널을 선택하세요'
                                   : channel.isDm
                                   ? '${dmPeerName(ref.watch(memberProfilesProvider), channel)} 님에게 메시지 보내기'
-                                  : '#${channel.name} 에 메시지 보내기'),
+                                  : '#${channel.name}에 메시지 보내기'),
                         ),
                       ),
                     ),
@@ -473,7 +473,8 @@ class MessageComposerState extends ConsumerState<MessageComposer> {
               child: ExcludeSemantics(
                 child: Text(
                   'Enter 보내기 · Shift+Enter 줄바꿈',
-                  style: nx.text.mono.copyWith(color: c.borderStrong),
+                  // 선 토큰(borderStrong)을 글자에 쓰면 라이트에서 2.0:1 이었다 — 글자는 글자 토큰으로.
+                  style: nx.text.mono,
                 ),
               ),
             ),
@@ -562,7 +563,7 @@ class _ReplyPreview extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${target.author.name} 에게 답장',
+                  '${target.author.name}에게 답장',
                   style: nx.text.meta.copyWith(
                     color: c.accent,
                     fontWeight: FontWeight.w600,

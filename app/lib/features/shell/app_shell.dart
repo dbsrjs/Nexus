@@ -12,7 +12,9 @@ import '../notifications/notifications_controller.dart';
 import '../settings/settings_widgets.dart';
 import '../space/space_actions.dart';
 import '../space/space_controller.dart';
+import '../settings/theme_controller.dart';
 import 'channel_pane.dart';
+import 'side_panel.dart';
 import 'space_rail.dart';
 
 /// `/s/:spaceId` · `/s/:spaceId/c/:channelId` — 반응형 셸.
@@ -55,6 +57,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
+    _sidePanel = ref.read(sidePanelProvider.notifier);
     _syncRoute();
   }
 
@@ -63,8 +66,24 @@ class _AppShellState extends ConsumerState<AppShell> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.spaceId != widget.spaceId ||
         oldWidget.channelId != widget.channelId) {
+      // 오른쪽 판은 보던 채널의 곁가지다 — 채널을 옮기면 닫는다(build 밖에서).
+      Future.microtask(() {
+        if (mounted) ref.read(sidePanelProvider.notifier).close();
+      });
       _syncRoute();
     }
+  }
+
+  late final SidePanelNotifier _sidePanel;
+
+  @override
+  void dispose() {
+    // 셸을 떠나면(설정 창 · 로그아웃) 판도 닫는다 — 돌아왔을 때 옛 스레드가 다시 뜨지 않게.
+    // dispose 에서는 ref 를 못 쓰므로 미리 잡아 둔 notifier 로, 프레임 밖에서.
+    // 앱 전체가 내려갈 때는 그 사이 notifier 가 먼저 버려진다 — closeIfAlive 가 그때는 조용하다.
+    final panel = _sidePanel;
+    Future.microtask(panel.closeIfAlive);
+    super.dispose();
   }
 
   /// 멤버 확인을 마지막으로 한 스페이스. 채널만 옮길 때는 다시 묻지 않는다.
@@ -88,6 +107,11 @@ class _AppShellState extends ConsumerState<AppShell> {
       _checkedSpaceId = widget.spaceId;
       _leaveIfOutsider(widget.spaceId);
     }
+    // 다음에 켤 때 곧장 여기로 온다(ShellHome · 스페이스 고르기의 auto).
+    final storage = ref.read(settingsStorageProvider);
+    storage.writeLastSpace(widget.spaceId);
+    final channelId = widget.channelId;
+    if (channelId != null) storage.writeLastChannel(widget.spaceId, channelId);
     Future.microtask(() {
       if (!mounted) return;
       ref.read(currentSpaceIdProvider.notifier).set(widget.spaceId);
@@ -100,22 +124,25 @@ class _AppShellState extends ConsumerState<AppShell> {
     });
   }
 
-  /// 탭은 셸 안의 갈래를 고른다. **`go` 로 민다** — 넷 다 셸 안에 있다.
+  /// 탭은 셸 안의 갈래를 고른다. **`go` 로 민다** — 다섯 다 셸 안에 있다.
+  ///
+  /// 순서는 데스크톱 판의 「작업」 갈래와 같다(알림 · 이슈 · 파일 · 저장소) — 플랫폼마다 순서가
+  /// 다르면 손이 기억한 자리가 깨진다(2026-10-10 UI/UX 검토).
   void _onTab(int index) {
     final base = '/s/${widget.spaceId}';
     switch (index) {
       case 0:
-        // 보던 채널로 돌아간다. 고른 채널이 없으면 셸 홈이다.
-        final channelId = widget.channelId;
-        context.go(channelId == null ? base : '$base/c/$channelId');
+        // 「대화」는 채널 목록(셸 홈)이다 — 모바일 메신저의 첫 화면. 채널 안에서 다시 누르면
+        // 목록으로 돌아간다.
+        context.go(base);
       case 1:
-        context.go('$base/issues');
+        context.go('$base/notifications');
       case 2:
-        context.go('$base/repos');
+        context.go('$base/issues');
       case 3:
         context.go('$base/files');
       case 4:
-        context.go('$base/notifications');
+        context.go('$base/repos');
     }
   }
 
@@ -160,14 +187,16 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-/// 3단 고정.
-class _DesktopShell extends StatelessWidget {
+/// 3단 고정 + 열면 오른쪽 판(스레드 · AI).
+class _DesktopShell extends ConsumerWidget {
   const _DesktopShell({required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final panel = ref.watch(sidePanelProvider);
+    final rail = showSpaceRail(ref);
     // 데스크톱 OS 에는 상태 표시줄이 없지만, **Android 태블릿은 폭이 1024dp 를
     // 넘으면 이 분기를 탄다.** NxPage 의 SafeArea 가 레일 · 채널 머리를 시계와
     // 겹치지 않게 한다.
@@ -175,10 +204,17 @@ class _DesktopShell extends StatelessWidget {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SpaceRail(),
-          const ChannelPane(),
+          if (rail) const SpaceRail(),
+          ChannelPane(showAccountFooter: !rail),
           const NxDivider(vertical: true),
-          Expanded(child: child),
+          Expanded(child: SidePanelScope(child: child)),
+          if (panel != null) ...[
+            const NxDivider(vertical: true),
+            SizedBox(
+              width: NexusPaneWidth.side,
+              child: SidePanelView(panel: panel),
+            ),
+          ],
         ],
       ),
     );
@@ -187,13 +223,25 @@ class _DesktopShell extends StatelessWidget {
 
 /// 밀려 나오는 패널을 여는 방법. **셸만 안다** — 좁은 셸이 깔고, 넓은 셸에는 없다.
 class _PaneScope extends InheritedWidget {
-  const _PaneScope({required this.open, required super.child});
+  const _PaneScope({
+    required this.open,
+    required this.hasTabs,
+    required super.child,
+  });
 
   final VoidCallback open;
+
+  /// 아래 탭 줄이 있는가(모바일). 있으면 「작업」 갈래가 탭과 겹치므로 목록에서 뺀다.
+  final bool hasTabs;
 
   @override
   bool updateShouldNotify(_PaneScope old) => false;
 }
+
+/// 좁은 셸(태블릿 · 모바일) 안인가. 머리 줄이 버튼을 접을지 정할 때만 쓴다 — **폭을 묻지
+/// 않고** 셸이 깐 표식으로 안다(폭 분기는 이 파일 한 곳).
+bool isCompactShell(BuildContext context) =>
+    context.dependOnInheritedWidgetOfExactType<_PaneScope>() != null;
 
 /// 본문 머리의 제목 자리. 좁은 셸에서는 **누르면 채널 패널이 열리는 버튼**이 되고
 /// (스페이스 아바타 + 제목 + ▾ — 햄버거의 자리, 캔버스 「채널 · 모바일」), 넓은 셸에서는
@@ -270,15 +318,15 @@ class ShellHeader extends StatelessWidget {
   }
 }
 
-/// 셸 안의 경로가 어느 탭에 속하는지(대화 0 · 이슈 1 · 저장소 2 · 파일 3 · 알림 4).
+/// 셸 안의 경로가 어느 탭에 속하는지(대화 0 · 알림 1 · 이슈 2 · 파일 3 · 저장소 4).
 ///
 /// **스프린트는 이슈 탭이다** — 보드 머리 줄에서 들어가는 갈래라, 빠뜨렸더니 스프린트
 /// 화면에서 「대화」 탭이 켜져 있었다(Android 에서 발견).
 int shellTabFor(String path) => switch (path) {
-  final p when p.contains('/issues') || p.contains('/sprints') => 1,
-  final p when p.contains('/repos') => 2,
+  final p when p.contains('/notifications') => 1,
+  final p when p.contains('/issues') || p.contains('/sprints') => 2,
   final p when p.contains('/files') => 3,
-  final p when p.contains('/notifications') => 4,
+  final p when p.contains('/repos') => 4,
   _ => 0,
 };
 
@@ -314,7 +362,9 @@ class _CompactShellState extends ConsumerState<_CompactShell> {
     final location = GoRouterState.of(context).uri.path;
     final selectedTab = shellTabFor(location);
     final unread = ref.watch(unreadNotificationsProvider);
-    const paneWidth = NexusPaneWidth.rail + NexusPaneWidth.channels;
+    final rail = showSpaceRail(ref);
+    final paneWidth =
+        (rail ? NexusPaneWidth.rail : 0) + NexusPaneWidth.channels;
 
     return CallbackShortcuts(
       bindings: {
@@ -325,6 +375,7 @@ class _CompactShellState extends ConsumerState<_CompactShell> {
           Positioned.fill(
             child: _PaneScope(
               open: () => _setOpen(true),
+              hasTabs: widget.showTabs,
               child: NxPage(
                 body: widget.child,
                 // 데스크톱 두 번째 판의 「작업」 갈래와 같은 곳을 담는다.
@@ -332,11 +383,11 @@ class _CompactShellState extends ConsumerState<_CompactShell> {
                     ? NxTabBar(
                         tabs: [
                           const NxTab('대화'),
-                          const NxTab('이슈'),
-                          const NxTab('저장소'),
-                          const NxTab('파일'),
                           // 안 읽은 수(18단계 N19). 판 안에만 두면 모바일에서 수가 안 보인다.
                           NxTab('알림', count: unread > 0 ? unread : null),
+                          const NxTab('이슈'),
+                          const NxTab('파일'),
+                          const NxTab('저장소'),
                         ],
                         index: selectedTab,
                         onChanged: widget.onTab ?? (_) {},
@@ -379,9 +430,12 @@ class _CompactShellState extends ConsumerState<_CompactShell> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SpaceRail(),
+                        if (rail) const SpaceRail(),
                         Expanded(
                           child: ChannelPane(
+                            showAccountFooter: !rail,
+                            // 모바일은 아래 탭이 같은 곳을 담는다 — 두 번 보이지 않는다.
+                            showWorkSection: !widget.showTabs,
                             onClose: () => _setOpen(false),
                             // 채널 · 작업 갈래를 고르면 닫는다. 안 닫으면 고른 곳이 가려진다.
                             onChannelTap: () => _setOpen(false),
@@ -404,35 +458,124 @@ class _CompactShellState extends ConsumerState<_CompactShell> {
 /// `/s/:spaceId` — 채널을 아직 고르지 않은 상태.
 ///
 /// 무엇을 그릴지는 라우터가 정하므로, 이 화면이 그 자리에 오는 라우트가 된다.
-class ShellHome extends StatelessWidget {
+///
+/// 예전에는 「채널을 선택하세요」 한 줄뿐이었다 — 앱을 켤 때마다 빈 본문을 지났고, 모바일은
+/// 채널 목록이 머리의 ▾ 뒤에 숨어 처음 쓰는 사람이 못 찾았다(2026-10-10 UI/UX 검토).
+///
+/// - **넓은 셸**: 채널 목록은 이미 옆에 있다. 마지막으로 본 채널(없으면 첫 채널)로 곧장 연다.
+/// - **좁은 셸**: 채널 목록 자체가 본문이다 — 모바일 메신저의 첫 화면.
+class ShellHome extends ConsumerStatefulWidget {
   const ShellHome({super.key});
+
+  @override
+  ConsumerState<ShellHome> createState() => _ShellHomeState();
+}
+
+class _ShellHomeState extends ConsumerState<ShellHome> {
+  /// 이 스페이스에서 곧장 열 채널을 이미 정했다. 한 번만 정한다 — 목록이 다시 와도
+  /// (실시간 갱신) 사용자를 다시 옮기지 않는다.
+  String? _openedFor;
+
+  /// 저장소에서 읽은 마지막 채널. 아직 못 읽었으면 [_lastLoaded] 가 false.
+  String? _last;
+  bool _lastLoaded = false;
+  String? _lastFor;
+
+  void _loadLast(String spaceId) {
+    if (_lastFor == spaceId) return;
+    _lastFor = spaceId;
+    _lastLoaded = false;
+    ref.read(settingsStorageProvider).readLastChannel(spaceId).then((id) {
+      if (!mounted || _lastFor != spaceId) return;
+      setState(() {
+        _last = id;
+        _lastLoaded = true;
+      });
+    });
+  }
+
+  /// 넓은 셸에서 열 채널. 목록이 아직 없거나 마지막 채널을 아직 못 읽었으면 null(기다린다).
+  String? _target(String spaceId) {
+    if (!_lastLoaded) return null;
+    final channels = ref.read(channelsProvider).value;
+    if (channels == null) return null;
+    final last = _last;
+    if (last != null && channels.any((c) => c.id == last)) return last;
+    return firstHomeChannel(ref.read(channelGroupsProvider))?.id;
+  }
 
   @override
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
+    final scope = context.dependOnInheritedWidgetOfExactType<_PaneScope>();
+    final space = ref.watch(currentSpaceProvider);
+    final spaceId = GoRouterState.of(context).pathParameters['spaceId'];
+
+    if (scope == null && spaceId != null) {
+      _loadLast(spaceId);
+      // 목록 · 카테고리가 오면 다시 그려 정한다.
+      ref.watch(channelsProvider);
+      ref.watch(channelGroupsProvider);
+      final target = _openedFor == spaceId ? null : _target(spaceId);
+      if (target != null) {
+        _openedFor = spaceId;
+        // build 중에 옮기지 않는다 — 프레임이 끝난 뒤.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go('/s/$spaceId/c/$target');
+        });
+      }
+    }
+
     return ColoredBox(
       color: nx.colors.bgBase,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 좁은 셸에서는 이 머리가 채널 패널을 여는 길이다.
-          const ShellHeader(title: '채널 고르기'),
+          // 좁은 셸에서는 이 머리가 채널 패널(스페이스 바꾸기 · 레일)을 여는 길이다.
+          ShellHeader(title: space?.name ?? '대화'),
           Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(NxSpacing.sp6),
-                child: Text(
-                  '채널을 선택하세요',
-                  textAlign: TextAlign.center,
-                  style: nx.text.secondary,
-                ),
-              ),
-            ),
+            child: scope != null
+                ? ChannelPaneList(showWorkSection: !scope.hasTabs)
+                : _HomeEmpty(spaceId: spaceId),
           ),
         ],
       ),
     );
   }
+}
+
+/// 넓은 셸에서 곧장 열 채널이 없을 때(볼 수 있는 채널이 하나도 없다 · 아직 받는 중).
+/// 할 일을 보인다 — 만들 수 있으면 만들기, 아니면 DM.
+class _HomeEmpty extends ConsumerWidget {
+  const _HomeEmpty({required this.spaceId});
+
+  final String? spaceId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final channels = ref.watch(channelsProvider).value;
+    final groups = ref.watch(channelGroupsProvider);
+    // 받는 중이거나 곧 옮겨 갈 참이면 비워 둔다 — 빈 화면 문구가 한 번 비쳤다 사라지지 않게.
+    if (channels == null || firstHomeChannel(groups) != null) {
+      return const SizedBox.shrink();
+    }
+    return const NxEmptyState(
+      title: '아직 채널이 없습니다',
+      description: '왼쪽 목록의 + 로 채널을 만들거나, 다이렉트 메시지로 대화를 시작하세요.',
+    );
+  }
+}
+
+/// 곧장 열 첫 채널 — 사이드바에 보이는 순서대로 **글 채널만** 본다. DM 은 남의 대화가 첫
+/// 화면이면 어색하고, 다른 종류(음성 등)는 여는 순간 그 채널의 동작이 시작될 수 있다.
+/// 마지막으로 본 채널은 종류를 가리지 않는다 — 사람이 직접 고른 곳이다.
+Channel? firstHomeChannel(List<ChannelGroup> groups) {
+  for (final group in groups) {
+    for (final channel in group.channels) {
+      if (channel.kind == 'text') return channel;
+    }
+  }
+  return null;
 }
 
 /// 설정 창의 틀(14단계 설계 D2). **폭 분기는 이 파일에서만 한다**는 규칙을 지키려고
@@ -560,7 +703,8 @@ class _CloseEsc extends StatelessWidget {
         ExcludeSemantics(
           child: Text(
             'ESC',
-            style: nx.text.mono.copyWith(color: c.borderStrong),
+            // 선 토큰(borderStrong)을 글자에 쓰면 라이트에서 2.0:1 이었다 — 글자는 글자 토큰으로.
+            style: nx.text.mono,
           ),
         ),
       ],

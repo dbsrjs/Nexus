@@ -8,10 +8,23 @@ import '../channel/channel_list.dart';
 import '../notifications/notifications_controller.dart';
 import '../space/space_controller.dart';
 import '../space/space_menu.dart';
+import 'space_rail.dart';
 
 /// 가운데 240px — 스페이스 이름 헤더 + 작업 갈래 + 카테고리/채널 목록.
 class ChannelPane extends ConsumerWidget {
-  const ChannelPane({super.key, this.onClose, this.onChannelTap});
+  const ChannelPane({
+    super.key,
+    this.onClose,
+    this.onChannelTap,
+    this.showWorkSection = true,
+    this.showAccountFooter = false,
+  });
+
+  /// 「작업」 갈래(알림 · 이슈 · 파일 · 저장소)를 그릴지. 아래 탭 줄이 같은 곳을 담는 모바일은 끈다.
+  final bool showWorkSection;
+
+  /// 레일이 없을 때(스페이스 하나) 맨 아래에 계정 · 스페이스 더하기를 둔다.
+  final bool showAccountFooter;
 
   /// 밀려 나온 패널로 열렸을 때 닫는 방법. null 이면 닫기 버튼을 감춘다(데스크톱 3단).
   final VoidCallback? onClose;
@@ -64,29 +77,52 @@ class ChannelPane extends ConsumerWidget {
             ),
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: NxSpacing.sp4,
-                vertical: NxSpacing.sp5,
-              ),
-              children: [
-                if (space != null)
-                  _WorkSection(
-                    spaceId: space.id,
-                    sprintsEnabled: space.sprintsEnabled,
-                    onTap: onChannelTap,
-                  ),
-                ChannelList(onChannelTap: onChannelTap),
-              ],
+            child: ChannelPaneList(
+              showWorkSection: showWorkSection,
+              onChannelTap: onChannelTap,
             ),
           ),
+          if (showAccountFooter) const SpaceAccountFooter(),
         ],
       ),
     );
   }
 }
 
-/// 셸 안에서 갈 수 있는 곳 — 알림 · 이슈 보드 · 스프린트 · 파일 · 저장소.
+/// 판의 목록 부분 — 「작업」 갈래 + 카테고리 · 채널 · DM. 판 머리 없이 따로 쓰는 곳이 있다:
+/// 좁은 셸의 홈(채널을 아직 고르지 않은 「대화」)이 이것을 본문으로 그린다.
+class ChannelPaneList extends ConsumerWidget {
+  const ChannelPaneList({
+    super.key,
+    this.showWorkSection = true,
+    this.onChannelTap,
+  });
+
+  final bool showWorkSection;
+  final VoidCallback? onChannelTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final space = ref.watch(currentSpaceProvider);
+    return ListView(
+      padding: const EdgeInsets.symmetric(
+        horizontal: NxSpacing.sp4,
+        vertical: NxSpacing.sp5,
+      ),
+      children: [
+        if (space != null && showWorkSection)
+          _WorkSection(
+            spaceId: space.id,
+            sprintsEnabled: space.sprintsEnabled,
+            onTap: onChannelTap,
+          ),
+        ChannelList(onChannelTap: onChannelTap),
+      ],
+    );
+  }
+}
+
+/// 셸 안에서 갈 수 있는 곳 — 알림 · 이슈 · 스프린트 · 파일 · 저장소.
 ///
 /// **글자만 둔다**(15단계 D5 — 목록 줄 앞 장식 아이콘을 두지 않는다). 이 판에는 이미
 /// 채널이 카테고리로 묶여 있다. 구조를 새로 만드는 것이 아니라 있던 것을 끝까지 쓴다.
@@ -145,7 +181,8 @@ class _WorkSection extends ConsumerWidget {
           '/notifications',
           trailing: unread > 0 ? NxBadge(count: unread) : null,
         ),
-        item('이슈 보드', '/issues'),
+        // 화면 머리 · 모바일 탭과 같은 이름(「이슈」) — 세 곳이 세 이름이었다(2026-10-10 UI/UX 검토).
+        item('이슈', '/issues'),
         if (sprintsEnabled) item('스프린트', '/sprints'),
         item('파일', '/files'),
         item('저장소', '/repos'),

@@ -31,7 +31,6 @@ class FilesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final nx = NxTheme.of(context);
     final files = ref.watch(spaceFilesProvider);
 
     return NxPage(
@@ -56,7 +55,11 @@ class FilesScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(spaceFilesProvider),
         ),
         data: (items) => items.isEmpty
-            ? Center(child: Text('아직 올라온 파일이 없습니다.', style: nx.text.secondary))
+            // 어디서 채워지는지를 말한다 — 한 줄짜리 빈 화면에서 사용자가 멈췄다(2026-10-10 UI/UX 검토).
+            ? const NxEmptyState(
+                title: '아직 올라온 파일이 없습니다',
+                description: '대화 입력창의 클립 버튼으로 올린 파일이 여기에 모입니다.',
+              )
             : ListView.separated(
                 padding: const EdgeInsets.symmetric(
                   horizontal: NxSpacing.sp7,

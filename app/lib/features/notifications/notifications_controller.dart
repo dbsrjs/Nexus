@@ -219,7 +219,7 @@ final notificationsProvider =
 /// 한 줄의 머리 문구(N22) — 「가나 님이 #개발 에서 멘션했습니다」. DM 은 채널 이름이 뜻이 없다.
 String notificationHeadline(NotificationItem n) {
   final who = n.actorName.isEmpty ? '알 수 없는 사람' : n.actorName;
-  final where = n.isDm ? '' : ' #${n.channelName} 에서';
+  final where = n.isDm ? '' : ' #${n.channelName}에서';
   return switch (n.type) {
     NotificationType.mention => '$who 님이$where 나를 멘션했습니다',
     NotificationType.broadcast => '$who 님이$where 모두를 불렀습니다',

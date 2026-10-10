@@ -34,7 +34,7 @@ final aiApiProvider = Provider<AiApi>(
 String aiMessageFor(ApiFailure failure, {bool hasRepo = false}) =>
     switch (failure) {
       // 오프라인은 오류가 아니라 정상 경로다.
-      ApiFailure.network => '연결이 없어 AI 에 묻지 못했습니다.',
+      ApiFailure.network => '연결이 없어 AI에 묻지 못했습니다.',
       ApiFailure.badRequest => '요청을 처리할 수 없습니다. 고른 범위를 확인해 주세요.',
       ApiFailure.notFound => '물어볼 대화나 저장소를 찾지 못했습니다.',
       ApiFailure.unauthorized => '다시 로그인해 주세요.',
@@ -42,7 +42,7 @@ String aiMessageFor(ApiFailure failure, {bool hasRepo = false}) =>
       ApiFailure.server =>
         hasRepo
             ? '저장소 검색을 지금 쓸 수 없습니다. 인덱싱이 끝났는지 확인해 주세요.'
-            : 'AI 를 쓸 수 없습니다. 잠시 뒤 다시 시도해 주세요.',
+            : 'AI를 쓸 수 없습니다. 잠시 뒤 다시 시도해 주세요.',
     };
 
 sealed class AiState {

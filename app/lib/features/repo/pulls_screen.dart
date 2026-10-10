@@ -79,7 +79,7 @@ class PullList extends StatelessWidget {
     if (pulls.isEmpty) {
       return Center(
         child: Text(
-          state == 'closed' ? '닫힌 PR 이 없습니다' : '열린 PR 이 없습니다',
+          state == 'closed' ? '닫힌 PR이 없습니다' : '열린 PR이 없습니다',
           style: nx.text.secondary,
         ),
       );
@@ -332,7 +332,7 @@ class _PullsError extends StatelessWidget {
     }
 
     return _Message(
-      text: 'GitHub 을 연결하세요',
+      text: 'GitHub를 연결하세요',
       action: NxButton(
         label: '저장소 화면으로',
         // **`push` 가 아니라 `go` 다.** 여기는 셸 밖이고 저장소 화면은 셸

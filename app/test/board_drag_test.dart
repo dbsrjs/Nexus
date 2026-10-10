@@ -95,6 +95,14 @@ void main() {
       await tester.pump();
     }
 
+    testWidgets('머리 줄 제목은 「이슈」다 — 앱 전체가 이 자리를 「이슈」로 부른다', (
+      tester,
+    ) async {
+      await pump(tester);
+      expect(find.text('이슈'), findsOneWidget);
+      expect(find.text('보드'), findsNothing);
+    });
+
     testWidgets('★ 키보드 — Space 로 집고 → 로 옆 컬럼, Space 로 놓으면 그 이웃으로 보낸다', (
       tester,
     ) async {

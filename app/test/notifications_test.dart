@@ -38,11 +38,11 @@ void main() {
 
   group('notificationHeadline', () {
     test('채널이면 채널 이름을, DM 이면 빼고', () {
-      expect(notificationHeadline(_item(type: 'mention')), '가나 님이 #개발 에서 나를 멘션했습니다');
+      expect(notificationHeadline(_item(type: 'mention')), '가나 님이 #개발에서 나를 멘션했습니다');
       expect(notificationHeadline(_item(type: 'mention', kind: 'dm')), '가나 님이 나를 멘션했습니다');
       expect(notificationHeadline(_item(type: 'dm', kind: 'dm')), '가나 님이 메시지를 보냈습니다');
-      expect(notificationHeadline(_item(type: 'broadcast')), '가나 님이 #개발 에서 모두를 불렀습니다');
-      expect(notificationHeadline(_item(type: 'reply')), '가나 님이 #개발 에서 내 글에 답글을 달았습니다');
+      expect(notificationHeadline(_item(type: 'broadcast')), '가나 님이 #개발에서 모두를 불렀습니다');
+      expect(notificationHeadline(_item(type: 'reply')), '가나 님이 #개발에서 내 글에 답글을 달았습니다');
     });
   });
 
@@ -52,7 +52,7 @@ void main() {
   });
 
   test('알림함은 모바일 다섯째 탭이다', () {
-    expect(shellTabFor('/s/a/notifications'), 4);
+    expect(shellTabFor('/s/a/notifications'), 1);
   });
 
   test('시각 — 오늘은 시:분, 올해는 월/일, 지난해는 연도까지', () {
@@ -148,7 +148,7 @@ void main() {
     testWidgets('★ 멘션은 이름으로 · 서식은 벗겨 보인다', (tester) async {
       await pump(tester, _item(body: '**급함** <@11111111-2222-4333-8444-555555555555> 봐 주세요'));
       expect(find.text('급함 @나리 봐 주세요'), findsOneWidget);
-      expect(find.text('가나 님이 #개발 에서 나를 멘션했습니다'), findsOneWidget);
+      expect(find.text('가나 님이 #개발에서 나를 멘션했습니다'), findsOneWidget);
     });
 
     testWidgets('안 읽은 줄에만 점이 있다', (tester) async {

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../shell/app_shell.dart';
+import '../../shared/josa.dart';
 import '../../domain/models/sprint.dart';
 import '../../ui/ui.dart';
 import 'burndown_chart.dart';
@@ -27,7 +28,6 @@ class _SprintScreenState extends ConsumerState<SprintScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final nx = NxTheme.of(context);
     final sprints = ref.watch(sprintListProvider).value ?? const <Sprint>[];
 
     return NxPage(
@@ -52,7 +52,10 @@ class _SprintScreenState extends ConsumerState<SprintScreen> {
         ],
       ),
       body: sprints.isEmpty
-          ? Center(child: Text('아직 스프린트가 없습니다.', style: nx.text.secondary))
+          ? const NxEmptyState(
+              title: '아직 스프린트가 없습니다',
+              description: '기간을 정해 이슈를 묶으면 번다운으로 진행을 볼 수 있습니다.',
+            )
           : ListView.separated(
               padding: const EdgeInsets.all(NxSpacing.sp7),
               itemCount: sprints.length,
@@ -219,7 +222,7 @@ class _SprintMenu extends ConsumerWidget {
       if (action == 'delete') {
         final sure = await NxDialog.confirm(
           context,
-          title: '${sprint.name} 를 지울까요?',
+          title: '${withJosa(sprint.name, '을', '를')} 지울까요?',
           body: '이슈는 지워지지 않고 백로그로 돌아갑니다.',
           confirmLabel: '지우기',
           danger: true,

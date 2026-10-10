@@ -36,4 +36,7 @@ class NexusPaneWidth {
 
   /// 카테고리 · 채널 목록
   static const double channels = 240;
+
+  /// 데스크톱 오른쪽 판(스레드 · AI). 1024 폭에서도 대화가 330 남짓 남는 값.
+  static const double side = 380;
 }
