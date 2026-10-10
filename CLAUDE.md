@@ -506,6 +506,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 - **운영 LLM provider 는 `gemini` 로 정했다(사용자 결정, 2026-10-07).** 실제로 확인한 경로이고 «마지막» 단계의 배포도 이것을 쓴다. **`local`(Ollama) 경로는 실측하지 않은 채 남는다(13-1)** — 쓰는 곳이 없어 깨지는 것이 없다. Gemini 무료 한도(3.5-flash 하루 20회)가 모자라거나 비공개 저장소 코드를 외부로 보내지 않으려 해 `LLM_PROVIDER=local` 로 바꾸게 되면 **그 전에 먼저 태운다.** `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. 설치(`winget install Ollama.Ollama`)와 모델 받기(약 4.7GB)는 사람이 한다.
 - **인덱싱 큐의 5xx 소진은 단위 테스트만 덮는다.** 재시도 대기가 1분씩이라 계약 검증으로 세 번을 태우면 3분이 걸린다. 판정(`shouldGiveUpIndexing` · `indexRetryDelayMs`)은 순수 함수로 빼 두었다. 429 · 리스 유효/만료는 `check:indexing` 이 본다.
 - **프레즌스는 서버 메모리에 있다(17-2).** 인스턴스가 둘이 되면 서로의 연결을 모른다 — `redis-io.adapter` 를 되살릴 때 함께 Redis 로 옮긴다. 서버를 재시작하면 모두 오프라인이 됐다가 앱이 다시 붙으며 돌아온다
+- **운영 의존성에 NestJS 12 로 올려야 풀리는 감사 항목이 넷 남아 있다**(2026-10-10 보안 점검 2차 — `@nestjs/core` · `lodash` · `file-type` · `uuid`, 전부 우리 코드가 그 경로를 쓰지 않는다). `multer` · `qs` · `body-parser` 는 `server/package.json` 의 `overrides` 로 올려 두었다 — **platform-express 를 올릴 때 overrides 를 걷는다.** 목록과 이유는 [진행 기록](docs/진행-기록.md) «보안 점검 2차».
 - `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다. 개발 PC 가 둘 다 Windows 라 그대로 둔다.
 
 ---
