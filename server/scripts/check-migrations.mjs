@@ -34,14 +34,24 @@ const MANUAL_INDEXES = [
     what: 'pgvector HNSW 인덱스',
     why: 'AI 코드 질의(설계 §8)의 전제다. 없어도 쿼리는 돌고 느려질 뿐이라 조용히 사라진다.',
   },
+  {
+    name: 'repo_index_chunks_search_tsv_idx',
+    what: '낱말 검색 GIN 인덱스',
+    why: '하이브리드 검색(RAG 강화)의 낱말 쪽이다. 없어도 쿼리는 돌고 느려질 뿐이라 조용히 사라진다.',
+  },
 ];
 
-/** 확장을 지우면 vector 타입을 쓰는 컬럼이 통째로 깨진다. */
+/** 손 관리 객체를 받치는 확장 · 컬럼을 지우는 구문. */
 const FORBIDDEN_PATTERNS = [
   {
     pattern: /DROP\s+EXTENSION[^;]*\bvector\b/i,
     what: 'pgvector 확장 삭제',
     why: 'vector 타입을 쓰는 컬럼이 통째로 깨진다.',
+  },
+  {
+    pattern: /DROP\s+COLUMN\s+"?search_tsv"?/i,
+    what: '낱말 검색 생성 컬럼 삭제',
+    why: '식이 마이그레이션에만 있다. 스키마에서 필드를 빼면 diff 가 이 구문을 끼워 넣는다.',
   },
 ];
 
@@ -111,9 +121,7 @@ for (const dir of dirs) {
 }
 
 if (failures === 0) {
-  console.log(
-    `  OK  마이그레이션 ${checked}개 — 수동 관리 객체를 지우는 구문 없음`,
-  );
+  console.log(`  OK  마이그레이션 ${checked}개 — 수동 관리 객체를 지우는 구문 없음`);
   process.exit(0);
 }
 

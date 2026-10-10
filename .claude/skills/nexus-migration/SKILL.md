@@ -30,7 +30,7 @@ npm --prefix server run prisma:generate
 
 ## 필수 확인 — 생성된 SQL 을 커밋 전에 반드시 읽는다
 
-**`DROP INDEX ..._hnsw_idx` 가 섞여 있는지 확인한다.** pgvector HNSW 인덱스는
+**`DROP INDEX ..._hnsw_idx` · `..._search_tsv_idx` 가 섞여 있는지 확인한다.** (뒤의 것은 낱말 검색 GIN 인덱스, 2026-10-10. 그 컬럼 `search_tsv` 는 생성 컬럼이라 스키마에 `@default(dbgenerated())` 로 두었다 — 빼면 diff 가 `DROP COLUMN` 을 끼워 넣는다) pgvector HNSW 인덱스는
 Prisma 스키마로 표현할 수 없어 수동으로 관리하는데, 자동 생성기가 이걸
 드리프트로 오인해 삭제 구문을 끼워 넣는다. **이 프로젝트에서 이미 네 번
 일어났다**(7-1 · 7-3 · 9-1 · 9-2a). `npm run check:migrations` 가 CI 에서
