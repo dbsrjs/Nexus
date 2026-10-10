@@ -94,6 +94,68 @@ class ChannelHeader extends StatelessWidget {
   }
 }
 
+/// 음성 채널의 머리 줄(20단계). `#` 대신 스피커, 고정 메시지 · 파일 · AI 가 없다 — 메시지가 없는 채널이다.
+/// 설정은 남긴다: 비공개 명단 · 역할별 권한(듣기만 = 읽기 전용)을 여기서 정한다.
+class VoiceChannelHeader extends StatelessWidget {
+  const VoiceChannelHeader({super.key, required this.name, this.topic});
+
+  final String name;
+  final String? topic;
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    return Container(
+      height: SelectionAppBar.height,
+      padding: const EdgeInsets.only(left: NxSpacing.sp6, right: NxSpacing.sp4),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: c.divider)),
+      ),
+      child: Row(
+        children: [
+          Flexible(
+            flex: 0,
+            child: ShellPaneTrigger(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  NxIcon(NxIcons.speaker, color: c.textSecondary),
+                  const SizedBox(width: NxSpacing.sp3),
+                  Flexible(
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        name,
+                        overflow: TextOverflow.ellipsis,
+                        style: nx.text.header,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (topic != null && topic!.isNotEmpty) ...[
+            const SizedBox(width: NxSpacing.sp5),
+            Expanded(
+              child: Text(
+                topic!,
+                overflow: TextOverflow.ellipsis,
+                style: nx.text.secondary,
+              ),
+            ),
+          ] else
+            const Spacer(),
+          const _ChannelSettingsButton(),
+          const SizedBox(width: NxSpacing.sp3),
+          const _ConnectionDot(),
+        ],
+      ),
+    );
+  }
+}
+
 /// DM 의 머리 줄(17단계 D12) — `#이름` 대신 상대 아바타 · 이름. 채널 설정이 없다(D7).
 class DmHeader extends ConsumerWidget {
   const DmHeader({super.key, required this.channel, required this.onAsk});

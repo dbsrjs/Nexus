@@ -40,6 +40,11 @@ enum NxIcons {
   info,
   image,
   download,
+  // 음성 채널(20단계) — 채널 줄의 종류 표시 · 통화 버튼.
+  speaker,
+  mic,
+  micOff,
+  hangUp,
 }
 
 sealed class _Part {
@@ -132,6 +137,24 @@ const _glyphs = <NxIcons, List<_Part>>{
     _Circle(10.5, 6, 1),
   ],
   NxIcons.download: [_Stroke('M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10')],
+  NxIcons.speaker: [
+    _Stroke('M2.5 6H5l3.5-3v10L5 10H2.5z'),
+    _Stroke('M11 5.5a3.5 3.5 0 0 1 0 5'),
+    _Stroke('M12.8 3.3a6.5 6.5 0 0 1 0 9.4'),
+  ],
+  NxIcons.mic: [
+    _Rect(6, 1.5, 4, 8, 2),
+    _Stroke('M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5M5.5 14.5h5'),
+  ],
+  NxIcons.micOff: [
+    _Rect(6, 1.5, 4, 8, 2),
+    _Stroke('M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5M5.5 14.5h5M2.5 2.5l11 11'),
+  ],
+  NxIcons.hangUp: [
+    _Stroke(
+      'M2 10c3.3-3.2 8.7-3.2 12 0l-1.6 1.8-2.4-.9V9.2a6 6 0 0 0-4 0v1.7l-2.4.9z',
+    ),
+  ],
 };
 
 /// 아이콘 하나. 크기와 색은 지정하지 않으면 가장 가까운 `IconTheme` 을 따른다.

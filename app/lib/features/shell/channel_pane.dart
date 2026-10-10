@@ -8,6 +8,7 @@ import '../channel/channel_list.dart';
 import '../notifications/notifications_controller.dart';
 import '../space/space_controller.dart';
 import '../space/space_menu.dart';
+import '../voice/voice_widgets.dart';
 
 /// 가운데 240px — 스페이스 이름 헤더 + 작업 갈래 + 카테고리/채널 목록.
 class ChannelPane extends ConsumerWidget {
@@ -80,6 +81,8 @@ class ChannelPane extends ConsumerWidget {
               ],
             ),
           ),
+          // 통화 중이면 맨 아래에 붙는다(20단계) — 채널 목록을 밀어도 자리를 지킨다.
+          VoiceCallBar(onNavigate: onChannelTap),
         ],
       ),
     );

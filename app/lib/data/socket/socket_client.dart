@@ -84,7 +84,8 @@ class SocketClient {
       ..on('presence:changed', _onPresenceChanged)
       ..on('typing', _onTyping)
       ..on('notification:new', _onNotificationNew)
-      ..on('notification:read', _onNotificationRead);
+      ..on('notification:read', _onNotificationRead)
+      ..on('voice:state', _onVoiceState);
 
     _socket = socket;
     socket.connect();
@@ -380,6 +381,19 @@ class SocketClient {
       channelId: channelId,
       userId: userId,
       parentId: parentId is String ? parentId : null,
+    ));
+  }
+
+  void _onVoiceState(dynamic data) {
+    final map = _asMap(data);
+    final spaceId = map?['spaceId'];
+    final channelId = map?['channelId'];
+    final userIds = map?['userIds'];
+    if (spaceId is! String || channelId is! String || userIds is! List) return;
+    _emit(VoiceStateChanged(
+      spaceId: spaceId,
+      channelId: channelId,
+      userIds: [for (final id in userIds) if (id is String) id],
     ));
   }
 

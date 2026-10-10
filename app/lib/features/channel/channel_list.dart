@@ -10,6 +10,7 @@ import 'channel_controller.dart';
 import '../../domain/models/space.dart';
 import 'channel_dialogs.dart';
 import 'dm.dart';
+import '../voice/voice_widgets.dart';
 
 /// 채널 패널의 채널 부분. 카테고리 → 채널 순으로 그린다.
 ///
@@ -99,8 +100,11 @@ class ChannelList extends ConsumerWidget {
                       )
                     : null,
               ),
-              for (final channel in group.channels)
+              for (final channel in group.channels) ...[
                 _ChannelTile(channel: channel, onTap: onChannelTap),
+                // 음성 채널은 지금 들어가 있는 사람을 줄 아래에 펼친다(20단계) — 들어가기 전에 보인다.
+                if (channel.isVoice) VoiceRosterList(channelId: channel.id),
+              ],
             ],
             dms,
           ],
@@ -170,8 +174,15 @@ class _ChannelTile extends ConsumerWidget {
     final unread = channel.muted ? 0 : channel.unreadCount;
     final bold = selected || unread > 0;
 
-    // 채널 앞 표시는 **뜻이 있는 것**만 — `#` 는 글자, 비공개는 자물쇠, 음소거는 종.
-    final Widget mark = channel.muted
+    // 채널 앞 표시는 **뜻이 있는 것**만 — `#` 는 글자, 비공개는 자물쇠, 음소거는 종, 음성은 스피커.
+    // 음성은 비공개보다 먼저다: 들어가면 말소리가 난다는 것이 더 큰 차이다.
+    final Widget mark = channel.isVoice
+        ? NxIcon(
+            NxIcons.speaker,
+            size: NxIconSize.sm,
+            color: selected ? c.accent : c.borderStrong,
+          )
+        : channel.muted
         ? NxIcon(NxIcons.mutedBell, size: NxIconSize.sm, color: c.borderStrong)
         : channel.isPrivate
         ? NxIcon(

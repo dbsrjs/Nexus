@@ -293,3 +293,17 @@ class NotificationRead extends SocketEvent {
   final String spaceId;
   final List<String>? ids;
 }
+
+/// 음성 채널의 통화 중인 사람이 바뀌었다(20단계). 채널 룸으로 온다 — 그 채널을 볼 수 있는 사람만
+/// 받는다. `userIds` 는 그 채널의 **지금 전체 명단**이라 앞의 값을 통째로 바꾸면 된다(비면 아무도 없다).
+class VoiceStateChanged extends SocketEvent {
+  const VoiceStateChanged({
+    required this.spaceId,
+    required this.channelId,
+    required this.userIds,
+  });
+
+  final String spaceId;
+  final String channelId;
+  final List<String> userIds;
+}
