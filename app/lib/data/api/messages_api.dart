@@ -1,4 +1,3 @@
-
 import '../../domain/models/message.dart';
 import 'api_client.dart';
 import 'api_failure.dart';
@@ -79,6 +78,33 @@ class MessagesApi {
             .toList(growable: false),
         nextCursor: body['nextCursor'] as String?,
       );
+    });
+  }
+
+  /// PATCH /api/spaces/:spaceId/messages/:id — 본인 메시지만(아니면 403). 본문은 `<@id>` 형식.
+  ///
+  /// **응답에는 리액션 · 멘션이 없다**(서버가 작성자만 붙인다) — 캐시에 통째로 덮지 말 것.
+  Future<Message> edit({
+    required String spaceId,
+    required String messageId,
+    required String body,
+  }) async {
+    return guardApi(() async {
+      final res = await _client.dio.patch<Map<String, dynamic>>(
+        '/spaces/$spaceId/messages/$messageId',
+        data: {'body': body},
+      );
+      return Message.fromJson(res.data!);
+    });
+  }
+
+  /// DELETE /api/spaces/:spaceId/messages/:id — 소프트 삭제. 작성자 또는 admin 이상. 멱등.
+  Future<void> remove({
+    required String spaceId,
+    required String messageId,
+  }) async {
+    return guardApi(() async {
+      await _client.dio.delete<void>('/spaces/$spaceId/messages/$messageId');
     });
   }
 
