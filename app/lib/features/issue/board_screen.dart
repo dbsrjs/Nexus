@@ -3,6 +3,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/socket/socket_event.dart';
+import '../realtime/socket_controller.dart';
 import '../shell/app_shell.dart';
 import '../../domain/models/issue.dart';
 import '../../ui/ui.dart';
@@ -188,12 +190,20 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 이슈는 소켓으로 따라온다(issue:created · updated · deleted). 끊겨 있던 사이 놓친 것만
+    // 다시 붙을 때 받는다 — 그래서 머리 줄의 새로고침 버튼을 뺐다. 실시간 화면에 그 버튼이
+    // 있으면 「눌러야 최신이 되나」를 의심하게 만든다(2026-10-10 UI/UX 검토).
+    ref.listen<AsyncValue<SocketEvent>>(socketEventsProvider, (_, next) {
+      if (next.value is SocketConnected) {
+        ref.read(boardActionsProvider).refresh();
+      }
+    });
     final board = ref.watch(scopedBoardProvider);
     final truncated = ref.watch(truncatedColumnsProvider);
 
     return NxPage(
       header: ShellHeader(
-        title: '보드',
+        title: '이슈',
         actions: [
           if (ref.watch(sprintsEnabledProvider))
             NxButton(
@@ -202,11 +212,6 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
               size: NxSize.sm,
               onPressed: () => context.go('/s/${widget.spaceId}/sprints'),
             ),
-          NxIconButton(
-            icon: NxIcons.refresh,
-            label: '새로고침',
-            onPressed: () => ref.read(boardActionsProvider).refresh(),
-          ),
           // 떠 있는 버튼(FAB)을 두지 않는다 — 머리 줄이 언제나 닿는 자리다(캔버스 「보드」).
           NxButton(
             label: '새 이슈',

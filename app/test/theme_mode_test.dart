@@ -23,6 +23,18 @@ class _FakeSettingsStorage implements SettingsStorage {
 
   @override
   Future<void> writeDesktopNotifications(bool enabled) async {}
+
+  @override
+  Future<String?> readLastSpace() async => null;
+
+  @override
+  Future<void> writeLastSpace(String spaceId) async {}
+
+  @override
+  Future<String?> readLastChannel(String spaceId) async => null;
+
+  @override
+  Future<void> writeLastChannel(String spaceId, String channelId) async {}
 }
 
 ProviderContainer _container({

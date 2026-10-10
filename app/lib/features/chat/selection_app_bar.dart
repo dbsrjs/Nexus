@@ -49,7 +49,7 @@ class SelectionAppBar extends ConsumerWidget {
             ),
           ),
           NxButton(
-            label: 'AI 에게 묻기',
+            label: 'AI에게 묻기',
             icon: NxIcons.ai,
             size: NxSize.sm,
             onPressed: selection.count > 0 ? onAsk : null,

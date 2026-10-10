@@ -234,6 +234,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | 다이얼로그 · 패널 안 목록 위아래에 큰 빈칸(Android) | `ListView` 의 기본 여백이 기기의 안전 영역(상태 표시줄 · 내비게이션 바)을 가져온다. 화면 전체가 아닌 자리의 `ListView` 는 `padding: EdgeInsets.zero` (16-2) |
 | 셸 밖 화면(설정 창)에서 돌아오면 간헐적으로 「build 중 setState」 | 화면이 내려가 provider 의 구독자가 0 이 되면 **Riverpod 3 은 그것을 멈추고**, 그 사이 의존이 바뀌면 돌아온 위젯의 build 안에서 밀린 갱신을 터뜨린다. 여러 화면이 build 중 처음 구독하는 provider 는 **앱 뿌리에서 `listen` 으로 붙든다**(`memberNamesProvider` · `currentSpaceProvider`). 셸에 두면 셸 밖으로 나갈 때 같이 내려간다 (16-1, `currentSpaceProvider` 는 2026-10-06 CI 헤드리스 흐름이 잡았다 — 느린 CPU 에서만 드러난다) |
 | 모바일 셸 안 화면에서 키보드를 띄우면 입력창이 키보드 위로 한 번 더 뜸(Android) | 셸의 `NxPage` 안에 화면의 `NxPage` 가 겹쳐 **둘 다 키보드 높이를 더했다.** `NxPage` 가 올린 만큼을 안쪽 `MediaQuery` 에서 지운다 — **`SafeArea` 안쪽 context 로** 지울 것. 바깥 `MediaQuery` 를 복사하면 SafeArea 가 지운 상태 표시줄 여백이 되살아나 머리 줄이 내려간다. 테스트는 `WidgetsApp` 이 뷰에서 MediaQuery 를 다시 만들므로 `tester.view.viewInsets` 에 싣는다 (17, 15단계부터) |
+| 앱 통합 흐름이 끝나는 순간 `Cannot use the Ref of …SidePanelNotifier after it has been disposed` | 셸 `dispose` 가 `Future.microtask` 로 미리 잡아 둔 notifier 를 불렀는데, **앱 전체가 내려갈 때는 그 사이 컨테이너가 먼저 버려진다.** 프레임 밖으로 미룬 정리는 `ref.mounted` 를 보고 한다(`closeIfAlive`). `ProviderContainer.disposed` 는 `@internal` 이라 앱에서 못 쓴다 (UI/UX 개선) |
 | 화면을 닫으면 디버그 빌드에서 `deactivated widget's ancestor` 로 멈춤 | `dispose()` 안에서 `ProviderScope.containerOf(context)` 같은 조상 조회를 했다. **`didChangeDependencies` 에서 참조를 잡아 두고** `dispose` 는 그것만 쓴다 — 예외로 정리도 못 돌아 구독이 남았다 (13-2 후 `74ccc01`) |
 | 토큰을 갱신하고 다시 붙어도 소켓이 영영 「연결 끊김」(서버가 꺼진 채 앱을 열고 저장된 토큰이 만료됐을 때) | socket_io_client 는 주소마다 Manager 를 캐시하고 「같은 이름공간이 이미 있나」로 새로 만들지 정하는데, **경로 없는 API 주소에서는 그 판정이 `''` 를 찾고 소켓은 `'/'` 에 있어 늘 거짓** — 옛 Manager 의 **옛 Socket(옛 `auth`)** 이 돌아와 옛 토큰으로 거부당했다. `forceNew` 로 연결마다 새로 만든다(`socketOptions()`). **`SocketClient` 를 가짜로 바꾼 재연결 테스트는 이것을 못 잡았다** — 실제 라이브러리 경로는 웹에서 재현해 봤다 (웹 확인, 2026-10-07) |
 | 재연결 뒤에도 DM 상대가 「나간 사람」 · 멘션 자동완성이 빔 | 실패를 빈 목록으로 삼키는 provider(`spaceMembersProvider`)는 **오프라인으로 켜면 빈 값에 머문다.** 재연결(`SocketConnected`) 때 채널 · 카테고리와 함께 무효화한다. 새로 「실패를 삼키는」 provider 를 만들면 여기에 같이 넣을 것 (웹 확인, 2026-10-07) |
@@ -327,6 +328,9 @@ JwtAuthGuard         전역(APP_GUARD). @Public() 으로만 예외
     멘션은 저장하지 않고 `@everyone` 이 `@channel` 을 덮는다 (7-4)
 13. **머무는 곳은 셸 안, 파고드는 곳은 덮어서.** 채널 · 이슈 보드 · 스프린트 · 파일은
     셸 안, 특정 메시지 · 저장소에서 파고드는 스레드 · 저장소 · 커밋 · PR 은 덮어서 연다.
+    **예외 — 넓은 셸의 스레드 · AI 는 대화 옆 오른쪽 판에 연다**(`side_panel.dart`, 2026-10-10).
+    답글을 달 때 · 지금 대화에 대해 물을 때가 그 대화가 가장 필요한 순간이다. 판은 라우트가
+    아니라 셸 상태라 채널을 옮기면 닫히고, 스레드 주소(`…/t/:id`)는 그대로 덮어 연다(알림 · 링크).
     **카드에 그림자를 쓰지 않는다**(표면 세 단계가 깊이를 맡는다). 색 · 글자 · 간격은
     `NxTheme` 에서만 꺼낸다 — 화면에 값을 박으면 다크 · 라이트 한쪽이 깨진다
     (UI 리디자인 · 15)
@@ -402,13 +406,17 @@ features/desktop/        OS 알림 · 트레이(«마지막» 4) — DesktopShel
                          main.dart 가 뿌리에서 붙든다. 이 기기 스위치는 설정 창 「알림」
 features/presence/       프레즌스(REST 처음 값 + 소켓) · 이 기기 상태 알림(생명주기 · 10분 무입력) · 입력 중(17-2).
                          main.dart 가 뿌리에서 붙든다. DM 묶음 · 사람 고르기는 features/channel/dm.dart(17-1)
-features/shell/          반응형 셸 — app_shell(분기) · space_rail · channel_pane
+features/shell/          반응형 셸 — app_shell(분기 · ShellHome: 마지막 채널로 곧장) · space_rail(스페이스가 둘 이상일 때만) ·
+                         channel_pane · side_panel(넓은 셸의 오른쪽 판 — 스레드 · AI)
+shared/time_labels.dart  날짜 구분선 · 시각 툴팁 글자(기기 시간대)
+shared/josa.dart         조사 고르기(`withJosa` · `withRo`) — 고유명사 뒤 조사를 띄어 쓰지 않는다. 영문 · 숫자는 읽는 소리로
 shared/markdown/         마크다운 — 파서(블록 · 인라인) · MarkdownBody · 평문화
                          **멘션이 이 파서 안에 있다**(파서가 하나여야 한다)
 shared/widgets/          NexusAvatar 등 공용 위젯
 ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 · 입력 · 메뉴 · 다이얼로그 · 토스트 ·
                          스위치 · 칩 · 화면 틀. **material · cupertino 를 import 하지 않는다.**
                          디버그 빌드의 `/dev/ui` 가 갤러리(`--dart-define=NX_START=/dev/ui` 로 바로 연다)
+assets/fonts/            Pretendard(KS X 1001 서브셋) · JetBrains Mono NL — 다시 만들 때 scripts/subset_fonts.py
 ```
 
 **앱 규칙**
@@ -488,6 +496,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 | 17 | DM · 프레즌스 · 타이핑 — 17-1 DM(`kind=dm` 비공개 채널 + key 유일성 · 사이드바 묶음 · 사람 고르기 · 떠난 상대 읽기 전용) · 17-2 프레즌스(소켓에서 계산 · 5초 유예 · 10분 무입력 자리비움) · 입력 중. 설계 [17단계 설계](docs/superpowers/specs/2026-10-05-17-DM-프레즌스-타이핑-design.md) | ✅ |
 | 18 | 인앱 알림 — 알림함(멘션 · `@channel` · DM · 내 글의 답글, 한 메시지에 한 알림) · `notifications` 재작성 · 메시지와 한 트랜잭션 · 볼 수 있는 채널만 · 음소거면 직접 멘션만 · 채널 읽음이 알림도 읽음 · 설정 창의 종류별 스위치. 설계 [18단계 설계](docs/superpowers/specs/2026-10-05-18-인앱-알림-design.md) | ✅ |
 | 19 | AI 기록 — AI 패널의 「지난 대화」(사슬 단위 목록 · 끝 답이 늦은 순 · 커서 페이지) · 다시 열어 이어 묻기 · 본인 것 · 볼 수 있는 채널만 · 스키마 변경 없이 재귀 CTE. 설계 [19단계 설계](docs/superpowers/specs/2026-10-07-19-AI-기록-design.md) | ✅ |
+| — | UI/UX 개선(2026-10-10) — 사용자 관점 검토 반영: 서체 번들 · 마지막 스페이스 · 채널로 곧장 · 날짜 구분선 · 멘션 강조 · 넓은 셸의 오른쪽 판(스레드 · AI) · 조사 · 「이슈」 이름 통일 · 우선순위 막대 · 새 이슈에서 담당자 · 스프린트 · 빈 화면 안내 · 모바일 머리 줄 | ✅ |
 | **20** | **GitLab 연동** — provider 추상화 뒤에 GitLab. 배포 뒤로 미뤄도 되는 유일한 단계 | |
 | **마지막** | 푸시 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 · 배포(S3 드라이버 · prod compose). 푸시 · 데스크톱 알림 스위치는 14단계 설정 창에 더한다 | 🔸 배포 기반(S3 드라이버 · `TRUST_PROXY` · `deploy/` compose · nginx 한 오리진 · 백업) ✅ · 테넌트 격리 검증(`check:tenancy`) ✅ · 딥링크(새로고침 · 로그인 뒤 원래 주소 · `/invite/:코드`) ✅ · 가입 화면 ✅ · 데스크톱 · 웹 알림 + Windows 트레이(패키지 없이 — Shell_NotifyIcon · `dart:js_interop`) ✅ · 모바일 푸시는 뺐다 |
 
@@ -500,7 +509,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 [진행 기록](docs/진행-기록.md) «빚 정리 (2026-09-27)».
 
 - **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 535개(2026-10-09 «마지막» 5 시점)는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 20종 1,123 케이스**(2026-10-09 «마지막» 테넌트 격리 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
-- **앱 통합 테스트는 CI 에서 창 없이만 돈다(2026-10-06).** `linux/` 플랫폼을 들이지 않고 flutter_tester 로 돌린다(`app:flow:headless`) — 창이 있어야 드러나는 것(실제 렌더링 · 창 크기 변화 · 태블릿 · 모바일 배치의 흐름)은 여전히 덮지 않는다. 흐름은 데스크톱 배치만 탄다. **화면 모습을 바꾼 변경은 Windows 창(`app:flow`)으로 한 번 본다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **591개**(2026-10-09 «마지막» 5 시점)
+- **앱 통합 테스트는 CI 에서 창 없이만 돈다(2026-10-06).** `linux/` 플랫폼을 들이지 않고 flutter_tester 로 돌린다(`app:flow:headless`) — 창이 있어야 드러나는 것(실제 렌더링 · 창 크기 변화 · 태블릿 · 모바일 배치의 흐름)은 여전히 덮지 않는다. 흐름은 데스크톱 배치만 탄다. **화면 모습을 바꾼 변경은 Windows 창(`app:flow`)으로 한 번 본다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **618개**(2026-10-10 UI/UX 개선 시점)
 - **운영 LLM provider 는 `gemini` 로 정했다(사용자 결정, 2026-10-07).** 실제로 확인한 경로이고 «마지막» 단계의 배포도 이것을 쓴다. **`local`(Ollama) 경로는 실측하지 않은 채 남는다(13-1)** — 쓰는 곳이 없어 깨지는 것이 없다. Gemini 무료 한도(3.5-flash 하루 20회)가 모자라거나 비공개 저장소 코드를 외부로 보내지 않으려 해 `LLM_PROVIDER=local` 로 바꾸게 되면 **그 전에 먼저 태운다.** `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. 설치(`winget install Ollama.Ollama`)와 모델 받기(약 4.7GB)는 사람이 한다.
 - **인덱싱 큐의 5xx 소진은 단위 테스트만 덮는다.** 재시도 대기가 1분씩이라 계약 검증으로 세 번을 태우면 3분이 걸린다. 판정(`shouldGiveUpIndexing` · `indexRetryDelayMs`)은 순수 함수로 빼 두었다. 429 · 리스 유효/만료는 `check:indexing` 이 본다.
 - **프레즌스는 서버 메모리에 있다(17-2).** 인스턴스가 둘이 되면 서로의 연결을 모른다 — `redis-io.adapter` 를 되살릴 때 함께 Redis 로 옮긴다. 서버를 재시작하면 모두 오프라인이 됐다가 앱이 다시 붙으며 돌아온다

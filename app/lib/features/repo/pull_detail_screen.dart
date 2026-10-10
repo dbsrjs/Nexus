@@ -144,7 +144,7 @@ class PullDetailScreen extends ConsumerWidget {
           if (htmlUrl != null)
             NxIconButton(
               icon: NxIcons.external,
-              label: 'GitHub 에서 열기',
+              label: 'GitHub에서 열기',
               onPressed: () => launchUrl(
                 Uri.parse(htmlUrl),
                 mode: LaunchMode.externalApplication,
@@ -157,7 +157,7 @@ class PullDetailScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('PR 을 불러오지 못했습니다', style: nx.text.base),
+              Text('PR을 불러오지 못했습니다', style: nx.text.base),
               const SizedBox(height: NxSpacing.sp4),
               NxButton(
                 label: '다시 확인',
@@ -287,7 +287,7 @@ class _PullDetailBody extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: NxButton(
-                label: 'GitHub 에서 보기',
+                label: 'GitHub에서 보기',
                 kind: NxButtonKind.ghost,
                 size: NxSize.sm,
                 onPressed: () => launchUrl(

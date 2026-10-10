@@ -259,10 +259,18 @@ class NxFontSize {
   static const double xl = 24;
 }
 
+// 둘 다 pubspec.yaml 로 싣는다. Pretendard 는 KS X 1001 2,350자로 자른 판이라(scripts/subset_fonts.py)
+// 목록 밖 음절은 대체 서체로 간다 — 한글이 있는 서체를 앞에 둔다(Segoe UI 에는 한글이 없다).
 const _font = 'Pretendard';
-const _fallback = <String>['Segoe UI', 'Noto Sans KR'];
+const _fallback = <String>[
+  'Malgun Gothic',
+  'Apple SD Gothic Neo',
+  'Noto Sans KR',
+];
 const _mono = 'JetBrains Mono';
-const _monoFallback = <String>['Consolas', 'monospace'];
+// 코드 안 한글 주석은 모노에 글리프가 없어 여기로 온다. CSS 의 'monospace' 는 Flutter 에서
+// 실제 서체로 풀리지 않아 뺐다.
+const _monoFallback = <String>['Pretendard', 'Consolas', 'Malgun Gothic'];
 
 /// 글자 스타일. 크기 이름은 토큰 그대로(`--text-sm` → `sm`), 쓰임새 이름은 그 위의 조합이다.
 @immutable

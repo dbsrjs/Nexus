@@ -11,6 +11,32 @@ import '../space/space_controller.dart';
 import '../space/space_dialogs.dart';
 import '../settings/settings_controller.dart';
 
+/// 레일을 그릴 만큼 스페이스가 있는가 — 둘 이상일 때만. 하나뿐이면 72px 열이 아바타 하나와
+/// + 하나만 들고 있었다(2026-10-10 UI/UX 검토). 그때는 계정 · 더하기가 채널 판 아래
+/// ([SpaceAccountFooter])로 내려간다. 셸이 이것으로 정한다.
+bool showSpaceRail(WidgetRef ref) =>
+    (ref.watch(spacesProvider).value ?? const []).length > 1;
+
+/// 레일이 없을 때 채널 판 맨 아래 — 내 계정 + 스페이스 더하기. 레일 맨 아래와 같은 두 버튼이다.
+class SpaceAccountFooter extends StatelessWidget {
+  const SpaceAccountFooter({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = NxTheme.of(context).colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: NxSpacing.sp6,
+        vertical: NxSpacing.sp4,
+      ),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: c.divider)),
+      ),
+      child: const Row(children: [AccountButton(), Spacer(), AddSpaceButton()]),
+    );
+  }
+}
+
 /// 왼쪽 끝 72px 레일. 스페이스 전환과 내 계정이 여기 있다.
 class SpaceRail extends ConsumerWidget {
   const SpaceRail({super.key});
@@ -46,10 +72,10 @@ class SpaceRail extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: NxSpacing.sp4),
-          const _AddSpaceButton(),
+          const AddSpaceButton(),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: NxSpacing.sp6),
-            child: _AccountButton(),
+            child: AccountButton(),
           ),
         ],
       ),
@@ -104,8 +130,8 @@ class _SpaceButton extends StatelessWidget {
 ///
 /// 테마는 여기 있다가 설정 창 「화면」으로 옮겼다(14단계 설계 D3). 같은 설정이
 /// 두 곳에 있으면 어느 쪽이 진짜인지 묻게 된다.
-class _AccountButton extends ConsumerWidget {
-  const _AccountButton();
+class AccountButton extends ConsumerWidget {
+  const AccountButton({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -157,8 +183,8 @@ class _AccountButton extends ConsumerWidget {
 }
 
 /// 스페이스 더하기(16단계 설계 D1) — 만들기 · 초대 코드로 참여.
-class _AddSpaceButton extends ConsumerWidget {
-  const _AddSpaceButton();
+class AddSpaceButton extends ConsumerWidget {
+  const AddSpaceButton({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,7 @@ import '../../domain/models/ai_thread.dart';
 import '../../shared/markdown/markdown_body.dart';
 import '../../ui/ui.dart';
 import '../repo/repo_controller.dart';
+import '../shell/side_panel.dart';
 import 'ai_controller.dart';
 import 'ai_history.dart';
 import 'ai_request.dart';
@@ -38,10 +41,32 @@ Future<void> showAiPanel(
   CreateIssueFromDraft? onCreateIssue,
   bool canAddRepo = false,
 }) {
-  ProviderScope.containerOf(
-    context,
-    listen: false,
-  ).read(aiControllerProvider.notifier).abandon();
+  final container = ProviderScope.containerOf(context, listen: false);
+  container.read(aiControllerProvider.notifier).abandon();
+
+  // 넓은 셸이면 대화 옆 오른쪽 판에 연다 — 묻는 동안 그 대화가 막에 가리지 않게
+  // (2026-10-10 UI/UX 검토). 닫힐 때 끝나는 Future 는 대화상자와 같다.
+  if (sidePanelAvailable(context)) {
+    final closed = Completer<void>();
+    container
+        .read(sidePanelProvider.notifier)
+        .open(
+          AiSidePanel(
+            onClosed: () {
+              if (!closed.isCompleted) closed.complete();
+            },
+            builder: (close) => AiPanel(
+              spaceId: spaceId,
+              initialContexts: contexts,
+              onPost: onPost,
+              onCreateIssue: onCreateIssue,
+              canAddRepo: canAddRepo,
+              onClose: close,
+            ),
+          ),
+        );
+    return closed.future;
+  }
 
   return NxDialog.panel<void>(
     context,
@@ -65,6 +90,7 @@ class AiPanel extends ConsumerStatefulWidget {
     this.onPost,
     this.onCreateIssue,
     this.canAddRepo = false,
+    this.onClose,
   });
 
   final String spaceId;
@@ -72,6 +98,9 @@ class AiPanel extends ConsumerStatefulWidget {
   final Future<void> Function(String markdown)? onPost;
   final CreateIssueFromDraft? onCreateIssue;
   final bool canAddRepo;
+
+  /// 패널을 닫는 방법. 비우면 감싼 대화상자를 닫는다(Navigator.pop) — 오른쪽 판은 넘긴다.
+  final VoidCallback? onClose;
 
   @override
   ConsumerState<AiPanel> createState() => _AiPanelState();
@@ -172,6 +201,15 @@ class _AiPanelState extends ConsumerState<AiPanel> {
     });
   }
 
+  void _close() {
+    final onClose = widget.onClose;
+    if (onClose != null) {
+      onClose();
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _addRepo() async {
     final picked = await NxDialog.panel<RepoContext>(
       context,
@@ -208,7 +246,7 @@ class _AiPanelState extends ConsumerState<AiPanel> {
         AiRunning() => _Running(
           onAbandon: () {
             ref.read(aiControllerProvider.notifier).abandon();
-            Navigator.of(context).pop();
+            _close();
           },
           onRetry: () => ref.read(aiControllerProvider.notifier).retry(),
         ),
@@ -318,11 +356,12 @@ class _AiPanelState extends ConsumerState<AiPanel> {
           const SizedBox(height: NxSpacing.sp5),
           _Actions(
             run: last,
+            onClose: _close,
             onPost: widget.onPost,
             onCreateIssue: widget.onCreateIssue == null
                 ? null
                 : () {
-                    Navigator.of(context).pop();
+                    _close();
                     widget.onCreateIssue!(
                       title: last.title ?? '',
                       description: last.description ?? '',
@@ -631,12 +670,16 @@ class _Actions extends StatefulWidget {
     required this.onPost,
     required this.onCreateIssue,
     required this.onAskAgain,
+    required this.onClose,
   });
 
   final AiRun run;
   final Future<void> Function(String markdown)? onPost;
   final VoidCallback? onCreateIssue;
   final VoidCallback onAskAgain;
+
+  /// 붙인 뒤 패널을 닫는 방법(대화상자 · 오른쪽 판).
+  final VoidCallback onClose;
 
   @override
   State<_Actions> createState() => _ActionsState();
@@ -650,7 +693,7 @@ class _ActionsState extends State<_Actions> {
     setState(() => _posting = true);
     try {
       await widget.onPost!(widget.run.markdown ?? '');
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) widget.onClose();
     } finally {
       // 실패해서 패널이 남으면 다시 누를 수 있어야 한다.
       if (mounted) setState(() => _posting = false);

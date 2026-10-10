@@ -66,6 +66,8 @@ class BoardActions {
     String? description,
     IssueStatus? status,
     IssuePriority? priority,
+    String? assigneeId,
+    String? sprintId,
     String? originMessageId,
   }) async {
     final spaceId = _ref.read(currentSpaceIdProvider);
@@ -78,6 +80,8 @@ class BoardActions {
           description: description,
           status: status,
           priority: priority,
+          assigneeId: assigneeId,
+          sprintId: sprintId,
           originMessageId: originMessageId,
         );
     return created != null;

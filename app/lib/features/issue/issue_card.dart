@@ -8,6 +8,7 @@ import '../../ui/ui.dart';
 import '../space/space_controller.dart';
 import 'board_controller.dart';
 import 'label_widgets.dart';
+import 'priority_mark.dart';
 
 /// 칸반 카드 한 장(캔버스 「보드」). 제목이 먼저, 아래 한 줄에 키 · 우선순위 · 담당 · 포인트.
 ///
@@ -89,7 +90,7 @@ class IssueCard extends ConsumerWidget {
               children: [
                 Text(issue.key, style: nx.text.mono),
                 const SizedBox(width: NxSpacing.sp4),
-                _Priority(priority: issue.priority),
+                IssuePriorityTag(priority: issue.priority),
                 const Spacer(),
                 if (issue.storyPoints != null) ...[
                   Text('${issue.storyPoints}p', style: nx.text.mono),
@@ -111,24 +112,6 @@ class IssueCard extends ConsumerWidget {
         ],
       ),
     );
-  }
-}
-
-/// 우선순위 — 점과 글자(색만으로 말하지 않는다, 디자인 시스템 §6).
-class _Priority extends StatelessWidget {
-  const _Priority({required this.priority});
-
-  final IssuePriority priority;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = NxTheme.of(context).colors;
-    final color = switch (priority) {
-      IssuePriority.high => c.danger,
-      IssuePriority.mid => c.warning,
-      IssuePriority.low => c.success,
-    };
-    return NxTag(issuePriorityLabel(priority), dot: true, color: color);
   }
 }
 

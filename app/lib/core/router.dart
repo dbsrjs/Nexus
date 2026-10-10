@@ -69,7 +69,11 @@ List<RouteBase> appRoutes() => [
   GoRoute(path: '/', builder: (_, _) => const _SplashScreen()),
   GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
   GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
-  GoRoute(path: '/spaces', builder: (_, _) => const SpacePickerScreen()),
+  GoRoute(
+    path: '/spaces',
+    builder: (_, state) =>
+        SpacePickerScreen(auto: state.uri.queryParameters['auto'] == '1'),
+  ),
   // 초대 링크(«마지막»). 셸 밖이다 — 아직 그 스페이스의 멤버가 아니다.
   GoRoute(
     path: '/invite/:code',

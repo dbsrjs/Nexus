@@ -78,6 +78,26 @@ flutter:
   # PNG 는 그 스크립트가 만든 것이니 손으로 고치지 말 것.
   assets:
     - assets/logo/
+    # 서체 라이선스(OFL 은 서체와 함께 배포할 것을 요구한다).
+    - assets/fonts/Pretendard-OFL.txt
+    - assets/fonts/JetBrainsMono-OFL.txt
+
+  # 서체. 시스템에 깔려 있기를 기대하지 않고 싣는다 — 깔리지 않은 PC · 웹에서는 코드 블록과
+  # 타임스탬프가 고정폭이 아니게 그려졌다(2026-10-10 UI/UX 검토). 자른 판이다 —
+  # 만드는 법과 이유는 scripts/subset_fonts.py. 둘 다 OFL-1.1(같은 폴더의 *-OFL.txt).
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.ttf
+        - asset: assets/fonts/Pretendard-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.ttf
+          weight: 700
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/JetBrainsMonoNL-Regular.ttf
+        - asset: assets/fonts/JetBrainsMonoNL-SemiBold.ttf
+          weight: 600
 
   # To add assets to your application, add an assets section, like this:
   # assets:
