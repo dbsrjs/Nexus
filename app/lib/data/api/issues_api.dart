@@ -1,4 +1,3 @@
-
 import '../../domain/models/issue.dart';
 import '../../domain/models/issue_comment.dart';
 import 'api_client.dart';
@@ -60,6 +59,7 @@ class IssuesApi {
     IssueStatus? status,
     IssuePriority? priority,
     String? assigneeId,
+    String? sprintId,
     String? originMessageId,
   }) async {
     return guardApi(() async {
@@ -73,6 +73,7 @@ class IssuesApi {
           if (status != null) 'status': status.name,
           if (priority != null) 'priority': priority.name,
           'assigneeId': ?assigneeId,
+          'sprintId': ?sprintId,
         },
       );
       return Issue.fromJson(res.data!);

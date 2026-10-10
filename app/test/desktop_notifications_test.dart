@@ -48,7 +48,7 @@ void main() {
         isTrue,
       );
       final sent = shell.sent.single;
-      expect(sent.title, '가나 님이 #개발 에서 나를 멘션했습니다');
+      expect(sent.title, '가나 님이 #개발에서 나를 멘션했습니다');
       expect(sent.body, '급함 @다라 봐 주세요');
       expect(sent.tag, 'c1');
       expect(sent.payload, '/s/s1/c/c1');
@@ -343,6 +343,18 @@ class _FakeStorage implements SettingsStorage {
 
   @override
   Future<void> writeThemePreference(ThemePreference mode) async {}
+
+  @override
+  Future<String?> readLastSpace() async => null;
+
+  @override
+  Future<void> writeLastSpace(String spaceId) async {}
+
+  @override
+  Future<String?> readLastChannel(String spaceId) async => null;
+
+  @override
+  Future<void> writeLastChannel(String spaceId, String channelId) async {}
 }
 
 class _FakeApi implements NotificationsApi {

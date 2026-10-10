@@ -25,6 +25,8 @@ class SettingsStorage {
 
   static const _themeKey = 'nexus.themeMode';
   static const _desktopNotifyKey = 'nexus.desktopNotifications';
+  static const _lastSpaceKey = 'nexus.lastSpace';
+  static const _lastChannelKey = 'nexus.lastChannel';
 
   /// 저장된 테마. 없거나 읽지 못하면 **시스템을 따른다**.
   ///
@@ -66,6 +68,39 @@ class SettingsStorage {
       );
     } catch (_) {
       // 테마와 같다 — 이번 실행에는 반영돼 있고, 다음 실행에 기본값으로 돌아갈 뿐이다.
+    }
+  }
+
+  /// 마지막으로 들어간 스페이스 · 그 스페이스에서 마지막으로 본 채널(2026-10-10 UI/UX 검토).
+  ///
+  /// 앱을 켤 때마다 스페이스 고르기 → 「채널을 선택하세요」 빈 본문을 두 번 지나던 것을 줄인다.
+  /// 기기마다 다른 값이라(이 PC 에서 보던 곳) 서버에 두지 않는다. 못 읽으면 null — 그때는
+  /// 첫 스페이스 · 첫 채널로 간다. 로그아웃해도 지우지 않는다: 같은 사람이 다시 들어올 때 쓰고,
+  /// 다른 사람이면 그 스페이스의 멤버가 아니라 고르기 목록에 없어 쓰이지 않는다.
+  Future<String?> readLastSpace() => _readOrNull(_lastSpaceKey);
+
+  Future<void> writeLastSpace(String spaceId) =>
+      _writeQuietly(_lastSpaceKey, spaceId);
+
+  Future<String?> readLastChannel(String spaceId) =>
+      _readOrNull('$_lastChannelKey.$spaceId');
+
+  Future<void> writeLastChannel(String spaceId, String channelId) =>
+      _writeQuietly('$_lastChannelKey.$spaceId', channelId);
+
+  Future<String?> _readOrNull(String key) async {
+    try {
+      return await _storage.read(key: key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _writeQuietly(String key, String value) async {
+    try {
+      await _storage.write(key: key, value: value);
+    } catch (_) {
+      // 기억하지 못해도 다음에 첫 채널로 갈 뿐이다.
     }
   }
 

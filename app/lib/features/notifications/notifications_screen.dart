@@ -57,15 +57,9 @@ class NotificationsScreen extends ConsumerWidget {
         ),
       );
     } else if (state.items.isEmpty) {
-      body = Center(
-        child: Padding(
-          padding: const EdgeInsets.all(NxSpacing.sp6),
-          child: Text(
-            '아직 알림이 없습니다.\n나를 부른 멘션 · DM · 내 글의 답글이 여기 모입니다.',
-            textAlign: TextAlign.center,
-            style: nx.text.secondary,
-          ),
-        ),
+      body = const NxEmptyState(
+        title: '아직 알림이 없습니다',
+        description: '나를 부른 멘션 · DM · 내 글의 답글이 여기 모입니다.',
       );
     } else {
       body = NotificationListener<ScrollNotification>(
@@ -109,11 +103,8 @@ class NotificationsScreen extends ConsumerWidget {
               size: NxSize.sm,
               onPressed: () => _readAll(context, ref),
             ),
-          NxIconButton(
-            icon: NxIcons.refresh,
-            label: '새로고침',
-            onPressed: () => ref.read(notificationsProvider.notifier).refresh(),
-          ),
+          // 새로고침 버튼은 뺐다 — 알림은 소켓으로 오고 다시 붙을 때 컨트롤러가 다시 받는다.
+          // 실시간 화면의 새로고침은 「눌러야 최신이 되나」를 의심하게 만든다(2026-10-10 UI/UX 검토).
         ],
       ),
       body: body,

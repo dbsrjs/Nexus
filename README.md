@@ -122,7 +122,7 @@ Windows 데스크톱 빌드에는 **개발자 모드**가 켜져 있어야 한�
 | `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint — 순수 로직 · 가드 · 권한 규칙 | 551개 |
 | `npm run check:*` | **실서버 · 실DB · 실소켓 계약 검증** — 실시간 · 리액션 · 스레드 · 첨부 · 이슈 · GitHub 연동 · 인덱싱 · AI · 설정 · 멤버 · 권한 · DM · 프레즌스 · 알림 · 통화(실제 LiveKit 컨테이너) · **테넌트 격리**(`check:tenancy` — 스페이스 경로 전부를 남의 id 로 친다). GitHub 은 스스로 띄우는 가짜 서버로 대신한다 | 21종 1,169개 |
 | `npm run check:migrations` · `check:sql-time` | 마이그레이션 · raw SQL 정적 검사 (DB 불필요) | |
-| `cd app && flutter analyze && flutter test` | 앱 정적 분석 · 단위 · 위젯 테스트 | 624개 |
+| `cd app && flutter analyze && flutter test` | 앱 정적 분석 · 단위 · 위젯 테스트 | 655개 |
 | `npm run app:flow` | 앱 통합 테스트 — Windows 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 설정 · 멤버 · DM · 알림함 · AI 까지 돈다 | 약 30초 |
 | `npm run app:flow:headless` | 같은 흐름을 창 없이(flutter_tester) 돈다 — CI 가 이것을 돈다 | 약 15초 |
 

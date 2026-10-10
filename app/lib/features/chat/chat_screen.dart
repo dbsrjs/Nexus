@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../shared/time_labels.dart';
 
 import '../../data/api/api_failure.dart';
 import '../../domain/models/message.dart';
@@ -199,15 +200,60 @@ class MessageListState extends ConsumerState<MessageList> {
         final message = widget.items[i];
         // 바로 아래(= 목록에서 다음) 메시지와 작성자가 같으면 머리말을 생략한다.
         final next = i + 1 < widget.items.length ? widget.items[i + 1] : null;
+        // 날이 바뀌는 곳(= 아래 메시지와 날짜가 다르거나, 불러온 것 중 가장 오래된 것)에 구분선.
+        final newDay =
+            next == null || !isSameLocalDay(message.createdAt, next.createdAt);
         final grouped =
-            next != null &&
+            !newDay &&
             next.author.id == message.author.id &&
             !message.isDeleted &&
             !next.isDeleted &&
             message.createdAt.difference(next.createdAt).inMinutes.abs() < 5;
 
-        return MessageTile(message: message, grouped: grouped);
+        final tile = MessageTile(message: message, grouped: grouped);
+        if (!newDay) return tile;
+        // reverse 목록이라 Column 의 위쪽이 화면에서도 위(더 옛날 쪽)다.
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DaySeparator(at: message.createdAt),
+            tile,
+          ],
+        );
       },
+    );
+  }
+}
+
+/// 날짜 구분선 — 가운데 「오늘」 · 「10월 3일 (금)」 + 양옆 선.
+class DaySeparator extends StatelessWidget {
+  const DaySeparator({super.key, required this.at});
+
+  final DateTime at;
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        NxSpacing.sp6,
+        NxSpacing.sp7,
+        NxSpacing.sp2,
+      ),
+      child: Semantics(
+        header: true,
+        child: Row(
+          children: [
+            const Expanded(child: NxDivider()),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: NxSpacing.sp4),
+              child: Text(dayLabel(at), style: nx.text.meta),
+            ),
+            const Expanded(child: NxDivider()),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -216,8 +262,9 @@ class _EmptyBlock extends StatelessWidget {
   const _EmptyBlock();
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Text('첫 메시지를 보내 보세요.', style: NxTheme.of(context).text.secondary),
+  Widget build(BuildContext context) => const NxEmptyState(
+    title: '아직 대화가 없습니다',
+    description: '아래 입력창에 첫 메시지를 보내 보세요.',
   );
 }
 

@@ -9,17 +9,28 @@ import '../../data/api/api_failure.dart';
 import '../../domain/models/message.dart';
 import '../../domain/models/repo_browse.dart';
 import '../../shared/markdown/markdown_body.dart';
+import '../../shared/time_labels.dart';
 import '../../shared/widgets/user_avatar.dart';
 import '../../ui/ui.dart';
+import '../auth/auth_controller.dart';
 import '../channel/channel_controller.dart';
 import '../repo/browse_controller.dart';
 import '../space/space_controller.dart';
 import '../space/members_controller.dart';
+import '../shell/side_panel.dart';
 import 'attachment_widgets.dart';
 import 'mention_text.dart';
 import 'message_controller.dart';
 import '../issue/new_issue_sheet.dart';
 import 'selection_controller.dart';
+
+/// 이 메시지가 나를 불렀는가 — 직접 멘션 · `@channel` · `@everyone`. 내가 쓴 것은 아니다.
+bool mentionsMe(Message message, String? myId) {
+  if (myId == null || message.author.id == myId) return false;
+  return message.mentions.any(
+    (m) => m.type == 'channel' || m.type == 'everyone' || m.userId == myId,
+  );
+}
 
 /// 마우스가 주인 플랫폼 — 메시지에 올리면 동작 줄이 뜬다. 터치는 길게 눌러 동작 카드를
 /// 연다(바텀시트가 아니다, 15단계 D8). 폭이 아니라 입력 방식의 차이다.
@@ -121,6 +132,12 @@ class _MessageTileState extends ConsumerState<MessageTile> {
     final spaceId = ref.watch(currentSpaceIdProvider);
     final canAct = !message.isLocal && !selection.active;
     final showToolbar = _pointerFirst && _hovered && canAct;
+    final myId = ref.watch(
+      authControllerProvider.select(
+        (a) => a is AuthSignedIn ? a.user.id : null,
+      ),
+    );
+    final mentioned = mentionsMe(message, myId);
 
     final body = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,7 +186,14 @@ class _MessageTileState extends ConsumerState<MessageTile> {
                           ),
                         ),
                         const SizedBox(width: NxSpacing.sp4),
-                        Text(_hhmm(message.createdAt), style: nx.text.mono),
+                        // 줄에는 시:분만, 올리면 날짜까지 — 날이 바뀌는 곳은 구분선이 알린다.
+                        NxTooltip(
+                          message: fullStampLabel(message.createdAt),
+                          child: Text(
+                            clockLabel(message.createdAt),
+                            style: nx.text.mono,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -215,7 +239,11 @@ class _MessageTileState extends ConsumerState<MessageTile> {
           children: [
             AnimatedContainer(
               duration: NxMotion.micro,
-              color: selected
+              // 나를 부른 줄은 옅은 액센트 바탕(디자인 시스템 §2.4) — 알림을 눌러 들어온 사람이
+              // 어느 줄 때문에 왔는지 찾지 않게. 호버보다 우선한다(올려도 어느 줄인지 남는다).
+              // **선택 모드에서는 바탕을 선택에만 쓴다** — 같은 색이라 고르지 않은 멘션 줄이
+              // 골라 둔 것처럼 보였다. 그동안 멘션은 왼쪽 막대만 남긴다.
+              color: selected || (mentioned && !selection.active)
                   ? c.accentSubtle
                   : (showToolbar ? c.bgSurface : NxColors.transparent),
               padding: EdgeInsets.fromLTRB(
@@ -227,6 +255,16 @@ class _MessageTileState extends ConsumerState<MessageTile> {
               // 아직 서버에 닿지 않은 메시지는 흐리게 — 보냈는지 아닌지가 보여야 한다.
               child: Opacity(opacity: message.pending ? 0.5 : 1, child: body),
             ),
+            // 왼쪽 막대 — 바탕만으로는 라이트 테마에서 옅다. 레이아웃을 밀지 않게 겹쳐 그린다.
+            // 선택 모드에서도 남는다 — 그때는 이것만이 멘션 표시다.
+            if (mentioned)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 2,
+                child: ColoredBox(color: c.accent),
+              ),
             if (showToolbar)
               Positioned(
                 top: -14,
@@ -240,12 +278,6 @@ class _MessageTileState extends ConsumerState<MessageTile> {
         ),
       ),
     );
-  }
-
-  static String _hhmm(DateTime at) {
-    final local = at.toLocal();
-    return '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -470,10 +502,22 @@ class _ThreadSummary extends ConsumerWidget {
   }
 }
 
-/// 스레드 화면으로. 라우트가 진실의 원천이라 push 로 연다.
+/// 스레드를 연다. 넓은 셸이면 대화 옆 오른쪽 판에, 아니면 덮어 여는 스레드 화면으로(push).
 void _openThread(BuildContext context, WidgetRef ref, Message message) {
   final spaceId = ref.read(currentSpaceIdProvider);
   if (spaceId == null) return;
+  if (sidePanelAvailable(context)) {
+    ref
+        .read(sidePanelProvider.notifier)
+        .open(
+          ThreadSidePanel(
+            spaceId: spaceId,
+            channelId: message.channelId,
+            messageId: message.id,
+          ),
+        );
+    return;
+  }
   context.push('/s/$spaceId/c/${message.channelId}/t/${message.id}');
 }
 

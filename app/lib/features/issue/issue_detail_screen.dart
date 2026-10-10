@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../shared/josa.dart';
 import '../../domain/models/issue.dart';
 import '../../domain/models/issue_comment.dart';
 import '../../shared/markdown/markdown_body.dart';
@@ -14,6 +15,7 @@ import 'board_controller.dart';
 import 'issue_detail_controller.dart';
 import 'issue_planning_row.dart';
 import 'label_widgets.dart';
+import 'priority_mark.dart';
 import 'sprint_controller.dart';
 import '../space/space_controller.dart';
 
@@ -96,7 +98,7 @@ class _IssueDetailScreenState extends ConsumerState<IssueDetailScreen> {
 
     final ok = await NxDialog.confirm(
       context,
-      title: '${issue.key} 를 지울까요?',
+      title: '${withJosa(issue.key, '을', '를')} 지울까요?',
       body: '되돌릴 수 없습니다. 댓글도 함께 사라집니다.',
       confirmLabel: '지우기',
       danger: true,
@@ -121,13 +123,7 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final nx = NxTheme.of(context);
-    final c = nx.colors;
     final comments = ref.watch(issueCommentsProvider);
-    final priorityColor = switch (issue.priority) {
-      IssuePriority.high => c.danger,
-      IssuePriority.mid => c.warning,
-      IssuePriority.low => c.success,
-    };
 
     return Column(
       children: [
@@ -143,11 +139,7 @@ class _Body extends ConsumerWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   NxTag(issueStatusLabel(issue.status)),
-                  NxTag(
-                    '우선순위 ${issuePriorityLabel(issue.priority)}',
-                    dot: true,
-                    color: priorityColor,
-                  ),
+                  IssuePriorityTag(priority: issue.priority, prefix: '우선순위 '),
                   if (issue.assignee != null)
                     Row(
                       mainAxisSize: MainAxisSize.min,

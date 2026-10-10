@@ -384,3 +384,54 @@ class NxScrollBehavior extends ScrollBehavior {
     }
   }
 }
+
+/// 빈 화면 — 무엇이 없는지 + **다음에 할 일**(2026-10-10 UI/UX 검토).
+///
+/// 예전 빈 화면은 「아직 올라온 파일이 없습니다.」 한 줄이라 사용자가 거기서 멈췄다.
+/// 설명에 어디서 채워지는지를 적고, 할 수 있는 일이 있으면 [action] 으로 둔다.
+/// 그림 · 일러스트는 두지 않는다(조용한 작업 도구, 디자인 시스템 §1).
+class NxEmptyState extends StatelessWidget {
+  const NxEmptyState({
+    super.key,
+    required this.title,
+    this.description,
+    this.action,
+  });
+
+  final String title;
+  final String? description;
+
+  /// 보통 [NxButton] 하나.
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(NxSpacing.sp8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(title, textAlign: TextAlign.center, style: nx.text.title),
+              if (description != null) ...[
+                const SizedBox(height: NxSpacing.sp3),
+                Text(
+                  description!,
+                  textAlign: TextAlign.center,
+                  style: nx.text.secondary,
+                ),
+              ],
+              if (action != null) ...[
+                const SizedBox(height: NxSpacing.sp6),
+                action!,
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

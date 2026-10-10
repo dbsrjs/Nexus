@@ -22,11 +22,15 @@ class ThreadScreen extends ConsumerStatefulWidget {
     required this.spaceId,
     required this.channelId,
     required this.messageId,
+    this.onClose,
   });
 
   final String spaceId;
   final String channelId;
   final String messageId;
+
+  /// 데스크톱 셸의 오른쪽 판으로 열렸을 때 닫는 방법. 있으면 뒤로 가기 대신 닫기를 둔다.
+  final VoidCallback? onClose;
 
   @override
   ConsumerState<ThreadScreen> createState() => _ThreadScreenState();
@@ -59,10 +63,14 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
   @override
   void dispose() {
     // 스레드를 닫으면 구독을 놓아 준다. 채널 id 는 그대로 둔다 — 돌아갈 곳이다.
+    // **자기 스레드일 때만** 비운다 — 오른쪽 판에서 다른 스레드로 바꾸면 새 화면의 initState 가
+    // 먼저 새 id 를 싣고, 그 뒤에 이 정리가 돈다. 무조건 비우면 새 스레드의 구독이 끊긴다.
     final container = _container;
-    Future.microtask(
-      () => container.read(currentThreadIdProvider.notifier).set(null),
-    );
+    final mine = widget.messageId;
+    Future.microtask(() {
+      final notifier = container.read(currentThreadIdProvider.notifier);
+      if (container.read(currentThreadIdProvider) == mine) notifier.set(null);
+    });
     super.dispose();
   }
 
@@ -72,12 +80,23 @@ class _ThreadScreenState extends ConsumerState<ThreadScreen> {
     final replies = ref.watch(threadRepliesProvider);
 
     return NxPage(
-      header: NxHeader(
-        title: '스레드',
-        leading: NxBackButton(
-          fallback: '/s/${widget.spaceId}/c/${widget.channelId}',
-        ),
-      ),
+      header: widget.onClose == null
+          ? NxHeader(
+              title: '스레드',
+              leading: NxBackButton(
+                fallback: '/s/${widget.spaceId}/c/${widget.channelId}',
+              ),
+            )
+          : NxHeader(
+              title: '스레드',
+              actions: [
+                NxIconButton(
+                  icon: NxIcons.close,
+                  label: '스레드 닫기',
+                  onPressed: widget.onClose,
+                ),
+              ],
+            ),
       body: Column(
         children: [
           if (parent != null) _ParentBlock(parent: parent),
@@ -143,7 +162,8 @@ class _NoReplies extends StatelessWidget {
   const _NoReplies();
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Text('첫 답글을 남겨 보세요.', style: NxTheme.of(context).text.secondary),
+  Widget build(BuildContext context) => const NxEmptyState(
+    title: '아직 답글이 없습니다',
+    description: '아래 입력창에 첫 답글을 남겨 보세요.',
   );
 }

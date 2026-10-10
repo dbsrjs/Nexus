@@ -7,6 +7,8 @@ import '../../domain/models/space.dart';
 import '../../shared/widgets/nexus_avatar.dart';
 import '../../ui/ui.dart';
 import '../auth/auth_controller.dart';
+import '../settings/theme_controller.dart';
+import 'members_controller.dart';
 import 'space_controller.dart';
 import 'space_dialogs.dart';
 
@@ -14,11 +16,57 @@ import 'space_dialogs.dart';
 ///
 /// 아래에 스페이스 만들기 · 초대 코드로 참여(16단계 설계 D1 · D2)를 둔다. 처음 가입한
 /// 사람은 목록이 비어 있으니 이 둘이 첫 화면의 할 일이다.
-class SpacePickerScreen extends ConsumerWidget {
-  const SpacePickerScreen({super.key});
+///
+/// [auto] 면(로그인 직후 · 앱을 켠 직후 — `autoSpacePickerPath`) 고를 것이 분명할 때 곧장 넘긴다:
+/// 마지막으로 들어간 스페이스, 없으면 하나뿐인 스페이스. 넘기는 동안은 목록 대신 뼈대를 보인다 —
+/// 목록이 한 번 비쳤다 사라지면 무엇을 놓친 것처럼 보인다.
+class SpacePickerScreen extends ConsumerStatefulWidget {
+  const SpacePickerScreen({super.key, this.auto = false});
+
+  final bool auto;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SpacePickerScreen> createState() => _SpacePickerScreenState();
+}
+
+class _SpacePickerScreenState extends ConsumerState<SpacePickerScreen> {
+  /// 넘길지 아직 정하지 못했다. 한 번 정하면(넘기든 안 넘기든) 다시 따지지 않는다 —
+  /// 목록이 다시 오더라도 사용자가 보고 있는 화면을 빼앗지 않는다.
+  late bool _deciding = widget.auto;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_deciding) _decide();
+  }
+
+  Future<void> _decide() async {
+    final last = await ref.read(settingsStorageProvider).readLastSpace();
+    final repository = ref.read(workspaceRepositoryProvider);
+    final List<Space> list;
+    try {
+      // 서버에 먼저 묻는다 — 처음 켠 기기는 캐시가 비어 있어, 캐시만 보면 「하나뿐」을 놓친다.
+      // 못 닿으면(오프라인) 캐시로 정한다.
+      await repository.refreshSpaces();
+      list = await repository.watchSpaces().first;
+    } catch (_) {
+      // 목록을 못 받으면 오류 화면이 할 일을 맡는다.
+      if (mounted) setState(() => _deciding = false);
+      return;
+    }
+    if (!mounted) return;
+    final target = list.any((s) => s.id == last)
+        ? last
+        : (list.length == 1 ? list.single.id : null);
+    if (target == null) {
+      setState(() => _deciding = false);
+      return;
+    }
+    context.go('/s/$target');
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
     final spaces = ref.watch(spacesProvider);
 
@@ -40,23 +88,27 @@ class SpacePickerScreen extends ConsumerWidget {
                 Text('들어갈 곳을 고르세요', style: nx.text.secondary),
                 const SizedBox(height: NxSpacing.sp8),
                 Flexible(
-                  child: spaces.when(
-                    // 자리를 지키는 뼈대(D10) — 회전 스피너를 두지 않는다.
-                    loading: () => const NxSkeleton(lines: 3, lineHeight: 56),
-                    error: (error, _) => _ErrorBlock(
-                      error: error,
-                      onRetry: () => ref.invalidate(spacesProvider),
-                    ),
-                    data: (list) => list.isEmpty
-                        ? const _EmptyBlock()
-                        : ListView.separated(
-                            shrinkWrap: true,
-                            itemCount: list.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(height: NxSpacing.sp2),
-                            itemBuilder: (_, i) => _SpaceTile(space: list[i]),
+                  child: _deciding
+                      ? const NxSkeleton(lines: 3, lineHeight: 56)
+                      : spaces.when(
+                          // 자리를 지키는 뼈대(D10) — 회전 스피너를 두지 않는다.
+                          loading: () =>
+                              const NxSkeleton(lines: 3, lineHeight: 56),
+                          error: (error, _) => _ErrorBlock(
+                            error: error,
+                            onRetry: () => ref.invalidate(spacesProvider),
                           ),
-                  ),
+                          data: (list) => list.isEmpty
+                              ? const _EmptyBlock()
+                              : ListView.separated(
+                                  shrinkWrap: true,
+                                  itemCount: list.length,
+                                  separatorBuilder: (_, _) =>
+                                      const SizedBox(height: NxSpacing.sp2),
+                                  itemBuilder: (_, i) =>
+                                      _SpaceTile(space: list[i]),
+                                ),
+                        ),
                 ),
                 const SizedBox(height: NxSpacing.sp8),
                 Wrap(
@@ -68,9 +120,11 @@ class SpacePickerScreen extends ConsumerWidget {
                       kind: NxButtonKind.secondary,
                       onPressed: () => showCreateSpaceDialog(context, ref),
                     ),
+                    // 만들기와 같은 무게의 선택이라 같은 모양으로 둔다 — 하나만 옅은 바탕이면
+                    // 둘 중 하나를 권하는 것처럼 읽힌다(2026-10-10 UI/UX 검토).
                     NxButton(
                       label: '초대 코드로 참여',
-                      kind: NxButtonKind.ghost,
+                      kind: NxButtonKind.secondary,
                       onPressed: () => showJoinSpaceDialog(context, ref),
                     ),
                   ],
@@ -145,7 +199,7 @@ class _SpaceTile extends StatelessWidget {
                 Text(space.name, style: nx.text.strong),
                 const SizedBox(height: NxSpacing.sp1),
                 Text(
-                  '/${space.slug} · ${space.role.wire}',
+                  '/${space.slug} · ${roleLabel(space.role)}',
                   style: nx.text.meta,
                 ),
               ],

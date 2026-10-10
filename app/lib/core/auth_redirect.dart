@@ -28,9 +28,16 @@ String? authRedirect(AuthState auth, Uri location) {
     return _withFrom('/login', wanted);
   }
 
-  if (onAuthPage || path == '/') return safeReturnPath(carried) ?? '/spaces';
+  if (onAuthPage || path == '/') {
+    return safeReturnPath(carried) ?? autoSpacePickerPath;
+  }
   return null;
 }
+
+/// 로그인 직후 · 앱을 켠 직후의 기본 행선지. `auto` 가 붙으면 스페이스 고르기가 **마지막으로
+/// 들어간 스페이스(없으면 하나뿐인 스페이스)로 곧장 넘긴다**(2026-10-10 UI/UX 검토). 사용자가
+/// 직접 고르기로 온 길(스페이스에서 나옴 · 메뉴)에는 붙이지 않는다 — 거기서 튕겨 나가면 못 고른다.
+const autoSpacePickerPath = '/spaces?auto=1';
 
 bool _isWaypoint(String path) =>
     path == '/' || path == '/login' || path == '/signup';
