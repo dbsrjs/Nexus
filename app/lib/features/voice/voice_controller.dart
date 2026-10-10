@@ -46,6 +46,10 @@ class VoiceRosterNotifier extends Notifier<Map<String, List<String>>> {
           userIds.isEmpty ? copy.remove(channelId) : copy[channelId] = userIds;
           state = copy;
         case SocketConnected():
+          // 통화가 켜졌는지도 다시 묻는다 — 그 provider 는 실패를 「꺼짐」으로 삼켜, 오프라인으로
+          // 켠 앱은 서버가 돌아와도 「음성 채널」 만들기를 감춘 채였다(spaceMembersProvider 와 같다).
+          ref.invalidate(voiceEnabledProvider);
+          _load(ref.read(currentSpaceIdProvider));
         case RoomsInvalidated():
         case MemberChanged():
           _load(ref.read(currentSpaceIdProvider));

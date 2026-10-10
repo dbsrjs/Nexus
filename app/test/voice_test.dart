@@ -93,6 +93,17 @@ void main() {
       expect(api.rosterCalls, ['s1', 's1', 's1']);
     });
 
+    test('★ 오프라인으로 켜 「꺼짐」으로 삼켰어도 다시 붙으면 다시 묻는다', () async {
+      api.enabledError = const ApiException(ApiFailure.network);
+      container.listen(voiceEnabledProvider, (_, _) {});
+      await _settle();
+      expect(container.read(voiceEnabledProvider).value, isFalse);
+
+      api.enabledError = null;
+      await emit(const SocketConnected());
+      expect(container.read(voiceEnabledProvider).value, isTrue);
+    });
+
     test('처음 값을 못 받아도 던지지 않는다 — 아무도 없어 보일 뿐', () async {
       api.rosterError = const ApiException(ApiFailure.network);
       await emit(const SocketConnected());
@@ -580,8 +591,14 @@ class _FakeVoiceApi implements VoiceApi {
   final rosterCalls = <String>[];
   final ticketCalls = <String>[];
 
+  ApiException? enabledError;
+
   @override
-  Future<bool> enabled() async => true;
+  Future<bool> enabled() async {
+    final error = enabledError;
+    if (error != null) throw error;
+    return true;
+  }
 
   @override
   Future<VoiceTicket> ticket(String spaceId, String channelId) async {

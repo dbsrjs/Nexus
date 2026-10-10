@@ -116,6 +116,10 @@ const memberMakes = await api('POST', ch(), { token: ben.token, body: { name: 'y
 check('member 는 채널을 못 만든다(403 — 채널 만들기와 같은 규칙)', memberMakes.status === 403, `status=${memberMakes.status}`);
 const priv = (await api('POST', ch(), { token: ann.token, body: { name: 'Secret', kind: 'voice', isPrivate: true } })).json;
 check('비공개 음성 채널', priv?.kind === 'voice' && priv?.isPrivate === true);
+const voiceMsg = await api('POST', ch(`/${lounge?.id}/messages`), { token: ann.token, body: { body: 'hello' } });
+check('★ 음성 채널에는 메시지를 못 보낸다(400 — 보일 곳이 없다)', !!lounge?.id && voiceMsg.status === 400, `status=${voiceMsg.status}`);
+const textMsg = await api('POST', ch(`/${text?.id}/messages`), { token: ann.token, body: { body: 'hello' } });
+check('글 채널은 그대로 보낸다', textMsg.status === 201, `status=${textMsg.status}`);
 
 // ── 토큰 ───────────────────────────────────────
 console.log('\n[토큰]');
