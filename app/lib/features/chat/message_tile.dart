@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/api/api_failure.dart';
 import '../../domain/models/message.dart';
 import '../../domain/models/repo_browse.dart';
+import '../../domain/models/space.dart';
 import '../../shared/markdown/markdown_body.dart';
 import '../../shared/time_labels.dart';
 import '../../shared/widgets/user_avatar.dart';
@@ -21,6 +22,7 @@ import '../shell/side_panel.dart';
 import 'attachment_widgets.dart';
 import 'mention_text.dart';
 import 'message_controller.dart';
+import 'message_edit.dart';
 import '../issue/new_issue_sheet.dart';
 import 'selection_controller.dart';
 
@@ -577,6 +579,14 @@ Future<void> _showMessageActions(
   final reply = ref.read(replyTargetProvider.notifier);
   // 읽기 전용이면 답장 · 스레드 · 고정을 감춘다. 리액션 줄 · 이슈 · 선택은 남는다(D27).
   final canSend = ref.read(channelCanSendProvider(message.channelId));
+  // 수정은 작성자만(서버가 403), 삭제는 작성자 또는 admin 이상(서버와 같은 규칙) — 눌러 봐야
+  // 실패할 항목은 감춘다. 수정은 모두에게 보이는 변경이라 보내기 권한도 본다(판단 9).
+  final auth = ref.read(authControllerProvider);
+  final mineMessage = auth is AuthSignedIn && auth.user.id == message.author.id;
+  final admin =
+      ref.read(currentSpaceProvider)?.role.atLeast(SpaceRole.admin) ?? false;
+  final canEdit = mineMessage && canSend;
+  final canDelete = mineMessage || admin;
 
   return NxActionCard.show(
     context,
@@ -616,6 +626,22 @@ Future<void> _showMessageActions(
       // 여러 메시지를 함께 AI 에게 묻는 입구. 「이슈로 만들기」는 한 개만 고르지만
       // (originMessageId 가 단수), 요약은 구간이 필요해 다중 선택 모드로 들어간다.
       NxMenuItem('여러 개 선택', onSelected: () => selection.start(message.id)),
+      if (canEdit || canDelete) const NxMenuDivider(),
+      if (canEdit)
+        NxMenuItem(
+          '수정',
+          onSelected: () {
+            if (context.mounted) showEditMessageDialog(context, ref, message);
+          },
+        ),
+      if (canDelete)
+        NxMenuItem(
+          '삭제',
+          danger: true,
+          onSelected: () {
+            if (context.mounted) confirmDeleteMessage(context, ref, message);
+          },
+        ),
     ],
   );
 }

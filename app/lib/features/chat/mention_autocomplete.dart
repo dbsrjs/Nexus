@@ -103,6 +103,31 @@ class DraftMention {
 class MentionDraft {
   const MentionDraft({this.text = '', this.mentions = const []});
 
+  /// 저장된 본문(`<@id>`)을 입력창 모양(`@이름`)으로 — 메시지를 고칠 때. `toBody()` 의 반대다.
+  ///
+  /// 이름을 모르는 id(스페이스를 떠난 사람)는 `<@id>` 그대로 둔다 — 멘션으로 묶지 않아
+  /// 저장할 때도 글자 그대로 돌아가, 고치지 않은 멘션이 다른 것으로 바뀌지 않는다.
+  factory MentionDraft.fromBody(String body, Map<String, String> names) {
+    final out = StringBuffer();
+    final mentions = <DraftMention>[];
+    var last = 0;
+    for (final m in _storedMention.allMatches(body)) {
+      final name = names[m.group(1)];
+      if (name == null) continue;
+      out.write(body.substring(last, m.start));
+      final label = '@$name';
+      mentions.add(
+        DraftMention(start: out.length, label: label, userId: m.group(1)!),
+      );
+      out.write(label);
+      last = m.end;
+    }
+    out.write(body.substring(last));
+    return MentionDraft(text: out.toString(), mentions: mentions);
+  }
+
+  static final _storedMention = RegExp(r'<@([0-9a-fA-F-]{36})>');
+
   final String text;
 
   /// 시작 위치 오름차순. `toBody()` 가 뒤에서부터 갈아 끼우는 전제다.

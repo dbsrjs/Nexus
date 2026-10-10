@@ -248,6 +248,17 @@ void main() {
 
 /// 서버 대신. 실패 종류를 마음대로 지정할 수 있어야 큐 규칙을 태울 수 있다.
 class _FakeMessagesApi implements MessagesApi {
+  @override
+  Future<Message> edit({
+    required String spaceId,
+    required String messageId,
+    required String body,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> remove({required String spaceId, required String messageId}) =>
+      throw UnimplementedError();
+
   ApiFailure? failWith;
 
   /// 특정 본문에서만 실패시킨다. 순서 규칙을 확인할 때 쓴다.

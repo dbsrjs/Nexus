@@ -101,6 +101,17 @@ void main() {
 }
 
 class _FakeApi implements MessagesApi {
+  @override
+  Future<Message> edit({
+    required String spaceId,
+    required String messageId,
+    required String body,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> remove({required String spaceId, required String messageId}) =>
+      throw UnimplementedError();
+
   bool fail = false;
 
   @override

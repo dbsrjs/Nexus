@@ -85,7 +85,7 @@ void _listenToSocket(
         ref.read(messageActionsProvider).markRead(event.message.id);
 
       case MessageEdited() when event.channelId == channelId:
-        repository.applyIncoming(spaceId, event.message);
+        repository.applyEdited(event.message);
 
       case MessageDeleted() when event.channelId == channelId:
         repository.applyDeleted(event.messageId);
@@ -225,6 +225,21 @@ class MessageActions {
       messageId: message.id,
       pinned: !message.pinned,
     );
+  }
+
+  /// 내 메시지의 본문을 바꾼다(`<@id>` 형식). 실패는 던진다 — 고치던 글을 잃지 않게
+  /// 대화상자가 열린 채 이유를 보인다.
+  Future<void> edit(Message message, String body) async {
+    final spaceId = _ref.read(currentSpaceIdProvider);
+    if (spaceId == null || message.isLocal) return;
+    await _repository.edit(spaceId: spaceId, messageId: message.id, body: body);
+  }
+
+  /// 삭제(소프트 — 본문만 가려지고 첨부 · 답글은 남는다). 실패는 던진다.
+  Future<void> remove(Message message) async {
+    final spaceId = _ref.read(currentSpaceIdProvider);
+    if (spaceId == null || message.isLocal) return;
+    await _repository.remove(spaceId: spaceId, messageId: message.id);
   }
 
   /// 채널의 고정 목록. 시트를 열 때만 부른다.

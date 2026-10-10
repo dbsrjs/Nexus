@@ -106,6 +106,37 @@ class MessageRepository {
   Future<void> applyDeleted(String messageId) =>
       _db.markMessageDeleted(messageId, DateTime.now());
 
+  /// 수정된 메시지(소켓 · 내 수정의 응답). **본문과 수정 시각만** 옮긴다 — 실려 온 메시지에는
+  /// 리액션 · 멘션이 없어 `applyIncoming` 으로 덮으면 지워진다.
+  Future<void> applyEdited(Message message) => _db.setEditedBody(
+        message.id,
+        message.body,
+        message.editedAt ?? DateTime.now(),
+      );
+
+  /// 내 메시지 수정. 실패는 던진다 — 대화상자가 이유를 보이고 열린 채 남는다.
+  Future<void> edit({
+    required String spaceId,
+    required String messageId,
+    required String body,
+  }) async {
+    final updated = await _api.edit(
+      spaceId: spaceId,
+      messageId: messageId,
+      body: body,
+    );
+    await applyEdited(updated);
+  }
+
+  /// 삭제(소프트). 실패는 던진다. 소켓으로도 오지만 기다리지 않고 바로 가린다.
+  Future<void> remove({
+    required String spaceId,
+    required String messageId,
+  }) async {
+    await _api.remove(spaceId: spaceId, messageId: messageId);
+    await applyDeleted(messageId);
+  }
+
   /// 답글이 달렸을 때 부모의 요약만 갱신한다.
   Future<void> applyThreadSummary(
     String parentId, {

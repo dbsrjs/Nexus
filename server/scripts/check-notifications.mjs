@@ -229,6 +229,30 @@ const crEv = await channelRead;
 check('…내 다른 기기에 그 id 들이 간다', Array.isArray(crEv?.ids) && topUnread.every((n) => crEv.ids.includes(n.id)), JSON.stringify(crEv));
 check('다른 채널(DM)의 알림은 그대로', after.some((n) => !n.read && n.channelId === dmId));
 
+// 스레드를 열면 그 스레드 답글의 알림이 읽힌다(N12 수정, 2026-10-11).
+const thread = stillReply[0]?.threadId;
+const inThread = stillReply.filter((n) => n.threadId === thread);
+const extra = await send(ben, generalId, 'other thread root');
+await send(cid, generalId, 'reply elsewhere', extra);
+const otherThread = (await notesOf(ben)).filter((n) => !n.read && n.threadId === extra);
+check('준비 — 다른 스레드에도 안 읽은 답글 알림이 있다', !!thread && inThread.length > 0 && otherThread.length > 0, `${inThread.length},${otherThread.length}`);
+const cidReads = await api('POST', `/spaces/${spaceId}/notifications/read-thread/${thread}`, { token: cid.token });
+check('남이 같은 스레드를 읽어도 내 알림은 그대로', cidReads.status === 200 && (await notesOf(ben)).filter((n) => !n.read && n.threadId === thread).length === inThread.length);
+const threadRead = waitFor(benSocket2, 'notification:read');
+const tr = await api('POST', `/spaces/${spaceId}/notifications/read-thread/${thread}`, { token: ben.token });
+check('★ 스레드를 읽으면 그 스레드 답글 알림이 읽힌다', tr.status === 200 && tr.json?.count === inThread.length && (await notesOf(ben)).every((n) => n.threadId !== thread || n.read), `status=${tr.status} count=${tr.json?.count}`);
+check('★ 다른 스레드의 답글 알림은 남는다', (await notesOf(ben)).filter((n) => !n.read && n.threadId === extra).length === otherThread.length);
+const trEv = await threadRead;
+check('…내 다른 기기에 그 id 들이 간다', Array.isArray(trEv?.ids) && inThread.every((n) => trEv.ids.includes(n.id)), JSON.stringify(trEv));
+const trAgain = await api('POST', `/spaces/${spaceId}/notifications/read-thread/${thread}`, { token: ben.token });
+check('다시 불러도 같다(멱등, 0)', trAgain.status === 200 && trAgain.json?.count === 0, JSON.stringify(trAgain.json));
+const trBad = await api('POST', `/spaces/${spaceId}/notifications/read-thread/nope`, { token: ben.token });
+check('uuid 가 아니면 400', trBad.status === 400, `status=${trBad.status}`);
+const trMissing = await api('POST', `/spaces/${spaceId}/notifications/read-thread/00000000-0000-4000-8000-000000000000`, { token: ben.token });
+check('★ 없는 스레드는 404', trMissing.status === 404, `status=${trMissing.status}`);
+const trReply = await api('POST', `/spaces/${spaceId}/notifications/read-thread/${inThread[0]?.messageId}`, { token: ben.token });
+check('답글 id(스레드 뿌리가 아님)는 404', !!inThread[0]?.messageId && trReply.status === 404, `status=${trReply.status}`);
+
 // ── 가시성이 바뀌면 ─────────────────────────────
 console.log('\n[명단에서 빠지면]');
 
