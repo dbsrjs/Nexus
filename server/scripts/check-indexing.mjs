@@ -365,6 +365,21 @@ async function main() {
   check('줄 번호가 1부터다', top?.startLine === 1);
   check('그 시점 커밋을 함께 준다', top?.commitSha === HEAD_SHA);
 
+  // ── 낱말 갈래(RAG 강화) ─────────────────────────
+  // `orphans` 는 `cleanupOrphans` 의 **낙타 표기 조각**으로만 있다. `fake` 임베딩은
+  // `cleanuporphans` 를 한 낱말로 해싱해 이 질의와 겹치는 것이 없다 — 1위가
+  // 나오면 낱말 갈래(생성 컬럼의 낙타 표기 사본 → GIN → RRF)가 끝까지 돈 것이다.
+  // 벡터 갈래만 돌면 모든 청크가 유사도 0 근처에서 순서 없이 섞인다.
+  const byWord = await api('POST', `/spaces/${spaceId}/repos/${repoId}/index/search`, {
+    token: owner.token,
+    body: { query: 'orphans', topK: 20 },
+  });
+  check(
+    '★ 식별자 조각으로 물어도 그 파일이 1위다 - 낱말 갈래',
+    byWord.json?.chunks?.[0]?.path === 'src/orphan.ts',
+    byWord.json?.chunks?.[0]?.path,
+  );
+
   // ── 13-2 AI 에 코드로 묻기 ──────────────────────
   const aiAsk = (body) =>
     api('POST', `/spaces/${spaceId}/ai/ask`, { token: owner.token, body });

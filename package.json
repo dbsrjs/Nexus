@@ -38,6 +38,7 @@
     "check:presence": "node server/scripts/check-presence.mjs",
     "check:notifications": "node server/scripts/check-notifications.mjs",
     "check:tenancy": "node server/scripts/check-tenancy.mjs",
+    "eval:rag": "npm --prefix server run build && node server/scripts/eval-rag.mjs",
     "check:voice": "node server/scripts/check-voice.mjs",
     "app:flow": "cd app && flutter test integration_test -d windows",
     "app:flow:headless": "cd app && flutter test integration_test -d flutter-tester",

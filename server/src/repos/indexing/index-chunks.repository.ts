@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Chunk } from './chunker';
+import { fuseRankings, lexicalWeightOf, queryTermsOf, tsQueryOf } from './lexical';
 
 /**
  * `number[]` → pgvector 리터럴.
@@ -22,6 +23,38 @@ export function toVectorLiteral(v: number[]): string {
   return `[${parts.join(',')}]`;
 }
 
+/**
+ * 하이브리드 검색에서 각 갈래가 가져오는 후보 수. 합친 뒤 `topK`(최대 20)만
+ * 남긴다. **후보가 topK 와 같으면 합치는 의미가 줄어든다** — 한쪽에서 9위였던
+ * 것이 다른 쪽 2위와 만나 올라오는 것이 RRF 의 이득이라, 넉넉히 가져온다.
+ * HNSW 의 기본 `ef_search`(40) 안이라 벡터 쪽 후보를 다 채운다.
+ */
+export const HYBRID_CANDIDATES = 30;
+
+type ChunkRow = {
+  id: string;
+  path: string;
+  lang: string | null;
+  start_line: number;
+  end_line: number;
+  content: string;
+  commit_sha: string;
+  score: number;
+};
+
+function toHit(r: ChunkRow): ChunkHit {
+  return {
+    id: r.id,
+    path: r.path,
+    lang: r.lang,
+    startLine: r.start_line,
+    endLine: r.end_line,
+    content: r.content,
+    commitSha: r.commit_sha,
+    score: Number(r.score),
+  };
+}
+
 export interface ChunkHit {
   id: string;
   path: string;
@@ -30,6 +63,11 @@ export interface ChunkHit {
   endLine: number;
   content: string;
   commitSha: string;
+  /**
+   * 정렬 기준값. **갈래마다 단위가 다르다** — 벡터는 코사인 유사도(0~1),
+   * 낱말은 IDF 합, 하이브리드(운영 경로)는 RRF 점수다. 순서만 뜻이 있고
+   * 갈래끼리 비교하지 않는다.
+   */
   score: number;
 }
 
@@ -149,18 +187,7 @@ export class IndexChunksRepository {
   ): Promise<ChunkHit[]> {
     const literal = toVectorLiteral(embedding);
 
-    const rows = await this.prisma.$queryRaw<
-      Array<{
-        id: string;
-        path: string;
-        lang: string | null;
-        start_line: number;
-        end_line: number;
-        content: string;
-        commit_sha: string;
-        score: number;
-      }>
-    >`
+    const rows = await this.prisma.$queryRaw<ChunkRow[]>`
       SELECT id, path, lang, start_line, end_line, content, commit_sha,
              1 - (embedding <=> ${literal}::vector) AS score
         FROM repo_index_chunks
@@ -168,16 +195,96 @@ export class IndexChunksRepository {
        ORDER BY embedding <=> ${literal}::vector
        LIMIT ${Prisma.raw(String(Math.trunc(topK)))}
     `;
+    return rows.map(toHit);
+  }
 
-    return rows.map((r) => ({
-      id: r.id,
-      path: r.path,
-      lang: r.lang,
-      startLine: r.start_line,
-      endLine: r.end_line,
-      content: r.content,
-      commitSha: r.commit_sha,
-      score: r.score,
+  /**
+   * 낱말 검색. `terms` 는 `queryTermsOf()` 가 만든 것이다(`[\p{L}\p{N}]` 만).
+   * `score` 는 맞은 낱말들의 **IDF 합**이 주이고, 낱말마다 `ts_rank`(빈도 ·
+   * 길이 보정 — 정규화 1)를 얹는다. BM25 를 흉내 낸 모양이다. IDF 만 쓰면
+   * 같은 낱말 집합에 맞은 청크끼리 동점이 많아 경로 이름순으로 갈렸다
+   * (`.claude/` 가 늘 위) — 빈도를 얹자 평가 MRR 이 0.288 → 0.390(진행 기록
+   * «RAG 강화»). `* 10` 은 IDF 가 앞서게 둔 크기다(`ts_rank` 가 0.01~0.03 대라
+   * 보정이 10~30% 안에 머문다). 10 · 30 · 100 이 거의 같아 작은 쪽을 골랐다.
+   *
+   * IDF 는 **이 저장소 안에서** 센다(`space_id` · `repo_id` 로 좁힌 COUNT).
+   * 저장소마다 흔한 낱말이 다르다 — Dart 저장소의 `final` 은 흔하지만
+   * TypeScript 저장소에서는 드물다.
+   */
+  async searchLexical(
+    spaceId: string,
+    repoId: string,
+    terms: string[],
+    topK: number,
+  ): Promise<ChunkHit[]> {
+    if (terms.length === 0) return [];
+    const queries = terms.map(tsQueryOf);
+    // **낱말 배열을 매개변수가 아니라 SQL 글자로 박는다.** 매개변수로 넘기면
+    // Prisma 의 준비된 문장이 다섯 번째 실행부터 일반 계획(generic plan)으로
+    // 바뀌는데, 배열 크기를 모르는 그 계획이 표 전체를 훑어 같은 질의가 2ms →
+    // 30~270ms 로 튀었다(평가 스크립트 · EXPLAIN 으로 실측). 글자가 질의마다
+    // 달라 늘 그 질의에 맞춘 계획이 선다. 박기 전에 모양을 다시 본다 —
+    // queryTermsOf 가 `[\p{L}\p{N}]` 만 내지만, 이 메서드를 다른 곳에서 부를 때도
+    // 따옴표 하나 들어갈 틈이 없어야 한다.
+    for (const q of queries) {
+      if (!/^[\p{L}\p{N}]+(:\*)?$/u.test(q)) {
+        throw new Error(`낱말 검색어 모양이 아닙니다: ${JSON.stringify(q)}`);
+      }
+    }
+    const queryArray = Prisma.raw(`ARRAY[${queries.map((q) => `'${q}'`).join(',')}]`);
+
+    const rows = await this.prisma.$queryRaw<ChunkRow[]>`
+      WITH t AS (
+        SELECT to_tsquery('simple', q) AS q
+          FROM unnest(${queryArray}::text[]) AS u(q)
+      ),
+      n AS (
+        SELECT COUNT(*)::float8 AS total FROM repo_index_chunks
+         WHERE space_id = ${spaceId} AND repo_id = ${repoId}
+      ),
+      w AS (
+        SELECT t.q, ln(1 + (n.total - d.df + 0.5) / (d.df + 0.5)) AS idf
+          FROM t CROSS JOIN n
+         CROSS JOIN LATERAL (
+           SELECT COUNT(*)::float8 AS df FROM repo_index_chunks c
+            WHERE c.space_id = ${spaceId} AND c.repo_id = ${repoId} AND c.search_tsv @@ t.q
+         ) d
+         WHERE d.df > 0
+      )
+      SELECT c.id, c.path, c.lang, c.start_line, c.end_line, c.content, c.commit_sha,
+             SUM(w.idf * (1 + ts_rank(c.search_tsv, w.q, 1) * 10)) AS score
+        FROM repo_index_chunks c
+        JOIN w ON c.search_tsv @@ w.q
+       WHERE c.space_id = ${spaceId} AND c.repo_id = ${repoId}
+       GROUP BY c.id
+       ORDER BY score DESC, c.path, c.start_line
+       LIMIT ${Prisma.raw(String(Math.trunc(topK)))}
+    `;
+    return rows.map(toHit);
+  }
+
+  /**
+   * 벡터 + 낱말을 순위로 합친다(`fuseRankings`). 두 갈래를 함께 돌린다 —
+   * 서로 기다릴 이유가 없다. `score` 는 RRF 점수다(코사인 유사도가 아니다).
+   *
+   * 벡터를 앞 목록으로 넘긴다 — 동점이면 뜻으로 찾은 쪽이 앞선다.
+   */
+  async searchHybrid(
+    spaceId: string,
+    repoId: string,
+    embedding: number[],
+    query: string,
+    topK: number,
+  ): Promise<ChunkHit[]> {
+    const [byVector, byWords] = await Promise.all([
+      this.search(spaceId, repoId, embedding, HYBRID_CANDIDATES),
+      this.searchLexical(spaceId, repoId, queryTermsOf(query), HYBRID_CANDIDATES),
+    ]);
+    // 식별자가 없는 질문은 낱말 갈래를 반만 믿는다 — lexicalWeightOf 의 주석.
+    const weights = [1, lexicalWeightOf(query)];
+    return fuseRankings([byVector, byWords], topK, weights).map(({ fused, ...hit }) => ({
+      ...hit,
+      score: fused,
     }));
   }
 }
