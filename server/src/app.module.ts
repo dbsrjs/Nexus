@@ -23,13 +23,14 @@ import { EmbeddingModule } from './embedding/embedding.module';
 import { LlmModule } from './llm/llm.module';
 import { AiModule } from './ai/ai.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { VoiceModule } from './voice/voice.module';
 
 /**
  * 전환 3단계 시점의 모듈 구성 (docs/전환-계획.md §6).
  *
  * 단일 테넌트 시절 모듈은 전부 spaceId 기준으로 다시 쓰거나 지웠다
  * (issues 9-1 · ai 13-1 · permissions 16-2 · notifications 18 은 다시 써 편입,
- *  files 는 8-1 에서 attachments 로 다시 썼다). gitlab 은 20단계가 새로 쓴다.
+ *  files 는 8-1 에서 attachments 로 다시 썼다). gitlab 은 뺐다(2026-10-10).
  */
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     LlmModule,
     AiModule,
     NotificationsModule,
+    VoiceModule,
   ],
   providers: [
     {

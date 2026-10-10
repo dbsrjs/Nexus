@@ -406,6 +406,7 @@ export class ChannelsService {
           topic: dto.topic,
           categoryId: dto.categoryId ?? null,
           isPrivate: dto.isPrivate ?? false,
+          kind: dto.kind === 'voice' ? ChannelKind.voice : ChannelKind.text,
           position,
         },
       });

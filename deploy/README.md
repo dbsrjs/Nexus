@@ -7,6 +7,8 @@
                                                                       ├─ /api/        server:3000
                                                                       └─ /socket.io/  server:3000 (WebSocket)
                                                  server ─▶ postgres(pgvector) · R2(첨부) · Gemini(AI)
+앱 ──wss──▶ Cloudflare ──터널──▶ cloudflared ─▶ livekit:7880   (음성 채널의 시그널링)
+앱 ──UDP 7882 · TCP 7881──────────────────────▶ livekit        (음성 · 화면 공유 미디어 — 터널을 지나지 않는다)
 ```
 
 **웹과 API 를 한 주소로 낸다.** 웹을 Pages 같은 다른 사이트에 두면 리프레시 쿠키
@@ -15,6 +17,7 @@
 ## 처음 한 번
 
 1. **VM** — Docker 와 Compose 플러그인을 깐다. 인바운드 포트는 SSH 하나만 연다(터널은 밖으로 나가는 연결이다).
+   음성 채널을 켜면 미디어 포트 둘을 더 연다 — 아래 «음성 채널».
 2. **저장소** — `git clone https://github.com/dbsrjs/Nexus.git && cd Nexus/deploy`
 3. **R2 버킷** — Cloudflare 대시보드에서 버킷(`nexus-attachments`)을 만든다.
    **수명주기 규칙이 없는지 확인한다** — 무기한 보관이 제품 특성이다.
@@ -32,6 +35,28 @@
    ```
 9. **확인** — VM 안에서 `curl -sI http://127.0.0.1:8080/` 가 200 · `Cache-Control: no-cache`,
    `docker compose -f docker-compose.prod.yml logs server` 에 `스토리지 드라이버: s3` · `S3 버킷 확인` · `trust proxy: 1`.
+
+## 음성 채널 (LiveKit)
+
+`LIVEKIT_*` 셋을 비워 두면 통화가 꺼진 채로 뜬다(앱이 음성 채널을 보이지 않는다). 켜려면:
+
+1. **터널에 호스트 이름을 하나 더** — 같은 터널에 `rtc.<도메인>` 을 더하고 서비스를 **`http://livekit:7880`** 으로 둔다.
+   앱의 시그널링(WebSocket)이 여기로 온다.
+2. **미디어 포트를 연다** — **Cloudflare Tunnel 은 UDP 를 나르지 못한다.** 음성 · 화면은 VM 의 공인 IP 로 바로 온다.
+   - UDP **7882** (미디어) · TCP **7881** (UDP 가 막힌 망의 대체)
+   - 클라우드 방화벽(Oracle 이면 VCN 의 Security List 인바운드)과 **VM 안의 방화벽 둘 다**. Oracle 의 Ubuntu 이미지는
+     iptables 가 기본으로 막는다 — `sudo iptables -I INPUT -p udp --dport 7882 -j ACCEPT` ·
+     `sudo iptables -I INPUT -p tcp --dport 7881 -j ACCEPT` 후 `sudo netfilter-persistent save`
+3. **값** — `.env` 에 `LIVEKIT_URL=wss://rtc.<도메인>` · `LIVEKIT_API_KEY`(영문 · 숫자) · `LIVEKIT_API_SECRET`(32자 이상).
+   서버가 부르는 주소(`http://livekit:7880`)는 compose 가 넣는다.
+4. **띄우기** — `--profile voice` 를 더한다:
+   `docker compose -f docker-compose.prod.yml --profile tunnel --profile voice up -d --build`
+5. **확인** — `docker compose -f docker-compose.prod.yml logs livekit` 의 `starting LiveKit server` 줄의
+   `nodeIP` 가 **VM 의 공인 IP** 여야 한다. 사설 IP 면 앱이 시그널링은 붙고 소리는 안 들린다 — STUN 으로 공인 IP 를
+   못 알아낸 것이다. `server` 로그에 `LiveKit 룸 목록을 받지 못했습니다` 가 없어야 한다.
+
+**TURN 은 켜지 않았다.** UDP 도 7881 도 막힌 망(일부 회사망)에서는 붙지 않는다. 그런 사용자가 생기면 LiveKit 의
+내장 TURN(TLS 443 · 인증서 필요)을 켠다 — 지금 VM 은 443 을 터널에 맡겨 비어 있다.
 
 ## 웹 빌드 넣기
 

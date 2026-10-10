@@ -31,7 +31,7 @@ abstract class Channel with _$Channel {
     /// 답장 · 스레드 · 고정을 감춘다 — 리액션은 남는다. 서버가 안 주면(옛 응답) 보낼 수 있다고 본다.
     @Default(true) bool canSend,
 
-    /// `text` · `dm`(17단계). 모르는 값은 일반 채널로 본다.
+    /// `text` · `dm`(17단계) · `voice`(20단계). 모르는 값은 일반 채널로 본다.
     @Default('text') String kind,
 
     /// DM 의 상대(17단계 D6). 일반 채널은 null. 상대가 스페이스를 떠나도 남는다.
@@ -44,6 +44,9 @@ abstract class Channel with _$Channel {
   const Channel._();
 
   bool get isDm => kind == 'dm';
+
+  /// 음성 채널(20단계) — 메시지 대신 통화가 열린다. 만든 뒤에는 종류가 바뀌지 않는다.
+  bool get isVoice => kind == 'voice';
 
   factory Channel.fromJson(Map<String, dynamic> json) => _$ChannelFromJson(json);
 }

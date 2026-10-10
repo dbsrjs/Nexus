@@ -11,6 +11,8 @@ import 'features/realtime/socket_controller.dart';
 import 'features/space/members_controller.dart';
 import 'features/space/space_controller.dart';
 import 'features/settings/theme_controller.dart';
+import 'features/voice/voice_controller.dart';
+import 'features/voice/voice_session.dart';
 import 'ui/root.dart';
 import 'ui/theme.dart';
 
@@ -62,6 +64,10 @@ class NexusApp extends ConsumerWidget {
     // 데스크톱 · 웹 알림(«마지막») — 어느 화면에 있든, 창이 트레이에 숨어 있어도 받아야 한다.
     ref.listen(osNotificationsProvider, (_, _) {});
     ref.listen(desktopNotifyEnabledProvider, (_, _) {});
+    // 통화(20단계) — **통화 자체가 여기 산다.** 화면에서 붙들면 채널을 옮기거나 설정 창에 다녀오는
+    // 순간 구독자가 0 이 되어 provider 가 내려가고, 그때 연결도 함께 닫힌다. 명단도 같은 이유.
+    ref.listen(voiceSessionProvider, (_, _) {});
+    ref.listen(voiceRosterProvider, (_, _) {});
 
     final preference = ref.watch(themeModeProvider);
 

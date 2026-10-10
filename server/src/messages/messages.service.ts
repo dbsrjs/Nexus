@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Channel, Prisma, SpaceMember } from '@prisma/client';
+import { Channel, ChannelKind, Prisma, SpaceMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChannelsService } from '../channels/channels.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
@@ -171,6 +171,11 @@ export class MessagesService {
    */
   async create(channelId: string, member: SpaceMember, dto: CreateMessageDto) {
     const channel = await this.channels.assertCanSend(channelId, member);
+    // 음성 채널에는 메시지 목록이 없다(20단계 설계 V1) — 받아 두면 보일 곳 없는 글이 쌓이고,
+    // 멘션 알림은 눌러도 갈 곳이 없다. 이 채널의 보내기 권한은 「말하기」라 위를 지난다.
+    if (channel.kind === ChannelKind.voice) {
+      throw new BadRequestException('음성 채널에는 메시지를 보낼 수 없습니다');
+    }
 
     const body = dto.body ?? '';
     const attachmentIds = dto.attachmentIds ?? [];

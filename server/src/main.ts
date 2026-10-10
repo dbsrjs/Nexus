@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
+import { json } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
 import { enableBigIntSerialization } from './common/bigint-serializer';
@@ -18,6 +19,20 @@ async function bootstrap() {
   // 멀쩡한 요청이 위조로 판정된다. rawBody 를 켜면 파싱된 body 는 그대로
   // 두고 원문을 `req.rawBody` 로 함께 받는다.
   const app = await NestFactory.create(AppModule, { rawBody: true });
+  // LiveKit 웹훅은 `application/webhook+json` 으로 온다 — 기본 JSON 파서는 이 형식을 읽지 않아
+  // rawBody 가 비고 서명 검증이 언제나 실패한다(20단계 설계 V5). 이 형식만 원문을 받는다.
+  //
+  // **`app.useBodyParser('json', …)` 를 쓰면 안 된다** — Nest 는 이름이 `jsonParser` 인 미들웨어가
+  // 이미 있으면 기본 JSON 파서를 건너뛰어, 모든 `application/json` 본문이 비었다(실제로 겪었다).
+  const webhookJson = json({
+    type: 'application/webhook+json',
+    verify: (req, _res, buf) => {
+      (req as Request & { rawBody?: Buffer }).rawBody = buf;
+    },
+  });
+  app.use((req: Request, res: Response, next: NextFunction) =>
+    webhookJson(req, res, next),
+  );
   const config = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 

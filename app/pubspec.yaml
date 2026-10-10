@@ -43,6 +43,12 @@ dependencies:
   # OAuth 는 시스템 브라우저에서 진행한다. 앱 안 웹뷰를 쓰지 않는 것은
   # GitHub 이 임베디드 웹뷰 로그인을 막기 때문이기도 하다.
   url_launcher: ^6.3.1
+  # 음성 채널 · 화면 공유(20단계). 미디어는 LiveKit(SFU)이 나르고 판정은 Nexus 서버가 한다.
+  # WebRTC 를 직접 짜지 않는 이유는 20단계 설계 — 플랫폼 넷의 캡처 · 코덱 · 재연결을 다 떠안게 된다.
+  livekit_client: ^2.13.0
+  # 데스크톱 화면 공유의 화면 · 창 목록(desktopCapturer). livekit_client 가 이미 이 버전을 고정해 끌어오는
+  # 패키지라 새로 들어오는 것은 없다 — 직접 부르니 직접 의존으로 적는다.
+  flutter_webrtc: ^1.6.2
 
 dev_dependencies:
   flutter_test:

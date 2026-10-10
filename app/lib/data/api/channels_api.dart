@@ -48,6 +48,7 @@ class ChannelsApi {
     String? topic,
     String? categoryId,
     bool isPrivate = false,
+    bool voice = false,
   }) => guardApi(() async {
     final res = await _client.dio.post<Map<String, dynamic>>(
       '/spaces/$spaceId/channels',
@@ -56,6 +57,9 @@ class ChannelsApi {
         'topic': ?topic,
         'categoryId': ?categoryId,
         'isPrivate': isPrivate,
+        // 글 채널이면 싣지 않는다 — 서버 DTO 는 모르는 필드를 400 으로 거부하므로(forbidNonWhitelisted)
+        // 20단계 전 서버에도 글 채널은 그대로 만들어진다.
+        if (voice) 'kind': 'voice',
       },
     );
     return Channel.fromJson(res.data!);
