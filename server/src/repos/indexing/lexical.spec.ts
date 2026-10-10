@@ -1,4 +1,14 @@
-import { MAX_QUERY_TERMS, RRF_K, fuseRankings, queryTermsOf, tsQueryOf } from './lexical';
+import { HYBRID_CANDIDATES } from './index-chunks.repository';
+import {
+  MAX_QUERY_TERMS,
+  PROSE_LEXICAL_WEIGHT,
+  RRF_K,
+  fuseRankings,
+  hasIdentifier,
+  lexicalWeightOf,
+  queryTermsOf,
+  tsQueryOf,
+} from './lexical';
 
 describe('queryTermsOf', () => {
   it('낙타 표기는 통째 낱말과 조각을 함께 낸다 — 문서 쪽 생성 컬럼과 같은 규칙', () => {
@@ -92,5 +102,46 @@ describe('fuseRankings', () => {
   it('원래 필드를 지킨다', () => {
     const [top] = fuseRankings([[{ id: 'a', path: 'x.ts' }]], 1);
     expect(top.path).toBe('x.ts');
+  });
+});
+
+describe('hasIdentifier · lexicalWeightOf', () => {
+  it('낙타 표기 · 밑줄 · 파일 이름 · 경로는 식별자다', () => {
+    for (const q of ['fooBar 가 뭐야', 'MAX_SIZE', 'main.ts 에서', 'lib/core 아래']) {
+      expect(hasIdentifier(q)).toBe(true);
+      expect(lexicalWeightOf(q)).toBe(1);
+    }
+  });
+
+  it('한국어 서술 질문은 식별자가 아니다 — 낱말 갈래를 반만 믿는다', () => {
+    for (const q of [
+      '로그아웃하면 세션은 어떻게 되나요?',
+      'AI 답은 몇 줄까지',
+      'Redis cache',
+    ]) {
+      expect(hasIdentifier(q)).toBe(false);
+      expect(lexicalWeightOf(q)).toBe(PROSE_LEXICAL_WEIGHT);
+    }
+  });
+
+  it('★ 가중치 0.5 면 낱말에만 있는 청크는 결과에 들지 못한다 — 벡터 후보의 순서만 바뀐다', () => {
+    const vector = Array.from({ length: HYBRID_CANDIDATES }, (_, i) => ({ id: `v${i}` }));
+    // 낱말 갈래 1~8위가 전부 벡터 후보 밖에 있는 최악의 경우.
+    const words = Array.from({ length: HYBRID_CANDIDATES }, (_, i) => ({ id: `w${i}` }));
+    const fused = fuseRankings([vector, words], 20, [1, PROSE_LEXICAL_WEIGHT]);
+    expect(fused).toHaveLength(20);
+    expect(fused.every((f) => f.id.startsWith('v'))).toBe(true);
+  });
+
+  it('그 보장이 서는 후보 수 — 벡터 마지막 후보가 낱말 1위(0.5/61)보다 높아야 한다', () => {
+    expect(1 / (RRF_K + HYBRID_CANDIDATES)).toBeGreaterThan(
+      PROSE_LEXICAL_WEIGHT / (RRF_K + 1),
+    );
+  });
+
+  it('가중치 1 이면 낱말 1위가 벡터 하위를 밀어낸다(식별자 질문)', () => {
+    const vector = Array.from({ length: HYBRID_CANDIDATES }, (_, i) => ({ id: `v${i}` }));
+    const fused = fuseRankings([vector, [{ id: 'w0' }]], 8, [1, 1]);
+    expect(fused.map((f) => f.id)).toContain('w0');
   });
 });

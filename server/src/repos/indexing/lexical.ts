@@ -257,7 +257,37 @@ export function tsQueryOf(term: string): string {
 export const RRF_K = 60;
 
 /**
- * 여러 순위 목록을 하나로 합친다(Reciprocal Rank Fusion).
+ * 질문에 코드 식별자가 있는가 — 낙타 표기(`searchBlocker`), 밑줄
+ * (`CHUNK_MAX_CHARS`), 파일 이름(`chunker.ts`), 경로(`src/ai`). `GitHub` 같은
+ * 고유명사 하나로는 치지 않는다(대문자로 시작해 소문자 뒤 대문자가 한 번 —
+ * 이것도 낙타 표기라 걸린다. 걸려도 낱말 갈래를 온전히 믿을 뿐 해롭지 않다).
+ */
+export function hasIdentifier(query: string): boolean {
+  return /[a-z0-9][A-Z]|[A-Za-z0-9]_[A-Za-z0-9]|\w\.[a-z]{1,5}\b|\w\/\w/.test(query);
+}
+
+/**
+ * 낱말 갈래의 RRF 가중치. **식별자가 없는 질문(대개 한국어 서술)은 0.5** 다.
+ *
+ * 이유: 한국어 서술 질문에서 낱말 갈래는 같은 낱말을 더 많이 담은 설계 문서
+ * 청크를 끌어올린다(평가에서 낱말 갈래 한국어 MRR 0.233). 그런 질문의 뜻은
+ * 벡터 갈래가 맡는다. 0.5 면 **낱말에만 있는 청크(최대 0.5/61)가 벡터 후보
+ * 30위(1/90)보다도 낮아** 결과가 벡터 후보 안에서만 나온다 — 낱말은 벡터
+ * 후보의 **순서만** 고친다. 진짜 임베딩으로 재기 전에 벡터 하나일 때보다
+ * 크게 나빠지지 않게 하는 안전장치다(`HYBRID_CANDIDATES` 가 61 을 넘으면
+ * 이 보장이 깨진다 — 테스트가 지킨다).
+ *
+ * 식별자가 있으면 1 — 낱말 갈래가 확실히 이기는 질문이다(식별자 MRR 0.713).
+ */
+export const PROSE_LEXICAL_WEIGHT = 0.5;
+
+export function lexicalWeightOf(query: string): number {
+  return hasIdentifier(query) ? 1 : PROSE_LEXICAL_WEIGHT;
+}
+
+/**
+ * 여러 순위 목록을 하나로 합친다(Reciprocal Rank Fusion). `weights` 는 목록마다
+ * 곱하는 값이고 없으면 모두 1 이다.
  *
  * **점수가 아니라 순위를 합친다.** 코사인 유사도(0~1)와 IDF 합(0~수십)은
  * 단위가 달라 더하면 한쪽이 다른 쪽을 덮는다 — 순위는 단위가 없다.
@@ -266,11 +296,13 @@ export const RRF_K = 60;
 export function fuseRankings<T extends { id: string }>(
   lists: T[][],
   limit: number,
+  weights: number[] = [],
 ): Array<T & { fused: number }> {
   const acc = new Map<string, { item: T; fused: number; best: number }>();
   lists.forEach((list, li) => {
+    const w = weights[li] ?? 1;
     list.forEach((item, rank) => {
-      const add = 1 / (RRF_K + rank + 1);
+      const add = w / (RRF_K + rank + 1);
       const prev = acc.get(item.id);
       // 앞 목록 · 높은 순위일수록 작은 값 — 동점을 가를 때 쓴다.
       const order = li * 10_000 + rank;

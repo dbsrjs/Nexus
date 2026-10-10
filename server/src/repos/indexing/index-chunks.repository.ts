@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Chunk } from './chunker';
-import { fuseRankings, tsQueryOf } from './lexical';
+import { fuseRankings, lexicalWeightOf, queryTermsOf, tsQueryOf } from './lexical';
 
 /**
  * `number[]` → pgvector 리터럴.
@@ -219,11 +219,24 @@ export class IndexChunksRepository {
   ): Promise<ChunkHit[]> {
     if (terms.length === 0) return [];
     const queries = terms.map(tsQueryOf);
+    // **낱말 배열을 매개변수가 아니라 SQL 글자로 박는다.** 매개변수로 넘기면
+    // Prisma 의 준비된 문장이 다섯 번째 실행부터 일반 계획(generic plan)으로
+    // 바뀌는데, 배열 크기를 모르는 그 계획이 표 전체를 훑어 같은 질의가 2ms →
+    // 30~270ms 로 튀었다(평가 스크립트 · EXPLAIN 으로 실측). 글자가 질의마다
+    // 달라 늘 그 질의에 맞춘 계획이 선다. 박기 전에 모양을 다시 본다 —
+    // queryTermsOf 가 `[\p{L}\p{N}]` 만 내지만, 이 메서드를 다른 곳에서 부를 때도
+    // 따옴표 하나 들어갈 틈이 없어야 한다.
+    for (const q of queries) {
+      if (!/^[\p{L}\p{N}]+(:\*)?$/u.test(q)) {
+        throw new Error(`낱말 검색어 모양이 아닙니다: ${JSON.stringify(q)}`);
+      }
+    }
+    const queryArray = Prisma.raw(`ARRAY[${queries.map((q) => `'${q}'`).join(',')}]`);
 
     const rows = await this.prisma.$queryRaw<ChunkRow[]>`
       WITH t AS (
         SELECT to_tsquery('simple', q) AS q
-          FROM unnest(${queries}::text[]) AS u(q)
+          FROM unnest(${queryArray}::text[]) AS u(q)
       ),
       n AS (
         SELECT COUNT(*)::float8 AS total FROM repo_index_chunks
@@ -260,14 +273,16 @@ export class IndexChunksRepository {
     spaceId: string,
     repoId: string,
     embedding: number[],
-    terms: string[],
+    query: string,
     topK: number,
   ): Promise<ChunkHit[]> {
     const [byVector, byWords] = await Promise.all([
       this.search(spaceId, repoId, embedding, HYBRID_CANDIDATES),
-      this.searchLexical(spaceId, repoId, terms, HYBRID_CANDIDATES),
+      this.searchLexical(spaceId, repoId, queryTermsOf(query), HYBRID_CANDIDATES),
     ]);
-    return fuseRankings([byVector, byWords], topK).map(({ fused, ...hit }) => ({
+    // 식별자가 없는 질문은 낱말 갈래를 반만 믿는다 — lexicalWeightOf 의 주석.
+    const weights = [1, lexicalWeightOf(query)];
+    return fuseRankings([byVector, byWords], topK, weights).map(({ fused, ...hit }) => ({
       ...hit,
       score: fused,
     }));

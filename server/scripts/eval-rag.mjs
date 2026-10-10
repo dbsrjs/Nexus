@@ -67,8 +67,10 @@ const dist = (p) => import(pathToFileURL(join(DIST, p)).href);
 const { chunkText } = await dist('repos/indexing/chunker.js');
 const { isGenerated, isTooLarge, langOf } = await dist('repos/indexing/index-filter.js');
 const { resolveBlobBody } = await dist('repos/blob-content.js');
-const { IndexChunksRepository } = await dist('repos/indexing/index-chunks.repository.js');
-const { queryTermsOf } = await dist('repos/indexing/lexical.js');
+const { IndexChunksRepository, HYBRID_CANDIDATES } = await dist(
+  'repos/indexing/index-chunks.repository.js',
+);
+const { fuseRankings, queryTermsOf } = await dist('repos/indexing/lexical.js');
 const { resolveEmbedding } = await dist('embedding/embedding.config.js');
 const { assertDimensions } = await dist('embedding/embedding.provider.js');
 const { FakeEmbeddingProvider } = await dist('embedding/fake-embedding.provider.js');
@@ -103,7 +105,10 @@ function corpus() {
   })
     .toString('utf8')
     .split('\0')
-    .filter(Boolean);
+    .filter(Boolean)
+    // 질의 세트 자체는 뺀다 — 질문이 글자 그대로 들어 있어 낱말 갈래가 늘 그
+    // 파일을 1위로 낸다(실제로 그렇게 오염됐다). 운영 인덱스에는 그대로 들어간다.
+    .filter((p) => !p.startsWith('server/scripts/rag-eval/'));
   const out = [];
   let skipped = 0;
   for (const path of files) {
@@ -299,14 +304,21 @@ async function main() {
     vector: (i) => chunksRepo.search(spaceId, repoId, qEmb[i], TOP_K),
     lexical: (i) =>
       chunksRepo.searchLexical(spaceId, repoId, queryTermsOf(queries[i].q), TOP_K),
-    hybrid: (i) =>
-      chunksRepo.searchHybrid(
-        spaceId,
-        repoId,
-        qEmb[i],
-        queryTermsOf(queries[i].q),
-        TOP_K,
-      ),
+    // 운영 경로 — 식별자 없는 질문은 낱말 가중치 0.5(lexicalWeightOf).
+    hybrid: (i) => chunksRepo.searchHybrid(spaceId, repoId, qEmb[i], queries[i].q, TOP_K),
+    // 비교용 — 가중치를 늘 1 로 둔 RRF. 안전장치가 무엇을 잃고 얻는지 본다.
+    'hybrid=1': async (i) => {
+      const [v, l] = await Promise.all([
+        chunksRepo.search(spaceId, repoId, qEmb[i], HYBRID_CANDIDATES),
+        chunksRepo.searchLexical(
+          spaceId,
+          repoId,
+          queryTermsOf(queries[i].q),
+          HYBRID_CANDIDATES,
+        ),
+      ]);
+      return fuseRankings([v, l], TOP_K);
+    },
   };
 
   // 한 바퀴 버린다 — 첫 쿼리는 계획 · 캐시를 데우느라 느려 p95 를 왜곡한다.

@@ -17,7 +17,6 @@ import { searchBlocker, shouldHealIndex } from './search-guard';
 import { IndexQueueService, LeasedJob } from './index-queue.service';
 import { chunkText } from './chunker';
 import { isGenerated, isTooLarge, langOf } from './index-filter';
-import { queryTermsOf } from './lexical';
 import { fullReindexBeforeCompare, planFromCompare, ReindexPlan } from './changed-files';
 import { requireRepoInSpace } from '../repo-guards';
 
@@ -170,13 +169,7 @@ export class IndexingService {
     // 벡터와 낱말을 함께 본다(lexical.ts 머리말) — 식별자 · 파일 이름을 담은
     // 질문을 벡터 하나로는 놓친다.
     return {
-      chunks: await this.chunks.searchHybrid(
-        spaceId,
-        repoId,
-        vector,
-        queryTermsOf(query),
-        safeTopK,
-      ),
+      chunks: await this.chunks.searchHybrid(spaceId, repoId, vector, query, safeTopK),
     };
   }
 
