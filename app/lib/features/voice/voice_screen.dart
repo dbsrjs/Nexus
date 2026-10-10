@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models/channel.dart';
 import '../../ui/ui.dart';
+import '../auth/auth_controller.dart';
 import '../channel/channel_controller.dart';
 import '../channel/dm.dart';
 import '../chat/chat_header.dart';
@@ -159,18 +160,39 @@ class _LobbyState extends ConsumerState<_Lobby> {
   }
 }
 
-/// 들어간 뒤.
-class _InCall extends ConsumerWidget {
+/// 들어간 뒤. 누가 화면을 공유하면 그 화면을 크게, 사람은 아래 줄로 내린다(디스코드와 같다).
+class _InCall extends ConsumerStatefulWidget {
   const _InCall({required this.call});
 
   final VoiceCall call;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_InCall> createState() => _InCallState();
+}
+
+class _InCallState extends ConsumerState<_InCall> {
+  /// 사람이 고른 공유 화면. 그 사람이 공유를 멈추면 저절로 다른 화면으로 넘어간다.
+  String? _picked;
+
+  @override
+  Widget build(BuildContext context) {
+    final call = widget.call;
     final nx = NxTheme.of(context);
     final c = nx.colors;
     final members = ref.watch(memberProfilesProvider);
+    final myId = ref.watch(
+      authControllerProvider.select(
+        (a) => a is AuthSignedIn ? a.user.id : null,
+      ),
+    );
+    final shareMode = ref.watch(screenShareModeProvider);
     final session = ref.read(voiceSessionProvider.notifier);
+    final focus = pickScreenFocus(
+      call.screenSharers,
+      picked: _picked,
+      myId: myId,
+    );
+    String nameOf(String id) => members[id]?.displayName ?? '알 수 없는 사람';
 
     final notes = <Widget>[
       if (call.link == VoiceLink.connecting)
@@ -188,30 +210,93 @@ class _InCall extends ConsumerWidget {
         ),
     ];
 
+    final people = [
+      for (final p in call.peers)
+        _PersonTile(
+          userId: p.userId,
+          name: members[p.userId]?.displayName,
+          speaking: p.speaking,
+          micOff: !p.micOn,
+          sharing: call.screenSharers.contains(p.userId),
+        ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(NxSpacing.sp8),
+        if (focus == null)
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(NxSpacing.sp8),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: NxSpacing.sp6,
+                  runSpacing: NxSpacing.sp6,
+                  children: people,
+                ),
+              ),
+            ),
+          )
+        else ...[
+          if (call.screenSharers.length > 1)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                NxSpacing.sp6,
+                NxSpacing.sp5,
+                NxSpacing.sp6,
+                0,
+              ),
               child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: NxSpacing.sp6,
-                runSpacing: NxSpacing.sp6,
+                spacing: NxSpacing.sp3,
+                runSpacing: NxSpacing.sp3,
                 children: [
-                  for (final p in call.peers)
-                    _PersonTile(
-                      userId: p.userId,
-                      name: members[p.userId]?.displayName,
-                      speaking: p.speaking,
-                      micOff: !p.micOn,
+                  for (final id in call.screenSharers)
+                    NxChip(
+                      label: id == myId ? '내 화면' : nameOf(id),
+                      icon: NxIcons.screenShare,
+                      selected: id == focus,
+                      onPressed: () => setState(() => _picked = id),
                     ),
                 ],
               ),
             ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(NxSpacing.sp6),
+              child: Semantics(
+                label: focus == myId ? '내 화면' : '${nameOf(focus)}의 화면',
+                image: true,
+                child: Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: c.bgBase,
+                    borderRadius: BorderRadius.circular(NxRadius.lg),
+                    border: Border.all(color: c.divider),
+                  ),
+                  child: session.screenView(focus),
+                ),
+              ),
+            ),
           ),
-        ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(
+              NxSpacing.sp6,
+              0,
+              NxSpacing.sp6,
+              NxSpacing.sp5,
+            ),
+            child: Row(
+              children: [
+                for (final (i, tile) in people.indexed) ...[
+                  if (i > 0) const SizedBox(width: NxSpacing.sp5),
+                  tile,
+                ],
+              ],
+            ),
+          ),
+        ],
         for (final note in notes)
           Padding(
             padding: const EdgeInsets.only(bottom: NxSpacing.sp4),
@@ -222,8 +307,11 @@ class _InCall extends ConsumerWidget {
           decoration: BoxDecoration(
             border: Border(top: BorderSide(color: c.divider)),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          // 좁은 창에서 버튼 셋이 넘치지 않게 줄을 바꾼다.
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: NxSpacing.sp5,
+            runSpacing: NxSpacing.sp4,
             children: [
               NxButton(
                 label: call.micOn ? '마이크 끄기' : '마이크 켜기',
@@ -233,7 +321,16 @@ class _InCall extends ConsumerWidget {
                     ? () => toggleVoiceMic(context, ref)
                     : null,
               ),
-              const SizedBox(width: NxSpacing.sp5),
+              // 보낼 수 없는 기기(Android · 휴대폰 브라우저)에는 버튼을 두지 않는다 — 눌러 봐야 실패한다(판단 #7).
+              if (shareMode != ScreenShareMode.unsupported)
+                NxButton(
+                  label: call.screenShareOn ? '공유 중지' : '화면 공유',
+                  icon: NxIcons.screenShare,
+                  kind: NxButtonKind.secondary,
+                  onPressed: call.canSpeak || call.screenShareOn
+                      ? () => toggleScreenShare(context, ref)
+                      : null,
+                ),
               NxButton(
                 label: '나가기',
                 icon: NxIcons.hangUp,
@@ -248,6 +345,18 @@ class _InCall extends ConsumerWidget {
   }
 }
 
+/// 크게 볼 공유 화면. 사람이 고른 것이 아직 공유 중이면 그것, 아니면 **남의 화면** 먼저 —
+/// 내 화면은 내가 이미 보고 있다. 아무도 공유하지 않으면 null.
+@visibleForTesting
+String? pickScreenFocus(List<String> sharers, {String? picked, String? myId}) {
+  if (sharers.isEmpty) return null;
+  if (picked != null && sharers.contains(picked)) return picked;
+  for (final id in sharers) {
+    if (id != myId) return id;
+  }
+  return sharers.first;
+}
+
 /// 사람 한 칸 — 큰 아바타 · 이름 · 마이크 꺼짐.
 class _PersonTile extends StatelessWidget {
   const _PersonTile({
@@ -255,6 +364,7 @@ class _PersonTile extends StatelessWidget {
     required this.name,
     this.speaking = false,
     this.micOff = false,
+    this.sharing = false,
   });
 
   final String userId;
@@ -262,13 +372,21 @@ class _PersonTile extends StatelessWidget {
   final bool speaking;
   final bool micOff;
 
+  /// 화면을 공유 중이다.
+  final bool sharing;
+
   @override
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
     final c = nx.colors;
     final label = name ?? '알 수 없는 사람';
     return Semantics(
-      label: [label, if (speaking) '말하는 중', if (micOff) '마이크 꺼짐'].join(', '),
+      label: [
+        label,
+        if (speaking) '말하는 중',
+        if (micOff) '마이크 꺼짐',
+        if (sharing) '화면 공유 중',
+      ].join(', '),
       excludeSemantics: true,
       child: SizedBox(
         width: 96,
@@ -282,6 +400,14 @@ class _PersonTile extends StatelessWidget {
               children: [
                 if (micOff) ...[
                   NxIcon(NxIcons.micOff, size: NxIconSize.sm, color: c.danger),
+                  const SizedBox(width: NxSpacing.sp2),
+                ],
+                if (sharing) ...[
+                  NxIcon(
+                    NxIcons.screenShare,
+                    size: NxIconSize.sm,
+                    color: c.accent,
+                  ),
                   const SizedBox(width: NxSpacing.sp2),
                 ],
                 Flexible(

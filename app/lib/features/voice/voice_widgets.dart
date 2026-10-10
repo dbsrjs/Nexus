@@ -57,6 +57,166 @@ Future<void> toggleVoiceMic(BuildContext context, WidgetRef ref) async {
   }
 }
 
+/// 화면 공유를 켜고 끈다(조각 2). 데스크톱은 앱이 고르기 창을 띄우고, 브라우저는 브라우저가 띄운다.
+Future<void> toggleScreenShare(BuildContext context, WidgetRef ref) async {
+  final call = ref.read(voiceSessionProvider);
+  if (call == null) return;
+  final session = ref.read(voiceSessionProvider.notifier);
+  if (call.screenShareOn) {
+    // 끄기의 실패는 사람이 할 일이 없다 — 나가면 미디어 서버가 트랙을 정리한다.
+    try {
+      await session.setScreenShare(false);
+    } catch (_) {}
+    return;
+  }
+
+  String? sourceId;
+  if (ref.read(screenShareModeProvider) == ScreenShareMode.pickSource) {
+    sourceId = await showScreenSourcePicker(context, ref);
+    if (sourceId == null) return; // 고르지 않고 닫았다
+  }
+  try {
+    await session.setScreenShare(true, sourceId: sourceId);
+  } catch (e) {
+    // 브라우저 고르기 창에서 「취소」를 누르면 getDisplayMedia 가 NotAllowedError 로 던진다 —
+    // 사람이 고른 것이니 알리지 않는다. 그 밖(OS 의 화면 녹화 권한 · 장치)은 알린다.
+    if (isScreenShareCancel(e) || !context.mounted) return;
+    NxToast.show(
+      context,
+      '화면 공유를 시작하지 못했습니다. 화면 녹화 권한을 확인해 주세요.',
+      kind: NxToastKind.error,
+    );
+  }
+}
+
+/// 브라우저 고르기 창의 취소인가. 웹의 DOMException 이 Dart 쪽으로 문자열로만 넘어와 이름으로 가른다.
+@visibleForTesting
+bool isScreenShareCancel(Object error) {
+  final text = error.toString();
+  return text.contains('NotAllowedError') || text.contains('AbortError');
+}
+
+/// 공유할 화면 · 창을 고른다(데스크톱). 고른 것의 id, 닫으면 null.
+Future<String?> showScreenSourcePicker(BuildContext context, WidgetRef ref) =>
+    NxDialog.panel<String>(
+      context,
+      title: '공유할 화면',
+      width: 720,
+      builder: (_) =>
+          _ScreenSourcePicker(load: ref.read(screenSourcesProvider)),
+    );
+
+class _ScreenSourcePicker extends StatefulWidget {
+  const _ScreenSourcePicker({required this.load});
+
+  final Future<List<ScreenSource>> Function() load;
+
+  @override
+  State<_ScreenSourcePicker> createState() => _ScreenSourcePickerState();
+}
+
+class _ScreenSourcePickerState extends State<_ScreenSourcePicker> {
+  // build 마다 다시 부르지 않게 한 번만 받는다 — 목록을 받는 데 미리보기 캡처가 든다.
+  late final Future<List<ScreenSource>> _sources = widget.load();
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        NxSpacing.sp7,
+        0,
+        NxSpacing.sp7,
+        NxSpacing.sp7,
+      ),
+      child: FutureBuilder<List<ScreenSource>>(
+        future: _sources,
+        builder: (context, snap) {
+          if (snap.hasError) {
+            return Text(
+              '화면 목록을 받지 못했습니다. 화면 녹화 권한을 확인해 주세요.',
+              style: nx.text.secondary,
+            );
+          }
+          final sources = snap.data;
+          if (sources == null) {
+            return const NxSkeleton(lines: 2, lineHeight: 120);
+          }
+          if (sources.isEmpty) {
+            return Text('공유할 화면이 없습니다.', style: nx.text.secondary);
+          }
+          return SingleChildScrollView(
+            child: Wrap(
+              spacing: NxSpacing.sp5,
+              runSpacing: NxSpacing.sp5,
+              children: [
+                for (final s in sources)
+                  _SourceTile(
+                    source: s,
+                    onPressed: () => Navigator.of(context).pop(s.id),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SourceTile extends StatelessWidget {
+  const _SourceTile({required this.source, required this.onPressed});
+
+  final ScreenSource source;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    final thumb = source.thumbnail;
+    return NxPressable(
+      onPressed: onPressed,
+      semanticLabel: source.isScreen ? '화면 ${source.name}' : '창 ${source.name}',
+      excludeChildSemantics: true,
+      builder: (context, s) => SizedBox(
+        width: 200,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Container(
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: c.bgBase,
+                  borderRadius: BorderRadius.circular(NxRadius.md),
+                  border: Border.all(color: s.hovered ? c.accent : c.divider),
+                ),
+                child: thumb == null || thumb.isEmpty
+                    ? Center(
+                        child: NxIcon(
+                          NxIcons.screenShare,
+                          color: c.textSecondary,
+                        ),
+                      )
+                    : Image.memory(thumb, fit: BoxFit.contain),
+              ),
+            ),
+            const SizedBox(height: NxSpacing.sp2),
+            Text(
+              source.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: nx.text.sm,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// 통화 중인 사람의 아바타. 말하고 있으면 둘레가 초록으로 빛난다(디스코드와 같은 신호).
 ///
 /// 테두리는 늘 같은 두께로 둔다 — 말할 때만 두르면 아바타가 들썩인다.

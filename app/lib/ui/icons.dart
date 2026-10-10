@@ -45,6 +45,7 @@ enum NxIcons {
   mic,
   micOff,
   hangUp,
+  screenShare,
 }
 
 sealed class _Part {
@@ -149,6 +150,10 @@ const _glyphs = <NxIcons, List<_Part>>{
   NxIcons.micOff: [
     _Rect(6, 1.5, 4, 8, 2),
     _Stroke('M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5M5.5 14.5h5M2.5 2.5l11 11'),
+  ],
+  NxIcons.screenShare: [
+    _Rect(1.5, 2.5, 13, 9, 1.5),
+    _Stroke('M5.5 14h5M8 11.5V14M8 9V5M6 7l2-2 2 2'),
   ],
   NxIcons.hangUp: [
     _Stroke(

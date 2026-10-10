@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:livekit_client/livekit_client.dart' as lk;
 
 /// 통화 연결의 지금 모습.
@@ -16,6 +18,70 @@ enum VoiceEnd {
 
   /// 연결이 끊겨 다시 붙지 못했다.
   lost,
+}
+
+/// 이 기기에서 화면을 어떻게 공유하나(20단계 조각 2).
+enum ScreenShareMode {
+  /// 브라우저가 고르기 창을 띄운다(getDisplayMedia).
+  browser,
+
+  /// 앱이 화면 · 창 목록을 받아 고르기 창을 그린다(Windows · macOS).
+  pickSource,
+
+  /// 이 기기에서는 보낼 수 없다 — 받아 보기만 한다. Android 는 미디어 프로젝션 전경 서비스가
+  /// 있어야 하는데 아직 없다(설계 S4). 휴대폰 브라우저는 getDisplayMedia 가 없다.
+  unsupported,
+}
+
+ScreenShareMode screenShareMode() {
+  if (kIsWeb) {
+    return lk.lkPlatformIsWebMobile()
+        ? ScreenShareMode.unsupported
+        : ScreenShareMode.browser;
+  }
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.windows ||
+    TargetPlatform.macOS ||
+    TargetPlatform.linux => ScreenShareMode.pickSource,
+    _ => ScreenShareMode.unsupported,
+  };
+}
+
+/// 공유할 수 있는 화면 · 창 하나(데스크톱).
+@immutable
+class ScreenSource {
+  const ScreenSource({
+    required this.id,
+    required this.name,
+    required this.isScreen,
+    this.thumbnail,
+  });
+
+  final String id;
+  final String name;
+
+  /// 화면 전체인가(아니면 창 하나).
+  final bool isScreen;
+
+  /// JPEG. 받지 못했으면 null.
+  final Uint8List? thumbnail;
+}
+
+/// 데스크톱의 화면 · 창 목록. 화면이 먼저 온다.
+Future<List<ScreenSource>> listScreenSources() async {
+  final sources = await rtc.desktopCapturer.getSources(
+    types: [rtc.SourceType.Screen, rtc.SourceType.Window],
+    thumbnailSize: rtc.ThumbnailSize(320, 180),
+  );
+  return [
+    for (final s in sources)
+      ScreenSource(
+        id: s.id,
+        name: s.name,
+        isScreen: s.type == rtc.SourceType.Screen,
+        thumbnail: s.thumbnail,
+      ),
+  ]..sort((a, b) => a.isScreen == b.isScreen ? 0 : (a.isScreen ? -1 : 1));
 }
 
 /// 통화 안의 한 사람. identity 는 Nexus 사용자 id 다(서버가 토큰에 그렇게 넣는다).
@@ -69,6 +135,19 @@ abstract class VoiceEngine extends ChangeNotifier {
 
   /// [audioBlocked] 를 푸는 시도. 사람의 누름 안에서 불러야 브라우저가 받아 준다.
   Future<void> startAudio();
+
+  /// 내가 화면을 공유 중인가. 브라우저의 「공유 중지」로 끝나도 따라온다.
+  bool get screenShareOn;
+
+  /// 지금 화면을 공유 중인 사람(나 포함).
+  List<String> get screenSharers;
+
+  /// 화면 공유를 켜고 끈다. 데스크톱은 고른 화면 · 창의 [sourceId] 를 넘긴다.
+  Future<void> setScreenShare(bool on, {String? sourceId});
+
+  /// 그 사람이 공유하는 화면을 그린다. 공유 중이 아니면 빈 상자. **트랙을 바깥에 내놓지 않으려고**
+  /// 엔진이 그린다 — 화면은 LiveKit 을 모른다.
+  Widget screenView(String userId);
 
   /// 나오고 자원을 놓는다. 두 번 불러도 된다.
   Future<void> close();
@@ -133,6 +212,58 @@ class LiveKitVoiceEngine extends VoiceEngine {
           speaking: p.isSpeaking,
           micOn: p.isMicrophoneEnabled(),
         );
+
+  @override
+  bool get screenShareOn =>
+      _room.localParticipant?.isScreenShareEnabled() ?? false;
+
+  @override
+  List<String> get screenSharers => [
+    for (final p in <lk.Participant?>[
+      _room.localParticipant,
+      ..._room.remoteParticipants.values,
+    ])
+      if (p != null && _screenTrack(p) != null) p.identity,
+  ];
+
+  lk.VideoTrack? _screenTrack(lk.Participant? p) {
+    if (p == null) return null;
+    for (final pub in p.videoTrackPublications) {
+      final track = pub.track;
+      if (pub.isScreenShare && !pub.muted && track is lk.VideoTrack) {
+        return track;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Widget screenView(String userId) {
+    final track = _screenTrack(_room.getParticipantByIdentity(userId));
+    if (track == null) return const SizedBox.shrink();
+    // 트랙이 바뀌면 렌더러를 새로 만든다 — 같은 사람이 공유를 껐다 켜면 트랙이 다르다.
+    return lk.VideoTrackRenderer(
+      track,
+      key: ObjectKey(track),
+      fit: lk.VideoViewFit.contain,
+    );
+  }
+
+  @override
+  Future<void> setScreenShare(bool on, {String? sourceId}) async {
+    await _room.localParticipant?.setScreenShareEnabled(
+      on,
+      // 브라우저는 탭 · 화면 소리를 함께 실을 수 있다(사람이 고르기 창에서 고른다). 데스크톱은 영상만.
+      captureScreenAudio: kIsWeb,
+      screenShareCaptureOptions: lk.ScreenShareCaptureOptions(
+        sourceId: sourceId,
+        // 코드 · 문서를 보이는 용도라 움직임보다 선명함이 낫다 — 1080p 15fps(LiveKit 기본 화질 단계).
+        maxFrameRate: 15,
+        captureScreenAudio: kIsWeb,
+      ),
+    );
+    notifyListeners();
+  }
 
   @override
   Future<void> connect(String url, String token) async {
