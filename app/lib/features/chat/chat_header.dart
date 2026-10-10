@@ -35,6 +35,7 @@ class ChannelHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final nx = NxTheme.of(context);
     final c = nx.colors;
+    final compact = isCompactShell(context);
     return Container(
       // 선택 모드로 바뀔 때 쓰는 SelectionAppBar 와 높이를 맞춘다 — 한쪽만
       // 고치면 전환할 때 본문이 튄다. 상수는 그쪽이 원본이다.
@@ -71,6 +72,75 @@ class ChannelHeader extends StatelessWidget {
               ),
             ),
           ),
+          // 좁은 셸은 주제를 뺀다 — 폭 390 에 아이콘 넷 · 점 · 주제가 한 줄에 몰렸다.
+          if (topic != null && topic!.isNotEmpty && !compact) ...[
+            const SizedBox(width: NxSpacing.sp5),
+            Expanded(
+              child: Text(
+                topic!,
+                overflow: TextOverflow.ellipsis,
+                style: nx.text.secondary,
+              ),
+            ),
+          ] else
+            const Spacer(),
+          NxIconButton(icon: NxIcons.ai, label: 'AI에게 묻기', onPressed: onAsk),
+          if (compact)
+            const _MoreMenu(withSettings: true)
+          else ...[
+            const _PinnedButton(),
+            const _ChannelSettingsButton(),
+            const _FilesButton(),
+          ],
+          const _ConnectionDot(),
+        ],
+      ),
+    );
+  }
+}
+
+/// 음성 채널의 머리 줄(20단계). `#` 대신 스피커, 고정 메시지 · 파일 · AI 가 없다 — 메시지가 없는 채널이다.
+/// 설정은 남긴다: 비공개 명단 · 역할별 권한(듣기만 = 읽기 전용)을 여기서 정한다.
+class VoiceChannelHeader extends StatelessWidget {
+  const VoiceChannelHeader({super.key, required this.name, this.topic});
+
+  final String name;
+  final String? topic;
+
+  @override
+  Widget build(BuildContext context) {
+    final nx = NxTheme.of(context);
+    final c = nx.colors;
+    return Container(
+      height: SelectionAppBar.height,
+      padding: const EdgeInsets.only(left: NxSpacing.sp6, right: NxSpacing.sp4),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: c.divider)),
+      ),
+      child: Row(
+        children: [
+          Flexible(
+            flex: 0,
+            child: ShellPaneTrigger(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  NxIcon(NxIcons.speaker, color: c.textSecondary),
+                  const SizedBox(width: NxSpacing.sp3),
+                  Flexible(
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        name,
+                        overflow: TextOverflow.ellipsis,
+                        style: nx.text.header,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           if (topic != null && topic!.isNotEmpty) ...[
             const SizedBox(width: NxSpacing.sp5),
             Expanded(
@@ -82,10 +152,7 @@ class ChannelHeader extends StatelessWidget {
             ),
           ] else
             const Spacer(),
-          NxIconButton(icon: NxIcons.ai, label: 'AI 에게 묻기', onPressed: onAsk),
-          const _PinnedButton(),
           const _ChannelSettingsButton(),
-          const _FilesButton(),
           const SizedBox(width: NxSpacing.sp3),
           const _ConnectionDot(),
         ],
@@ -108,6 +175,7 @@ class DmHeader extends ConsumerWidget {
     final members = ref.watch(memberProfilesProvider);
     final peer = members[channel.dmUserId];
     final name = dmPeerName(members, channel);
+    final compact = isCompactShell(context);
     return Container(
       height: SelectionAppBar.height,
       padding: const EdgeInsets.only(left: NxSpacing.sp6, right: NxSpacing.sp4),
@@ -145,10 +213,13 @@ class DmHeader extends ConsumerWidget {
             ),
           ),
           const Spacer(),
-          NxIconButton(icon: NxIcons.ai, label: 'AI 에게 묻기', onPressed: onAsk),
-          const _PinnedButton(),
-          const _FilesButton(),
-          const SizedBox(width: NxSpacing.sp3),
+          NxIconButton(icon: NxIcons.ai, label: 'AI에게 묻기', onPressed: onAsk),
+          if (compact)
+            const _MoreMenu(withSettings: false)
+          else ...[
+            const _PinnedButton(),
+            const _FilesButton(),
+          ],
           const _ConnectionDot(),
         ],
       ),
@@ -175,36 +246,39 @@ class _ChannelSettingsButton extends ConsumerWidget {
   }
 }
 
-/// 실시간 연결 표시.
+/// 실시간 연결 표시 — **끊겼을 때만** 보인다.
 ///
 /// 끊겨 있으면 화면은 그대로 보이지만 **새 메시지가 오지 않는다.** 그 상태를
-/// 사용자가 알 수 있어야 한다 — 조용히 멈춘 채팅은 버그로 오인된다.
+/// 사용자가 알 수 있어야 한다 — 조용히 멈춘 채팅은 버그로 오인된다. 붙어 있을 때 늘 떠 있던
+/// 초록 점은 「무엇의 상태인가」만 궁금하게 했다(2026-10-10 UI/UX 검토) — 정상은 말하지 않는다.
 class _ConnectionDot extends ConsumerWidget {
   const _ConnectionDot();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connected = ref.watch(socketConnectedProvider);
+    if (connected) return const SizedBox.shrink();
     final nx = NxTheme.of(context);
     final c = nx.colors;
-    final message = connected ? '실시간 연결됨' : '연결 끊김 — 새 메시지가 오지 않습니다';
+    const message = '연결 끊김 — 새 메시지가 오지 않습니다';
 
     return NxTooltip(
       message: message,
       child: Semantics(
         label: message,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: connected ? c.success : c.danger,
+        child: Padding(
+          padding: const EdgeInsets.only(left: NxSpacing.sp3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: c.danger,
+                ),
               ),
-            ),
-            if (!connected) ...[
               const SizedBox(width: NxSpacing.sp2),
               ExcludeSemantics(
                 child: Text(
@@ -213,9 +287,42 @@ class _ConnectionDot extends ConsumerWidget {
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// 좁은 셸의 「⋯」 — 고정된 메시지 · 파일 · 채널 설정을 한 버튼에 접는다.
+class _MoreMenu extends ConsumerWidget {
+  const _MoreMenu({required this.withSettings});
+
+  /// 채널 설정 항목을 둘지(DM 에는 설정이 없다, 17단계 D7).
+  final bool withSettings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spaceId = ref.watch(currentSpaceIdProvider);
+    final channelId = ref.watch(currentChannelIdProvider);
+    return NxMenu(
+      entries: [
+        NxMenuItem('고정된 메시지', onSelected: () => _showPinned(context, ref)),
+        NxMenuItem(
+          '파일',
+          onSelected: spaceId == null
+              ? null
+              : () => context.go('/s/$spaceId/files'),
+        ),
+        if (withSettings && spaceId != null && channelId != null)
+          NxMenuItem(
+            '채널 설정',
+            onSelected: () =>
+                context.go(channelSettingsLocation(spaceId, channelId, null)),
+          ),
+      ],
+      anchorBuilder: (context, toggle) =>
+          NxIconButton(icon: NxIcons.more, label: '더 보기', onPressed: toggle),
     );
   }
 }

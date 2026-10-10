@@ -6,6 +6,7 @@
 #
 #   docker compose -f server/docker-compose.yml --profile redis up -d
 #   docker compose -f server/docker-compose.yml --profile s3    up -d
+#   docker compose -f server/docker-compose.yml --profile voice up -d   # 음성 채널(20단계)
 services:
   # pgvector 확장이 포함된 Postgres 이미지.
   # 순정 postgres:16 을 쓰면 repo_index_chunks 의 vector 컬럼을 만들 수 없어
@@ -60,6 +61,25 @@ services:
     volumes:
       - ./docker/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
       - nexus-s3-data:/data
+
+  # 음성 채널의 미디어 서버(20단계). 통화를 만지는 날에만 켠다 — 다른 기능은 이것 없이 돈다.
+  # server/.env 의 LIVEKIT_URL=ws://127.0.0.1:7880 · LIVEKIT_API_KEY=devkey ·
+  # LIVEKIT_API_SECRET 은 docker/livekit.yaml 의 개발값과 같아야 한다(.env.example 에 있다).
+  livekit:
+    image: livekit/livekit-server:v1.9.1
+    container_name: nexus-livekit
+    restart: unless-stopped
+    profiles: ["voice"]
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7880:7880"        # 시그널(WebSocket) · 서버 API
+      - "7881:7881"        # 미디어 TCP — UDP 가 막힌 망
+      - "7882:7882/udp"    # 미디어 UDP
+    # 웹훅이 호스트의 server:dev 로 간다. Docker Desktop 은 이 이름을 원래 알지만 Linux 는 모른다.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./docker/livekit.yaml:/etc/livekit.yaml:ro
 
 volumes:
   nexus-postgres-data:

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth_controller.dart';
 import 'auth_redirect.dart';
-import '../features/chat/chat_screen.dart';
+import '../features/voice/voice_screen.dart';
 import '../features/chat/thread_screen.dart';
 import '../features/files/files_screen.dart';
 import '../features/issue/board_screen.dart';
@@ -69,7 +69,11 @@ List<RouteBase> appRoutes() => [
   GoRoute(path: '/', builder: (_, _) => const _SplashScreen()),
   GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
   GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
-  GoRoute(path: '/spaces', builder: (_, _) => const SpacePickerScreen()),
+  GoRoute(
+    path: '/spaces',
+    builder: (_, state) =>
+        SpacePickerScreen(auto: state.uri.queryParameters['auto'] == '1'),
+  ),
   // 초대 링크(«마지막»). 셸 밖이다 — 아직 그 스페이스의 멤버가 아니다.
   GoRoute(
     path: '/invite/:code',
@@ -167,8 +171,8 @@ List<RouteBase> appRoutes() => [
             builder: (_, state) =>
                 NotificationsScreen(spaceId: state.pathParameters['spaceId']!),
           ),
-          // 채널을 연 상태. 셸은 같고 본문만 대화로 바뀐다.
-          GoRoute(path: 'c/:channelId', builder: (_, _) => const ChatScreen()),
+          // 채널을 연 상태. 셸은 같고 본문만 대화로 바뀐다 — 음성 채널이면 통화 화면(20단계).
+          GoRoute(path: 'c/:channelId', builder: (_, _) => const ChannelRouteBody()),
         ],
       ),
     ],

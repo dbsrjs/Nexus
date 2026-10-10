@@ -283,7 +283,7 @@ class _TypeSwitchesState extends ConsumerState<_TypeSwitches> {
           s.broadcast,
           (v) => _set(broadcast: v),
         ),
-        row('다이렉트 메시지', 'DM 에 새 메시지가 왔을 때', s.dms, (v) => _set(dms: v)),
+        row('다이렉트 메시지', 'DM에 새 메시지가 왔을 때', s.dms, (v) => _set(dms: v)),
         row('스레드 답글', '내 글에 답글이 달렸을 때', s.replies, (v) => _set(replies: v)),
         if (_error != null) SettingsError(_error!),
       ],

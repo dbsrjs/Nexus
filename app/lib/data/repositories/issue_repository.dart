@@ -19,8 +19,9 @@ class IssueRepository {
   final AppDatabase _db;
 
   /// 보드에 그릴 순서 그대로(컬럼 순 · position 순) 흘려준다.
-  Stream<List<Issue>> watchIssues(String spaceId) =>
-      _db.watchIssues(spaceId).map((rows) => rows.map(_toIssue).toList(growable: false));
+  Stream<List<Issue>> watchIssues(String spaceId) => _db
+      .watchIssues(spaceId)
+      .map((rows) => rows.map(_toIssue).toList(growable: false));
 
   /// **실패를 던지지 않고 false 를 돌려준다.** 오프라인은 오류가 아니라 정상
   /// 경로다. 캐시를 빈 값으로 덮어쓰지 않는 것이 핵심이다.
@@ -43,6 +44,8 @@ class IssueRepository {
     String? description,
     IssueStatus? status,
     IssuePriority? priority,
+    String? assigneeId,
+    String? sprintId,
     String? originMessageId,
   }) async {
     try {
@@ -52,6 +55,8 @@ class IssueRepository {
         description: description,
         status: status,
         priority: priority,
+        assigneeId: assigneeId,
+        sprintId: sprintId,
         originMessageId: originMessageId,
       );
       await _db.upsertIssue(spaceId, created);
@@ -160,7 +165,8 @@ class IssueRepository {
     }
   }
 
-  Future<List<IssueLabel>> listLabels(String spaceId) => _api.listLabels(spaceId);
+  Future<List<IssueLabel>> listLabels(String spaceId) =>
+      _api.listLabels(spaceId);
 
   Future<IssueLabel?> createLabel(
     String spaceId, {
@@ -175,7 +181,11 @@ class IssueRepository {
   }
 
   /// 통째 교체라 멱등하다. 성공하면 캐시의 이슈도 새 라벨로 덮는다.
-  Future<bool> setLabels(String spaceId, Issue issue, List<String> labelIds) async {
+  Future<bool> setLabels(
+    String spaceId,
+    Issue issue,
+    List<String> labelIds,
+  ) async {
     try {
       final labels = await _api.setLabels(spaceId, issue.id, labelIds);
       await _db.upsertIssue(spaceId, issue.copyWith(labels: labels));
@@ -271,4 +281,3 @@ String localPositionBetween(String? after, String? before) {
   };
   return value.toString();
 }
-

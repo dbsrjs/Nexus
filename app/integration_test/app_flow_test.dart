@@ -23,7 +23,6 @@ import 'package:nexus_app/features/shell/app_shell.dart';
 import 'package:nexus_app/features/space/space_controller.dart';
 import 'package:nexus_app/features/space/space_menu.dart';
 import 'package:nexus_app/main.dart';
-import 'package:nexus_app/shared/widgets/back_button.dart';
 import 'package:nexus_app/ui/ui.dart';
 
 /// **화면을 실제 서버에 붙여 끝까지 돈다.** 단위 · 위젯 테스트는 화면 하나씩만
@@ -90,9 +89,9 @@ void main() {
       await tester.typeInto(find.widgetWithText(NxField, '비밀번호'), _password);
       await tester.tap(find.widgetWithText(NxButton, '로그인'));
 
-      // ── 스페이스 고르기 → 셸 ──────────────────
-      await tester.pumpUntil(find.text(fx.spaceName));
-      await tester.tap(find.text(fx.spaceName));
+      // ── 로그인 → 곧장 셸 ─────────────────────
+      // 스페이스가 하나뿐이면 고르기 화면을 거치지 않고 그 스페이스의 첫 채널로 들어간다
+      // (2026-10-10 UI/UX 검토). 그래서 스페이스 이름을 누르지 않는다 — 누르면 셸의 스페이스 메뉴다.
       await tester.pumpUntil(find.text(fx.channelName));
 
       // ── 채널 → 서버에 있던 메시지 ─────────────
@@ -114,12 +113,14 @@ void main() {
       await fx.bobSays(live);
       await tester.pumpUntil(_body(live));
 
-      // ── 스레드 (셸 밖으로 덮어 연다) → 돌아온다 ──
+      // ── 스레드 (데스크톱은 대화 옆 오른쪽 판에 연다) → 닫는다 ──
       await tester.tap(find.text('답글 1개'));
       await tester.pumpUntil(_body(fx.replyBody));
       expect(find.text('스레드'), findsOneWidget);
+      // 대화가 가려지지 않는다 — 판을 연 채로 채널의 메시지가 보인다.
+      expect(_body(live), findsOneWidget);
       // 뿌리 메시지에는 「답글 N개」가 없다 — 누르면 같은 스레드가 한 겹 더 열렸다.
-      // 스레드 화면 안에서만 찾는다 — 덮어 여는 동안에는 아래의 채널도 아직 무대에 있다.
+      // 스레드 판 안에서만 찾는다 — 옆의 채널에는 그 글자가 그대로 있다.
       expect(
         find.descendant(
           of: find.byType(ThreadScreen),
@@ -127,12 +128,13 @@ void main() {
         ),
         findsNothing,
       );
-      // 자체 머리 줄의 뒤로 가기(NxBackButton) — tester.pageBack 은 Material · Cupertino 버튼만 찾는다.
-      await tester.tap(find.byType(NxBackButton));
-      await tester.pumpUntil(_body(live));
+      await tester.tap(
+        find.byWidgetPredicate((w) => w is NxIconButton && w.label == '스레드 닫기'),
+      );
+      await tester.pumpUntilGone(find.byType(ThreadScreen));
 
       // ── 셸 안의 작업 화면들 ──────────────────
-      await tester.tap(find.text('이슈 보드'));
+      await tester.tap(find.widgetWithText(NxRow, '이슈'));
       await tester.pumpUntil(find.text(fx.issueTitle));
 
       // 끌어 옮기기(15단계 D15) — 키보드 길로 백로그 → 진행. 서버의 자리까지 바뀌어야 한다.
@@ -149,7 +151,7 @@ void main() {
       );
 
       await tester.tap(find.text('파일'));
-      await tester.pumpUntil(find.text('아직 올라온 파일이 없습니다.'));
+      await tester.pumpUntil(find.text('아직 올라온 파일이 없습니다'));
 
       // 저장소 화면은 GitHub 계정을 연결하지 않아도 떠야 한다 — 연결 안내를 보인다.
       await tester.tap(find.text('저장소'));
@@ -353,9 +355,7 @@ void main() {
         '멘션 알림이 서버에 없다',
       );
       await tester.tap(find.widgetWithText(NxRow, '알림'));
-      final headline = find.text(
-        'AppFlow C 님이 #${fx.channelName} 에서 나를 멘션했습니다',
-      );
+      final headline = find.text('AppFlow C 님이 #${fx.channelName}에서 나를 멘션했습니다');
       await tester.pumpUntil(headline);
       await tester.tap(headline);
       // 멘션은 이름 조각으로 그려진다 — 본문의 나머지 글자로 찾는다.
@@ -426,7 +426,7 @@ Finder _composerField() => find
 
 /// 채널 머리 줄의 AI 버튼. 배치마다 머리 줄이 따로 있어 보이는 것 하나를 누른다.
 Finder _aiButton() => find
-    .byWidgetPredicate((w) => w is NxIconButton && w.label == 'AI 에게 묻기')
+    .byWidgetPredicate((w) => w is NxIconButton && w.label == 'AI에게 묻기')
     .first;
 
 /// AI 패널의 입력 칸 — 입력 화면 · 문답 화면 모두 하나뿐이다. 힌트 글자는 쓰면
@@ -443,8 +443,12 @@ int _aiAnswers() => find
     .evaluate()
     .length;
 
-Finder _closeButton() =>
-    find.byWidgetPredicate((w) => w is NxIconButton && w.label == '닫기').last;
+/// AI 를 닫는 버튼. 데스크톱은 오른쪽 판의 「AI 닫기」, 좁은 폭은 대화상자의 「닫기」다.
+Finder _closeButton() => find
+    .byWidgetPredicate(
+      (w) => w is NxIconButton && (w.label == 'AI 닫기' || w.label == '닫기'),
+    )
+    .last;
 
 /// 서버에 테스트용 계정 · 스페이스 · 메시지 · 답글 · 이슈를 API 로 만든다.
 /// 이름은 영문이다 — slug 가 한글을 떨어뜨려 이름이 겹친다(CLAUDE.md §2).

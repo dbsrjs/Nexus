@@ -40,6 +40,12 @@ enum NxIcons {
   info,
   image,
   download,
+  // 음성 채널(20단계) — 채널 줄의 종류 표시 · 통화 버튼.
+  speaker,
+  mic,
+  micOff,
+  hangUp,
+  screenShare,
 }
 
 sealed class _Part {
@@ -111,10 +117,12 @@ const _glyphs = <NxIcons, List<_Part>>{
   NxIcons.external: [_Stroke('M9 3h4v4M13 3 7.5 8.5M11 9.5V13H3V5h3.5')],
   NxIcons.refresh: [_Stroke('M13 8a5 5 0 1 1-1.46-3.54M13 3v2.5h-2.5')],
   NxIcons.logout: [_Stroke('M6 3H3v10h3M10 5l3 3-3 3M13 8H6')],
+  // 톱니 8개의 바깥선 + 가운데 구멍. 예전 그림(가운데 원 + 바큇살 8개)은 이 크기에서
+  // 해(☼)로 읽혀 테마 토글로 오해됐다(2026-10-10 UI/UX 검토).
   NxIcons.settings: [
-    _Circle(8, 8, 2.5),
+    _Circle(8, 8, 2),
     _Stroke(
-      'M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4',
+      'M12.43 6.74 L14.13 7.07 L14.13 8.93 L12.43 9.26 L12.02 10.24 L12.99 11.68 L11.68 12.99 L10.24 12.02 L9.26 12.43 L8.93 14.13 L7.07 14.13 L6.74 12.43 L5.76 12.02 L4.32 12.99 L3.01 11.68 L3.98 10.24 L3.57 9.26 L1.87 8.93 L1.87 7.07 L3.57 6.74 L3.98 5.76 L3.01 4.32 L4.32 3.01 L5.76 3.98 L6.74 3.57 L7.07 1.87 L8.93 1.87 L9.26 3.57 L10.24 3.98 L11.68 3.01 L12.99 4.32 L12.02 5.76Z',
     ),
   ],
   NxIcons.warning: [
@@ -132,6 +140,28 @@ const _glyphs = <NxIcons, List<_Part>>{
     _Circle(10.5, 6, 1),
   ],
   NxIcons.download: [_Stroke('M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10')],
+  NxIcons.speaker: [
+    _Stroke('M2.5 6H5l3.5-3v10L5 10H2.5z'),
+    _Stroke('M11 5.5a3.5 3.5 0 0 1 0 5'),
+    _Stroke('M12.8 3.3a6.5 6.5 0 0 1 0 9.4'),
+  ],
+  NxIcons.mic: [
+    _Rect(6, 1.5, 4, 8, 2),
+    _Stroke('M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5M5.5 14.5h5'),
+  ],
+  NxIcons.micOff: [
+    _Rect(6, 1.5, 4, 8, 2),
+    _Stroke('M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5M5.5 14.5h5M2.5 2.5l11 11'),
+  ],
+  NxIcons.screenShare: [
+    _Rect(1.5, 2.5, 13, 9, 1.5),
+    _Stroke('M5.5 14h5M8 11.5V14M8 9V5M6 7l2-2 2 2'),
+  ],
+  NxIcons.hangUp: [
+    _Stroke(
+      'M2 10c3.3-3.2 8.7-3.2 12 0l-1.6 1.8-2.4-.9V9.2a6 6 0 0 0-4 0v1.7l-2.4.9z',
+    ),
+  ],
 };
 
 /// 아이콘 하나. 크기와 색은 지정하지 않으면 가장 가까운 `IconTheme` 을 따른다.

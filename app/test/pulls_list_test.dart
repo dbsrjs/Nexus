@@ -191,7 +191,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('GitHub 을 연결하세요'), findsOneWidget);
+    expect(find.text('GitHub를 연결하세요'), findsOneWidget);
     expect(find.text('저장소 화면으로'), findsOneWidget);
   });
 
@@ -202,7 +202,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('GitHub 을 연결하세요'), findsNothing);
+    expect(find.text('GitHub를 연결하세요'), findsNothing);
     expect(find.text('다시 확인'), findsOneWidget);
   });
 
@@ -216,7 +216,7 @@ void main() {
       ),
     );
 
-    expect(find.text('닫힌 PR 이 없습니다'), findsOneWidget);
-    expect(find.text('열린 PR 이 없습니다'), findsNothing);
+    expect(find.text('닫힌 PR이 없습니다'), findsOneWidget);
+    expect(find.text('열린 PR이 없습니다'), findsNothing);
   });
 }

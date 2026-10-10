@@ -1,4 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 음성 채널(20단계). 마이크 권한은 들어갈 때 flutter_webrtc 가 실행 중에 묻는다 — 여기는 선언만.
+         카메라는 범위 밖이라 선언하지 않는다. 블루투스 둘은 헤드셋으로 소리를 보내는 데 쓴다. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <application
         android:label="Nexus"
         android:name="${applicationName}"

@@ -65,7 +65,7 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
     // 바텀시트가 아니라 가운데 패널이다(15단계 D8).
     final added = await NxDialog.panel<bool>(
       context,
-      title: '@$login 의 저장소',
+      title: '@$login의 저장소',
       width: 520,
       builder: (_) => RepoPickerSheet(spaceId: widget.spaceId, login: login),
     );
@@ -305,7 +305,7 @@ class _Disconnected extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('GitHub 을 연결하면 커밋과 PR 이 채널로 들어옵니다', style: nx.text.base),
+          Text('GitHub를 연결하면 커밋과 PR이 채널로 들어옵니다', style: nx.text.base),
           const SizedBox(height: NxSpacing.sp5),
           if (waiting)
             Text('브라우저에서 계속하세요…', style: nx.text.secondary)

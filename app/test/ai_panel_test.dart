@@ -321,7 +321,7 @@ void main() {
     await ask(tester, '더 짧게');
 
     expect(find.text('첫 답'), findsOneWidget);
-    expect(find.textContaining('AI 를 쓸 수 없습니다'), findsOneWidget);
+    expect(find.textContaining('AI를 쓸 수 없습니다'), findsOneWidget);
   });
 
   testWidgets('이슈 초안 답에는 이어서 묻기 입력이 없다', (tester) async {

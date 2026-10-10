@@ -35,7 +35,10 @@ void main() {
       const byUser = AuthSignedOut(byUser: true);
       expect(go(byUser, '/s/sp1/c/ch1'), '/login');
       // 그 뒤 로그인 · 가입하면 남의 스페이스가 아니라 스페이스 고르기로 간다.
-      expect(settle(signedIn, settle(byUser, '/s/sp1/c/ch1')), '/spaces');
+      expect(
+        settle(signedIn, settle(byUser, '/s/sp1/c/ch1')),
+        autoSpacePickerPath,
+      );
     });
 
     test('세션이 만료돼 튕긴 것은 그대로 주소를 들고 간다', () {
@@ -60,7 +63,7 @@ void main() {
     });
 
     test('갈 곳 없이 켰으면 예전처럼 /spaces', () {
-      expect(settle(signedIn, settle(restoring, '/')), '/spaces');
+      expect(settle(signedIn, settle(restoring, '/')), autoSpacePickerPath);
     });
 
     test('세션이 만료돼 있으면 로그인으로 가되 주소를 들고 간다', () {
@@ -98,7 +101,7 @@ void main() {
         'evil',
       ]) {
         final login = '/login?from=${Uri.encodeQueryComponent(evil)}';
-        expect(settle(signedIn, login), '/spaces', reason: evil);
+        expect(settle(signedIn, login), autoSpacePickerPath, reason: evil);
       }
     });
 

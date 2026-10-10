@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../shared/josa.dart';
 import '../../data/api/api_failure.dart';
 import '../../ui/ui.dart';
 import 'invite_code.dart';
@@ -73,7 +74,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                 Text(
                   code == null
                       ? '초대 링크가 올바르지 않습니다. 받은 링크를 다시 확인하세요.'
-                      : '초대 코드 $code 로 스페이스에 참여합니다.',
+                      : '초대 코드 ${withRo(code)} 스페이스에 참여합니다.',
                   style: nx.text.secondary,
                 ),
                 if (_error != null) ...[

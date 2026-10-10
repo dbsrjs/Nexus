@@ -19,7 +19,7 @@ mixin _$Channel {
 /// 무게가 다르고 화면에서도 다른 색으로 그린다.
  int get mentionCount; String? get lastReadMessageId; bool get muted;/// 내가 이 채널에 보낼 수 있는가(16단계 D26). 거짓이면 입력창 대신 「읽기 전용」을 보이고
 /// 답장 · 스레드 · 고정을 감춘다 — 리액션은 남는다. 서버가 안 주면(옛 응답) 보낼 수 있다고 본다.
- bool get canSend;/// `text` · `dm`(17단계). 모르는 값은 일반 채널로 본다.
+ bool get canSend;/// `text` · `dm`(17단계) · `voice`(20단계). 모르는 값은 일반 채널로 본다.
  String get kind;/// DM 의 상대(17단계 D6). 일반 채널은 null. 상대가 스페이스를 떠나도 남는다.
  String? get dmUserId;/// 마지막 최상위 메시지 시각 — DM 묶음을 최근순으로 줄 세우고 빈 DM 을 가린다(D10).
  DateTime? get lastMessageAt;
@@ -249,7 +249,7 @@ class _Channel extends Channel {
 /// 내가 이 채널에 보낼 수 있는가(16단계 D26). 거짓이면 입력창 대신 「읽기 전용」을 보이고
 /// 답장 · 스레드 · 고정을 감춘다 — 리액션은 남는다. 서버가 안 주면(옛 응답) 보낼 수 있다고 본다.
 @override@JsonKey() final  bool canSend;
-/// `text` · `dm`(17단계). 모르는 값은 일반 채널로 본다.
+/// `text` · `dm`(17단계) · `voice`(20단계). 모르는 값은 일반 채널로 본다.
 @override@JsonKey() final  String kind;
 /// DM 의 상대(17단계 D6). 일반 채널은 null. 상대가 스페이스를 떠나도 남는다.
 @override final  String? dmUserId;

@@ -17,16 +17,16 @@
 **Redis 는 쓰지 않는다.** 인덱싱 · AI 작업 큐는 Postgres 테이블(`FOR UPDATE SKIP LOCKED`)이고,
 서버가 한 대라 소켓 어댑터도 필요 없다. `.env.example` 의 `REDIS_URL` 은 자리만 남아 있다.
 
-## 현재 상태 — 19단계 + «마지막»의 배포 구성까지
+## 현재 상태 — 20단계 통화까지
 
 대화(스레드 · 답장 · 멘션 · 리액션 · 핀) · 첨부 · 이슈 · 스프린트 · GitHub 연동(웹훅 · 계정 연결 ·
 열람 · 커밋 · PR) · 저장소 인덱싱 · AI 패널(이어 묻기) · 사용자 설정 · 멤버 · 권한(초대 목록 · 취소 ·
 나가기 · 비공개 채널 명단 · 역할별 채널 권한) · DM · 프레즌스 · 입력 중 · 인앱 알림 · AI 기록(지난 대화 목록 · 다시 열기)이 동작한다. «마지막» 단계에서 S3 드라이버 · `TRUST_PROXY` · 테넌트 격리 통합 검증(`check:tenancy`)을
-더했다. 남은 것은 GitLab(20)과 실제 VM 배포.
+더했다. 20단계에서 통화(`voice/` — LiveKit 토큰 · 웹훅 · 통화 명단)를 더했다. 남은 것은 실제 VM 배포(GitLab 연동은 뺐다).
 
-프레즌스는 **서버 메모리**에 있다(저장하지 않는다) — 인스턴스가 하나라는 전제다.
+프레즌스와 통화 명단은 **서버 메모리**에 있다(저장하지 않는다) — 인스턴스가 하나라는 전제다.
 
-옛 단일 테넌트 모듈은 남아 있지 않다(`notifications` 는 18단계에서 새로 썼고, `gitlab` 은 20단계가 새로 쓴다).
+옛 단일 테넌트 모듈은 남아 있지 않다(`notifications` 는 18단계에서 새로 썼고, `gitlab` 은 지웠고 GitLab 연동은 뺐다).
 `src/realtime/redis-io.adapter.ts` 만 다중 인스턴스가 될 때까지 두 tsconfig 의 `exclude` 로 빠져 있다.
 
 ## 실행 방법
@@ -70,6 +70,7 @@ npm run server:dev
 | GitHub 계정 연결 · 웹훅 자동 등록 | `GITHUB_CLIENT_ID` · `GITHUB_CLIENT_SECRET` · `PUBLIC_BASE_URL`(터널 주소) |
 | 저장소 인덱싱 | `EMBEDDING_PROVIDER` (`gemini` 면 `GEMINI_API_KEY`, `local` 이면 Ollama — 아래) |
 | AI 패널 | `LLM_PROVIDER` (`gemini` · `local` · `fake`) |
+| 통화(음성 채널 · 화면 공유) | `LIVEKIT_URL` · `LIVEKIT_API_KEY` · `LIVEKIT_API_SECRET`(32자 이상). 개발은 `.env.example` 값 그대로 두고 `docker compose -f server/docker-compose.yml --profile voice up -d` 로 LiveKit 을 띄운다. **셋 중 일부만 차면 부팅을 멈춘다** |
 
 비워 두면 해당 API 가 **503** 으로 답하고 나머지는 그대로 돈다. 계약 검증을 돌릴 때의
 값(`GITHUB_*_BASE` · `fake` provider)은 [CLAUDE.md §1](../CLAUDE.md) 의 명령 표에 있다.
@@ -113,7 +114,7 @@ WSL 배포판에 systemd 가 켜져 있으면(`/etc/wsl.conf` 의 `[boot] system
 | `npm run lint` | ESLint |
 | `npm run format` · `format:check` | Prettier 정렬 · 검사(CI 가 `format:check` 를 돈다). ESLint 는 서식 규칙을 꺼 두고 이쪽에 맡긴다 |
 
-**계약 검증**은 저장소 루트에서 돌린다(`npm run check:*`, 20종). **실서버 · 실DB · 실소켓**을
+**계약 검증**은 저장소 루트에서 돌린다(`npm run check:*`, 21종). **실서버 · 실DB · 실소켓**을
 쓰고, 전부 자체 계정 · 자체 스페이스를 만들어 쓰므로 기존 데이터를 건드리지 않는다.
 GitHub 이 필요한 것은 가짜 GitHub(기본 4599, Windows 가 그 포트를 예약했으면 `FAKE_GITHUB_PORT`)을 스스로 띄운다. 목록과 필요한 `.env` 는
 [CLAUDE.md §1 «자주 쓰는 명령»](../CLAUDE.md). CI 가 push 마다 전부 돈다.
@@ -179,6 +180,7 @@ src/
 ├─ embedding/         # 임베딩 어댑터 (gemini · local · fake)
 ├─ llm/               # LLM 어댑터 (gemini · local · fake)
 ├─ ai/                # POST /ai/ask · 프리셋 · 컨텍스트 조립 · ai_runs 큐 · 러너 · 캐시
+├─ voice/             # 통화 — LiveKit 토큰 · 웹훅(원문 서명) · 통화 명단(메모리) · 내보내기 · 말하기 끄기
 ├─ realtime/          # 소켓 게이트웨이 · 룸 계산 · 이벤트 발신
 ├─ prisma/            # PrismaModule + PrismaService
 └─ common/            # 예외 필터, 데코레이터, 공통 DTO, slug, bigint 직렬화

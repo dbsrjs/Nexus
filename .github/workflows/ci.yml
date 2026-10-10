@@ -169,6 +169,11 @@ jobs:
       # 계약 검증이 한 주소에서 계정을 수십 개 만든다 — 가입 시도 한도를 끈다.
       # 한도 자체는 서버 단위 테스트(auth-hardening.spec.ts)가 본다.
       SIGNUP_LIMIT_PER_HOUR: '0'
+      # 음성 채널(check:voice)은 진짜 LiveKit 에 대고 돈다 — 아래 「LiveKit 기동」.
+      # 키 · 시크릿은 server/docker/livekit.yaml 의 개발용 값과 같아야 한다.
+      LIVEKIT_URL: ws://127.0.0.1:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: nexus-dev-livekit-secret-0123456789
       PORT: '3000'
 
     steps:
@@ -202,6 +207,23 @@ jobs:
       - name: 앱 의존성
         working-directory: app
         run: flutter pub get
+
+      # **서버보다 먼저 띄운다.** 서버가 부팅 때 룸 목록을 한 번 묻는다(통화 상태 맞추기).
+      # 웹훅은 컨테이너 안에서 host.docker.internal:3000 으로 돌아온다(livekit.yaml).
+      # 미디어는 흐르지 않는다 — check:voice 는 시그널링으로만 들어간다.
+      - name: LiveKit 기동
+        run: |
+          docker run -d --name livekit --add-host host.docker.internal:host-gateway \
+            -p 7880:7880 -p 7881:7881 -p 7882:7882/udp \
+            -v "$PWD/docker/livekit.yaml:/etc/livekit.yaml:ro" \
+            livekit/livekit-server:v1.9.1 --config /etc/livekit.yaml
+          for i in $(seq 1 60); do
+            curl -sf -m 2 http://127.0.0.1:7880 >/dev/null && { echo "준비됨 (${i}회 시도)"; exit 0; }
+            sleep 1
+          done
+          echo "::error::LiveKit 이 60초 안에 응답하지 않았습니다"
+          docker logs livekit
+          exit 1
 
       # **빌드본을 띄운다(start:dev 가 아니다).** enableBigIntSerialization() ·
       # rawBody: true · 전역 파이프 · 전역 예외 필터가 전부 main.ts 에 있고,
@@ -237,7 +259,7 @@ jobs:
           set -e
           echo "── check:realtime ──"
           node scripts/check-realtime.mjs
-          for s in reactions threads quotes mentions pins attachments issues repos oauth browse pulls indexing ai settings members dm presence notifications tenancy; do
+          for s in reactions threads quotes mentions pins attachments issues repos oauth browse pulls indexing ai settings members dm presence notifications tenancy voice; do
             echo "── check:$s ──"
             node "scripts/check-$s.mjs"
           done
@@ -288,4 +310,6 @@ jobs:
       # 본문 안에만 있었다.
       - name: 실패 시 서버 로그
         if: failure()
-        run: cat /tmp/server.log /tmp/server-s3.log 2>/dev/null || true
+        run: |
+          cat /tmp/server.log /tmp/server-s3.log 2>/dev/null || true
+          docker logs livekit 2>/dev/null | tail -100 || true

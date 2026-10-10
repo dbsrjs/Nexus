@@ -204,7 +204,7 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
             size: NxSize.sm,
             onPressed: () => context.push('$base/pulls'),
           ),
-          NxIconButton(icon: NxIcons.ai, label: 'AI 에게 묻기', onPressed: _openAi),
+          NxIconButton(icon: NxIcons.ai, label: 'AI에게 묻기', onPressed: _openAi),
         ],
       ),
       body: Column(
