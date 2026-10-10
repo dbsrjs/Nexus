@@ -259,7 +259,7 @@ class NxFontSize {
   static const double xl = 24;
 }
 
-// 둘 다 pubspec.yaml 로 싣는다. Pretendard 는 KS X 1001 2,350자로 자른 판이라(scripts/subset_fonts.py)
+// 둘 다 pubspec.yaml 로 싣는다. Pretendard 는 KS X 1001 2,350자 판(Pretendard Std)이라
 // 목록 밖 음절은 대체 서체로 간다 — 한글이 있는 서체를 앞에 둔다(Segoe UI 에는 한글이 없다).
 const _font = 'Pretendard';
 const _fallback = <String>[

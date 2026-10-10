@@ -416,7 +416,7 @@ shared/widgets/          NexusAvatar 등 공용 위젯
 ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 · 입력 · 메뉴 · 다이얼로그 · 토스트 ·
                          스위치 · 칩 · 화면 틀. **material · cupertino 를 import 하지 않는다.**
                          디버그 빌드의 `/dev/ui` 가 갤러리(`--dart-define=NX_START=/dev/ui` 로 바로 연다)
-assets/fonts/            Pretendard(KS X 1001 서브셋) · JetBrains Mono NL — 다시 만들 때 scripts/subset_fonts.py
+assets/fonts/            Pretendard Std(KS X 1001 판) · JetBrains Mono NL — 공식 릴리스 그대로(직접 자르지 않는다, pubspec 주석)
 ```
 
 **앱 규칙**
