@@ -644,6 +644,13 @@ class AppDatabase extends _$AppDatabase {
       (update(cachedMessages)..where((m) => m.id.equals(messageId)))
           .write(CachedMessagesCompanion(reactions: Value(reactions)));
 
+  /// 수정된 메시지 — **본문과 수정 시각만** 바꾼다. 서버의 수정 응답 · `message:edited` 에는
+  /// 리액션 · 멘션 · 인용이 실리지 않아, 통째로 덮으면 그것들이 사라졌다.
+  Future<void> setEditedBody(String id, String body, DateTime editedAt) =>
+      (update(cachedMessages)..where((m) => m.id.equals(id))).write(
+        CachedMessagesCompanion(body: Value(body), editedAt: Value(editedAt)),
+      );
+
   /// 서버가 소프트 삭제한 메시지. 행은 남기고 본문만 비운다 — 서버와 같은 규칙이다.
   Future<void> markMessageDeleted(String id, DateTime at) =>
       (update(cachedMessages)..where((m) => m.id.equals(id))).write(

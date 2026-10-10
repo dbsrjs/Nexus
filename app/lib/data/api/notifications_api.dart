@@ -1,4 +1,3 @@
-
 import '../../domain/models/notification_item.dart';
 import 'api_client.dart';
 import 'api_failure.dart';
@@ -49,6 +48,14 @@ class NotificationsApi {
   Future<void> markRead(String spaceId, String id) => guardApi(() async {
     await _client.dio.post<void>('/spaces/$spaceId/notifications/$id/read');
   });
+
+  /// POST .../notifications/read-thread/:messageId — 그 스레드 답글의 내 알림을 읽음으로. 멱등.
+  Future<void> markThreadRead(String spaceId, String parentId) =>
+      guardApi(() async {
+        await _client.dio.post<void>(
+          '/spaces/$spaceId/notifications/read-thread/$parentId',
+        );
+      });
 
   /// POST .../notifications/read-all
   Future<void> markAllRead(String spaceId) => guardApi(() async {

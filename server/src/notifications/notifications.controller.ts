@@ -45,6 +45,19 @@ export class NotificationsController {
     return this.notifications.markAllRead(member);
   }
 
+  /**
+   * 스레드를 열었다 — 그 스레드 답글의 내 알림을 읽음으로(N12 수정, 2026-10-11). 멱등.
+   * 스레드는 읽음 위치가 없어 채널 읽음이 따라오지 않는다 — 열어 본 것을 신호로 쓴다.
+   */
+  @Post('read-thread/:messageId')
+  @HttpCode(HttpStatus.OK)
+  readThread(
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @CurrentSpaceMember() member: SpaceMember,
+  ) {
+    return this.notifications.markThreadRead(member, messageId);
+  }
+
   /** 하나 읽음. 이미 읽었어도 같은 결과다(멱등). */
   @Post(':notificationId/read')
   @HttpCode(HttpStatus.OK)

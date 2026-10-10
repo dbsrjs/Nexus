@@ -275,7 +275,7 @@ export class NotificationsService {
    * 읽음으로(N12). `ChannelsService.markRead` 가 부른다(REST · 소켓 둘 다 그 길을 탄다).
    *
    * 스레드 답글의 알림은 건드리지 않는다 — 스레드에는 읽음 위치가 없어(7-2), 채널을 읽었다고
-   * 답글을 읽은 것이 아니다.
+   * 답글을 읽은 것이 아니다. 그쪽은 스레드를 열 때 `markThreadRead` 가 읽는다.
    */
   async markChannelReadThrough(
     member: SpaceMember,
@@ -300,6 +300,49 @@ export class NotificationsService {
       data: { read: true },
     });
     this.emitRead(member, ids);
+  }
+
+  /**
+   * POST .../notifications/read-thread/:messageId — 그 스레드 **답글**의 내 알림을 읽음으로
+   * (N12 수정, 2026-10-11). 스레드를 열면 앱이 부른다 — 열어 둔 채 새 답글이 와도 다시 부른다.
+   *
+   * 예전 N12 는 「답글 알림은 알림함에서 누르거나 모두 읽음으로만」이었다. 실제로 써 보니 스레드를
+   * 열어 읽고 답까지 한 뒤에도 배지가 남았다 — 읽은 것을 안 읽었다고 말하는 쪽이 더 나쁘다.
+   *
+   * **이 스페이스의 볼 수 있는 스레드가 아니면 404** — 내 알림만 바뀌어 흘릴 것은 없지만, 200 과
+   * 404 가 갈리지 않으면 격리 규칙 4 와 어긋나고(`check:tenancy` 가 잡았다), 아무 id 나 받는
+   * 쓰기 경로는 다음 사람이 믿고 넓히기 쉽다.
+   */
+  async markThreadRead(
+    member: SpaceMember,
+    parentId: string,
+  ): Promise<{ count: number }> {
+    const root = await this.prisma.message.findFirst({
+      where: { id: parentId, spaceId: member.spaceId, parentId: null },
+      select: { channelId: true },
+    });
+    if (!root || !(await this.channels.canView(root.channelId, member))) {
+      throw new NotFoundException('스레드를 찾을 수 없습니다');
+    }
+
+    const rows = await this.prisma.notification.findMany({
+      where: {
+        userId: member.userId,
+        spaceId: member.spaceId,
+        read: false,
+        message: { parentId },
+      },
+      select: { id: true },
+    });
+    if (rows.length === 0) return { count: 0 };
+
+    const ids = rows.map((r) => r.id);
+    await this.prisma.notification.updateMany({
+      where: { id: { in: ids }, userId: member.userId },
+      data: { read: true },
+    });
+    this.emitRead(member, ids);
+    return { count: ids.length };
   }
 
   /** 내 기기 전부에(N14). `ids: null` 은 그 스페이스 전부. */
