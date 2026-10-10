@@ -501,11 +501,7 @@ class _ShellHomeState extends ConsumerState<ShellHome> {
     if (channels == null) return null;
     final last = _last;
     if (last != null && channels.any((c) => c.id == last)) return last;
-    // 사이드바에 보이는 순서의 첫 채널. DM 은 고르지 않는다 — 남의 대화가 첫 화면이면 어색하다.
-    for (final group in ref.read(channelGroupsProvider)) {
-      if (group.channels.isNotEmpty) return group.channels.first.id;
-    }
-    return null;
+    return firstHomeChannel(ref.read(channelGroupsProvider))?.id;
   }
 
   @override
@@ -560,7 +556,7 @@ class _HomeEmpty extends ConsumerWidget {
     final channels = ref.watch(channelsProvider).value;
     final groups = ref.watch(channelGroupsProvider);
     // 받는 중이거나 곧 옮겨 갈 참이면 비워 둔다 — 빈 화면 문구가 한 번 비쳤다 사라지지 않게.
-    if (channels == null || groups.any((g) => g.channels.isNotEmpty)) {
+    if (channels == null || firstHomeChannel(groups) != null) {
       return const SizedBox.shrink();
     }
     return const NxEmptyState(
@@ -568,6 +564,18 @@ class _HomeEmpty extends ConsumerWidget {
       description: '왼쪽 목록의 + 로 채널을 만들거나, 다이렉트 메시지로 대화를 시작하세요.',
     );
   }
+}
+
+/// 곧장 열 첫 채널 — 사이드바에 보이는 순서대로 **글 채널만** 본다. DM 은 남의 대화가 첫
+/// 화면이면 어색하고, 다른 종류(음성 등)는 여는 순간 그 채널의 동작이 시작될 수 있다.
+/// 마지막으로 본 채널은 종류를 가리지 않는다 — 사람이 직접 고른 곳이다.
+Channel? firstHomeChannel(List<ChannelGroup> groups) {
+  for (final group in groups) {
+    for (final channel in group.channels) {
+      if (channel.kind == 'text') return channel;
+    }
+  }
+  return null;
 }
 
 /// 설정 창의 틀(14단계 설계 D2). **폭 분기는 이 파일에서만 한다**는 규칙을 지키려고

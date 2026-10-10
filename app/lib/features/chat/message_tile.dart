@@ -241,7 +241,9 @@ class _MessageTileState extends ConsumerState<MessageTile> {
               duration: NxMotion.micro,
               // 나를 부른 줄은 옅은 액센트 바탕(디자인 시스템 §2.4) — 알림을 눌러 들어온 사람이
               // 어느 줄 때문에 왔는지 찾지 않게. 호버보다 우선한다(올려도 어느 줄인지 남는다).
-              color: selected || mentioned
+              // **선택 모드에서는 바탕을 선택에만 쓴다** — 같은 색이라 고르지 않은 멘션 줄이
+              // 골라 둔 것처럼 보였다. 그동안 멘션은 왼쪽 막대만 남긴다.
+              color: selected || (mentioned && !selection.active)
                   ? c.accentSubtle
                   : (showToolbar ? c.bgSurface : NxColors.transparent),
               padding: EdgeInsets.fromLTRB(
@@ -254,7 +256,8 @@ class _MessageTileState extends ConsumerState<MessageTile> {
               child: Opacity(opacity: message.pending ? 0.5 : 1, child: body),
             ),
             // 왼쪽 막대 — 바탕만으로는 라이트 테마에서 옅다. 레이아웃을 밀지 않게 겹쳐 그린다.
-            if (mentioned && !selected)
+            // 선택 모드에서도 남는다 — 그때는 이것만이 멘션 표시다.
+            if (mentioned)
               Positioned(
                 left: 0,
                 top: 0,
