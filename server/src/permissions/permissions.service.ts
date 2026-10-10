@@ -5,6 +5,7 @@ import { RealtimeEmitter } from '../realtime/realtime-emitter';
 import { room } from '../realtime/rooms';
 import { ChannelsService } from '../channels/channels.service';
 import { SetPermissionDto } from './dto/set-permission.dto';
+import { VoiceService } from '../voice/voice.service';
 
 /** 권한 행을 둘 수 있는 역할(16단계 설계 D21). admin · owner 는 늘 기본값(전부 허용)이다. */
 export const OVERRIDABLE_ROLES = [SpaceRole.guest, SpaceRole.member] as const;
@@ -30,6 +31,7 @@ export class PermissionsService {
     private readonly prisma: PrismaService,
     private readonly channels: ChannelsService,
     private readonly realtime: RealtimeEmitter,
+    private readonly voice: VoiceService,
   ) {}
 
   /** guest · member 두 줄을 늘 돌려준다. 행이 없는 역할은 기본값(보기 · 보내기). */
@@ -72,6 +74,8 @@ export class PermissionsService {
     this.realtime.toSpace(member.spaceId, 'rooms:invalidate', {
       reason: 'channel.permissions',
     });
+    // 보내기만 바뀌면 evict 가 없다 — 통화 중인 사람의 말하기 권한을 여기서 맞춘다(20단계 설계 V7).
+    void this.voice.reconcileChannel(member.spaceId, channelId);
     return this.list(channelId, member);
   }
 
@@ -85,6 +89,7 @@ export class PermissionsService {
     this.realtime.toSpace(member.spaceId, 'rooms:invalidate', {
       reason: 'channel.permissions',
     });
+    void this.voice.reconcileChannel(member.spaceId, channelId);
   }
 
   private requireRole(role: string): OverridableRole {

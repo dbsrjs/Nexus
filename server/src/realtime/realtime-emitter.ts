@@ -14,6 +14,7 @@ export class RealtimeEmitter {
   private readonly logger = new Logger(RealtimeEmitter.name);
   private server: Server | null = null;
   private warned = false;
+  private readonly evictListeners: ((userId: string, rooms: string[]) => void)[] = [];
 
   /** 게이트웨이가 afterInit 에서 한 번 넣어 준다. */
   bind(server: Server): void {
@@ -39,8 +40,16 @@ export class RealtimeEmitter {
    * `rooms:sync` 를 부르지 않으면 내보내진 뒤에도 그 스페이스의 메시지를 받는다.
    */
   evict(userId: string, rooms: string[]): void {
-    if (!this.server || rooms.length === 0) return;
-    this.server.in(room.user(userId)).socketsLeave(rooms);
+    if (rooms.length === 0) return;
+    this.server?.in(room.user(userId)).socketsLeave(rooms);
+    // 볼 수 없게 된 자리는 전부 여기를 지난다(멤버 제거 · 나가기 · 비공개 전환 · 명단 · 역할 가림).
+    // 통화도 같은 자리에서 끊는다(20단계 설계 V7) — 경로마다 따로 부르면 새 경로 하나가 빠진다.
+    for (const listener of this.evictListeners) listener(userId, rooms);
+  }
+
+  /** `evict` 를 따라 할 일을 건다. 리스너는 던지지 않아야 한다 — 소켓 정리를 막지 않게. */
+  onEvict(listener: (userId: string, rooms: string[]) => void): void {
+    this.evictListeners.push(listener);
   }
 
   private emit(target: string, event: string, payload: unknown): void {

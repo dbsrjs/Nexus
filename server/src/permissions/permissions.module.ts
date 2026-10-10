@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ChannelsModule } from '../channels/channels.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { RealtimeEmitterModule } from '../realtime/realtime-emitter.module';
+import { VoiceModule } from '../voice/voice.module';
 import { PermissionsController } from './permissions.controller';
 import { PermissionsService } from './permissions.service';
 import { ChannelMembersService } from './channel-members.service';
@@ -11,7 +12,7 @@ import { ChannelMembersService } from './channel-members.service';
  * 전역 역할 · 없는 컬럼을 참조해 살릴 줄이 없었다. **판정은 ChannelsService 에 남는다.**
  */
 @Module({
-  imports: [ChannelsModule, SpacesModule, RealtimeEmitterModule],
+  imports: [ChannelsModule, SpacesModule, RealtimeEmitterModule, VoiceModule],
   controllers: [PermissionsController],
   providers: [PermissionsService, ChannelMembersService],
 })

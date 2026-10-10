@@ -47,6 +47,8 @@ enum OauthProvider {
 enum ChannelKind {
   text
   dm
+  /// 음성 채널(20단계). 들어가 있는 동안 말하고 듣는다 — 메시지 목록이 없다.
+  voice
 }
 
 enum MentionType {
