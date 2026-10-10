@@ -769,7 +769,7 @@ model RepoIndexChunk {
   content   String
   embedding Unsupported("vector(768)")?
   /// 낱말 검색용 생성 컬럼(경로 · 본문 · 낙타 표기 조각). **DB 가 채운다** —
-  /// 식은 마이그레이션 `20261010000000_index_chunks_search_tsv` 에 있고, GIN
+  /// 식은 마이그레이션 `20261010000001_index_chunks_search_tsv` 에 있고, GIN
   /// 인덱스와 함께 손으로 관리한다(HNSW 와 같은 이유).
   searchTsv Unsupported("tsvector")? @default(dbgenerated()) @map("search_tsv")
   /// 변경된 파일만 재인덱싱하기 위한 기준 (설계 §7.4).
