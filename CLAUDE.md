@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **기준 브랜치** | **`main`.** 새 작업은 `feat/*` 를 따 쓰고 끝나면 main 으로 합친다(CI 가 `main` 과 `feat/**` 를 돈다) |
-| **상태** | **1~19단계와 «마지막»의 네 갈래(배포 구성 · 테넌트 격리 검증 · 딥링크 · 데스크톱 · 웹 알림 + 트레이)가 `main` 에 있다**(2026-10-09). 남은 것은 실제 VM 배포 · OS 수준 링크 연결과 20 GitLab — §5 의 «마지막» 칸. 단계별로 — 19단계는 AI 기록(AI 패널의 「지난 대화」 · 다시 열어 이어 묻기), 18단계는 인앱 알림(멘션 · DM · 내 글의 답글 · 알림함 · 종류별 스위치), 17단계는 DM · 프레즌스 · 타이핑(17-1 DM · 17-2 프레즌스 · 입력 중), 16단계는 멤버 · 권한(16-1 스페이스 수준 · 16-2 채널 수준 · 스프린트 선택 기능) — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널(이어 묻기 포함) · 사용자 설정(이름 · 사진 · 비밀번호 · 음소거 · 테마) · 자체 UI(앱에 Material · Cupertino 가 없다). 12 · 13단계는 진짜 GitHub · 진짜 임베딩 · 진짜 Gemini 로 완주했다(13-3 이어 묻기 · 자동 전환 포함). **20 GitLab 연동**은 배포 뒤로 미뤄도 되는 유일한 단계다(§5). 단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md) |
+| **상태** | **1~19단계와 «마지막»의 네 갈래(배포 구성 · 테넌트 격리 검증 · 딥링크 · 데스크톱 · 웹 알림 + 트레이)가 `main` 에 있다**(2026-10-09). **20단계 통화(음성 채널 · 화면 공유, LiveKit)는 PR 에 있다**(2026-10-10 — 20단계였던 GitLab 은 뺐다). 남은 것은 실제 VM 배포 · OS 수준 링크 연결 — §5 의 «마지막» 칸. 단계별로 — 20단계는 통화(음성 채널 · 통화 줄 · 화면 공유 — Android 는 받아 보기만), 19단계는 AI 기록(AI 패널의 「지난 대화」 · 다시 열어 이어 묻기), 18단계는 인앱 알림(멘션 · DM · 내 글의 답글 · 알림함 · 종류별 스위치), 17단계는 DM · 프레즌스 · 타이핑(17-1 DM · 17-2 프레즌스 · 입력 중), 16단계는 멤버 · 권한(16-1 스페이스 수준 · 16-2 채널 수준 · 스프린트 선택 기능) — 오프라인 대화 · 파일 · 이슈 보드 · GitHub 연동(웹훅 · 열람 · PR) · 저장소 인덱싱 · AI 패널(이어 묻기 포함) · 사용자 설정(이름 · 사진 · 비밀번호 · 음소거 · 테마) · 자체 UI(앱에 Material · Cupertino 가 없다). 12 · 13단계는 진짜 GitHub · 진짜 임베딩 · 진짜 Gemini 로 완주했다(13-3 이어 묻기 · 자동 전환 포함).  단계마다의 경과는 [docs/진행-기록.md](docs/진행-기록.md) |
 | **새 PC 셋업** | §1 순서대로. `.env` 는 `npm run env:setup` 이 만들고, 손으로 채울 값(GitHub OAuth App · 터널 주소 · AI provider)은 [server/README.md «선택 기능을 켜는 값»](server/README.md). PC 를 오갈 때 옮겨지지 않는 것은 `nexus-pc-handoff` 스킬 |
 | **언어** | 코드 주석 · 커밋 메시지 · 문서 전부 **한국어** |
 | **커밋 저자** | 사용자(`dbsrjs1224@gmail.com`) 단독. **`Co-Authored-By: Claude` 를 넣지 않는다** |
@@ -130,13 +130,13 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 |---|---|
 | `npm run db:up` / `db:down` | WSL Postgres 기동 / `wsl --shutdown` |
 | `npm run env:setup` | `server/.env` 생성 · 빈 자리 채우기. **여러 번 돌려도 안전하다** |
-| `npm run db:up:docker` / `db:down:docker` | Docker 환경일 때. **postgres 하나만 뜬다** — redis · s3(SeaweedFS) 는 개발 루프가 쓰지 않아 프로필(`--profile redis` · `--profile s3`) 뒤에 있다. 배포 구성은 `deploy/`(절차 [deploy/README.md](deploy/README.md)) |
+| `npm run db:up:docker` / `db:down:docker` | Docker 환경일 때. **postgres 하나만 뜬다** — redis · s3(SeaweedFS) · voice(LiveKit) 는 개발 루프가 쓰지 않아 프로필(`--profile redis` · `--profile s3` · `--profile voice`) 뒤에 있다. 통화를 만질 때만 voice 를 띄우고 `.env` 의 `LIVEKIT_*` 를 채운다([server/README.md](server/README.md)). 배포 구성은 `deploy/`(절차 [deploy/README.md](deploy/README.md)) |
 | `npm run db:seed` · `db:studio` | 시드 · Prisma Studio |
 | `npm run server:dev` · `server:build` | 개발 서버 · 빌드 |
 | `npm --prefix server run typecheck` | 타입 검사만 |
 | `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint |
 | `npm --prefix server run format` | 서버 Prettier 정렬. **CI 가 `format:check` 를 돈다** — 서버 코드를 고쳤으면 커밋 전에 한 번 |
-| `npm run check:<이름>` | **실서버 · 실DB · 실소켓 계약 검증 20종(1,123개)** — CI 가 push 마다 돈다. 목록 · 개수 · 전제(`.env` 값 · 가짜 GitHub · `LLM_PROVIDER=fake`) · 실패할 때 볼 것은 **`nexus-verify` 스킬**이 원본이다. 정적 검사 둘(`check:migrations` · `check:sql-time`)은 DB · 서버 없이 돈다 |
+| `npm run check:<이름>` | **실서버 · 실DB · 실소켓 계약 검증 21종(1,169개)** — CI 가 push 마다 돈다. 목록 · 개수 · 전제(`.env` 값 · 가짜 GitHub · `LLM_PROVIDER=fake`) · 실패할 때 볼 것은 **`nexus-verify` 스킬**이 원본이다. 정적 검사 둘(`check:migrations` · `check:sql-time`)은 DB · 서버 없이 돈다 |
 | `cd app && flutter analyze` · `flutter test` | 앱 정적 분석 · 테스트 |
 | `npm run app:flow` | **앱 통합 테스트** — Windows 데스크톱 앱을 실서버에 붙여 로그인부터 전송 · 실시간 · 스레드 · 셸 안 화면 · 설정 창(이름 · 사진 · 테마 · 음소거) · 멤버 · DM · 알림함 · AI(묻기 · 이어 묻기 · 지난 대화 다시 열기)까지 끝까지 돈다(약 30초, `db:up` · `server:dev` 필요). 보안 저장소 · drift 는 메모리로 바꿔 개발용 앱의 세션을 건드리지 않는다 |
 | `npm run app:flow:headless` | 같은 흐름을 **창 없이**(flutter_tester) 돈다(약 15초). **CI 통합 잡이 push 마다 이것을 돈다**(2026-10-06). 위 흐름이 플랫폼 플러그인을 부르지 않아 창이 필요 없다 — 창 크기가 데스크톱 폭보다 좁으면 테스트가 1280×720 으로 맞춘다 |
@@ -237,6 +237,7 @@ PowerShell 에서 `adb exec-out screencap -p > 파일` 은 **바이너리가 깨
 | 화면을 닫으면 디버그 빌드에서 `deactivated widget's ancestor` 로 멈춤 | `dispose()` 안에서 `ProviderScope.containerOf(context)` 같은 조상 조회를 했다. **`didChangeDependencies` 에서 참조를 잡아 두고** `dispose` 는 그것만 쓴다 — 예외로 정리도 못 돌아 구독이 남았다 (13-2 후 `74ccc01`) |
 | 토큰을 갱신하고 다시 붙어도 소켓이 영영 「연결 끊김」(서버가 꺼진 채 앱을 열고 저장된 토큰이 만료됐을 때) | socket_io_client 는 주소마다 Manager 를 캐시하고 「같은 이름공간이 이미 있나」로 새로 만들지 정하는데, **경로 없는 API 주소에서는 그 판정이 `''` 를 찾고 소켓은 `'/'` 에 있어 늘 거짓** — 옛 Manager 의 **옛 Socket(옛 `auth`)** 이 돌아와 옛 토큰으로 거부당했다. `forceNew` 로 연결마다 새로 만든다(`socketOptions()`). **`SocketClient` 를 가짜로 바꾼 재연결 테스트는 이것을 못 잡았다** — 실제 라이브러리 경로는 웹에서 재현해 봤다 (웹 확인, 2026-10-07) |
 | 재연결 뒤에도 DM 상대가 「나간 사람」 · 멘션 자동완성이 빔 | 실패를 빈 목록으로 삼키는 provider(`spaceMembersProvider`)는 **오프라인으로 켜면 빈 값에 머문다.** 재연결(`SocketConnected`) 때 채널 · 카테고리와 함께 무효화한다. 새로 「실패를 삼키는」 provider 를 만들면 여기에 같이 넣을 것 (웹 확인, 2026-10-07) |
+| LiveKit 웹훅을 받게 했더니 **모든 `application/json` 본문이 빔**(로그인부터 400) | 웹훅은 `Content-Type: application/webhook+json` 이라 기본 파서가 읽지 않는다. `app.useBodyParser('json', { type: … })` 로 받게 했더니 Nest 가 `jsonParser` 이름의 미들웨어가 이미 있다고 보고 **기본 JSON 파서를 건너뛰었다.** `main.ts` 처럼 body-parser 의 `json({ type })` 를 그 경로에만 따로 건다 (20)
 
 ---
 
@@ -361,6 +362,8 @@ llm/          LLM 어댑터(gemini · local · fake) — LLM_PROVIDER 뒤에 숨
 ai/           AI 패널(13-1~13-3) — POST /ai/ask 하나 · 프리셋 · 컨텍스트(메시지 · 채널 · 저장소 RAG) ·
               이어 묻기(parentRunId 사슬, 최대 10) · ai_runs 큐 · promptHash 캐시 · 러너 · 소켓 알림 ·
               기록(19 — ai-history.service: 재귀 CTE 로 사슬 끝 · 목록 · 다시 열기, 본인 것 · 볼 수 있는 채널만)
+voice/        통화(20) — LiveKit 접속 토큰(SDK 없이 HS256) · 웹훅(원문 서명) · 통화 명단(LiveKit 이 원본 · 30초 맞추기 · 메모리) ·
+              볼 수 없게 되면 내보내기(evict 갈고리) · 보내기 권한이 바뀌면 말하기 끄기. LIVEKIT_* 셋이 비면 통화만 꺼진다
 realtime/     소켓 게이트웨이 · 룸 계산 · 이벤트 발신 · 프레즌스(메모리, 저장하지 않음) · 타이핑 중계(17-2)
 prisma/       PrismaModule(@Global) + PrismaService
 common/       예외 필터 · 데코레이터 · 페이지네이션 DTO · slug · bigint 직렬화
@@ -400,6 +403,8 @@ features/space_settings/ 스페이스 설정 창(셸 밖 /s/:spaceId/settings/:s
 features/desktop/        OS 알림 · 트레이(«마지막» 4) — DesktopShell(조건부 import: Windows 는 러너의 desktop_shell.cpp 와
                          채널 `nexus/desktop`, 웹은 브라우저 Notification) · 새 알림을 띄울지(보고 있으면 안 띄움) · 누르면 이동.
                          main.dart 가 뿌리에서 붙든다. 이 기기 스위치는 설정 창 「알림」
+features/voice/          통화(20) — 통화 세션(main.dart 가 뿌리에서 붙든다 — 채널을 옮겨도 이어진다) · VoiceEngine(LiveKit 을 숨긴다,
+                         테스트는 가짜) · 사이드바 명단 · 통화 화면(채널 주소 하나가 종류로 갈린다) · 통화 줄 · 화면 공유(데스크톱 고르기 창)
 features/presence/       프레즌스(REST 처음 값 + 소켓) · 이 기기 상태 알림(생명주기 · 10분 무입력) · 입력 중(17-2).
                          main.dart 가 뿌리에서 붙든다. DM 묶음 · 사람 고르기는 features/channel/dm.dart(17-1)
 features/shell/          반응형 셸 — app_shell(분기) · space_rail · channel_pane
@@ -439,7 +444,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 
 단일 테넌트 시절 모듈은 전부 `spaceId` 기준으로 다시 쓰거나 지웠다 — `files`(8-1, 서명 URL 을 발급하던
 코드라 참고용으로도 남기지 않았다) · `issues`(9-1) · `ai`(13-1) · `permissions`(16-2) · `notifications`(18). **`gitlab` 은
-2026-10-05 정리에서 지웠다** — 20 단계가 새로 쓴다(살릴 줄이 없었다, git 이력에 있다).
+2026-10-05 정리에서 지웠다**(살릴 줄이 없었다, git 이력에 있다) — GitLab 연동은 2026-10-10 에 단계에서 뺐다.
 `src/realtime/redis-io.adapter.ts` 만 다중 인스턴스가 될 때까지 두 tsconfig 의 `exclude` 로 빠져 있다.
 
 ---
@@ -450,7 +455,8 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 [docs/진행-기록.md](docs/진행-기록.md) 에 있다. **이미 끝난 단계의 코드를 다시 건드릴 때는
 그 절부터 읽는다** — 뒤집으면 안 되는 판단과 그 이유가 거기 있다.
 
-**아직 없는 것** — 전부 §5 의 어느 단계가 맡는다(2026-09-27 편입): GitLab(20) · OS 수준 링크 연결(Android App Links · Windows 프로토콜) · 실제 VM 배포(마지막 — 배포 구성 · S3 드라이버 · 테넌트 격리 검증 · 앱 안 딥링크 · 데스크톱 · 웹 알림 · 트레이는 2026-10-09 에 생겼다). **모바일 푸시(FCM)는 «마지막»에서 뺐다**(보스 결정, 2026-10-09). 창 크기 · 위치 기억도 없다.
+**아직 없는 것** — 전부 §5 의 어느 단계가 맡는다(2026-09-27 편입): OS 수준 링크 연결(Android App Links · Windows 프로토콜) · 실제 VM 배포(마지막 — 배포 구성 · S3 드라이버 · 테넌트 격리 검증 · 앱 안 딥링크 · 데스크톱 · 웹 알림 · 트레이는 2026-10-09 에 생겼다). **모바일 푸시(FCM)는 «마지막»에서 뺐다**(보스 결정, 2026-10-09). 창 크기 · 위치 기억도 없다. **GitLab 연동은 뺐다**(보스 결정, 2026-10-10).
+통화의 카메라 · 녹음 · DM 통화 · 종단 간 암호화 · TURN 과 **Android 에서 화면 공유 보내기**는 20단계 범위에서 뺐다([20단계 설계 §3 · S4](docs/superpowers/specs/2026-10-10-20-통화-design.md)).
 그룹 DM · 직접 고르는 상태(방해 금지) · 마지막 접속 시각은
 17단계 범위에서 뺐다([17단계 설계 §5](docs/superpowers/specs/2026-10-05-17-DM-프레즌스-타이핑-design.md)).
 스레드 구독(참여자 전원에게 답글 알림) · 채널마다 다른 알림 스위치 · 이슈 알림은 18단계 범위에서 뺐다([18단계 설계](docs/superpowers/specs/2026-10-05-18-인앱-알림-design.md)).
@@ -488,7 +494,7 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 | 17 | DM · 프레즌스 · 타이핑 — 17-1 DM(`kind=dm` 비공개 채널 + key 유일성 · 사이드바 묶음 · 사람 고르기 · 떠난 상대 읽기 전용) · 17-2 프레즌스(소켓에서 계산 · 5초 유예 · 10분 무입력 자리비움) · 입력 중. 설계 [17단계 설계](docs/superpowers/specs/2026-10-05-17-DM-프레즌스-타이핑-design.md) | ✅ |
 | 18 | 인앱 알림 — 알림함(멘션 · `@channel` · DM · 내 글의 답글, 한 메시지에 한 알림) · `notifications` 재작성 · 메시지와 한 트랜잭션 · 볼 수 있는 채널만 · 음소거면 직접 멘션만 · 채널 읽음이 알림도 읽음 · 설정 창의 종류별 스위치. 설계 [18단계 설계](docs/superpowers/specs/2026-10-05-18-인앱-알림-design.md) | ✅ |
 | 19 | AI 기록 — AI 패널의 「지난 대화」(사슬 단위 목록 · 끝 답이 늦은 순 · 커서 페이지) · 다시 열어 이어 묻기 · 본인 것 · 볼 수 있는 채널만 · 스키마 변경 없이 재귀 CTE. 설계 [19단계 설계](docs/superpowers/specs/2026-10-07-19-AI-기록-design.md) | ✅ |
-| **20** | **GitLab 연동** — provider 추상화 뒤에 GitLab. 배포 뒤로 미뤄도 되는 유일한 단계 | |
+| 20 | 통화 — 음성 채널(`kind=voice` · LiveKit 토큰 · 웹훅 · 통화 명단 · 권한 따라가기 · 통화 줄) · 화면 공유(웹 · Windows 고르기 창 · Android 는 받아 보기만). **20단계였던 GitLab 연동은 뺐다**(2026-10-10). 설계 [20단계 설계](docs/superpowers/specs/2026-10-10-20-통화-design.md) | 🔸 PR |
 | **마지막** | 푸시 · 트레이 · 딥링크 · 테넌트 격리 통합 테스트 · 배포(S3 드라이버 · prod compose). 푸시 · 데스크톱 알림 스위치는 14단계 설정 창에 더한다 | 🔸 배포 기반(S3 드라이버 · `TRUST_PROXY` · `deploy/` compose · nginx 한 오리진 · 백업) ✅ · 테넌트 격리 검증(`check:tenancy`) ✅ · 딥링크(새로고침 · 로그인 뒤 원래 주소 · `/invite/:코드`) ✅ · 가입 화면 ✅ · 데스크톱 · 웹 알림 + Windows 트레이(패키지 없이 — Shell_NotifyIcon · `dart:js_interop`) ✅ · 모바일 푸시는 뺐다 |
 
 16~20 은 2026-09-27 에 **단계 밖에 있던 기능을 편입**한 것이다. 15 뒤에 둔 이유(컴포넌트를
@@ -499,10 +505,11 @@ ui/                      자체 UI(15단계) — NxTheme · 아이콘 · 버튼 
 2026-09-27 에 한 번 정리했다 — 갚은 것 · 단계로 옮긴 것 · 환경 함정으로 옮긴 것은
 [진행 기록](docs/진행-기록.md) «빚 정리 (2026-09-27)».
 
-- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 535개(2026-10-09 «마지막» 5 시점)는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 20종 1,123 케이스**(2026-10-09 «마지막» 테넌트 격리 시점, `서버 통합` 잡) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
-- **앱 통합 테스트는 CI 에서 창 없이만 돈다(2026-10-06).** `linux/` 플랫폼을 들이지 않고 flutter_tester 로 돌린다(`app:flow:headless`) — 창이 있어야 드러나는 것(실제 렌더링 · 창 크기 변화 · 태블릿 · 모바일 배치의 흐름)은 여전히 덮지 않는다. 흐름은 데스크톱 배치만 탄다. **화면 모습을 바꾼 변경은 Windows 창(`app:flow`)으로 한 번 본다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **591개**(2026-10-09 «마지막» 5 시점)
+- **컨트롤러 · 서비스의 실 DB 검증은 계약 검증 스크립트가 담당한다.** 서버 단위 테스트 551개(2026-10-10 20단계 시점)는 순수 로직 · 가드 · 권한 규칙만 덮는다. 이 경계는 의도한 것이다 — 단위 테스트로 DB 동작을 증명하려 하면 §6 의 실수를 반복한다. **계약 검증은 CI 에서 push 마다 돈다 — 21종 1,169 케이스**(2026-10-10 20단계 시점, `서버 통합` 잡 — LiveKit 컨테이너를 함께 띄운다) + DB 없이 도는 정적 검사 둘(`check:migrations` · `check:sql-time`). 헬퍼는 `server/scripts/lib/` 에 모여 있다. **남은 빚은 러너가 아니라 단언 규율이다** — `undefined === undefined` 는 어떤 프레임워크로 바꿔도 통과한다. 새 케이스는 **코드를 일부러 망가뜨려 빨개지는지** 한 번 본다(2026-09-27 에 넣은 케이스는 전부 그렇게 확인했다). (늘어 온 경과는 [진행 기록](docs/진행-기록.md) 부록)
+- **앱 통합 테스트는 CI 에서 창 없이만 돈다(2026-10-06).** `linux/` 플랫폼을 들이지 않고 flutter_tester 로 돌린다(`app:flow:headless`) — 창이 있어야 드러나는 것(실제 렌더링 · 창 크기 변화 · 태블릿 · 모바일 배치의 흐름)은 여전히 덮지 않는다. 흐름은 데스크톱 배치만 탄다. **화면 모습을 바꾼 변경은 Windows 창(`app:flow`)으로 한 번 본다.** 멘션 입력창의 커스텀 `TextEditingController`(커서 · IME)는 여전히 실기기 확인에만 기댄다. 앱 단위 · 위젯 테스트는 `app/test/` 에 **624개**(2026-10-10 20단계 시점)
 - **운영 LLM provider 는 `gemini` 로 정했다(사용자 결정, 2026-10-07).** 실제로 확인한 경로이고 «마지막» 단계의 배포도 이것을 쓴다. **`local`(Ollama) 경로는 실측하지 않은 채 남는다(13-1)** — 쓰는 곳이 없어 깨지는 것이 없다. Gemini 무료 한도(3.5-flash 하루 20회)가 모자라거나 비공개 저장소 코드를 외부로 보내지 않으려 해 `LLM_PROVIDER=local` 로 바꾸게 되면 **그 전에 먼저 태운다.** `llm.config.ts` 의 `qwen2.5-coder:7b` 는 문서만 보고 고른 기본값이다. 설치(`winget install Ollama.Ollama`)와 모델 받기(약 4.7GB)는 사람이 한다.
 - **인덱싱 큐의 5xx 소진은 단위 테스트만 덮는다.** 재시도 대기가 1분씩이라 계약 검증으로 세 번을 태우면 3분이 걸린다. 판정(`shouldGiveUpIndexing` · `indexRetryDelayMs`)은 순수 함수로 빼 두었다. 429 · 리스 유효/만료는 `check:indexing` 이 본다.
+- **통화 명단도 서버 메모리에 있다(20).** 원본은 LiveKit 이라 재시작하면 부팅 때 다시 센다 — 인스턴스가 둘이 되면 프레즌스와 함께 옮긴다. 역할이 바뀌어 보내기 권한만 달라지는 경우는 **30초 맞추기를 기다린다**(spaces → voice 순환 의존을 만들지 않으려고). TURN 이 없어 UDP 와 TCP 7881 이 모두 막힌 망에서는 통화가 붙지 않는다
 - **프레즌스는 서버 메모리에 있다(17-2).** 인스턴스가 둘이 되면 서로의 연결을 모른다 — `redis-io.adapter` 를 되살릴 때 함께 Redis 로 옮긴다. 서버를 재시작하면 모두 오프라인이 됐다가 앱이 다시 붙으며 돌아온다
 - **운영 의존성에 NestJS 12 로 올려야 풀리는 감사 항목이 넷 남아 있다**(2026-10-10 보안 점검 2차 — `@nestjs/core` · `lodash` · `file-type` · `uuid`, 전부 우리 코드가 그 경로를 쓰지 않는다). `multer` · `qs` · `body-parser` 는 `server/package.json` 의 `overrides` 로 올려 두었다 — **platform-express 를 올릴 때 overrides 를 걷는다.** 목록과 이유는 [진행 기록](docs/진행-기록.md) «보안 점검 2차».
 - `npm run db:up` · `db:setup` 은 **Windows + WSL 전용**(PowerShell). Mac/Linux 는 `db:up:docker` 를 써야 한다. 개발 PC 가 둘 다 Windows 라 그대로 둔다.
