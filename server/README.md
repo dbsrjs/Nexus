@@ -7,7 +7,7 @@
 
 ## 스택
 
-- NestJS 10 (TypeScript) · Node.js 22
+- NestJS 12 (TypeScript 6) · Node.js 24
 - Prisma 5 + PostgreSQL 16+ (**pgvector** — 코드 임베딩 · HNSW 인덱스)
 - Socket.IO (실시간 대화 · 이슈 · AI 완료 알림)
 - JWT + argon2 — 리프레시 토큰 회전 · 재사용 탐지
@@ -31,7 +31,7 @@
 
 ## 실행 방법
 
-사전 준비: **Node.js 22**, **PostgreSQL 16+ with pgvector** — WSL2 또는 Docker (아래 참조).
+사전 준비: **Node.js 24**, **PostgreSQL 16+ with pgvector** — WSL2 또는 Docker (아래 참조).
 
 ```bash
 # 저장소 루트에서

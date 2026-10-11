@@ -22,9 +22,11 @@ export class SocketIoAdapter extends IoAdapter {
   }
 
   createIOServer(port: number, options?: ServerOptions) {
+    // 받는 쪽(`new Server`)은 일부만 채운 옵션을 받지만 Nest 12 의 시그니처는 전체 형을
+    // 요구한다. options 가 없을 때(기본값) 넘기던 모양 그대로다.
     return super.createIOServer(port, {
       ...options,
       cors: { origin: this.origins, credentials: true },
-    });
+    } as ServerOptions);
   }
 }
