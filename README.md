@@ -70,7 +70,7 @@ deploy/  VM 한 대 — Docker Compose(postgres · server · nginx · cloudflare
 
 ## 시작하기
 
-필요한 것: **Node.js 22** · **Flutter 3.44.9 이상** · **WSL2(Ubuntu)** 또는 **Docker**
+필요한 것: **Node.js 24** · **Flutter 3.44.9 이상** · **WSL2(Ubuntu)** 또는 **Docker**
 
 ### 서버
 
@@ -119,7 +119,7 @@ Windows 데스크톱 빌드에는 **개발자 모드**가 켜져 있어야 한�
 |---|---|
 | 명령 | 내용 | 규모 (2026-10-09) |
 |---|---|---|
-| `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint — 순수 로직 · 가드 · 권한 규칙 | 572개 |
+| `npm run server:test` · `server:lint` | 서버 단위 테스트(Jest) · ESLint — 순수 로직 · 가드 · 권한 규칙 | 574개 |
 | `npm run check:*` | **실서버 · 실DB · 실소켓 계약 검증** — 실시간 · 리액션 · 스레드 · 첨부 · 이슈 · GitHub 연동 · 인덱싱 · AI · 설정 · 멤버 · 권한 · DM · 프레즌스 · 알림 · 통화(실제 LiveKit 컨테이너) · **테넌트 격리**(`check:tenancy` — 스페이스 경로 전부를 남의 id 로 친다). GitHub 은 스스로 띄우는 가짜 서버로 대신한다 | 21종 1,169개 |
 | `npm run check:migrations` · `check:sql-time` | 마이그레이션 · raw SQL 정적 검사 (DB 불필요) | |
 | `cd app && flutter analyze && flutter test` | 앱 정적 분석 · 단위 · 위젯 테스트 | 665개 |

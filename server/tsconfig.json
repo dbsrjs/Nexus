@@ -9,7 +9,6 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
@@ -18,7 +17,10 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    // TypeScript 6 은 `types` 기본값이 빈 목록이라 @types/* 를 저절로 읽지 않는다.
+    // multer 는 `Express.Multer.File` 전역 타입 때문에, jest 는 spec 의 전역 함수 때문에 둔다
+    "types": ["node", "jest", "multer"]
   },
   "exclude": [
     "node_modules",

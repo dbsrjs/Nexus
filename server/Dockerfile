@@ -6,7 +6,7 @@
 #
 # bookworm-slim 을 쓰는 이유: Prisma 엔진 · argon2 · sharp 가 glibc 용 미리 빌드된 바이너리를
 # 내려받는다. alpine(musl)이면 일부가 소스 빌드로 떨어져 이미지 안에 컴파일러가 필요해진다.
-FROM node:22-bookworm-slim AS build
+FROM node:24-bookworm-slim AS build
 WORKDIR /app
 # Prisma 엔진이 libssl 을 찾는다 — 없으면 쿼리 엔진이 뜨지 않는다.
 RUN apt-get update && apt-get install -y --no-install-recommends openssl \
@@ -26,7 +26,7 @@ RUN npm run build
 FROM build AS prod-deps
 RUN npm prune --omit=dev
 
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl \
   && rm -rf /var/lib/apt/lists/*

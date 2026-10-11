@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import type { JwtSignOptions } from '@nestjs/jwt';
 
 /**
  * JWT 시크릿·수명의 **유일한 해석 지점**.
@@ -11,11 +12,18 @@ import { ConfigService } from '@nestjs/config';
  * 해석을 여기 하나로 모으고 **하드코딩 폴백을 없앤다.** 미설정이면 부팅을
  * 중단시킨다 — 조용히 약한 키로 뜨는 것보다 낫다 (docs/백엔드-설계.md §6).
  */
+/**
+ * 토큰 수명(`15m` · `7d` 같은 ms 형식). jsonwebtoken 타입이 아무 문자열이나 받지 않게
+ * 좁혀졌다(NestJS 12 · `@nestjs/jwt` 12). 환경 변수는 형식을 보장하지 않으므로
+ * 읽을 때 이 타입으로 단언한다 — 잘못된 값은 예전처럼 서명할 때 jsonwebtoken 이 던진다.
+ */
+export type JwtTtl = Extract<JwtSignOptions['expiresIn'], string>;
+
 export interface JwtSecrets {
   accessSecret: string;
   refreshSecret: string;
-  accessTtl: string;
-  refreshTtl: string;
+  accessTtl: JwtTtl;
+  refreshTtl: JwtTtl;
 }
 
 const MIN_SECRET_LENGTH = 32;
@@ -43,7 +51,7 @@ export function resolveJwtSecrets(config: ConfigService): JwtSecrets {
   return {
     accessSecret,
     refreshSecret,
-    accessTtl: config.get<string>('JWT_EXPIRES_IN')?.trim() || '15m',
-    refreshTtl: config.get<string>('JWT_REFRESH_EXPIRES_IN')?.trim() || '7d',
+    accessTtl: (config.get<string>('JWT_EXPIRES_IN')?.trim() || '15m') as JwtTtl,
+    refreshTtl: (config.get<string>('JWT_REFRESH_EXPIRES_IN')?.trim() || '7d') as JwtTtl,
   };
 }

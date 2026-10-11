@@ -64,6 +64,8 @@ Nexus 작업은 집 PC 와 회사 PC 두 곳을 오간다. **DB 는 PC 마다 �
   인덱스는 저장소를 다시 붙이면 새로 쌓인다 — CPU 로 이 저장소 전체가 약 1시간)
 - `.superpowers/sdd/` 의 작업 브리프·보고서·리뷰 diff (git 에 안 올라간다 —
   필요하면 계획 문서에서 다시 뽑는다. 단계를 병합하면 지운다)
+- **Node.js 버전** — 서버는 **24.9 이상**이 필요하다(NestJS 12 · 2026-10-11). 22 면 `npm test` 가
+  스위트마다 `Must use import to load ES Module` 로 실패한다. `node -v` 부터 본다
 - `app/.dart_tool/` 빌드 캐시, `app/pubspec.lock`(SDK 버전 차이로 뒤집힌다 —
   커밋하지 않고 `git restore` 한다)
 
