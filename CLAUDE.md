@@ -366,7 +366,7 @@ oauth/        GitHub 계정 연결 · state · 토큰 암호화(OAUTH_TOKEN_KEY)
 repos/        웹훅 수신 · 저장소 연결 · 열람 · 커밋 · PR 프록시
   indexing/   트리 순회 · 거르기 · 청킹 · 벡터 검색 · DB 큐 워커
 embedding/    임베딩 어댑터(gemini · local · fake) — EMBEDDING_PROVIDER 뒤에 숨는다
-llm/          LLM 어댑터(gemini · local · fake) — LLM_PROVIDER 뒤에 숨는다(AI 만 쓴다, 전역 아님)
+llm/          LLM 어댑터(gemini · local · fake · 전환용 anthropic) — LLM_PROVIDER 뒤에 숨는다(AI 만 쓴다, 전역 아님)
 ai/           AI 패널(13-1~13-3) — POST /ai/ask 하나 · 프리셋 · 컨텍스트(메시지 · 채널 · 저장소 RAG) ·
               이어 묻기(parentRunId 사슬, 최대 10) · ai_runs 큐 · promptHash 캐시 · 러너 · 소켓 알림 ·
               기록(19 — ai-history.service: 재귀 CTE 로 사슬 끝 · 목록 · 다시 열기, 본인 것 · 볼 수 있는 채널만)
@@ -498,7 +498,7 @@ assets/fonts/            Pretendard Std(KS X 1001 판) · JetBrains Mono NL — 
 | 13-2 | AI 패널 — 자유 지시문 + 프리셋 · 컨텍스트 칩(메시지 · 채널 · 저장소 RAG) · 인용 · 모델 불일치 503 | ✅ |
 | — | 브랜드 · 디자인 시스템 정비(2026-10-06) — 마크 «연결점» 교체 · 토큰 보강(글자 크기 · 반경 · 투명도 · 아이콘 크기 · 브랜드 · 장식)과 화면 적용 · 토큰 강제 테스트 · 라이트 의미색 대비(AA) · 모션 줄이기 · 로그인 «연결망» 개편 | ✅ |
 | — | 전체 리팩토링(2026-10-06) — 앱 호버 표면 통일 · 채팅 화면 분리, 서버 페이지 · 메시지 꾸미기 · 채널 판정 · 저장소 문지기 · 설정 · 워커 루프 공통화, 죽은 코드 · 린트 무시 목록 정리, **웹훅 게시가 실시간으로 안 닿던 결함** 수정 | ✅ |
-| — | LLM 교체 — `gemini-3.1-flash-lite` → **`gemini-3.5-flash`**(무료 티어 재측정) · 생각 수준 `low` · 상한 8192 · 잘린 답 실패 처리 · **429 · 5xx 면 3.1-flash-lite 로 자동 전환**(무료 한도 3.5-flash 하루 20회 · lite 500회, 전환 답은 캐시 제외) | ✅ |
+| — | LLM 교체 — `gemini-3.1-flash-lite` → **`gemini-3.5-flash`**(무료 티어 재측정) · 생각 수준 `low` · 상한 8192 · 잘린 답 실패 처리 · **429 · 5xx 면 3.1-flash-lite 로 자동 전환**(무료 한도 3.5-flash 하루 20회 · lite 500회, 전환 답은 캐시 제외) · 전환 모델을 Claude(`LLM_FALLBACK_PROVIDER=anthropic` → `claude-haiku-5-5`)로도 고른다(2026-10-15, 실호출 · 서버 경유 확인) | ✅ |
 | 13-3 | AI 멀티턴 — `parentRunId` 사슬 · user/assistant 역할 · 첫 문답 근거 물려받기 · 상한 10 · 앱 문답 목록 | ✅ |
 | 14 | 사용자 설정 — 설정 창(표시 이름 · 프로필 사진 · 비밀번호 변경 · 채널 음소거 · 테마) · `user:updated` · 아바타 열람 규칙 | ✅ |
 | 15 | UI/UX 개편 — Flutter 기본(Material) 컴포넌트를 전부 자체 UI 로 교체 · 디자인 다듬기 · 이슈 보드 드래그 정렬 화면. 설계는 [15단계 설계](docs/superpowers/specs/2026-09-27-15-자체-UI-design.md) — 15-1 기반(자체 컴포넌트 · import 검사 · 갤러리) · 15-2 화면 옮기기(보드 끌어 옮기기 포함) · 15-3 뼈대(WidgetsApp) · Android · 웹 확인 | ✅ |

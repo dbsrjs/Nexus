@@ -3,6 +3,16 @@ import { envTrimmed, envUint } from '../config/env';
 
 export type LlmProviderName = 'gemini' | 'local' | 'fake';
 
+/** 전환 모델을 부를 곳. 주 모델과 provider 가 달라도 된다(2026-10-15). */
+export type LlmFallbackProviderName = 'gemini' | 'anthropic';
+
+export interface LlmFallback {
+  provider: LlmFallbackProviderName;
+  model: string;
+  /** 그 provider 의 키. gemini 면 주 모델과 같은 `GEMINI_API_KEY` 다. */
+  apiKey: string;
+}
+
 export interface LlmConfig {
   provider: LlmProviderName;
   model: string;
@@ -11,11 +21,10 @@ export interface LlmConfig {
   base: string | null;
   maxTokens: number;
   /**
-   * 주 모델이 429 · 5xx 일 때 대신 부를 모델. **gemini 에만 있다** — 무료
-   * 티어 한도가 모델마다 따로라(3.5-flash 하루 20회 · 3.1-flash-lite 500회)
-   * 가벼운 모델이 받쳐 줄 수 있다. `null` 이면 전환하지 않는다.
+   * 주 모델이 429 · 5xx 일 때 대신 부를 모델. **주 모델이 gemini 일 때만 있다** —
+   * 무료 티어 한도가 하루 20회라 받쳐 줄 곳이 필요하다. `null` 이면 전환하지 않는다.
    */
-  fallbackModel: string | null;
+  fallback: LlmFallback | null;
   /**
    * 호출 한 번의 시간 제한(밀리초). 넘으면 어댑터가 504 로 던져 전환 모델이
    * 받는다. `null` 이면 제한 없음 — `local` 의 기본값이다(CPU 추론은 원래 느리다).
@@ -24,6 +33,7 @@ export interface LlmConfig {
 }
 
 const NAMES: LlmProviderName[] = ['gemini', 'local', 'fake'];
+const FALLBACK_NAMES: LlmFallbackProviderName[] = ['gemini', 'anthropic'];
 
 /**
  * LLM 설정의 **유일한 해석 지점**. `embedding.config.ts` 와 같은 역할이다.
@@ -57,7 +67,7 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
   return {
     provider,
     model,
-    fallbackModel: fallbackOf(provider, model, envTrimmed(config, 'LLM_FALLBACK_MODEL')),
+    fallback: provider === 'gemini' ? fallbackOf(config, model, apiKey ?? '') : null,
     apiKey,
     base: envTrimmed(config, 'LLM_BASE'),
     // 8192 — **생각 토큰을 포함한 상한이다.** Gemini 3.x 는 생각도 이 한도에서
@@ -132,26 +142,52 @@ export function resolveLlm(config: ConfigService): LlmConfig | null {
  * 않다. `local` 경로를 쓰기 전에 먼저 실제로 태워 볼 것.
  */
 /**
- * **전환 모델** — 2026-09-23 AI Studio 에서 확인한 무료 등급 한도가 이유다.
+ * **전환 모델** — 주 모델(`gemini-3.5-flash`)의 무료 한도가 하루 20회라 받쳐 줄
+ * 곳이 필요하다. **키 하나(서버 전체)** 의 한도다.
  *
- * | 모델 | 분당 | 하루 |
- * |---|---|---|
- * | `gemini-3.5-flash`(주 모델) | 5 | **20** |
- * | `gemini-3.1-flash-lite` | 15 | **500** |
+ * `LLM_FALLBACK_PROVIDER` 가 고른다(비우면 `gemini`):
  *
- * 하루 20회는 **키 하나(서버 전체)** 의 한도다. 넘으면 AI 가 멈추는 대신 가벼운
- * 모델로 답한다. 비우면 이 기본값, `none` 이면 끈다. 주 모델과 같으면 전환할
- * 곳이 없으니 `null` 이다.
+ * | provider | 기본 모델 | 키 | 이유 |
+ * |---|---|---|---|
+ * | `gemini` | `gemini-3.1-flash-lite` | `GEMINI_API_KEY`(주 모델과 같다) | 무료 하루 500회(2026-09-23 AI Studio) |
+ * | `anthropic` | `claude-haiku-5-5` | `ANTHROPIC_API_KEY` | **다른 회사라 Google 이 붐비는 날 같이 붐비지 않는다**(2026-10-15) |
+ *
+ * `LLM_FALLBACK_MODEL` 을 비우면 위 기본 모델, `none` 이면 끈다. 주 모델과 같으면
+ * 전환할 곳이 없으니 `null` 이다.
+ *
+ * **`anthropic` 인데 키가 없으면 던져 부팅을 멈춘다.** 키가 없을 때 조용히 전환만
+ * 끄면, 한도를 넘긴 날에야 받쳐 줄 곳이 없었다는 것을 안다 — 고르기는 했는데
+ * 채우지 않은 것은 「없는 것」이 아니라 「잘못된 것」이다(`LIVEKIT_*` 와 같은 규칙).
  */
 function fallbackOf(
-  provider: LlmProviderName,
+  config: ConfigService,
   model: string,
-  raw: string | null,
-): string | null {
-  if (provider !== 'gemini') return null;
+  geminiKey: string,
+): LlmFallback | null {
+  const raw = envTrimmed(config, 'LLM_FALLBACK_MODEL');
   if (raw === 'none') return null;
+
+  const name = envTrimmed(config, 'LLM_FALLBACK_PROVIDER') ?? 'gemini';
+  if (!FALLBACK_NAMES.includes(name as LlmFallbackProviderName)) {
+    throw new Error(
+      `LLM_FALLBACK_PROVIDER 는 ${FALLBACK_NAMES.join(' · ')} 중 하나여야 합니다 (지금 "${name}").`,
+    );
+  }
+  const provider = name as LlmFallbackProviderName;
+
+  if (provider === 'anthropic') {
+    const apiKey = envTrimmed(config, 'ANTHROPIC_API_KEY');
+    if (!apiKey) {
+      throw new Error(
+        'LLM_FALLBACK_PROVIDER=anthropic 인데 ANTHROPIC_API_KEY 가 비어 있습니다. ' +
+          '키를 넣거나 LLM_FALLBACK_PROVIDER 를 비우세요.',
+      );
+    }
+    return { provider, model: raw ?? 'claude-haiku-5-5', apiKey };
+  }
+
   const fallback = raw ?? 'gemini-3.1-flash-lite';
-  return fallback === model ? null : fallback;
+  return fallback === model ? null : { provider, model: fallback, apiKey: geminiKey };
 }
 
 /**

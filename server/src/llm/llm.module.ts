@@ -6,6 +6,7 @@ import { FakeLlmProvider } from './fake-llm.provider';
 import { GeminiLlmProvider } from './gemini-llm.provider';
 import { LocalLlmProvider } from './local-llm.provider';
 import { FallbackLlmProvider } from './fallback-llm.provider';
+import { AnthropicLlmProvider } from './anthropic-llm.provider';
 
 /**
  * 설정을 보고 provider 를 하나 고른다.
@@ -36,17 +37,27 @@ import { FallbackLlmProvider } from './fallback-llm.provider';
 
         logger.log(
           `LLM provider: ${resolved.provider} (${resolved.model}` +
-            (resolved.fallbackModel ? `, 전환 ${resolved.fallbackModel})` : ')'),
+            (resolved.fallback
+              ? `, 전환 ${resolved.fallback.provider}:${resolved.fallback.model})`
+              : ')'),
         );
         if (resolved.provider === 'fake') {
           return new FakeLlmProvider(resolved.maxTokens);
         }
         if (resolved.provider === 'local') return new LocalLlmProvider(resolved);
         const primary = new GeminiLlmProvider(resolved);
-        if (!resolved.fallbackModel) return primary;
+        const fallback = resolved.fallback;
+        if (!fallback) return primary;
         return new FallbackLlmProvider(
           primary,
-          new GeminiLlmProvider({ ...resolved, model: resolved.fallbackModel }),
+          fallback.provider === 'anthropic'
+            ? new AnthropicLlmProvider({
+                model: fallback.model,
+                apiKey: fallback.apiKey,
+                maxTokens: resolved.maxTokens,
+                timeoutMs: resolved.timeoutMs,
+              })
+            : new GeminiLlmProvider({ ...resolved, model: fallback.model }),
         );
       },
     },
