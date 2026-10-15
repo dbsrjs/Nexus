@@ -52,17 +52,19 @@ describe('resolveLlm', () => {
 
   it('★ gemini 의 전환 모델 기본값은 gemini-3.1-flash-lite 다(하루 500회)', () => {
     const r = resolveLlm(cfg({ LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'k' }));
-    expect(r?.fallbackModel).toBe('gemini-3.1-flash-lite');
+    expect(r?.fallback).toEqual({
+      provider: 'gemini',
+      model: 'gemini-3.1-flash-lite',
+      apiKey: 'k',
+    });
   });
 
   it('LLM_FALLBACK_MODEL 을 주면 그대로 쓰고, none 이면 끈다', () => {
     const base = { LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'k' };
-    expect(resolveLlm(cfg({ ...base, LLM_FALLBACK_MODEL: 'x' }))?.fallbackModel).toBe(
+    expect(resolveLlm(cfg({ ...base, LLM_FALLBACK_MODEL: 'x' }))?.fallback?.model).toBe(
       'x',
     );
-    expect(
-      resolveLlm(cfg({ ...base, LLM_FALLBACK_MODEL: 'none' }))?.fallbackModel,
-    ).toBeNull();
+    expect(resolveLlm(cfg({ ...base, LLM_FALLBACK_MODEL: 'none' }))?.fallback).toBeNull();
   });
 
   it('전환 모델이 주 모델과 같으면 전환하지 않는다', () => {
@@ -73,12 +75,64 @@ describe('resolveLlm', () => {
         LLM_MODEL: 'gemini-3.1-flash-lite',
       }),
     );
-    expect(r?.fallbackModel).toBeNull();
+    expect(r?.fallback).toBeNull();
   });
 
   it('local · fake 에는 전환 모델이 없다', () => {
-    expect(resolveLlm(cfg({ LLM_PROVIDER: 'local' }))?.fallbackModel).toBeNull();
-    expect(resolveLlm(cfg({ LLM_PROVIDER: 'fake' }))?.fallbackModel).toBeNull();
+    expect(resolveLlm(cfg({ LLM_PROVIDER: 'local' }))?.fallback).toBeNull();
+    expect(resolveLlm(cfg({ LLM_PROVIDER: 'fake' }))?.fallback).toBeNull();
+  });
+
+  describe('LLM_FALLBACK_PROVIDER=anthropic', () => {
+    const base = {
+      LLM_PROVIDER: 'gemini',
+      GEMINI_API_KEY: 'g',
+      LLM_FALLBACK_PROVIDER: 'anthropic',
+    };
+
+    it('★ 기본 모델은 claude-haiku-5-5 이고 ANTHROPIC_API_KEY 를 쓴다', () => {
+      const r = resolveLlm(cfg({ ...base, ANTHROPIC_API_KEY: 'a' }));
+      expect(r?.fallback).toEqual({
+        provider: 'anthropic',
+        model: 'claude-haiku-5-5',
+        apiKey: 'a',
+      });
+      // 주 모델의 키는 그대로다.
+      expect(r?.apiKey).toBe('g');
+    });
+
+    it('LLM_FALLBACK_MODEL 을 주면 그 Claude 모델을 쓰고, none 이면 끈다', () => {
+      const withKey = { ...base, ANTHROPIC_API_KEY: 'a' };
+      expect(
+        resolveLlm(cfg({ ...withKey, LLM_FALLBACK_MODEL: 'claude-sonnet-5-5' }))?.fallback
+          ?.model,
+      ).toBe('claude-sonnet-5-5');
+      expect(
+        resolveLlm(cfg({ ...withKey, LLM_FALLBACK_MODEL: 'none' }))?.fallback,
+      ).toBeNull();
+    });
+
+    it('★ 키가 없으면 던진다 - 고르고 안 채운 것은 조용히 끄지 않는다', () => {
+      expect(() => resolveLlm(cfg(base))).toThrow(/ANTHROPIC_API_KEY/);
+    });
+
+    it('none 이면 키가 없어도 던지지 않는다', () => {
+      expect(
+        resolveLlm(cfg({ ...base, LLM_FALLBACK_MODEL: 'none' }))?.fallback,
+      ).toBeNull();
+    });
+  });
+
+  it('모르는 전환 provider 는 던진다', () => {
+    expect(() =>
+      resolveLlm(
+        cfg({
+          LLM_PROVIDER: 'gemini',
+          GEMINI_API_KEY: 'k',
+          LLM_FALLBACK_PROVIDER: 'openai',
+        }),
+      ),
+    ).toThrow(/gemini · anthropic/);
   });
 
   it('★ gemini 호출 시간 제한 기본값은 60초다 - 255초짜리 응답을 기다리지 않는다', () => {

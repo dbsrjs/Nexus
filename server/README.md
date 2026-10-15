@@ -69,7 +69,7 @@ npm run server:dev
 |---|---|
 | GitHub 계정 연결 · 웹훅 자동 등록 | `GITHUB_CLIENT_ID` · `GITHUB_CLIENT_SECRET` · `PUBLIC_BASE_URL`(터널 주소) |
 | 저장소 인덱싱 | `EMBEDDING_PROVIDER` (`gemini` 면 `GEMINI_API_KEY`, `local` 이면 Ollama — 아래) |
-| AI 패널 | `LLM_PROVIDER` (`gemini` · `local` · `fake`) |
+| AI 패널 | `LLM_PROVIDER` (`gemini` · `local` · `fake`). 전환 모델을 Claude 로 하려면 `LLM_FALLBACK_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` |
 | 통화(음성 채널 · 화면 공유) | `LIVEKIT_URL` · `LIVEKIT_API_KEY` · `LIVEKIT_API_SECRET`(32자 이상). 개발은 `.env.example` 값 그대로 두고 `docker compose -f server/docker-compose.yml --profile voice up -d` 로 LiveKit 을 띄운다. **셋 중 일부만 차면 부팅을 멈춘다** |
 
 비워 두면 해당 API 가 **503** 으로 답하고 나머지는 그대로 돈다. 계약 검증을 돌릴 때의

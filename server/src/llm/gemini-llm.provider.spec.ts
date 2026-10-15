@@ -7,7 +7,7 @@ const config = {
   apiKey: 'k',
   base: 'http://127.0.0.1:9',
   maxTokens: 8192,
-  fallbackModel: null,
+  fallback: null,
   timeoutMs: 60000,
 };
 
