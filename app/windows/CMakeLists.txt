@@ -41,6 +41,10 @@ function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_features(${TARGET} PUBLIC cxx_std_17)
   target_compile_options(${TARGET} PRIVATE /W4 /WX /wd"4100")
   target_compile_options(${TARGET} PRIVATE /EHsc)
+  # 플러그인 소스(flutter_webrtc 등)에도 비 ASCII 문자가 있다. 한국어 Windows 의 MSVC 는
+  # 이를 CP949 로 읽어 C4819 경고를 내고, 위의 /WX 가 그것을 오류로 올려 빌드가 멈춘다.
+  # 플러그인은 이 함수로 설정을 받으므로 러너에만 걸어서는 막지 못한다.
+  target_compile_options(${TARGET} PRIVATE /utf-8)
   target_compile_definitions(${TARGET} PRIVATE "_HAS_EXCEPTIONS=0")
   target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
 endfunction()
